@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
-import { Mail, Lock, Eye, EyeOff, LogIn, Sparkles } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, LogIn, Sparkles, Users } from 'lucide-react';
 
 const SigninPage = () => {
   const dispatch = useAppDispatch();
@@ -16,6 +16,7 @@ const SigninPage = () => {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
+    userType: 'customer' as 'customer' | 'consultant',
   });
 
   const [showPassword, setShowPassword] = useState(false);
@@ -86,7 +87,7 @@ const SigninPage = () => {
         signin({
           email: formData.email,
           password: formData.password,
-          userType: 'customer',
+          userType: formData.userType,
         })
       ).unwrap();
 
@@ -159,6 +160,38 @@ const SigninPage = () => {
           className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl shadow-gray-200/50 border border-gray-100 p-8"
         >
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* User Type Selection */}
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                <Users className="w-4 h-4 text-blue-500" />
+                Sign in as
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, userType: 'customer' }))}
+                  className={`h-12 rounded-xl border-2 font-medium transition-all duration-200 ${
+                    formData.userType === 'customer'
+                      ? 'border-blue-500 bg-blue-50 text-blue-700'
+                      : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  Customer
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, userType: 'consultant' }))}
+                  className={`h-12 rounded-xl border-2 font-medium transition-all duration-200 ${
+                    formData.userType === 'consultant'
+                      ? 'border-blue-500 bg-blue-50 text-blue-700'
+                      : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  Consultant
+                </button>
+              </div>
+            </div>
+
             {/* Email Field */}
             <div className="space-y-2">
               <label htmlFor="email" className="text-sm font-semibold text-gray-700 flex items-center gap-2">

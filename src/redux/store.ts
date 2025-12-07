@@ -5,6 +5,8 @@ import ticketReducer from './slices/ticketSlice';
 import categoryReducer from './slices/categorySlice';
 import consultantReducer from './slices/consultantSlice';
 import assignmentReducer from './slices/assignmentSlice';
+import teamReducer from './slices/teamSlice';
+import teamMemberReducer from './slices/teamMemberSlice';
 
 export const store = configureStore({
   reducer: {
@@ -14,6 +16,8 @@ export const store = configureStore({
     categories: categoryReducer,
     consultants: consultantReducer,
     assignments: assignmentReducer,
+    teams: teamReducer,
+    teamMembers: teamMemberReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

@@ -175,31 +175,29 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
               <TableCell>
                 <div className="flex items-center justify-end gap-2">
                   <Button
-                    variant="ghost"
-                    size="icon"
+                    size="sm"
+                    variant="outline"
                     onClick={() => navigate(`/tickets/view/${ticket._id}`)}
-                    className="hover:bg-blue-50 hover:text-blue-600"
-                    title="View Ticket"
                   >
-                    <Eye className="h-4 w-4" />
+                    <Eye className="w-4 h-4 mr-1" />
+                    View
                   </Button>
                   <Button
-                    variant="ghost"
-                    size="icon"
+                    size="sm"
+                    variant="outline"
                     onClick={() => navigate(`/tickets/edit/${ticket._id}`)}
-                    className="hover:bg-green-50 hover:text-green-600"
-                    title="Edit Ticket"
                   >
-                    <Edit className="h-4 w-4" />
+                    <Edit className="w-4 h-4 mr-1" />
+                    Edit
                   </Button>
                   <Button
-                    variant="ghost"
-                    size="icon"
+                    size="sm"
+                    variant="outline"
+                    className="text-red-600 hover:text-red-700 hover:border-red-300"
                     onClick={() => handleDelete(ticket)}
-                    className="hover:bg-red-50 hover:text-red-600"
-                    title="Delete Ticket"
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="w-4 h-4 mr-1" />
+                    Delete
                   </Button>
                 </div>
               </TableCell>

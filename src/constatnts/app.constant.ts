@@ -29,12 +29,26 @@ const CUSTOMER_LINKS = [
   { name: "Tickets", path: "/tickets", icon: Ticket },
 ];
 
+// Consultant can see specific modules
+const CONSULTANT_LINKS = [
+  { name: "Dashboard", path: "/", icon: LayoutDashboard },
+  { name: "Customers", path: "/customers", icon: Users },
+  { name: "Categories", path: "/categories", icon: FolderKanban },
+  { name: "Consultants", path: "/consultants", icon: UserCog },
+  { name: "Tickets", path: "/tickets", icon: Ticket },
+  { name: "Teams", path: "/teams", icon: UsersRound },
+  { name: "Team Members", path: "/team-members", icon: UserCheck },
+];
+
 // Filter links based on user type
 export const getRouterLinksByUserType = (userType: string | null) => {
   if (userType === 'customer') {
     return CUSTOMER_LINKS;
   }
-  // For consultants, team_members, and admins, show all links
+  if (userType === 'consultant') {
+    return CONSULTANT_LINKS;
+  }
+  // For team_members and admins, show all links
   return ROUTERLINKS;
 };
 

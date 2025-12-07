@@ -20,10 +20,14 @@ import { useNavigate } from "react-router-dom";
 export default function Header() {
   const [isDark, setIsDark] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const { user, logout } = useAuth();
+  const { user, userType, logout } = useAuth();
   const navigate = useNavigate();
 
   const notifications = 3;
+
+  // Get user display info
+  const userEmail = user?.email || '';
+  const userRole = userType === 'customer' ? 'Customer' : userType === 'consultant' ? 'Consultant' : 'User';
 
   const handleLogout = async () => {
     await logout();
@@ -120,14 +124,14 @@ export default function Header() {
             <div className="relative">
               <Avatar className="h-9 w-9 ring-2 ring-blue-500/20">
                 <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white font-semibold">
-                  {user?.contactPerson ? user.contactPerson.split(' ').map((n: string) => n[0]).join('') : 'U'}
+                  {userEmail ? userEmail.substring(0, 2).toUpperCase() : 'U'}
                 </AvatarFallback>
               </Avatar>
               <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-green-500 border-2 border-white"></span>
             </div>
             <div className="hidden md:block text-left">
-              <p className="text-sm font-semibold text-gray-800">{user?.contactPerson || 'User'}</p>
-              <p className="text-xs text-gray-500">{user?.email || ''}</p>
+              <p className="text-sm font-semibold text-gray-800">{userEmail}</p>
+              <p className="text-xs text-gray-500">{userRole}</p>
             </div>
             <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${showUserMenu ? 'rotate-180' : ''}`} />
           </motion.div>
@@ -141,8 +145,8 @@ export default function Header() {
               className="absolute right-0 mt-2 w-56 rounded-xl bg-white shadow-lg border border-gray-200 py-2 z-50"
             >
               <div className="px-4 py-3 border-b border-gray-100">
-                <p className="text-sm font-semibold text-gray-800">{user?.contactPerson || 'User'}</p>
-                <p className="text-xs text-gray-500">{user?.email || ''}</p>
+                <p className="text-sm font-semibold text-gray-800">{userEmail}</p>
+                <p className="text-xs text-gray-500 capitalize">{userRole}</p>
               </div>
 
               <div className="py-2">

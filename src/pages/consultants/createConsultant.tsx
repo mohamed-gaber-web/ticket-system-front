@@ -52,8 +52,8 @@ export default function CreateConsultant() {
 
     if (!formData.password) {
       newErrors.password = 'Password is required';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
+    } else if (formData.password.length < 8) {
+      newErrors.password = 'Password must be at least 8 characters';
     }
 
     if (formData.phone && !/^\d{10,15}$/.test(formData.phone.replace(/\s/g, ''))) {
@@ -180,45 +180,12 @@ export default function CreateConsultant() {
                 type="password"
                 value={formData.password}
                 onChange={(e) => handleChange('password', e.target.value)}
-                placeholder="Enter password (min 6 characters)"
+                placeholder="Enter password (min 8 characters)"
                 className={errors.password ? 'border-red-500' : ''}
               />
               {errors.password && (
                 <p className="text-red-500 text-sm mt-1">{errors.password}</p>
               )}
-            </div>
-
-            {/* Role and Status */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Role <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={formData.role}
-                  onChange={(e) => handleChange('role', e.target.value as ConsultantRole)}
-                  className="w-full h-11 px-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none transition-colors"
-                >
-                  <option value="consultant">Consultant</option>
-                  <option value="senior_consultant">Senior Consultant</option>
-                  <option value="admin">Admin</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Status <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={formData.status}
-                  onChange={(e) => handleChange('status', e.target.value as ConsultantStatus)}
-                  className="w-full h-11 px-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none transition-colors"
-                >
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                  <option value="on_leave">On Leave</option>
-                </select>
-              </div>
             </div>
 
             {/* Action Buttons */}
