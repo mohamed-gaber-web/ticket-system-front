@@ -1,4 +1,7 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import type { RootState } from '@/redux/store';
 import {
   Table,
   TableBody,
@@ -8,10 +11,11 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Edit, Trash2, Eye, Ticket as TicketIcon } from 'lucide-react';
+import { Edit, Trash2, UserPlus, Ticket as TicketIcon } from 'lucide-react';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
 import type { Ticket, Customer, Category } from '@/types/ticket';
+import { AssignTicketDialog } from '@/components/assignment/AssignTicketDialog';
 
 const MySwal = withReactContent(Swal);
 
@@ -23,6 +27,20 @@ interface TicketTableProps {
 
 export default function TicketTable({ tickets, onDelete, loading }: TicketTableProps) {
   const navigate = useNavigate();
+  const { user, userType } = useSelector((state: RootState) => state.auth);
+
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [selectedTicketId, setSelectedTicketId] = useState<string>('');
+
+  const handleOpenAssignDialog = (ticketId: string) => {
+    setSelectedTicketId(ticketId);
+    setAssignDialogOpen(true);
+  };
+
+  const handleCloseAssignDialog = () => {
+    setAssignDialogOpen(false);
+    setSelectedTicketId('');
+  };
 
   const handleDelete = (ticket: Ticket) => {
     MySwal.fire({
@@ -174,14 +192,18 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
               <TableCell className="text-gray-600">{formatDate(ticket.createdAt)}</TableCell>
               <TableCell>
                 <div className="flex items-center justify-end gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => navigate(`/tickets/view/${ticket._id}`)}
-                  >
-                    <Eye className="w-4 h-4 mr-1" />
-                    View
-                  </Button>
+                  {/* Only show Assign button for consultants */}
+                  {userType === 'consultant' && (ticket.status === 'new' || ticket.status === 'assigned') && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleOpenAssignDialog(ticket._id)}
+                      className="text-purple-600 hover:text-purple-700 hover:border-purple-300"
+                    >
+                      <UserPlus className="w-4 h-4 mr-1" />
+                      Assign
+                    </Button>
+                  )}
                   <Button
                     size="sm"
                     variant="outline"
@@ -205,6 +227,15 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
           ))}
         </TableBody>
       </Table>
+
+      {user && (
+        <AssignTicketDialog
+          open={assignDialogOpen}
+          onClose={handleCloseAssignDialog}
+          ticketId={selectedTicketId}
+          consultantId={user._id}
+        />
+      )}
     </div>
   );
 }

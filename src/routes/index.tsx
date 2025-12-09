@@ -41,6 +41,7 @@ import TeamMembers from "@/pages/team-members/teamMembers";
 import CreateTeamMember from "@/pages/team-members/createTeamMember";
 import EditTeamMember from "@/pages/team-members/editTeamMember";
 import MemberDashboard from "@/pages/team-members/memberDashboard";
+import TeamMemberDashboard from "@/pages/team-member/TeamMemberDashboard";
 
 // Category Module
 import Categories from "@/pages/categories/categories";
@@ -134,6 +135,7 @@ export const routes: RouteObject[] = [
       { path: "/team-members/create", element: <CreateTeamMember /> },
       { path: "/team-members/edit/:id", element: <EditTeamMember /> },
       { path: "/team-members/dashboard", element: <MemberDashboard /> },
+      { path: "/my-assignments", element: <TeamMemberDashboard /> },
 
       // Category Routes
       { path: "/categories", element: <Categories /> },

@@ -8,7 +8,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Edit, Trash2, Eye, Mail, Phone, Building2 } from 'lucide-react';
+import { Edit, Trash2, Mail, Phone, Building2 } from 'lucide-react';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
 import type { Customer } from '@/types/customer.types';
@@ -147,14 +147,6 @@ export default function CustomerTable({ customers, onDelete, isLoading }: Custom
               <TableCell className="text-gray-600">{formatDate(customer.createdAt)}</TableCell>
               <TableCell>
                 <div className="flex items-center justify-end gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => navigate(`/customers/view/${customer._id}`)}
-                  >
-                    <Eye className="w-4 h-4 mr-1" />
-                    View
-                  </Button>
                   <Button
                     size="sm"
                     variant="outline"

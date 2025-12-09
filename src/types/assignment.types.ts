@@ -1,4 +1,4 @@
-import { Consultant } from './consultant.types';
+import type { Consultant } from './consultant.types';
 
 export interface Ticket {
   _id: string;
@@ -83,4 +83,23 @@ export interface AssignmentStatsResponse {
 export interface AssignmentHistoryResponse {
   success: boolean;
   data: TicketAssignment[];
+}
+
+export interface AssignmentResponse {
+  success: boolean;
+  message?: string;
+  data: TicketAssignment;
+}
+
+export interface CreateAssignmentData {
+  ticket: string;
+  assignedToTeam: string;
+  assignedByConsultant: string;
+  assignmentNotes?: string;
+}
+
+export interface ReassignTicketData {
+  assignedToTeam: string;
+  assignedByConsultant: string;
+  assignmentNotes?: string;
 }

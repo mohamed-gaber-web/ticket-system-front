@@ -8,7 +8,8 @@ import {
   Clock,
   BarChart3,
   FolderKanban,
-  FileBarChart
+  FileBarChart,
+  ClipboardList
 } from "lucide-react";
 
 export const ROUTERLINKS = [
@@ -40,6 +41,11 @@ const CONSULTANT_LINKS = [
   { name: "Team Members", path: "/team-members", icon: UserCheck },
 ];
 
+// Team Member can only see My Assignments
+const TEAM_MEMBER_LINKS = [
+  { name: "My Assignments", path: "/my-assignments", icon: ClipboardList },
+];
+
 // Filter links based on user type
 export const getRouterLinksByUserType = (userType: string | null) => {
   if (userType === 'customer') {
@@ -48,7 +54,10 @@ export const getRouterLinksByUserType = (userType: string | null) => {
   if (userType === 'consultant') {
     return CONSULTANT_LINKS;
   }
-  // For team_members and admins, show all links
+  if (userType === 'team_member') {
+    return TEAM_MEMBER_LINKS;
+  }
+  // For admins, show all links
   return ROUTERLINKS;
 };
 
