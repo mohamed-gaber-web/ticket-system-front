@@ -17,7 +17,7 @@ export function SidebarDesktop({ links, isOpen, setIsOpen }: SidebarDesktopProps
         initial={{ width: 80 }}
         animate={{ width: isOpen ? 280 : 80 }}
         transition={{ type: "spring", stiffness: 200, damping: 20 }}
-        className="hidden md:flex flex-col bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 border-r border-gray-700/50 h-screen p-4 overflow-hidden shadow-2xl relative"
+        className="hidden md:flex flex-col flex-shrink-0 bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 border-r border-gray-700/50 h-screen p-4 overflow-hidden shadow-2xl relative z-10"
       >
         {/* Gradient Overlay */}
         <div className="absolute inset-0 bg-gradient-to-br from-blue-600/10 via-purple-600/10 to-pink-600/10 pointer-events-none"></div>

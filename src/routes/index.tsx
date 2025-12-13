@@ -30,18 +30,18 @@ import CreateConsultant from "@/pages/consultants/createConsultant";
 import EditConsultant from "@/pages/consultants/editConsultant";
 import ConsultantDashboard from "@/pages/consultants/consultantDashboard";
 
-// Team Module
-import Teams from "@/pages/teams/teams";
-import CreateTeam from "@/pages/teams/createTeam";
-import EditTeam from "@/pages/teams/editTeam";
-import ViewTeam from "@/pages/teams/viewTeam";
+// Team Module - HIDDEN: Not currently in use
+// import Teams from "@/pages/teams/teams";
+// import CreateTeam from "@/pages/teams/createTeam";
+// import EditTeam from "@/pages/teams/editTeam";
+// import ViewTeam from "@/pages/teams/viewTeam";
 
-// Team Member Module
-import TeamMembers from "@/pages/team-members/teamMembers";
-import CreateTeamMember from "@/pages/team-members/createTeamMember";
-import EditTeamMember from "@/pages/team-members/editTeamMember";
-import MemberDashboard from "@/pages/team-members/memberDashboard";
-import TeamMemberDashboard from "@/pages/team-member/TeamMemberDashboard";
+// Team Member Module - HIDDEN: Not currently in use
+// import TeamMembers from "@/pages/team-members/teamMembers";
+// import CreateTeamMember from "@/pages/team-members/createTeamMember";
+// import EditTeamMember from "@/pages/team-members/editTeamMember";
+// import MemberDashboard from "@/pages/team-members/memberDashboard";
+// import TeamMemberDashboard from "@/pages/team-member/TeamMemberDashboard";
 
 // Category Module
 import Categories from "@/pages/categories/categories";
@@ -124,18 +124,8 @@ export const routes: RouteObject[] = [
       { path: "/consultants/edit/:id", element: <EditConsultant /> },
       { path: "/consultants/dashboard", element: <ConsultantDashboard /> },
 
-      // Team Routes
-      { path: "/teams", element: <Teams /> },
-      { path: "/teams/create", element: <CreateTeam /> },
-      { path: "/teams/edit/:id", element: <EditTeam /> },
-      { path: "/teams/view/:id", element: <ViewTeam /> },
-
-      // Team Member Routes
-      { path: "/team-members", element: <TeamMembers /> },
-      { path: "/team-members/create", element: <CreateTeamMember /> },
-      { path: "/team-members/edit/:id", element: <EditTeamMember /> },
-      { path: "/team-members/dashboard", element: <MemberDashboard /> },
-      { path: "/my-assignments", element: <TeamMemberDashboard /> },
+      // Team Routes - HIDDEN: Commented out (not in use)
+      // Team Member Routes - HIDDEN: Commented out (not in use)
 
       // Category Routes
       { path: "/categories", element: <Categories /> },

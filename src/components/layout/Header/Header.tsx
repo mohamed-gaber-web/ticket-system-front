@@ -13,21 +13,38 @@ import {
   Key
 } from "lucide-react";
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/redux/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
+import { NotificationDropdown } from "@/components/notifications/NotificationDropdown";
+import { useAppDispatch, useAppSelector } from "@/redux/hooks/hooks";
+import { fetchUnreadCount } from "@/redux/slices/notificationSlice";
+import type { NotificationType } from "@/types/notification.types";
 
 export default function Header() {
   const [isDark, setIsDark] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
   const { user, userType, logout } = useAuth();
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+  const { unreadCount, items } = useAppSelector((state) => state.notifications);
 
-  const notifications = 3;
+  // Configure any notification types you want to hide from the dropdown/badge
+  const excludedNotificationTypes: NotificationType[] = [];
+  const visibleUnreadCount =
+    items.filter((n) => !n.isRead && !excludedNotificationTypes.includes(n.notificationType)).length ||
+    unreadCount;
 
   // Get user display info
   const userEmail = user?.email || '';
   const userRole = userType === 'customer' ? 'Customer' : userType === 'consultant' ? 'Consultant' : 'User';
+
+  useEffect(() => {
+    if (user?._id && userType) {
+      dispatch(fetchUnreadCount({ userId: user._id, userType }));
+    }
+  }, [dispatch, user?._id, userType]);
 
   const handleLogout = async () => {
     await logout();
@@ -56,7 +73,7 @@ export default function Header() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input
             type="search"
-            placeholder="Search tickets, customers, teams..."
+            placeholder="Search tickets, customers, consultants..."
             className="pl-10 pr-4 py-2 w-full bg-gray-50 border-gray-200 focus:bg-white focus:border-blue-500 transition-all duration-200 rounded-xl"
           />
         </motion.div>
@@ -81,24 +98,29 @@ export default function Header() {
         </motion.div>
 
         {/* Notifications */}
-        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="relative rounded-xl hover:bg-gradient-to-br hover:from-blue-50 hover:to-purple-50 transition-all duration-200"
-          >
-            <Bell className="h-5 w-5 text-gray-600" />
-            {notifications > 0 && (
-              <motion.span
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-red-500 to-pink-500 text-[10px] font-bold text-white shadow-lg"
-              >
-                {notifications}
-              </motion.span>
-            )}
-          </Button>
-        </motion.div>
+        <div className="relative">
+          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative rounded-xl hover:bg-gradient-to-br hover:from-blue-50 hover:to-purple-50 transition-all duration-200"
+              onClick={() => setShowNotifications((prev) => !prev)}
+            >
+              <Bell className="h-5 w-5 text-gray-600" />
+              {visibleUnreadCount > 0 && (
+                <motion.span
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-red-500 to-pink-500 text-[10px] font-bold text-white shadow-lg"
+                >
+                  {visibleUnreadCount}
+                </motion.span>
+              )}
+            </Button>
+          </motion.div>
+
+          <NotificationDropdown isOpen={showNotifications} excludeTypes={excludedNotificationTypes} />
+        </div>
 
         {/* Settings */}
         <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>

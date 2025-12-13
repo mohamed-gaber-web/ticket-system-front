@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { type AxiosRequestHeaders } from 'axios';
 
 // Create axios instance with base configuration
 const api = axios.create({
@@ -15,15 +15,25 @@ api.interceptors.request.use(
   (config) => {
     // Ensure headers object exists
     if (!config.headers) {
-      config.headers = {} as any;
+      config.headers = {} as AxiosRequestHeaders;
     }
 
-    // Always set Content-Type
-    config.headers['Content-Type'] = 'application/json';
+    // Don't set Content-Type for FormData (file uploads)
+    // Axios needs to set it automatically with the correct boundary
+    const isFormData = config.data instanceof FormData;
 
-    // Add token if it exists
+    // Only set Content-Type to application/json if it's not FormData and not already set
+    if (!isFormData && !config.headers['Content-Type']) {
+      config.headers['Content-Type'] = 'application/json';
+    }
+
+    // Skip auth header for public auth endpoints (login, signup, reset)
+    const publicAuthEndpoints = ['/auth/signin', '/auth/signup', '/auth/forgot-password', '/auth/reset-password'];
+    const isPublicAuthRequest = publicAuthEndpoints.some((endpoint) => config.url?.includes(endpoint));
+
+    // Add token if it exists and the request is not a public auth call
     const token = localStorage.getItem('token');
-    if (token) {
+    if (token && !isPublicAuthRequest) {
       config.headers['Authorization'] = `Bearer ${token}`;
     }
 
@@ -88,7 +98,7 @@ api.interceptors.response.use(
 
           // Update Authorization header
           if (!originalRequest.headers) {
-            originalRequest.headers = {} as any;
+            originalRequest.headers = {} as AxiosRequestHeaders;
           }
           originalRequest.headers['Authorization'] = `Bearer ${data.token}`;
 

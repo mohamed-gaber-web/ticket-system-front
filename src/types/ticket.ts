@@ -78,6 +78,8 @@ export interface Ticket {
   sla?: string | SLA;
   assignedTeam?: string | Team;
   assignedBy?: string | Consultant;
+  acceptedBy?: string | Consultant; // Consultant who accepted the ticket
+  acceptedAt?: string; // When the ticket was accepted
   firstResponseAt?: string;
   resolvedAt?: string;
   closedAt?: string;
@@ -85,6 +87,14 @@ export interface Ticket {
   isSlaBreached: boolean;
   customerRating?: number;
   customerFeedback?: string;
+  // Time tracking fields
+  startDate?: string;
+  endDate?: string;
+  estimatedTime?: number; // in hours
+  // Sub-ticket fields
+  parentTicket?: string | Ticket;
+  isSubTicket: boolean;
+  subTickets?: Ticket[];
   createdAt: string;
   updatedAt: string;
   comments?: TicketComment[];
@@ -100,6 +110,40 @@ export interface CreateTicketData {
   description: string;
   category: string;
   priority: 'low' | 'medium' | 'high' | 'critical';
+  startDate?: string;
+  endDate?: string;
+  estimatedTime?: number;
+}
+
+export interface CreateSubTicketData {
+  subject: string;
+  description: string;
+  priority: 'low' | 'medium' | 'high' | 'critical';
+  category?: string;
+  assignedTeam?: string;
+  assignedBy?: string;
+  estimatedTime?: number;
+}
+
+export interface SubTicketsQueryParams {
+  page?: number;
+  limit?: number;
+  status?: string;
+  priority?: string;
+}
+
+export interface SubTicketsResponse {
+  success: boolean;
+  count: number;
+  total: number;
+  page: number;
+  pages: number;
+  parentTicket: {
+    id: string;
+    ticketNumber: string;
+    subject: string;
+  };
+  data: Ticket[];
 }
 
 export interface UpdateTicketData {
@@ -113,6 +157,9 @@ export interface UpdateTicketData {
   assignedBy?: string;
   customerRating?: number;
   customerFeedback?: string;
+  startDate?: string;
+  endDate?: string;
+  estimatedTime?: number;
 }
 
 export interface TicketQueryParams {

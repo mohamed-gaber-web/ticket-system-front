@@ -3,7 +3,6 @@ import { useEffect } from "react";
 import { Outlet } from "react-router-dom";
 import Header from "./Header/Header";
 import Sidebar from "./Sidebar/Sidebar";
-import { Card } from "../ui/card";
 import { Toaster } from "@/components/ui/sonner";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks/hooks";
 import { getProfile } from "@/redux/slices/authSlice";
@@ -21,15 +20,13 @@ export default function Layout() {
   }, [isAuthenticated, user, dispatch]);
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen overflow-hidden">
       <Sidebar />
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col overflow-hidden">
         <Header />
-        <main className="flex-1 overflow-y-auto bg-gray-50 p-6">
-          <Card className="bg-white w-full mx-auto rounded-md">
-            <Outlet />
-            <Toaster position="top-right" />
-          </Card>
+        <main className="flex-1 overflow-y-auto overflow-x-hidden bg-gray-50">
+          <Outlet />
+          <Toaster position="top-right" />
         </main>
       </div>
     </div>

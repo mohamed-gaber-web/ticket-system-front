@@ -4,8 +4,10 @@ import { useNavigate } from 'react-router-dom';
 import type { AppDispatch, RootState } from '@/redux/store';
 import {
   fetchAssignmentsByTeamMember,
+  fetchAssignmentsByTeam,
   acceptAssignment,
 } from '@/redux/slices/assignmentSlice';
+import { updateTicket } from '@/redux/slices/ticketSlice';
 import {
   Table,
   TableBody,
@@ -23,24 +25,42 @@ export default function TeamMemberDashboard() {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
   const { assignments, loading, error } = useSelector((state: RootState) => state.assignments);
-  const { user } = useSelector((state: RootState) => state.auth);
+  const { user, userType } = useSelector((state: RootState) => state.auth);
 
   const [filter, setFilter] = useState<'all' | 'pending' | 'accepted'>('all');
 
   useEffect(() => {
-    if (user?._id) {
-      console.log('🔍 Fetching assignments for team member:', user._id);
-      console.log('👤 User data:', user);
+    // Prefer team-based fetch so member sees team assignments before accepting
+    type TeamField = string | { _id?: string; teamName?: string } | undefined;
+    const memberId = user?._id;
+    const teamField = (user as { team?: TeamField } | null | undefined)?.team;
+    const teamId =
+      userType === 'team_member'
+        ? typeof teamField === 'string'
+          ? teamField
+          : teamField?._id
+        : undefined;
+
+    if (teamId) {
+      console.log('🔍 Fetching assignments for team:', teamId, 'member:', memberId);
+      dispatch(
+        fetchAssignmentsByTeam({
+          teamId,
+          params: { isCurrent: true },
+        })
+      );
+    } else if (memberId) {
+      console.log('🔍 No team found; fallback to member assignments:', memberId);
       dispatch(
         fetchAssignmentsByTeamMember({
-          memberId: user._id,
+          memberId,
           params: { isCurrent: true },
         })
       );
     } else {
       console.warn('⚠️ No user ID found - cannot fetch assignments');
     }
-  }, [dispatch, user]);
+  }, [dispatch, user, userType]);
 
   const handleAccept = async (assignmentId: string) => {
     if (!user?._id) return;
@@ -73,6 +93,38 @@ export default function TeamMemberDashboard() {
 
   const pendingCount = assignments.filter((a) => !a.acceptedBy).length;
   const acceptedCount = assignments.filter((a) => a.acceptedBy).length;
+
+  const getTeamContext = () => {
+    type TeamField = string | { _id?: string; teamName?: string } | undefined;
+    const memberId = user?._id;
+    const teamField = (user as { team?: TeamField } | null | undefined)?.team;
+    const teamId =
+      userType === 'team_member'
+        ? typeof teamField === 'string'
+          ? teamField
+          : teamField?._id
+        : undefined;
+    return { memberId, teamId };
+  };
+
+  const refreshAssignments = () => {
+    const { memberId, teamId } = getTeamContext();
+    if (teamId) {
+      dispatch(fetchAssignmentsByTeam({ teamId, params: { isCurrent: true } }));
+    } else if (memberId) {
+      dispatch(fetchAssignmentsByTeamMember({ memberId, params: { isCurrent: true } }));
+    }
+  };
+
+  const handleMarkResolved = async (ticketId?: string) => {
+    if (!ticketId) return;
+    try {
+      await dispatch(updateTicket({ id: ticketId, data: { status: 'resolved' } })).unwrap();
+      refreshAssignments();
+    } catch (err) {
+      console.error('Failed to mark ticket resolved:', err);
+    }
+  };
 
   const getPriorityBadge = (priority: string) => {
     const priorityStyles = {
@@ -236,29 +288,34 @@ export default function TeamMemberDashboard() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredAssignments.map((assignment) => (
+              {filteredAssignments.map((assignment) => {
+                  const ticket = assignment.ticket;
+                  const ticketNumber = ticket?.ticketNumber ?? 'N/A';
+                  const ticketId = ticket?._id;
+                  return (
                 <TableRow
                   key={assignment._id}
                   className="hover:bg-gray-50 transition-colors cursor-pointer"
-                  onClick={() => navigate(`/tickets/${assignment.ticket._id}`)}
+                  onClick={() => ticketId && navigate(`/tickets/${ticketId}`)}
                 >
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
                       <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-xs">
-                        {assignment.ticket.ticketNumber.split('-')[0]}
+                        {ticketNumber.split('-')[0]}
                       </div>
-                      <span>{assignment.ticket.ticketNumber}</span>
+                      <span>{ticketNumber}</span>
                     </div>
                   </TableCell>
                   <TableCell>
-                    <p className="font-medium">{assignment.ticket.subject}</p>
+                    <p className="font-medium">{ticket?.subject ?? 'No subject'}</p>
                     <p className="text-xs text-gray-500 mt-1">
-                      Assigned by: {assignment.assignedByConsultant.firstName}{' '}
-                      {assignment.assignedByConsultant.lastName}
+                      Assigned by:{' '}
+                      {`${assignment.assignedByConsultant?.firstName ?? ''} ${assignment.assignedByConsultant?.lastName ?? ''}`.trim() ||
+                        'Unknown'}
                     </p>
                   </TableCell>
-                  <TableCell>{getPriorityBadge(assignment.ticket.priority)}</TableCell>
-                  <TableCell>{getStatusBadge(assignment.ticket.status)}</TableCell>
+                  <TableCell>{ticket ? getPriorityBadge(ticket.priority) : '-'}</TableCell>
+                  <TableCell>{ticket ? getStatusBadge(ticket.status) : '-'}</TableCell>
                   <TableCell className="text-gray-600">
                     {new Date(assignment.assignedAt).toLocaleDateString('en-US', {
                       year: 'numeric',
@@ -275,10 +332,17 @@ export default function TeamMemberDashboard() {
                   </TableCell>
                   <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                     {assignment.acceptedBy ? (
-                      <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                        <CheckCircle2 className="w-3 h-3 mr-1" />
-                        Accepted
-                      </Badge>
+                      <div className="flex items-center justify-end gap-2">
+                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                          <CheckCircle2 className="w-3 h-3 mr-1" />
+                          Accepted
+                        </Badge>
+                        {assignment.ticket?.status !== 'resolved' && (
+                          <Button size="sm" variant="outline" onClick={() => handleMarkResolved(ticketId)}>
+                            Mark Resolved
+                          </Button>
+                        )}
+                      </div>
                     ) : (
                       <Button
                         size="sm"
@@ -289,7 +353,8 @@ export default function TeamMemberDashboard() {
                     )}
                   </TableCell>
                 </TableRow>
-              ))}
+                  );
+                })}
             </TableBody>
           </Table>
         )}

@@ -21,6 +21,15 @@ export interface TeamMember {
   email: string;
 }
 
+export interface ConsultantAssignment {
+  consultant: Consultant;
+  status: 'pending' | 'accepted' | 'declined' | 'completed';
+  assignedAt: string;
+  acceptedAt?: string;
+  completedAt?: string;
+  notes?: string;
+}
+
 export interface TicketAssignment {
   _id: string;
   ticket: Ticket;
@@ -28,6 +37,7 @@ export interface TicketAssignment {
   assignedByConsultant: Consultant;
   acceptedBy?: TeamMember;
   assignmentNotes?: string;
+  assignedToConsultants: ConsultantAssignment[];
   assignedAt: string;
   acceptedAt?: string;
   isCurrent: boolean;
@@ -102,4 +112,33 @@ export interface ReassignTicketData {
   assignedToTeam: string;
   assignedByConsultant: string;
   assignmentNotes?: string;
+}
+
+export interface AssignConsultantsData {
+  consultants: string[];
+}
+
+export interface UpdateConsultantStatusData {
+  status: 'pending' | 'accepted' | 'declined' | 'completed';
+  notes?: string;
+}
+
+export interface ConsultantAssignmentsResponse {
+  success: boolean;
+  count: number;
+  total: number;
+  page: number;
+  pages: number;
+  consultant: {
+    id: string;
+    name: string;
+  };
+  data: {
+    ticket: {
+      ticketNumber: string;
+      subject: string;
+    };
+    status: string;
+    assignedAt: string;
+  }[];
 }

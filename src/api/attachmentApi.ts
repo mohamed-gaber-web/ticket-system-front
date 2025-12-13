@@ -1,0 +1,173 @@
+import axiosInstance from './axiosConfig';
+import type {
+  TicketAttachment,
+  UploadFileResponse,
+  AttachmentsResponse,
+  AttachmentStats,
+  CreateAttachmentParams,
+  UploadAttachmentParams,
+} from '@/types/attachment.types';
+
+// Step 1: Upload file to server (when backend implements this endpoint)
+export const uploadFile = async (file: File, ticketId: string): Promise<UploadFileResponse> => {
+  try {
+    const formData = new FormData();
+
+    // Try different common field names that multer might expect
+    // Common names: 'file', 'upload', 'attachment', 'image'
+    formData.append('file', file, file.name); // Include filename explicitly
+    formData.append('ticketId', ticketId);
+
+    console.log('Uploading file:', {
+      fileName: file.name,
+      fileSize: file.size,
+      fileType: file.type,
+      ticketId
+    });
+
+    // Log FormData contents
+    console.log('FormData entries:');
+    for (const pair of formData.entries()) {
+      console.log(pair[0], pair[1]);
+    }
+
+    const response = await axiosInstance.post<{ success: boolean; data: UploadFileResponse }>(
+      '/upload',
+      formData,
+      {
+        headers: {
+          // Let axios set Content-Type with boundary automatically
+          // But we need to delete it from default headers if it exists
+          'Content-Type': undefined as any,
+        },
+      }
+    );
+
+    console.log('Upload response:', response.data);
+    return response.data.data;
+  } catch (error: any) {
+    console.error('Upload file error:', {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      message: error.message
+    });
+    throw error;
+  }
+};
+
+// Step 2: Create attachment record in database
+export const createAttachment = async (
+  attachmentData: CreateAttachmentParams
+): Promise<TicketAttachment> => {
+  const response = await axiosInstance.post<{ success: boolean; data: TicketAttachment }>(
+    '/ticket-attachments',
+    attachmentData
+  );
+
+  return response.data.data;
+};
+
+// Combined function: Upload file and create attachment record
+export const uploadTicketAttachment = async ({
+  ticketId,
+  file,
+  uploadedByUserId,
+  uploadedByUserType,
+}: UploadAttachmentParams): Promise<TicketAttachment> => {
+  // Step 1: Upload file to server
+  const fileData = await uploadFile(file, ticketId);
+
+  // Step 2: Create attachment record
+  const attachmentData: CreateAttachmentParams = {
+    ticket: ticketId,
+    fileName: fileData.fileName,
+    filePath: fileData.filePath,
+    fileSize: fileData.fileSize,
+    fileType: fileData.fileType,
+    uploadedByUserId,
+    uploadedByUserType,
+  };
+
+  const attachment = await createAttachment(attachmentData);
+  return attachment;
+};
+
+// Get attachments for a ticket
+export const getTicketAttachments = async (
+  ticketId: string,
+  page: number = 1,
+  limit: number = 50
+): Promise<AttachmentsResponse> => {
+  const response = await axiosInstance.get<AttachmentsResponse>(
+    `/ticket-attachments/ticket/${ticketId}`,
+    {
+      params: { page, limit },
+    }
+  );
+
+  return response.data;
+};
+
+// Delete an attachment
+export const deleteAttachment = async (attachmentId: string): Promise<void> => {
+  await axiosInstance.delete(`/ticket-attachments/${attachmentId}`);
+};
+
+// Get attachment statistics
+export const getAttachmentStats = async (): Promise<AttachmentStats> => {
+  const response = await axiosInstance.get<{ success: boolean; data: AttachmentStats }>(
+    '/ticket-attachments/stats'
+  );
+
+  return response.data.data;
+};
+
+// Validate file before upload
+export const validateFile = (file: File): { valid: boolean; error?: string } => {
+  const allowedTypes = [
+    'image/jpeg',
+    'image/png',
+    'image/gif',
+    'image/webp',
+    'image/svg+xml',
+    'video/mp4',
+    'video/webm',
+    'video/quicktime',
+    'video/x-msvideo',
+    'application/pdf',
+  ];
+
+  if (!allowedTypes.includes(file.type)) {
+    return {
+      valid: false,
+      error: 'Invalid file type. Please upload an image, video, or PDF.',
+    };
+  }
+
+  // Validate file size (5MB for images, 50MB for videos)
+  const maxSize = file.type.startsWith('image/')
+    ? 5 * 1024 * 1024 // 5MB
+    : file.type.startsWith('video/')
+    ? 50 * 1024 * 1024 // 50MB
+    : 10 * 1024 * 1024; // 10MB for PDFs
+
+  if (file.size > maxSize) {
+    const maxSizeMB = file.type.startsWith('image/') ? '5MB' : file.type.startsWith('video/') ? '50MB' : '10MB';
+    return {
+      valid: false,
+      error: `File too large. Maximum size: ${maxSizeMB}`,
+    };
+  }
+
+  return { valid: true };
+};
+
+// Format file size for display
+export const formatFileSize = (bytes: number): string => {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+};

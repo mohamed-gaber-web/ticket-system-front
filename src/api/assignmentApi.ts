@@ -7,6 +7,9 @@ import type {
   AssignmentResponse,
   CreateAssignmentData,
   ReassignTicketData,
+  AssignConsultantsData,
+  UpdateConsultantStatusData,
+  ConsultantAssignmentsResponse,
 } from '../types/assignment.types';
 
 export const assignmentApi = {
@@ -75,6 +78,45 @@ export const assignmentApi = {
     const response = await api.put<AssignmentResponse>(
       `/ticket-assignments/${assignmentId}`,
       { assignmentNotes }
+    );
+    return response.data;
+  },
+
+  // Multi-consultant assignment APIs
+  assignConsultants: async (assignmentId: string, data: AssignConsultantsData): Promise<AssignmentResponse> => {
+    const response = await api.post<AssignmentResponse>(
+      `/ticket-assignments/${assignmentId}/assign-consultants`,
+      data
+    );
+    return response.data;
+  },
+
+  updateConsultantStatus: async (
+    assignmentId: string,
+    consultantId: string,
+    data: UpdateConsultantStatusData
+  ): Promise<AssignmentResponse> => {
+    const response = await api.patch<AssignmentResponse>(
+      `/ticket-assignments/${assignmentId}/consultant/${consultantId}/status`,
+      data
+    );
+    return response.data;
+  },
+
+  removeConsultant: async (assignmentId: string, consultantId: string): Promise<AssignmentResponse> => {
+    const response = await api.delete<AssignmentResponse>(
+      `/ticket-assignments/${assignmentId}/consultant/${consultantId}`
+    );
+    return response.data;
+  },
+
+  getConsultantAssignments: async (
+    consultantId: string,
+    params?: { page?: number; limit?: number; status?: string }
+  ): Promise<ConsultantAssignmentsResponse> => {
+    const response = await api.get<ConsultantAssignmentsResponse>(
+      `/ticket-assignments/consultant/${consultantId}`,
+      { params }
     );
     return response.data;
   },

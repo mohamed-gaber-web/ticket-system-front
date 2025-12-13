@@ -3,8 +3,8 @@ import {
   Users,
   Ticket,
   UserCog,
-  UsersRound,
-  UserCheck,
+  // UsersRound, // Hidden - not in use
+  // UserCheck, // Hidden - not in use
   Clock,
   BarChart3,
   FolderKanban,
@@ -18,8 +18,9 @@ export const ROUTERLINKS = [
   { name: "Tickets", path: "/tickets", icon: Ticket },
   { name: "Categories", path: "/categories", icon: FolderKanban },
   { name: "Consultants", path: "/consultants", icon: UserCog },
-  { name: "Teams", path: "/teams", icon: UsersRound },
-  { name: "Team Members", path: "/team-members", icon: UserCheck },
+  // HIDDEN: Teams and Team Members are not currently in use
+  // { name: "Teams", path: "/teams", icon: UsersRound },
+  // { name: "Team Members", path: "/team-members", icon: UserCheck },
   { name: "SLA", path: "/sla", icon: Clock },
   { name: "Reports", path: "/reports", icon: BarChart3 },
   { name: "Consultant Reports", path: "/consultant-reports", icon: FileBarChart },
@@ -37,8 +38,9 @@ const CONSULTANT_LINKS = [
   { name: "Categories", path: "/categories", icon: FolderKanban },
   { name: "Consultants", path: "/consultants", icon: UserCog },
   { name: "Tickets", path: "/tickets", icon: Ticket },
-  { name: "Teams", path: "/teams", icon: UsersRound },
-  { name: "Team Members", path: "/team-members", icon: UserCheck },
+  // HIDDEN: Teams and Team Members are not currently in use
+  // { name: "Teams", path: "/teams", icon: UsersRound },
+  // { name: "Team Members", path: "/team-members", icon: UserCheck },
 ];
 
 // Team Member can only see My Assignments

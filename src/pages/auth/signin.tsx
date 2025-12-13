@@ -30,12 +30,7 @@ const SigninPage = () => {
   useEffect(() => {
     // Redirect if already authenticated
     if (isAuthenticated) {
-      const userType = localStorage.getItem('userType');
-      if (userType === 'team_member') {
-        navigate('/my-assignments');
-      } else {
-        navigate('/dashboard');
-      }
+      navigate('/dashboard');
     }
   }, [isAuthenticated, navigate]);
 
@@ -98,12 +93,8 @@ const SigninPage = () => {
 
       toast.success('Signed in successfully!');
 
-      // Redirect based on user type
-      if (formData.userType === 'team_member') {
-        navigate('/my-assignments');
-      } else {
-        navigate('/dashboard');
-      }
+      // Redirect to dashboard
+      navigate('/dashboard');
     } catch (error) {
       // Error is already handled by the error state and useEffect
       console.error('Signin failed:', error);
@@ -177,7 +168,7 @@ const SigninPage = () => {
                 <Users className="w-4 h-4 text-blue-500" />
                 Sign in as
               </label>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
                   onClick={() => setFormData(prev => ({ ...prev, userType: 'customer' }))}
@@ -200,17 +191,7 @@ const SigninPage = () => {
                 >
                   Consultant
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setFormData(prev => ({ ...prev, userType: 'team_member' }))}
-                  className={`h-12 rounded-xl border-2 font-medium transition-all duration-200 ${
-                    formData.userType === 'team_member'
-                      ? 'border-blue-500 bg-blue-50 text-blue-700'
-                      : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  Team Member
-                </button>
+                {/* HIDDEN: Team Member sign-in option - not currently in use */}
               </div>
             </div>
 

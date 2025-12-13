@@ -117,7 +117,11 @@ export const fetchCurrentAssignment = createAsyncThunk(
       return response.data;
     } catch (error: any) {
       const message = error.response?.data?.message || 'Failed to fetch current assignment';
-      toast.error(message);
+      // Only show error toast if it's not a "not found" error (404)
+      // Tickets without assignments are normal and shouldn't show an error
+      if (error.response?.status !== 404) {
+        toast.error(message);
+      }
       return rejectWithValue(message);
     }
   }
@@ -160,6 +164,69 @@ export const reassignTicket = createAsyncThunk(
       return response.data;
     } catch (error: any) {
       const message = error.response?.data?.message || 'Failed to reassign ticket';
+      toast.error(message);
+      return rejectWithValue(message);
+    }
+  }
+);
+
+export const assignConsultants = createAsyncThunk(
+  'assignment/assignConsultants',
+  async ({ assignmentId, consultants }: { assignmentId: string; consultants: string[] }, { rejectWithValue }) => {
+    try {
+      const response = await assignmentApi.assignConsultants(assignmentId, { consultants });
+      toast.success('Consultants assigned successfully!');
+      return response.data;
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Failed to assign consultants';
+      toast.error(message);
+      return rejectWithValue(message);
+    }
+  }
+);
+
+export const updateConsultantStatus = createAsyncThunk(
+  'assignment/updateConsultantStatus',
+  async (
+    { assignmentId, consultantId, status, notes }:
+    { assignmentId: string; consultantId: string; status: 'pending' | 'accepted' | 'declined' | 'completed'; notes?: string },
+    { rejectWithValue }
+  ) => {
+    try {
+      const response = await assignmentApi.updateConsultantStatus(assignmentId, consultantId, { status, notes });
+      toast.success('Status updated successfully!');
+      return response.data;
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Failed to update status';
+      toast.error(message);
+      return rejectWithValue(message);
+    }
+  }
+);
+
+export const removeConsultant = createAsyncThunk(
+  'assignment/removeConsultant',
+  async ({ assignmentId, consultantId }: { assignmentId: string; consultantId: string }, { rejectWithValue }) => {
+    try {
+      const response = await assignmentApi.removeConsultant(assignmentId, consultantId);
+      toast.success('Consultant removed successfully!');
+      return response.data;
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Failed to remove consultant';
+      toast.error(message);
+      return rejectWithValue(message);
+    }
+  }
+);
+
+export const fetchConsultantAssignments = createAsyncThunk(
+  'assignment/fetchConsultantAssignments',
+  async ({ consultantId, params }: { consultantId: string; params?: { page?: number; limit?: number; status?: string } }, { rejectWithValue }) => {
+    try {
+      const response = await assignmentApi.getConsultantAssignments(consultantId, params);
+      return response;
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Failed to fetch consultant assignments';
       toast.error(message);
       return rejectWithValue(message);
     }
@@ -317,6 +384,66 @@ const assignmentSlice = createSlice({
         state.assignments.unshift(action.payload);
       })
       .addCase(reassignTicket.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+
+      // Assign Consultants
+      .addCase(assignConsultants.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(assignConsultants.fulfilled, (state, action) => {
+        state.loading = false;
+        const index = state.assignments.findIndex(a => a._id === action.payload._id);
+        if (index !== -1) {
+          state.assignments[index] = action.payload;
+        }
+        if (state.currentAssignment && state.currentAssignment._id === action.payload._id) {
+          state.currentAssignment = action.payload;
+        }
+      })
+      .addCase(assignConsultants.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+
+      // Update Consultant Status
+      .addCase(updateConsultantStatus.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updateConsultantStatus.fulfilled, (state, action) => {
+        state.loading = false;
+        const index = state.assignments.findIndex(a => a._id === action.payload._id);
+        if (index !== -1) {
+          state.assignments[index] = action.payload;
+        }
+        if (state.currentAssignment && state.currentAssignment._id === action.payload._id) {
+          state.currentAssignment = action.payload;
+        }
+      })
+      .addCase(updateConsultantStatus.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+
+      // Remove Consultant
+      .addCase(removeConsultant.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(removeConsultant.fulfilled, (state, action) => {
+        state.loading = false;
+        const index = state.assignments.findIndex(a => a._id === action.payload._id);
+        if (index !== -1) {
+          state.assignments[index] = action.payload;
+        }
+        if (state.currentAssignment && state.currentAssignment._id === action.payload._id) {
+          state.currentAssignment = action.payload;
+        }
+      })
+      .addCase(removeConsultant.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       });

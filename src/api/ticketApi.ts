@@ -3,7 +3,10 @@ import type {
   UpdateTicketData,
   TicketQueryParams,
   TicketResponse,
-  TicketsResponse
+  TicketsResponse,
+  CreateSubTicketData,
+  SubTicketsQueryParams,
+  SubTicketsResponse
 } from "@/types/ticket";
 import api from './axiosConfig';
 
@@ -78,4 +81,39 @@ export const deleteTicket = async (id: string): Promise<void> => {
       'Cache-Control': 'no-cache',
     },
   });
+};
+
+// Create sub-ticket
+export const createSubTicket = async (parentId: string, payload: CreateSubTicketData): Promise<TicketResponse> => {
+  console.log('Creating sub-ticket with payload:', payload);
+  const response = await api.post<TicketResponse>(`/tickets/${parentId}/sub-ticket`, payload, {
+    headers: {
+      'Cache-Control': 'no-cache',
+    },
+  });
+  console.log('Create sub-ticket API response:', response.data);
+  return response.data;
+};
+
+// Get sub-tickets
+export const getSubTickets = async (parentId: string, params?: SubTicketsQueryParams): Promise<SubTicketsResponse> => {
+  const response = await api.get<SubTicketsResponse>(`/tickets/${parentId}/sub-tickets`, {
+    params,
+    headers: {
+      'Cache-Control': 'no-cache',
+    },
+  });
+  console.log('Get sub-tickets API response:', response.data);
+  return response.data;
+};
+
+// Accept ticket
+export const acceptTicket = async (ticketId: string): Promise<TicketResponse> => {
+  const response = await api.patch<TicketResponse>(`/tickets/${ticketId}/accept`, {}, {
+    headers: {
+      'Cache-Control': 'no-cache',
+    },
+  });
+  console.log('Accept ticket API response:', response.data);
+  return response.data;
 };
