@@ -14,6 +14,7 @@ import environmentReducer from './slices/environmentSlice';
 import featureReducer from './slices/featureSlice';
 import productTypeReducer from './slices/productTypeSlice';
 import scopeReducer from './slices/scopeSlice';
+import serviceTypeReducer from './slices/serviceTypeSlice';
 
 export const store = configureStore({
   reducer: {
@@ -32,6 +33,7 @@ export const store = configureStore({
     features: featureReducer,
     productTypes: productTypeReducer,
     scopes: scopeReducer,
+    serviceTypes: serviceTypeReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

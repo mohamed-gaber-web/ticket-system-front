@@ -78,6 +78,9 @@ import ProductTypes from "@/pages/product-types/ProductTypes";
 // Scope Module
 import Scopes from "@/pages/scopes/Scopes";
 
+// Service Type Module
+import ServiceTypes from "@/pages/service-types/ServiceTypes";
+
 export const routes: RouteObject[] = [
   // Public Routes (Authentication)
   {
@@ -173,6 +176,9 @@ export const routes: RouteObject[] = [
 
       // Scope Routes
       { path: "/scopes", element: <Scopes /> },
+
+      // Service Type Routes
+      { path: "/service-types", element: <ServiceTypes /> },
     ],
   },
 ];

@@ -13,7 +13,8 @@ import {
   Server,
   Sparkles,
   Package,
-  Target
+  Target,
+  Wrench
 } from "lucide-react";
 
 export const ROUTERLINKS = [
@@ -26,6 +27,7 @@ export const ROUTERLINKS = [
   { name: "Features", path: "/features", icon: Sparkles },
   { name: "Product Types", path: "/product-types", icon: Package },
   { name: "Scopes", path: "/scopes", icon: Target },
+  { name: "Service Types", path: "/service-types", icon: Wrench },
   // HIDDEN: Teams and Team Members are not currently in use
   // { name: "Teams", path: "/teams", icon: UsersRound },
   // { name: "Team Members", path: "/team-members", icon: UserCheck },
@@ -49,6 +51,7 @@ const CONSULTANT_LINKS = [
   { name: "Features", path: "/features", icon: Sparkles },
   { name: "Product Types", path: "/product-types", icon: Package },
   { name: "Scopes", path: "/scopes", icon: Target },
+  { name: "Service Types", path: "/service-types", icon: Wrench },
   { name: "Tickets", path: "/tickets", icon: Ticket },
   // HIDDEN: Teams and Team Members are not currently in use
   // { name: "Teams", path: "/teams", icon: UsersRound },
