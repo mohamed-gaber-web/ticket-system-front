@@ -368,7 +368,6 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
                 <option value="in_progress">In Progress</option>
                 <option value="resolved">Resolved</option>
                 <option value="closed">Closed</option>
-                <option value="reopened">Reopened</option>
               </select>
             </div>
           )}

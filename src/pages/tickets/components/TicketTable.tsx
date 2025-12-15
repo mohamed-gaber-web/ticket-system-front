@@ -120,7 +120,6 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
       in_progress: 'bg-yellow-100 text-yellow-800 border-yellow-200',
       resolved: 'bg-green-100 text-green-800 border-green-200',
       closed: 'bg-gray-100 text-gray-800 border-gray-200',
-      reopened: 'bg-red-100 text-red-800 border-red-200',
     };
 
     const displayStatus = status.replace('_', ' ');
@@ -160,6 +159,40 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
     return parentTicket.ticketNumber;
   };
 
+  // Organize tickets: main tickets with their sub-tickets
+  const organizeTickets = () => {
+    const mainTickets: Ticket[] = [];
+    const subTicketsMap = new Map<string, Ticket[]>();
+
+    // Separate main tickets and group sub-tickets by parent
+    tickets.forEach((ticket) => {
+      if (ticket.isSubTicket && ticket.parentTicket) {
+        const parentId = typeof ticket.parentTicket === 'string'
+          ? ticket.parentTicket
+          : ticket.parentTicket._id;
+
+        if (!subTicketsMap.has(parentId)) {
+          subTicketsMap.set(parentId, []);
+        }
+        subTicketsMap.get(parentId)?.push(ticket);
+      } else {
+        mainTickets.push(ticket);
+      }
+    });
+
+    // Create organized list with main tickets followed by their sub-tickets
+    const organized: Ticket[] = [];
+    mainTickets.forEach((mainTicket) => {
+      organized.push(mainTicket);
+      const subTickets = subTicketsMap.get(mainTicket._id) || [];
+      organized.push(...subTickets);
+    });
+
+    return organized;
+  };
+
+  const organizedTickets = organizeTickets();
+
   if (loading) {
     return (
       <div className="flex justify-center items-center py-12">
@@ -195,7 +228,7 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
             </TableRow>
           </TableHeader>
         <TableBody>
-          {tickets.map((ticket) => {
+          {organizedTickets.map((ticket) => {
             const isSubTicket = ticket.isSubTicket;
 
             return (
@@ -207,7 +240,12 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
               >
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    {isSubTicket && <GitBranch className="h-3 w-3 text-indigo-500 flex-shrink-0" />}
+                    {isSubTicket && (
+                      <div className="flex items-center gap-1 ml-4">
+                        <div className="w-6 border-t-2 border-l-2 border-gray-300 h-4 rounded-tl-lg"></div>
+                        <GitBranch className="h-3 w-3 text-indigo-500 flex-shrink-0" />
+                      </div>
+                    )}
                     <div className={`h-9 w-9 rounded-lg flex items-center justify-center text-white font-semibold text-xs flex-shrink-0 ${
                       isSubTicket
                         ? 'bg-gradient-to-br from-indigo-500 to-purple-500'

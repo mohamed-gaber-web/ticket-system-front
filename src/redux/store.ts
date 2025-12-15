@@ -9,6 +9,11 @@ import teamReducer from './slices/teamSlice';
 import teamMemberReducer from './slices/teamMemberSlice';
 import notificationReducer from './slices/notificationSlice';
 import attachmentReducer from './slices/attachmentSlice';
+import commentReducer from './slices/commentSlice';
+import environmentReducer from './slices/environmentSlice';
+import featureReducer from './slices/featureSlice';
+import productTypeReducer from './slices/productTypeSlice';
+import scopeReducer from './slices/scopeSlice';
 
 export const store = configureStore({
   reducer: {
@@ -22,6 +27,11 @@ export const store = configureStore({
     teamMembers: teamMemberReducer,
     notifications: notificationReducer,
     attachments: attachmentReducer,
+    comments: commentReducer,
+    environments: environmentReducer,
+    features: featureReducer,
+    productTypes: productTypeReducer,
+    scopes: scopeReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

@@ -66,6 +66,18 @@ import ConsultantListReport from "@/pages/consultant-reports/ConsultantListRepor
 import ConsultantDetailReport from "@/pages/consultant-reports/ConsultantDetailReport";
 import AssignmentAnalytics from "@/pages/consultant-reports/AssignmentAnalytics";
 
+// Environment Module
+import Environments from "@/pages/environments/Environments";
+
+// Feature Module
+import Features from "@/pages/features/Features";
+
+// Product Type Module
+import ProductTypes from "@/pages/product-types/ProductTypes";
+
+// Scope Module
+import Scopes from "@/pages/scopes/Scopes";
+
 export const routes: RouteObject[] = [
   // Public Routes (Authentication)
   {
@@ -149,6 +161,18 @@ export const routes: RouteObject[] = [
       { path: "/consultant-reports/list", element: <ConsultantListReport /> },
       { path: "/consultant-reports/:id", element: <ConsultantDetailReport /> },
       { path: "/consultant-reports/analytics", element: <AssignmentAnalytics /> },
+
+      // Environment Routes
+      { path: "/environments", element: <Environments /> },
+
+      // Feature Routes
+      { path: "/features", element: <Features /> },
+
+      // Product Type Routes
+      { path: "/product-types", element: <ProductTypes /> },
+
+      // Scope Routes
+      { path: "/scopes", element: <Scopes /> },
     ],
   },
 ];

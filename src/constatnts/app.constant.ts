@@ -9,7 +9,11 @@ import {
   BarChart3,
   FolderKanban,
   FileBarChart,
-  ClipboardList
+  ClipboardList,
+  Server,
+  Sparkles,
+  Package,
+  Target
 } from "lucide-react";
 
 export const ROUTERLINKS = [
@@ -18,6 +22,10 @@ export const ROUTERLINKS = [
   { name: "Tickets", path: "/tickets", icon: Ticket },
   { name: "Categories", path: "/categories", icon: FolderKanban },
   { name: "Consultants", path: "/consultants", icon: UserCog },
+  { name: "Environments", path: "/environments", icon: Server },
+  { name: "Features", path: "/features", icon: Sparkles },
+  { name: "Product Types", path: "/product-types", icon: Package },
+  { name: "Scopes", path: "/scopes", icon: Target },
   // HIDDEN: Teams and Team Members are not currently in use
   // { name: "Teams", path: "/teams", icon: UsersRound },
   // { name: "Team Members", path: "/team-members", icon: UserCheck },
@@ -37,6 +45,10 @@ const CONSULTANT_LINKS = [
   { name: "Customers", path: "/customers", icon: Users },
   { name: "Categories", path: "/categories", icon: FolderKanban },
   { name: "Consultants", path: "/consultants", icon: UserCog },
+  { name: "Environments", path: "/environments", icon: Server },
+  { name: "Features", path: "/features", icon: Sparkles },
+  { name: "Product Types", path: "/product-types", icon: Package },
+  { name: "Scopes", path: "/scopes", icon: Target },
   { name: "Tickets", path: "/tickets", icon: Ticket },
   // HIDDEN: Teams and Team Members are not currently in use
   // { name: "Teams", path: "/teams", icon: UsersRound },
