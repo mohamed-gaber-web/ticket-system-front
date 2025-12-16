@@ -3,8 +3,19 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Building2, User, Mail, Phone, MapPin, Lock } from 'lucide-react';
+import { Loader2, Building2, User, Mail, Phone, MapPin, Lock, Database, Plus } from 'lucide-react';
 import type { CreateCustomerData, Customer, UpdateCustomerData } from '@/types/customer.types';
+import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
+import { fetchErpTypes, createErpType } from '@/redux/slices/erpTypeSlice';
+import { fetchVersionNumbers, createVersionNumber } from '@/redux/slices/versionNumberSlice';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 interface CustomerFormProps {
   customer?: Customer | null;
@@ -15,6 +26,10 @@ interface CustomerFormProps {
 
 export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode = false }: CustomerFormProps) {
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+
+  const { erpTypes } = useAppSelector((state) => state.erpTypes);
+  const { versionNumbers } = useAppSelector((state) => state.versionNumbers);
 
   const [formData, setFormData] = useState({
     companyName: '',
@@ -26,9 +41,22 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
     city: '',
     country: '',
     status: 'active' as 'active' | 'inactive' | 'suspended',
+    erpType: '',
+    versionNumber: '',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [showErpTypeDialog, setShowErpTypeDialog] = useState(false);
+  const [showVersionDialog, setShowVersionDialog] = useState(false);
+  const [newErpTypeName, setNewErpTypeName] = useState('');
+  const [newVersionName, setNewVersionName] = useState('');
+  const [isCreatingErpType, setIsCreatingErpType] = useState(false);
+  const [isCreatingVersion, setIsCreatingVersion] = useState(false);
+
+  useEffect(() => {
+    dispatch(fetchErpTypes({ isActive: true }));
+    dispatch(fetchVersionNumbers({ isActive: true }));
+  }, [dispatch]);
 
   useEffect(() => {
     if (customer && isEditMode) {
@@ -42,6 +70,8 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
         city: customer.city || '',
         country: customer.country || '',
         status: customer.status || 'active',
+        erpType: customer.erpType || '',
+        versionNumber: customer.versionNumber || '',
       });
     }
   }, [customer, isEditMode]);
@@ -98,6 +128,40 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
     }
   };
 
+  const handleCreateErpType = async () => {
+    if (!newErpTypeName.trim()) return;
+
+    setIsCreatingErpType(true);
+    try {
+      const result = await dispatch(createErpType({ name: newErpTypeName, isActive: true })).unwrap();
+      setFormData((prev) => ({ ...prev, erpType: result._id }));
+      setNewErpTypeName('');
+      setShowErpTypeDialog(false);
+      dispatch(fetchErpTypes({ isActive: true }));
+    } catch (error) {
+      console.error('Failed to create ERP type:', error);
+    } finally {
+      setIsCreatingErpType(false);
+    }
+  };
+
+  const handleCreateVersionNumber = async () => {
+    if (!newVersionName.trim()) return;
+
+    setIsCreatingVersion(true);
+    try {
+      const result = await dispatch(createVersionNumber({ name: newVersionName, isActive: true })).unwrap();
+      setFormData((prev) => ({ ...prev, versionNumber: result._id }));
+      setNewVersionName('');
+      setShowVersionDialog(false);
+      dispatch(fetchVersionNumbers({ isActive: true }));
+    } catch (error) {
+      console.error('Failed to create version number:', error);
+    } finally {
+      setIsCreatingVersion(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -117,6 +181,8 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
       if (formData.address) submitData.address = formData.address;
       if (formData.city) submitData.city = formData.city;
       if (formData.country) submitData.country = formData.country;
+      if (formData.erpType) submitData.erpType = formData.erpType;
+      if (formData.versionNumber) submitData.versionNumber = formData.versionNumber;
 
       await onSubmit(submitData);
     } else {
@@ -131,6 +197,8 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
       if (formData.address) submitData.address = formData.address;
       if (formData.city) submitData.city = formData.city;
       if (formData.country) submitData.country = formData.country;
+      if (formData.erpType) submitData.erpType = formData.erpType;
+      if (formData.versionNumber) submitData.versionNumber = formData.versionNumber;
 
       console.log('=== SUBMIT DATA DEBUG ===');
       console.log('Form password:', formData.password);
@@ -279,6 +347,82 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
           </div>
 
           <div className="space-y-6">
+            <div className="flex items-center gap-3 pb-3 border-b-2 border-green-600">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <Database className="w-5 h-5 text-green-600" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-800">System Information</h3>
+              <span className="text-sm text-gray-500 font-normal">(Optional)</span>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                  <Database className="w-4 h-4 text-green-600" />
+                  ERP Type
+                </label>
+                <div className="flex gap-2">
+                  <select
+                    name="erpType"
+                    value={formData.erpType}
+                    onChange={handleChange}
+                    className="flex-1 h-11 px-4 border-2 border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
+                  >
+                    <option value="">Select ERP Type</option>
+                    {erpTypes
+                      .filter((erp) => erp.isActive)
+                      .map((erp) => (
+                        <option key={erp._id} value={erp._id}>
+                          {erp.name}
+                        </option>
+                      ))}
+                  </select>
+                  <Button
+                    type="button"
+                    onClick={() => setShowErpTypeDialog(true)}
+                    variant="outline"
+                    className="h-11 px-4 border-2 border-green-500 text-green-600 hover:bg-green-50"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                  <Database className="w-4 h-4 text-green-600" />
+                  Version Number
+                </label>
+                <div className="flex gap-2">
+                  <select
+                    name="versionNumber"
+                    value={formData.versionNumber}
+                    onChange={handleChange}
+                    className="flex-1 h-11 px-4 border-2 border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
+                  >
+                    <option value="">Select Version Number</option>
+                    {versionNumbers
+                      .filter((version) => version.isActive)
+                      .map((version) => (
+                        <option key={version._id} value={version._id}>
+                          {version.name}
+                        </option>
+                      ))}
+                  </select>
+                  <Button
+                    type="button"
+                    onClick={() => setShowVersionDialog(true)}
+                    variant="outline"
+                    className="h-11 px-4 border-2 border-green-500 text-green-600 hover:bg-green-50"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-6">
             <div className="flex items-center gap-3 pb-3 border-b-2 border-purple-600">
               <div className="p-2 bg-purple-100 rounded-lg">
                 <MapPin className="w-5 h-5 text-purple-600" />
@@ -369,6 +513,112 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
           </div>
         </form>
       </CardContent>
+
+      {/* ERP Type Dialog */}
+      <Dialog open={showErpTypeDialog} onOpenChange={setShowErpTypeDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New ERP Type</DialogTitle>
+            <DialogDescription>
+              Create a new ERP type to add to your customer profile.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-gray-700">ERP Type Name</label>
+              <Input
+                value={newErpTypeName}
+                onChange={(e) => setNewErpTypeName(e.target.value)}
+                placeholder="Enter ERP type name"
+                onKeyPress={(e) => e.key === 'Enter' && handleCreateErpType()}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setShowErpTypeDialog(false);
+                setNewErpTypeName('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleCreateErpType}
+              disabled={isCreatingErpType || !newErpTypeName.trim()}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              {isCreatingErpType ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Version Number Dialog */}
+      <Dialog open={showVersionDialog} onOpenChange={setShowVersionDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New Version Number</DialogTitle>
+            <DialogDescription>
+              Create a new version number to add to your customer profile.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-gray-700">Version Number</label>
+              <Input
+                value={newVersionName}
+                onChange={(e) => setNewVersionName(e.target.value)}
+                placeholder="Enter version number"
+                onKeyPress={(e) => e.key === 'Enter' && handleCreateVersionNumber()}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setShowVersionDialog(false);
+                setNewVersionName('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleCreateVersionNumber}
+              disabled={isCreatingVersion || !newVersionName.trim()}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              {isCreatingVersion ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

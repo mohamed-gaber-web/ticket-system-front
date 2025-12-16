@@ -4,7 +4,8 @@ import type { Ticket, CreateTicketData, UpdateTicketData } from '@/types/ticket'
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
-import { fetchCategories } from '@/redux/slices/categorySlice';
+// HIDDEN: Category is not currently in use
+// import { fetchCategories } from '@/redux/slices/categorySlice';
 import { fetchCustomers } from '@/redux/slices/customerSlice';
 import { UserPlus, Upload, X, File, Image as ImageIcon, Video } from 'lucide-react';
 import { validateFile, formatFileSize } from '@/api/attachmentApi';
@@ -25,7 +26,8 @@ const generateTicketNumber = () => {
 
 export default function TicketForm({ initialData, onSubmit, isEdit = false }: Props) {
   const dispatch = useAppDispatch();
-  const { categories, loading: categoriesLoading } = useAppSelector((state) => state.categories);
+  // HIDDEN: Category is not currently in use
+  // const { categories, loading: categoriesLoading } = useAppSelector((state) => state.categories);
   const { customers, loading: customersLoading } = useAppSelector((state) => state.customers);
   const { user, userType } = useAppSelector((state) => state.auth);
 
@@ -62,7 +64,8 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
 
   useEffect(() => {
-    dispatch(fetchCategories());
+    // HIDDEN: Category is not currently in use
+    // dispatch(fetchCategories());
     // Fetch customers if user is a consultant
     if (isConsultant) {
       dispatch(fetchCustomers());
@@ -318,7 +321,8 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-gray-700 border-b pb-2">Categorization</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
+          {/* HIDDEN: Category is not currently in use */}
+          {/* <div>
             <label className="block text-sm font-medium mb-2">Category *</label>
             <select
               name="category"
@@ -337,7 +341,7 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
                 </option>
               ))}
             </select>
-          </div>
+          </div> */}
 
           <div>
             <label className="block text-sm font-medium mb-2">Priority *</label>

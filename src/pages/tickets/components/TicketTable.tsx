@@ -224,6 +224,7 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
               <TableHead className="font-semibold min-w-[200px]">Subject</TableHead>
               <TableHead className="font-semibold min-w-[100px]">Priority</TableHead>
               <TableHead className="font-semibold min-w-[120px]">Status</TableHead>
+              <TableHead className="font-semibold min-w-[150px]">Accepted At</TableHead>
               <TableHead className="text-right font-semibold min-w-[200px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -273,6 +274,27 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                 </TableCell>
                 <TableCell>{getPriorityBadge(ticket.priority)}</TableCell>
                 <TableCell>{getStatusBadge(ticket.status)}</TableCell>
+                <TableCell>
+                  {ticket.acceptedAt ? (
+                    <div className="text-sm">
+                      <div className="text-gray-900 font-medium">
+                        {new Date(ticket.acceptedAt).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                        })}
+                      </div>
+                      <div className="text-gray-500 text-xs">
+                        {new Date(ticket.acceptedAt).toLocaleTimeString('en-US', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </div>
+                    </div>
+                  ) : (
+                    <span className="text-gray-400 text-sm">Not accepted</span>
+                  )}
+                </TableCell>
                 <TableCell>
                   <div className="flex items-center justify-end gap-2">
                     {/* Accept button - only for consultants on new main tickets that haven't been accepted */}

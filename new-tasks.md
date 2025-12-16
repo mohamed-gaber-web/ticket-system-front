@@ -1,22 +1,54 @@
-# Service Type API Documentation
+# Department API Documentation
 
 ## Base URL
 
 ```
-/api/service-types
+/api/departments
 ```
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Data Model](#data-model)
+- [API Endpoints](#api-endpoints)
+  - [Create Department](#1-create-department)
+  - [Get All Departments](#2-get-all-departments)
+  - [Get Department by ID](#3-get-department-by-id)
+  - [Update Department](#4-update-department)
+  - [Delete Department](#5-delete-department)
+  - [Toggle Department Status](#6-toggle-department-status)
+- [Error Handling](#error-handling)
+- [Examples](#examples)
+
+---
+
+## Overview
+
+The Department API provides endpoints for managing departments in the ticketing system. It supports full CRUD operations (Create, Read, Update, Delete) along with additional functionality for toggling department status and filtering/searching.
+
+---
 
 ## Data Model
 
-### ServiceType Schema
+### Department Object
 
-```javascript
+| Field     | Type              | Required       | Description                       |
+| --------- | ----------------- | -------------- | --------------------------------- |
+| \_id      | String (ObjectId) | Auto-generated | Unique identifier                 |
+| name      | String            | Yes            | Department name (unique, trimmed) |
+| isActive  | Boolean           | No             | Active status (default: true)     |
+| createdAt | Date              | Auto-generated | Creation timestamp                |
+| updatedAt | Date              | Auto-generated | Last update timestamp             |
+
+### Example Department Object
+
+```json
 {
-  "_id": "ObjectId",           // MongoDB auto-generated ID
-  "name": "String",            // Required, unique, trimmed
-  "isActive": "Boolean",       // Default: true
-  "createdAt": "Date",         // Auto-generated
-  "updatedAt": "Date"          // Auto-updated on save
+  "_id": "507f1f77bcf86cd799439011",
+  "name": "IT Support",
+  "isActive": true,
+  "createdAt": "2024-01-15T10:30:00.000Z",
+  "updatedAt": "2024-01-15T10:30:00.000Z"
 }
 ```
 
@@ -24,38 +56,40 @@
 
 ## API Endpoints
 
-### 1. Create Service Type
+### 1. Create Department
 
-Creates a new service type.
+**Endpoint:** `POST /api/departments`
 
-**Endpoint:** `POST /api/service-types`
+**Description:** Creates a new department
 
 **Request Body:**
 
 ```json
 {
-  "name": "Installation Service",
+  "name": "IT Support",
   "isActive": true
 }
 ```
 
-**Field Requirements:**
+**Request Body Parameters:**
 
-- `name` (required): Service type name (string, will be trimmed)
-- `isActive` (optional): Active status (boolean, default: true)
+| Parameter | Type    | Required | Description                       |
+| --------- | ------- | -------- | --------------------------------- |
+| name      | String  | Yes      | Department name (will be trimmed) |
+| isActive  | Boolean | No       | Active status (default: true)     |
 
 **Success Response (201):**
 
 ```json
 {
   "success": true,
-  "message": "Service type created successfully",
+  "message": "Department created successfully",
   "data": {
     "_id": "507f1f77bcf86cd799439011",
-    "name": "Installation Service",
+    "name": "IT Support",
     "isActive": true,
-    "createdAt": "2025-12-15T10:30:00.000Z",
-    "updatedAt": "2025-12-15T10:30:00.000Z"
+    "createdAt": "2024-01-15T10:30:00.000Z",
+    "updatedAt": "2024-01-15T10:30:00.000Z"
   }
 }
 ```
@@ -67,7 +101,7 @@ Creates a new service type.
 ```json
 {
   "success": false,
-  "message": "Service type name is required"
+  "message": "Department name is required"
 }
 ```
 
@@ -76,7 +110,7 @@ Creates a new service type.
 ```json
 {
   "success": false,
-  "message": "Service type name already exists",
+  "message": "Department name already exists",
   "field": "name"
 }
 ```
@@ -91,38 +125,27 @@ Creates a new service type.
 }
 ```
 
-**500 - Server Error:**
-
-```json
-{
-  "success": false,
-  "message": "Failed to create service type"
-}
-```
-
 ---
 
-### 2. Get All Service Types
+### 2. Get All Departments
 
-Retrieves all service types with pagination, filtering, and search.
+**Endpoint:** `GET /api/departments`
 
-**Endpoint:** `GET /api/service-types`
+**Description:** Retrieves all departments with optional filtering, searching, and pagination
 
 **Query Parameters:**
 
-- `page` (optional): Page number (default: 1)
-- `limit` (optional): Items per page (default: 10)
-- `isActive` (optional): Filter by active status ("true" or "false")
-- `search` (optional): Search by name (case-insensitive)
+| Parameter | Type   | Required | Default | Description                                   |
+| --------- | ------ | -------- | ------- | --------------------------------------------- |
+| page      | Number | No       | 1       | Page number for pagination                    |
+| limit     | Number | No       | 10      | Number of items per page                      |
+| isActive  | String | No       | -       | Filter by active status ("true" or "false")   |
+| search    | String | No       | -       | Search departments by name (case-insensitive) |
 
-**Examples:**
+**Example Request:**
 
 ```
-GET /api/service-types
-GET /api/service-types?page=2&limit=20
-GET /api/service-types?isActive=true
-GET /api/service-types?search=installation
-GET /api/service-types?isActive=true&search=support&page=1&limit=5
+GET /api/departments?page=1&limit=10&isActive=true&search=support
 ```
 
 **Success Response (200):**
@@ -131,54 +154,67 @@ GET /api/service-types?isActive=true&search=support&page=1&limit=5
 {
   "success": true,
   "count": 10,
-  "total": 45,
+  "total": 25,
   "page": 1,
-  "totalPages": 5,
+  "totalPages": 3,
   "data": [
     {
       "_id": "507f1f77bcf86cd799439011",
-      "name": "Installation Service",
+      "name": "IT Support",
       "isActive": true,
-      "createdAt": "2025-12-15T10:30:00.000Z",
-      "updatedAt": "2025-12-15T10:30:00.000Z"
+      "createdAt": "2024-01-15T10:30:00.000Z",
+      "updatedAt": "2024-01-15T10:30:00.000Z"
     },
     {
       "_id": "507f1f77bcf86cd799439012",
-      "name": "Support Service",
+      "name": "Customer Support",
       "isActive": true,
-      "createdAt": "2025-12-14T09:20:00.000Z",
-      "updatedAt": "2025-12-14T09:20:00.000Z"
+      "createdAt": "2024-01-14T09:20:00.000Z",
+      "updatedAt": "2024-01-14T09:20:00.000Z"
     }
   ]
 }
 ```
+
+**Response Fields:**
+
+| Field      | Type    | Description                              |
+| ---------- | ------- | ---------------------------------------- |
+| success    | Boolean | Operation status                         |
+| count      | Number  | Number of items in current page          |
+| total      | Number  | Total number of items matching the query |
+| page       | Number  | Current page number                      |
+| totalPages | Number  | Total number of pages                    |
+| data       | Array   | Array of department objects              |
 
 **Error Response (500):**
 
 ```json
 {
   "success": false,
-  "message": "Error fetching service types",
+  "message": "Error fetching departments",
   "error": "Error details"
 }
 ```
 
 ---
 
-### 3. Get Service Type by ID
+### 3. Get Department by ID
 
-Retrieves a single service type by its ID.
+**Endpoint:** `GET /api/departments/:id`
 
-**Endpoint:** `GET /api/service-types/:id`
+**Description:** Retrieves a single department by its ID
 
 **URL Parameters:**
 
-- `id` (required): Service type MongoDB ObjectId
+| Parameter | Type   | Required | Description         |
+| --------- | ------ | -------- | ------------------- |
+| id        | String | Yes      | Department ObjectId |
 
-**Example:**
+**Example Request:**
 
 ```
-GET /api/service-types/507f1f77bcf86cd799439011
+GET /api/departments/507f1f77bcf86cd799439011
 ```
 
 **Success Response (200):**
@@ -188,10 +224,10 @@ GET /api/service-types/507f1f77bcf86cd799439011
   "success": true,
   "data": {
     "_id": "507f1f77bcf86cd799439011",
-    "name": "Installation Service",
+    "name": "IT Support",
     "isActive": true,
-    "createdAt": "2025-12-15T10:30:00.000Z",
-    "updatedAt": "2025-12-15T10:30:00.000Z"
+    "createdAt": "2024-01-15T10:30:00.000Z",
+    "updatedAt": "2024-01-15T10:30:00.000Z"
   }
 }
 ```
@@ -203,7 +239,7 @@ GET /api/service-types/507f1f77bcf86cd799439011
 ```json
 {
   "success": false,
-  "message": "Service type not found"
+  "message": "Department not found"
 }
 ```
 
@@ -212,57 +248,53 @@ GET /api/service-types/507f1f77bcf86cd799439011
 ```json
 {
   "success": false,
-  "message": "Error fetching service type",
+  "message": "Error fetching department",
   "error": "Error details"
 }
 ```
 
 ---
 
-### 4. Update Service Type
+### 4. Update Department
 
-Updates an existing service type.
+**Endpoint:** `PATCH /api/departments/:id`
 
-**Endpoint:** `PATCH /api/service-types/:id`
+**Description:** Updates a department by its ID
 
 **URL Parameters:**
 
-- `id` (required): Service type MongoDB ObjectId
+| Parameter | Type   | Required | Description         |
+| --------- | ------ | -------- | ------------------- |
+| id        | String | Yes      | Department ObjectId |
 
 **Request Body:**
 
 ```json
 {
-  "name": "Updated Service Name",
+  "name": "Updated IT Support",
   "isActive": false
 }
 ```
 
-**Allowed Fields:**
+**Allowed Update Fields:**
 
-- `name` (optional): Service type name
-- `isActive` (optional): Active status
+- `name` (String)
+- `isActive` (Boolean)
 
 **Note:** Only the fields you want to update need to be included in the request body.
-
-**Example:**
-
-```
-PATCH /api/service-types/507f1f77bcf86cd799439011
-```
 
 **Success Response (200):**
 
 ```json
 {
   "success": true,
-  "message": "Service type updated successfully",
+  "message": "Department updated successfully",
   "data": {
     "_id": "507f1f77bcf86cd799439011",
-    "name": "Updated Service Name",
+    "name": "Updated IT Support",
     "isActive": false,
-    "createdAt": "2025-12-15T10:30:00.000Z",
-    "updatedAt": "2025-12-15T11:45:00.000Z"
+    "createdAt": "2024-01-15T10:30:00.000Z",
+    "updatedAt": "2024-01-15T14:45:00.000Z"
   }
 }
 ```
@@ -284,7 +316,7 @@ PATCH /api/service-types/507f1f77bcf86cd799439011
 ```json
 {
   "success": false,
-  "message": "Service type name already exists",
+  "message": "Department name already exists",
   "field": "name"
 }
 ```
@@ -294,7 +326,7 @@ PATCH /api/service-types/507f1f77bcf86cd799439011
 ```json
 {
   "success": false,
-  "message": "Service type not found"
+  "message": "Department not found"
 }
 ```
 
@@ -303,27 +335,29 @@ PATCH /api/service-types/507f1f77bcf86cd799439011
 ```json
 {
   "success": false,
-  "message": "Error updating service type",
+  "message": "Error updating department",
   "error": "Error details"
 }
 ```
 
 ---
 
-### 5. Delete Service Type
+### 5. Delete Department
 
-Deletes a service type by ID.
+**Endpoint:** `DELETE /api/departments/:id`
 
-**Endpoint:** `DELETE /api/service-types/:id`
+**Description:** Deletes a department by its ID
 
 **URL Parameters:**
 
-- `id` (required): Service type MongoDB ObjectId
+| Parameter | Type   | Required | Description         |
+| --------- | ------ | -------- | ------------------- |
+| id        | String | Yes      | Department ObjectId |
 
-**Example:**
+**Example Request:**
 
 ```
-DELETE /api/service-types/507f1f77bcf86cd799439011
+DELETE /api/departments/507f1f77bcf86cd799439011
 ```
 
 **Success Response (200):**
@@ -331,13 +365,13 @@ DELETE /api/service-types/507f1f77bcf86cd799439011
 ```json
 {
   "success": true,
-  "message": "Service type deleted successfully",
+  "message": "Department deleted successfully",
   "data": {
     "_id": "507f1f77bcf86cd799439011",
-    "name": "Installation Service",
+    "name": "IT Support",
     "isActive": true,
-    "createdAt": "2025-12-15T10:30:00.000Z",
-    "updatedAt": "2025-12-15T10:30:00.000Z"
+    "createdAt": "2024-01-15T10:30:00.000Z",
+    "updatedAt": "2024-01-15T10:30:00.000Z"
   }
 }
 ```
@@ -349,7 +383,7 @@ DELETE /api/service-types/507f1f77bcf86cd799439011
 ```json
 {
   "success": false,
-  "message": "Service type not found"
+  "message": "Department not found"
 }
 ```
 
@@ -358,29 +392,31 @@ DELETE /api/service-types/507f1f77bcf86cd799439011
 ```json
 {
   "success": false,
-  "message": "Error deleting service type",
+  "message": "Error deleting department",
   "error": "Error details"
 }
 ```
 
 ---
 
-### 6. Toggle Service Type Status
+### 6. Toggle Department Status
 
-Toggles the active/inactive status of a service type.
+**Endpoint:** `PATCH /api/departments/:id/toggle-status`
 
-**Endpoint:** `PATCH /api/service-types/:id/toggle-status`
+**Description:** Toggles the active status of a department (active ↔ inactive)
 
 **URL Parameters:**
 
-- `id` (required): Service type MongoDB ObjectId
+| Parameter | Type   | Required | Description         |
+| --------- | ------ | -------- | ------------------- |
+| id        | String | Yes      | Department ObjectId |
 
 **Request Body:** None required
 
-**Example:**
+**Example Request:**
 
 ```
-PATCH /api/service-types/507f1f77bcf86cd799439011/toggle-status
+PATCH /api/departments/507f1f77bcf86cd799439011/toggle-status
 ```
 
 **Success Response (200):**
@@ -388,18 +424,18 @@ PATCH /api/service-types/507f1f77bcf86cd799439011/toggle-status
 ```json
 {
   "success": true,
-  "message": "Service type activated successfully",
+  "message": "Department activated successfully",
   "data": {
     "_id": "507f1f77bcf86cd799439011",
-    "name": "Installation Service",
+    "name": "IT Support",
     "isActive": true,
-    "createdAt": "2025-12-15T10:30:00.000Z",
-    "updatedAt": "2025-12-15T12:00:00.000Z"
+    "createdAt": "2024-01-15T10:30:00.000Z",
+    "updatedAt": "2024-01-15T14:50:00.000Z"
   }
 }
 ```
 
-**Note:** The message will say "activated" or "deactivated" based on the new status.
+**Note:** The message will be either "Department activated successfully" or "Department deactivated successfully" depending on the new status.
 
 **Error Responses:**
 
@@ -408,7 +444,7 @@ PATCH /api/service-types/507f1f77bcf86cd799439011/toggle-status
 ```json
 {
   "success": false,
-  "message": "Service type not found"
+  "message": "Department not found"
 }
 ```
 
@@ -417,102 +453,296 @@ PATCH /api/service-types/507f1f77bcf86cd799439011/toggle-status
 ```json
 {
   "success": false,
-  "message": "Error toggling service type status",
+  "message": "Error toggling department status",
   "error": "Error details"
 }
 ```
 
 ---
 
-## Frontend Implementation Guide
+## Error Handling
 
-### Recommended State Management
+All endpoints follow a consistent error response format:
+
+```json
+{
+  "success": false,
+  "message": "Error message",
+  "error": "Detailed error information (optional)",
+  "field": "Field name (for duplicate errors)"
+}
+```
+
+### Common HTTP Status Codes
+
+| Status Code | Description                                                        |
+| ----------- | ------------------------------------------------------------------ |
+| 200         | Success (GET, PATCH, DELETE)                                       |
+| 201         | Created (POST)                                                     |
+| 400         | Bad Request (validation errors, duplicate entries, invalid fields) |
+| 404         | Not Found (resource doesn't exist)                                 |
+| 500         | Internal Server Error                                              |
+
+---
+
+## Examples
+
+### Example 1: Creating and Listing Departments
+
+**Step 1: Create a new department**
 
 ```javascript
-const [serviceTypes, setServiceTypes] = useState([]);
-const [loading, setLoading] = useState(false);
-const [error, setError] = useState(null);
-const [pagination, setPagination] = useState({
-  page: 1,
-  limit: 10,
-  total: 0,
-  totalPages: 0,
+// POST /api/departments
+const response = await fetch("/api/departments", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    name: "IT Support",
+    isActive: true,
+  }),
+});
+
+const result = await response.json();
+console.log(result);
+// {
+//   "success": true,
+//   "message": "Department created successfully",
+//   "data": { ... }
+// }
+```
+
+**Step 2: Get all departments with pagination**
+
+```javascript
+// GET /api/departments?page=1&limit=10
+const response = await fetch("/api/departments?page=1&limit=10");
+const result = await response.json();
+console.log(result);
+// {
+//   "success": true,
+//   "count": 10,
+//   "total": 25,
+//   "page": 1,
+//   "totalPages": 3,
+//   "data": [ ... ]
+// }
+```
+
+### Example 2: Search and Filter
+
+**Search by name**
+
+```javascript
+// GET /api/departments?search=support
+const response = await fetch("/api/departments?search=support");
+const result = await response.json();
+```
+
+**Filter by active status**
+
+```javascript
+// GET /api/departments?isActive=true
+const response = await fetch("/api/departments?isActive=true");
+const result = await response.json();
+```
+
+**Combine search, filter, and pagination**
+
+```javascript
+// GET /api/departments?search=IT&isActive=true&page=1&limit=5
+const response = await fetch(
+  "/api/departments?search=IT&isActive=true&page=1&limit=5"
+);
+const result = await response.json();
+```
+
+### Example 3: Update Department
+
+**Update department name**
+
+```javascript
+// PATCH /api/departments/507f1f77bcf86cd799439011
+const response = await fetch("/api/departments/507f1f77bcf86cd799439011", {
+  method: "PATCH",
+  headers: {
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    name: "Updated IT Support",
+  }),
+});
+
+const result = await response.json();
+console.log(result);
+```
+
+**Update active status**
+
+```javascript
+// PATCH /api/departments/507f1f77bcf86cd799439011
+const response = await fetch("/api/departments/507f1f77bcf86cd799439011", {
+  method: "PATCH",
+  headers: {
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    isActive: false,
+  }),
 });
 ```
 
-### Example API Calls
+### Example 4: Toggle Status
 
-#### 1. Fetch All Service Types
+**Toggle department status**
 
 ```javascript
-const fetchServiceTypes = async (page = 1, limit = 10, filters = {}) => {
-  try {
-    setLoading(true);
-    const queryParams = new URLSearchParams({
-      page,
-      limit,
-      ...filters,
-    });
-
-    const response = await fetch(`/api/service-types?${queryParams}`);
-    const data = await response.json();
-
-    if (data.success) {
-      setServiceTypes(data.data);
-      setPagination({
-        page: data.page,
-        limit,
-        total: data.total,
-        totalPages: data.totalPages,
-      });
-    }
-  } catch (err) {
-    setError(err.message);
-  } finally {
-    setLoading(false);
+// PATCH /api/departments/507f1f77bcf86cd799439011/toggle-status
+const response = await fetch(
+  "/api/departments/507f1f77bcf86cd799439011/toggle-status",
+  {
+    method: "PATCH",
   }
+);
+
+const result = await response.json();
+console.log(result);
+// {
+//   "success": true,
+//   "message": "Department deactivated successfully",
+//   "data": { ... }
+// }
+```
+
+### Example 5: Delete Department
+
+**Delete a department**
+
+```javascript
+// DELETE /api/departments/507f1f77bcf86cd799439011
+const response = await fetch("/api/departments/507f1f77bcf86cd799439011", {
+  method: "DELETE",
+});
+
+const result = await response.json();
+console.log(result);
+// {
+//   "success": true,
+//   "message": "Department deleted successfully",
+//   "data": { ... }
+// }
+```
+
+### Example 6: React/TypeScript Integration
+
+**TypeScript Interface**
+
+```typescript
+interface Department {
+  _id: string;
+  name: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface DepartmentResponse {
+  success: boolean;
+  message?: string;
+  data?: Department;
+  count?: number;
+  total?: number;
+  page?: number;
+  totalPages?: number;
+  error?: string;
+}
+```
+
+**React Hook Example**
+
+```typescript
+import { useState, useEffect } from "react";
+
+const useDepartments = (page = 1, limit = 10) => {
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [pagination, setPagination] = useState({
+    total: 0,
+    page: 1,
+    totalPages: 0,
+  });
+
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(
+          `/api/departments?page=${page}&limit=${limit}`
+        );
+        const result: DepartmentResponse = await response.json();
+
+        if (result.success && result.data) {
+          setDepartments(result.data);
+          setPagination({
+            total: result.total || 0,
+            page: result.page || 1,
+            totalPages: result.totalPages || 0,
+          });
+        } else {
+          setError(result.message || "Failed to fetch departments");
+        }
+      } catch (err) {
+        setError("Network error");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDepartments();
+  }, [page, limit]);
+
+  return { departments, loading, error, pagination };
 };
 ```
 
-#### 2. Create Service Type
+**Create Department Function**
 
-```javascript
-const createServiceType = async (serviceTypeData) => {
+```typescript
+const createDepartment = async (name: string, isActive: boolean = true) => {
   try {
-    setLoading(true);
-    const response = await fetch("/api/service-types", {
+    const response = await fetch("/api/departments", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(serviceTypeData),
+      body: JSON.stringify({ name, isActive }),
     });
 
-    const data = await response.json();
+    const result: DepartmentResponse = await response.json();
 
-    if (!response.ok) {
-      throw new Error(data.message || "Failed to create service type");
+    if (!result.success) {
+      throw new Error(result.message || "Failed to create department");
     }
 
-    // Refresh the list
-    await fetchServiceTypes();
-    return data;
-  } catch (err) {
-    setError(err.message);
-    throw err;
-  } finally {
-    setLoading(false);
+    return result.data;
+  } catch (error) {
+    console.error("Error creating department:", error);
+    throw error;
   }
 };
 ```
 
-#### 3. Update Service Type
+**Update Department Function**
 
-```javascript
-const updateServiceType = async (id, updates) => {
+```typescript
+const updateDepartment = async (
+  id: string,
+  updates: Partial<Pick<Department, "name" | "isActive">>
+) => {
   try {
-    setLoading(true);
-    const response = await fetch(`/api/service-types/${id}`, {
+    const response = await fetch(`/api/departments/${id}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -520,163 +750,67 @@ const updateServiceType = async (id, updates) => {
       body: JSON.stringify(updates),
     });
 
-    const data = await response.json();
+    const result: DepartmentResponse = await response.json();
 
-    if (!response.ok) {
-      throw new Error(data.message || "Failed to update service type");
+    if (!result.success) {
+      throw new Error(result.message || "Failed to update department");
     }
 
-    // Refresh the list
-    await fetchServiceTypes();
-    return data;
-  } catch (err) {
-    setError(err.message);
-    throw err;
-  } finally {
-    setLoading(false);
+    return result.data;
+  } catch (error) {
+    console.error("Error updating department:", error);
+    throw error;
   }
 };
 ```
 
-#### 4. Delete Service Type
+**Delete Department Function**
 
-```javascript
-const deleteServiceType = async (id) => {
+```typescript
+const deleteDepartment = async (id: string) => {
   try {
-    setLoading(true);
-    const response = await fetch(`/api/service-types/${id}`, {
+    const response = await fetch(`/api/departments/${id}`, {
       method: "DELETE",
     });
 
-    const data = await response.json();
+    const result: DepartmentResponse = await response.json();
 
-    if (!response.ok) {
-      throw new Error(data.message || "Failed to delete service type");
+    if (!result.success) {
+      throw new Error(result.message || "Failed to delete department");
     }
 
-    // Refresh the list
-    await fetchServiceTypes();
-    return data;
-  } catch (err) {
-    setError(err.message);
-    throw err;
-  } finally {
-    setLoading(false);
-  }
-};
-```
-
-#### 5. Toggle Status
-
-```javascript
-const toggleServiceTypeStatus = async (id) => {
-  try {
-    setLoading(true);
-    const response = await fetch(`/api/service-types/${id}/toggle-status`, {
-      method: "PATCH",
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || "Failed to toggle status");
-    }
-
-    // Update the specific item in state
-    setServiceTypes((prev) =>
-      prev.map((item) => (item._id === id ? data.data : item))
-    );
-
-    return data;
-  } catch (err) {
-    setError(err.message);
-    throw err;
-  } finally {
-    setLoading(false);
+    return result.data;
+  } catch (error) {
+    console.error("Error deleting department:", error);
+    throw error;
   }
 };
 ```
 
 ---
 
-## Testing with cURL
+## Notes for Front-End Team
 
-### Create
+1. **Base URL**: All endpoints are prefixed with `/api/departments`
 
-```bash
-curl -X POST http://localhost:3000/api/service-types \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Installation Service","isActive":true}'
-```
+2. **Content-Type**: Always use `Content-Type: application/json` for POST and PATCH requests
 
-### Get All
+3. **Response Format**: All responses follow a consistent format with a `success` boolean flag
 
-```bash
-curl http://localhost:3000/api/service-types?page=1&limit=10
-```
+4. **Pagination**: The GET all endpoint returns pagination metadata (`count`, `total`, `page`, `totalPages`)
 
-### Get By ID
+5. **Filtering**: Use query parameters for filtering and searching:
 
-```bash
-curl http://localhost:3000/api/service-types/507f1f77bcf86cd799439011
-```
+   - `isActive` for status filtering
+   - `search` for name searching (case-insensitive)
+   - `page` and `limit` for pagination
 
-### Update
+6. **Error Handling**: Check the `success` field in responses to determine if the operation succeeded
 
-```bash
-curl -X PATCH http://localhost:3000/api/service-types/507f1f77bcf86cd799439011 \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Updated Service Name"}'
-```
+7. **Unique Constraint**: Department names must be unique (case-sensitive after trimming)
 
-### Delete
+8. **Validation**: The `name` field is required and cannot be empty
 
-```bash
-curl -X DELETE http://localhost:3000/api/service-types/507f1f77bcf86cd799439011
-```
+9. **Status Toggle**: Use the `/toggle-status` endpoint for a convenient way to activate/deactivate departments
 
-### Toggle Status
-
-```bash
-curl -X PATCH http://localhost:3000/api/service-types/507f1f77bcf86cd799439011/toggle-status
-```
-
----
-
-## Important Notes
-
-1. **Unique Names**: Service type names must be unique across the system
-2. **Pagination**: Default is 10 items per page, sorted by creation date (newest first)
-3. **Case-Insensitive Search**: The search parameter performs case-insensitive matching on the name field
-4. **Auto-Timestamps**: `createdAt` and `updatedAt` are automatically managed
-5. **Status Toggle**: Convenient endpoint for quick enable/disable without sending the full update payload
-6. **Validation**: All required fields are validated on the backend
-7. **Error Handling**: Always check the `success` field in responses to determine if the operation succeeded
-
----
-
-## Common Use Cases
-
-### Display Active Service Types Only
-
-```
-GET /api/service-types?isActive=true
-```
-
-### Search for Service Types
-
-```
-GET /api/service-types?search=installation
-```
-
-### Paginated List with Filters
-
-```
-GET /api/service-types?page=2&limit=20&isActive=true&search=support
-```
-
-### Quick Enable/Disable Toggle
-
-```
-PATCH /api/service-types/:id/toggle-status
-```
+10. **Update Flexibility**: You can update only the fields you need - partial updates are supported

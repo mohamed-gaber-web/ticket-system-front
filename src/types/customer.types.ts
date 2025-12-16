@@ -1,3 +1,15 @@
+export interface ERPTypeRef {
+  _id: string;
+  name: string;
+  isActive: boolean;
+}
+
+export interface VersionNumberRef {
+  _id: string;
+  name: string;
+  isActive: boolean;
+}
+
 export interface Customer {
   _id: string;
   companyName: string;
@@ -8,6 +20,8 @@ export interface Customer {
   city?: string;
   country?: string;
   status: 'active' | 'inactive' | 'suspended';
+  erpType?: ERPTypeRef | string;
+  versionNumber?: VersionNumberRef | string;
   createdAt: string;
   updatedAt: string;
 }
@@ -21,6 +35,8 @@ export interface CreateCustomerData {
   address?: string;
   city?: string;
   country?: string;
+  erpType?: string;
+  versionNumber?: string;
 }
 
 export interface UpdateCustomerData {
@@ -32,6 +48,8 @@ export interface UpdateCustomerData {
   city?: string;
   country?: string;
   status?: 'active' | 'inactive' | 'suspended';
+  erpType?: string;
+  versionNumber?: string;
 }
 
 export interface CustomerResponse {

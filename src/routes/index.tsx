@@ -81,6 +81,15 @@ import Scopes from "@/pages/scopes/Scopes";
 // Service Type Module
 import ServiceTypes from "@/pages/service-types/ServiceTypes";
 
+// ERP Type Module
+import ErpTypes from "@/pages/erp-types/ErpTypes";
+
+// Version Number Module
+import VersionNumbers from "@/pages/version-numbers/VersionNumbers";
+
+// Department Module
+import Departments from "@/pages/departments/Departments";
+
 export const routes: RouteObject[] = [
   // Public Routes (Authentication)
   {
@@ -179,6 +188,15 @@ export const routes: RouteObject[] = [
 
       // Service Type Routes
       { path: "/service-types", element: <ServiceTypes /> },
+
+      // ERP Type Routes
+      { path: "/erp-types", element: <ErpTypes /> },
+
+      // Version Number Routes
+      { path: "/version-numbers", element: <VersionNumbers /> },
+
+      // Department Routes
+      { path: "/departments", element: <Departments /> },
     ],
   },
 ];

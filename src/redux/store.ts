@@ -15,6 +15,9 @@ import featureReducer from './slices/featureSlice';
 import productTypeReducer from './slices/productTypeSlice';
 import scopeReducer from './slices/scopeSlice';
 import serviceTypeReducer from './slices/serviceTypeSlice';
+import erpTypeReducer from './slices/erpTypeSlice';
+import versionNumberReducer from './slices/versionNumberSlice';
+import departmentReducer from './slices/departmentSlice';
 
 export const store = configureStore({
   reducer: {
@@ -34,6 +37,9 @@ export const store = configureStore({
     productTypes: productTypeReducer,
     scopes: scopeReducer,
     serviceTypes: serviceTypeReducer,
+    erpTypes: erpTypeReducer,
+    versionNumbers: versionNumberReducer,
+    departments: departmentReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

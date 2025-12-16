@@ -1,79 +1,84 @@
 import { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
-import { fetchCustomers, deleteCustomer, createCustomer, updateCustomer } from '@/redux/slices/customerSlice';
-import { fetchErpTypes } from '@/redux/slices/erpTypeSlice';
-import { fetchVersionNumbers } from '@/redux/slices/versionNumberSlice';
-import CustomerTable from './components/CustomerTable';
-import CustomerFormDialog from './components/CustomerFormDialog';
+import {
+  fetchDepartments,
+  createDepartment,
+  updateDepartment,
+  deleteDepartment,
+} from '@/redux/slices/departmentSlice';
+import DepartmentTable from './DepartmentTable';
+import DepartmentFormDialog from './DepartmentFormDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Search, RefreshCw } from 'lucide-react';
-import type { Customer, CreateCustomerData, UpdateCustomerData } from '@/types/customer.types';
+import type { Department, CreateDepartmentDto, UpdateDepartmentDto } from '@/types/department.types';
 
-export default function Customers() {
+export default function Departments() {
   const dispatch = useAppDispatch();
-  const { customers, loading, total } = useAppSelector((state) => state.customers);
+  const { departments, loading, total } = useAppSelector((state) => state.departments);
 
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);
 
   useEffect(() => {
-    loadCustomers();
-    dispatch(fetchErpTypes({}));
-    dispatch(fetchVersionNumbers({}));
+    loadDepartments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const loadCustomers = () => {
+  const loadDepartments = () => {
     const params: any = {};
     if (searchTerm) params.search = searchTerm;
-    if (statusFilter) params.status = statusFilter;
-    dispatch(fetchCustomers(params));
+    if (statusFilter !== '') params.isActive = statusFilter === 'active';
+
+    dispatch(fetchDepartments(params));
   };
 
   const handleSearch = () => {
-    loadCustomers();
-  };
-
-  const handleDelete = (id: string) => {
-    dispatch(deleteCustomer(id));
+    loadDepartments();
   };
 
   const handleRefresh = () => {
     setSearchTerm('');
     setStatusFilter('');
-    dispatch(fetchCustomers({}));
+    dispatch(fetchDepartments());
   };
 
   const handleCreate = () => {
-    setEditingCustomer(null);
+    setEditingDepartment(null);
     setIsDialogOpen(true);
   };
 
-  const handleEdit = (customer: Customer) => {
-    setEditingCustomer(customer);
+  const handleEdit = (department: Department) => {
+    setEditingDepartment(department);
     setIsDialogOpen(true);
   };
 
-  const handleFormSubmit = async (data: CreateCustomerData | UpdateCustomerData) => {
+  const handleDelete = async (id: string) => {
+    await dispatch(deleteDepartment(id)).unwrap();
+  };
+
+  const handleFormSubmit = async (data: CreateDepartmentDto | UpdateDepartmentDto) => {
     try {
-      if (editingCustomer) {
-        await dispatch(updateCustomer({ id: editingCustomer._id, data: data as UpdateCustomerData })).unwrap();
+      if (editingDepartment) {
+        await dispatch(updateDepartment({ id: editingDepartment._id, data })).unwrap();
       } else {
-        await dispatch(createCustomer(data as CreateCustomerData)).unwrap();
+        await dispatch(createDepartment(data as CreateDepartmentDto)).unwrap();
       }
       setIsDialogOpen(false);
-      setEditingCustomer(null);
-      loadCustomers();
+      setEditingDepartment(null);
+      // Reload the list to ensure we have the latest data
+      loadDepartments();
     } catch (error) {
+      // Error is handled in the slice with toast
       console.error('Error submitting form:', error);
     }
   };
 
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
-    setEditingCustomer(null);
+    setEditingDepartment(null);
   };
 
   return (
@@ -81,12 +86,12 @@ export default function Customers() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Customers</h1>
-          <p className="text-gray-600 mt-1">Manage your customer accounts</p>
+          <h1 className="text-3xl font-bold text-gray-900">Departments</h1>
+          <p className="text-gray-600 mt-1">Manage departments</p>
         </div>
         <Button onClick={handleCreate} className="gap-2">
           <Plus className="h-4 w-4" />
-          Add Customer
+          Add Department
         </Button>
       </div>
 
@@ -98,10 +103,10 @@ export default function Customers() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
                 type="search"
-                placeholder="Search by company name, email, or contact person..."
+                placeholder="Search departments..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                 className="pl-10"
               />
             </div>
@@ -116,7 +121,6 @@ export default function Customers() {
               <option value="">All Status</option>
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
-              <option value="suspended">Suspended</option>
             </select>
           </div>
 
@@ -133,20 +137,25 @@ export default function Customers() {
 
         {/* Results count */}
         <div className="mt-4 text-sm text-gray-600">
-          Showing <span className="font-semibold">{customers.length}</span> of{' '}
-          <span className="font-semibold">{total}</span> customers
+          Showing <span className="font-semibold">{departments?.length || 0}</span> of{' '}
+          <span className="font-semibold">{total}</span> departments
         </div>
       </div>
 
-      {/* Customer Table */}
-      <CustomerTable customers={customers} onEdit={handleEdit} onDelete={handleDelete} isLoading={loading} />
+      {/* Department Table */}
+      <DepartmentTable
+        departments={departments || []}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        loading={loading}
+      />
 
       {/* Form Dialog */}
-      <CustomerFormDialog
+      <DepartmentFormDialog
         isOpen={isDialogOpen}
         onClose={handleCloseDialog}
         onSubmit={handleFormSubmit}
-        customer={editingCustomer}
+        department={editingDepartment}
         loading={loading}
       />
     </div>

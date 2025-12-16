@@ -1,4 +1,3 @@
-import { useNavigate } from 'react-router-dom';
 import {
   Table,
   TableBody,
@@ -8,21 +7,58 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Edit, Trash2, Mail, Phone, Building2 } from 'lucide-react';
+import { Edit, Trash2, Mail, Phone, Building2, Database } from 'lucide-react';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
 import type { Customer } from '@/types/customer.types';
+import { useAppSelector } from '@/redux/hooks/hooks';
 
 const MySwal = withReactContent(Swal);
 
 interface CustomerTableProps {
   customers: Customer[];
+  onEdit: (customer: Customer) => void;
   onDelete: (id: string) => void;
   isLoading: boolean;
 }
 
-export default function CustomerTable({ customers, onDelete, isLoading }: CustomerTableProps) {
-  const navigate = useNavigate();
+export default function CustomerTable({ customers, onEdit, onDelete, isLoading }: CustomerTableProps) {
+  const { erpTypes } = useAppSelector((state) => state.erpTypes);
+  const { versionNumbers } = useAppSelector((state) => state.versionNumbers);
+
+  const getErpTypeName = (erpType?: any) => {
+    if (!erpType) return 'N/A';
+
+    // If erpType is already a populated object with name
+    if (typeof erpType === 'object' && erpType.name) {
+      return erpType.name;
+    }
+
+    // If erpType is just an ID string, look it up
+    if (typeof erpType === 'string') {
+      const found = erpTypes.find((erp) => erp._id === erpType);
+      return found?.name || 'Unknown';
+    }
+
+    return 'Unknown';
+  };
+
+  const getVersionNumberName = (versionNumber?: any) => {
+    if (!versionNumber) return 'N/A';
+
+    // If versionNumber is already a populated object with name
+    if (typeof versionNumber === 'object' && versionNumber.name) {
+      return versionNumber.name;
+    }
+
+    // If versionNumber is just an ID string, look it up
+    if (typeof versionNumber === 'string') {
+      const found = versionNumbers.find((v) => v._id === versionNumber);
+      return found?.name || 'Unknown';
+    }
+
+    return 'Unknown';
+  };
 
   const handleDelete = (customer: Customer) => {
     MySwal.fire({
@@ -89,10 +125,7 @@ export default function CustomerTable({ customers, onDelete, isLoading }: Custom
       <div className="text-center py-12">
         <Building2 className="mx-auto h-12 w-12 text-gray-400 mb-4" />
         <p className="text-gray-600 text-lg">No customers found</p>
-        <p className="text-gray-500 text-sm mt-2">Create your first customer to get started</p>
-        <Button onClick={() => navigate('/customers/create')} className="mt-4">
-          Create Customer
-        </Button>
+        <p className="text-gray-500 text-sm mt-2">Use the filters above or click "Add Customer" to get started</p>
       </div>
     );
   }
@@ -105,6 +138,8 @@ export default function CustomerTable({ customers, onDelete, isLoading }: Custom
             <TableHead className="font-semibold">Company</TableHead>
             <TableHead className="font-semibold">Contact Person</TableHead>
             <TableHead className="font-semibold">Contact Info</TableHead>
+            <TableHead className="font-semibold">ERP Type</TableHead>
+            <TableHead className="font-semibold">Version</TableHead>
             <TableHead className="font-semibold">Status</TableHead>
             <TableHead className="font-semibold">Created At</TableHead>
             <TableHead className="text-right font-semibold">Actions</TableHead>
@@ -143,6 +178,18 @@ export default function CustomerTable({ customers, onDelete, isLoading }: Custom
                   </div>
                 </div>
               </TableCell>
+              <TableCell>
+                <div className="flex items-center gap-2">
+                  <Database className="h-4 w-4 text-green-600" />
+                  <span className="text-sm text-gray-700">{getErpTypeName(customer.erpType)}</span>
+                </div>
+              </TableCell>
+              <TableCell>
+                <div className="flex items-center gap-2">
+                  <Database className="h-4 w-4 text-blue-600" />
+                  <span className="text-sm text-gray-700">{getVersionNumberName(customer.versionNumber)}</span>
+                </div>
+              </TableCell>
               <TableCell>{getStatusBadge(customer.status)}</TableCell>
               <TableCell className="text-gray-600">{formatDate(customer.createdAt)}</TableCell>
               <TableCell>
@@ -150,7 +197,7 @@ export default function CustomerTable({ customers, onDelete, isLoading }: Custom
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => navigate(`/customers/edit/${customer._id}`)}
+                    onClick={() => onEdit(customer)}
                   >
                     <Edit className="w-4 h-4 mr-1" />
                     Edit
