@@ -4,9 +4,14 @@ import type { Ticket, CreateTicketData, UpdateTicketData } from '@/types/ticket'
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
-// HIDDEN: Category is not currently in use
-// import { fetchCategories } from '@/redux/slices/categorySlice';
 import { fetchCustomers } from '@/redux/slices/customerSlice';
+import { fetchCategories } from '@/redux/slices/categorySlice';
+import { fetchEnvironments } from '@/redux/slices/environmentSlice';
+import { fetchFeatures } from '@/redux/slices/featureSlice';
+import { fetchDepartments } from '@/redux/slices/departmentSlice';
+import { fetchProductTypes } from '@/redux/slices/productTypeSlice';
+import { fetchServiceTypes } from '@/redux/slices/serviceTypeSlice';
+import { fetchScopes } from '@/redux/slices/scopeSlice';
 import { UserPlus, Upload, X, File, Image as ImageIcon, Video } from 'lucide-react';
 import { validateFile, formatFileSize } from '@/api/attachmentApi';
 
@@ -26,9 +31,14 @@ const generateTicketNumber = () => {
 
 export default function TicketForm({ initialData, onSubmit, isEdit = false }: Props) {
   const dispatch = useAppDispatch();
-  // HIDDEN: Category is not currently in use
-  // const { categories, loading: categoriesLoading } = useAppSelector((state) => state.categories);
+  const { categories, loading: categoriesLoading } = useAppSelector((state) => state.categories);
   const { customers, loading: customersLoading } = useAppSelector((state) => state.customers);
+  const { environments } = useAppSelector((state) => state.environments);
+  const { features } = useAppSelector((state) => state.features);
+  const { departments } = useAppSelector((state) => state.departments);
+  const { productTypes } = useAppSelector((state) => state.productTypes);
+  const { serviceTypes } = useAppSelector((state) => state.serviceTypes);
+  const { scopes } = useAppSelector((state) => state.scopes);
   const { user, userType } = useAppSelector((state) => state.auth);
 
   // Get customer ID - if consultant, leave empty for selection; if customer, use their ID
@@ -46,6 +56,12 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
           startDate: '',
           endDate: '',
           estimatedTime: undefined,
+          environment: '',
+          feature: '',
+          department: '',
+          productType: '',
+          serviceType: '',
+          scope: '',
         }
       : {
           ticketNumber: generateTicketNumber(),
@@ -57,6 +73,12 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
           startDate: '',
           endDate: '',
           estimatedTime: undefined,
+          environment: '',
+          feature: '',
+          department: '',
+          productType: '',
+          serviceType: '',
+          scope: '',
         }
   );
 
@@ -64,12 +86,19 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
 
   useEffect(() => {
-    // HIDDEN: Category is not currently in use
-    // dispatch(fetchCategories());
+    // Fetch categories
+    dispatch(fetchCategories());
     // Fetch customers if user is a consultant
     if (isConsultant) {
       dispatch(fetchCustomers());
     }
+    // Fetch all reference data for the new properties
+    dispatch(fetchEnvironments({ isActive: true }));
+    dispatch(fetchFeatures({ isActive: true }));
+    dispatch(fetchDepartments({ isActive: true }));
+    dispatch(fetchProductTypes({ isActive: true }));
+    dispatch(fetchServiceTypes({ isActive: true }));
+    dispatch(fetchScopes({ isActive: true }));
   }, [dispatch, isConsultant]);
 
   // Update customer ID when user is loaded
@@ -88,6 +117,12 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
         ? initialData.category
         : initialData.category?._id || '';
 
+      // Helper function to extract ID from string or object
+      const extractId = (field: string | { _id: string } | undefined): string => {
+        if (!field) return '';
+        return typeof field === 'string' ? field : field._id || '';
+      };
+
       if (isEdit) {
         setFormData({
           subject: initialData.subject,
@@ -98,6 +133,12 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
           startDate: initialData.startDate || '',
           endDate: initialData.endDate || '',
           estimatedTime: initialData.estimatedTime,
+          environment: extractId(initialData.environment),
+          feature: extractId(initialData.feature),
+          department: extractId(initialData.department),
+          productType: extractId(initialData.productType),
+          serviceType: extractId(initialData.serviceType),
+          scope: extractId(initialData.scope),
         });
       } else {
         setFormData({
@@ -110,6 +151,12 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
           startDate: initialData.startDate || '',
           endDate: initialData.endDate || '',
           estimatedTime: initialData.estimatedTime,
+          environment: extractId(initialData.environment),
+          feature: extractId(initialData.feature),
+          department: extractId(initialData.department),
+          productType: extractId(initialData.productType),
+          serviceType: extractId(initialData.serviceType),
+          scope: extractId(initialData.scope),
         });
       }
     }
@@ -171,7 +218,12 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
       console.log('Submitting ticket with data:', createData);
     }
 
-    onSubmit(formData, attachments);
+    // Clean up empty optional fields before submitting
+    const cleanedData = Object.fromEntries(
+      Object.entries(formData).filter(([_, value]) => value !== '' && value !== undefined)
+    );
+
+    onSubmit(cleanedData as CreateTicketData | UpdateTicketData, attachments);
   };
 
   return (
@@ -321,8 +373,7 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-gray-700 border-b pb-2">Categorization</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* HIDDEN: Category is not currently in use */}
-          {/* <div>
+          <div>
             <label className="block text-sm font-medium mb-2">Category *</label>
             <select
               name="category"
@@ -341,7 +392,7 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
                 </option>
               ))}
             </select>
-          </div> */}
+          </div>
 
           <div>
             <label className="block text-sm font-medium mb-2">Priority *</label>
@@ -375,6 +426,110 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
               </select>
             </div>
           )}
+
+          {/* NEW OPTIONAL FIELDS */}
+          <div>
+            <label className="block text-sm font-medium mb-2">Environment</label>
+            <select
+              name="environment"
+              value={formData.environment || ''}
+              onChange={handleChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">-- Select Environment --</option>
+              {environments?.filter(env => env.isActive).map((env) => (
+                <option key={env._id} value={env._id}>
+                  {env.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">Feature</label>
+            <select
+              name="feature"
+              value={formData.feature || ''}
+              onChange={handleChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">-- Select Feature --</option>
+              {features?.filter(f => f.isActive).map((feature) => (
+                <option key={feature._id} value={feature._id}>
+                  {feature.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">Department</label>
+            <select
+              name="department"
+              value={formData.department || ''}
+              onChange={handleChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">-- Select Department --</option>
+              {departments?.filter(d => d.isActive).map((dept) => (
+                <option key={dept._id} value={dept._id}>
+                  {dept.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">Product Type</label>
+            <select
+              name="productType"
+              value={formData.productType || ''}
+              onChange={handleChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">-- Select Product Type --</option>
+              {productTypes?.filter(pt => pt.isActive).map((type) => (
+                <option key={type._id} value={type._id}>
+                  {type.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">Service Type</label>
+            <select
+              name="serviceType"
+              value={formData.serviceType || ''}
+              onChange={handleChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">-- Select Service Type --</option>
+              {serviceTypes?.filter(st => st.isActive).map((type) => (
+                <option key={type._id} value={type._id}>
+                  {type.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">Scope</label>
+            <select
+              name="scope"
+              value={formData.scope || ''}
+              onChange={handleChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">-- Select Scope --</option>
+              {scopes?.filter(s => s.isActive).map((scope) => (
+                <option key={scope._id} value={scope._id}>
+                  {scope.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          {/* END NEW FIELDS */}
         </div>
       </div>
 

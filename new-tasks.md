@@ -1,154 +1,287 @@
-# Department API Documentation
-
-## Base URL
-
-```
-/api/departments
-```
-
-## Table of Contents
-
-- [Overview](#overview)
-- [Data Model](#data-model)
-- [API Endpoints](#api-endpoints)
-  - [Create Department](#1-create-department)
-  - [Get All Departments](#2-get-all-departments)
-  - [Get Department by ID](#3-get-department-by-id)
-  - [Update Department](#4-update-department)
-  - [Delete Department](#5-delete-department)
-  - [Toggle Department Status](#6-toggle-department-status)
-- [Error Handling](#error-handling)
-- [Examples](#examples)
-
----
+# Ticket Module - New Properties Integration Guide for Front-End Team
 
 ## Overview
 
-The Department API provides endpoints for managing departments in the ticketing system. It supports full CRUD operations (Create, Read, Update, Delete) along with additional functionality for toggling department status and filtering/searching.
+The Ticket module has been enhanced with **6 new reference properties** that allow tickets to be categorized and organized more effectively. These properties link to existing modules in the system.
+
+## New Properties Added
+
+| Property    | Type     | Reference Model | Required | Description                                                                     |
+| ----------- | -------- | --------------- | -------- | ------------------------------------------------------------------------------- |
+| environment | ObjectId | Environment     | No       | The environment where the issue occurs (e.g., Production, Staging, Development) |
+| feature     | ObjectId | Feature         | No       | The specific feature or module related to the ticket                            |
+| department  | ObjectId | Department      | No       | The department responsible for handling the ticket                              |
+| productType | ObjectId | ProductType     | No       | The type of product associated with the ticket                                  |
+| serviceType | ObjectId | ServiceType     | No       | The type of service the ticket relates to                                       |
+| scope       | ObjectId | Scope           | No       | The scope or impact level of the ticket                                         |
+
+**Note:** All new properties are **optional** (not required) and accept MongoDB ObjectId references.
 
 ---
 
-## Data Model
+## Data Model Changes
 
-### Department Object
+### Updated Ticket Object Structure
 
-| Field     | Type              | Required       | Description                       |
-| --------- | ----------------- | -------------- | --------------------------------- |
-| \_id      | String (ObjectId) | Auto-generated | Unique identifier                 |
-| name      | String            | Yes            | Department name (unique, trimmed) |
-| isActive  | Boolean           | No             | Active status (default: true)     |
-| createdAt | Date              | Auto-generated | Creation timestamp                |
-| updatedAt | Date              | Auto-generated | Last update timestamp             |
+```typescript
+interface Ticket {
+  _id: string;
+  ticketNumber: string;
+  customer: ObjectId | Customer;
+  subject: string;
+  description: string;
+  category: ObjectId | Category;
+  priority: "low" | "medium" | "high" | "critical";
+  status:
+    | "new"
+    | "assigned"
+    | "in_progress"
+    | "resolved"
+    | "closed"
+    | "reopened";
+  sla?: ObjectId | SLA;
+  assignedTeam?: ObjectId | Team;
+  assignedBy?: ObjectId | Consultant;
 
-### Example Department Object
+  // NEW PROPERTIES ⬇️
+  environment?: ObjectId | Environment;
+  feature?: ObjectId | Feature;
+  department?: ObjectId | Department;
+  productType?: ObjectId | ProductType;
+  serviceType?: ObjectId | ServiceType;
+  scope?: ObjectId | Scope;
+  // END NEW PROPERTIES ⬆️
 
-```json
-{
-  "_id": "507f1f77bcf86cd799439011",
-  "name": "IT Support",
-  "isActive": true,
-  "createdAt": "2024-01-15T10:30:00.000Z",
-  "updatedAt": "2024-01-15T10:30:00.000Z"
+  acceptedBy?: ObjectId | Consultant;
+  acceptedAt?: Date;
+  firstResponseAt?: Date;
+  resolvedAt?: Date;
+  closedAt?: Date;
+  slaDueDate?: Date;
+  isSlaBreached: boolean;
+  customerRating?: number;
+  customerFeedback?: string;
+  parentTicket?: ObjectId | Ticket;
+  isSubTicket: boolean;
+  startDate?: Date;
+  endDate?: Date;
+  estimatedTime?: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+```
+
+### Referenced Object Structures
+
+All referenced modules share a similar structure:
+
+```typescript
+interface Environment {
+  _id: string;
+  name: string;
+  description?: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface Feature {
+  _id: string;
+  name: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface Department {
+  _id: string;
+  name: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface ProductType {
+  _id: string;
+  name: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface ServiceType {
+  _id: string;
+  name: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface Scope {
+  _id: string;
+  name: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
 }
 ```
 
 ---
 
-## API Endpoints
+## API Endpoints Reference
 
-### 1. Create Department
+### Base URL for Referenced Modules
 
-**Endpoint:** `POST /api/departments`
+All the referenced modules have their own CRUD endpoints:
 
-**Description:** Creates a new department
+- **Environments:** `/api/environments`
+- **Features:** `/api/features`
+- **Departments:** `/api/departments`
+- **Product Types:** `/api/product-types`
+- **Service Types:** `/api/service-types`
+- **Scopes:** `/api/scopes`
 
-**Request Body:**
+Each module supports standard operations:
+
+- `GET /api/{module}` - Get all items (with pagination and filtering)
+- `GET /api/{module}/:id` - Get single item by ID
+- `POST /api/{module}` - Create new item
+- `PATCH /api/{module}/:id` - Update item
+- `DELETE /api/{module}/:id` - Delete item
+
+---
+
+## Updated Ticket API Endpoints
+
+### 1. Create Ticket (POST /api/tickets)
+
+**New Request Body Properties:**
 
 ```json
 {
-  "name": "IT Support",
-  "isActive": true
+  "customer": "60d5ec49f1b2c72b8c8e4f1b",
+  "subject": "Login issue on production",
+  "description": "Users cannot login to the application",
+  "category": "60d5ec49f1b2c72b8c8e4f1c",
+  "priority": "high",
+
+  // NEW OPTIONAL PROPERTIES ⬇️
+  "environment": "60d5ec49f1b2c72b8c8e4f1d",
+  "feature": "60d5ec49f1b2c72b8c8e4f1e",
+  "department": "60d5ec49f1b2c72b8c8e4f1f",
+  "productType": "60d5ec49f1b2c72b8c8e4f20",
+  "serviceType": "60d5ec49f1b2c72b8c8e4f21",
+  "scope": "60d5ec49f1b2c72b8c8e4f22"
+  // END NEW PROPERTIES ⬆️
 }
 ```
-
-**Request Body Parameters:**
-
-| Parameter | Type    | Required | Description                       |
-| --------- | ------- | -------- | --------------------------------- |
-| name      | String  | Yes      | Department name (will be trimmed) |
-| isActive  | Boolean | No       | Active status (default: true)     |
 
 **Success Response (201):**
+
+When populated, the response includes the full referenced objects:
 
 ```json
 {
   "success": true,
-  "message": "Department created successfully",
+  "message": "Ticket created successfully",
   "data": {
-    "_id": "507f1f77bcf86cd799439011",
-    "name": "IT Support",
-    "isActive": true,
+    "_id": "60d5ec49f1b2c72b8c8e4f23",
+    "ticketNumber": "TKT-2024-00001",
+    "customer": {
+      "_id": "60d5ec49f1b2c72b8c8e4f1b",
+      "companyName": "Acme Corp",
+      "email": "contact@acme.com",
+      "contactPerson": "John Doe"
+    },
+    "subject": "Login issue on production",
+    "description": "Users cannot login to the application",
+    "category": {
+      "_id": "60d5ec49f1b2c72b8c8e4f1c",
+      "name": "Authentication",
+      "description": "Authentication related issues"
+    },
+    "priority": "high",
+    "status": "new",
+
+    // NEW POPULATED PROPERTIES ⬇️
+    "environment": {
+      "_id": "60d5ec49f1b2c72b8c8e4f1d",
+      "name": "Production",
+      "description": "Production environment"
+    },
+    "feature": {
+      "_id": "60d5ec49f1b2c72b8c8e4f1e",
+      "name": "User Login"
+    },
+    "department": {
+      "_id": "60d5ec49f1b2c72b8c8e4f1f",
+      "name": "IT Support"
+    },
+    "productType": {
+      "_id": "60d5ec49f1b2c72b8c8e4f20",
+      "name": "Web Application"
+    },
+    "serviceType": {
+      "_id": "60d5ec49f1b2c72b8c8e4f21",
+      "name": "Technical Support"
+    },
+    "scope": {
+      "_id": "60d5ec49f1b2c72b8c8e4f22",
+      "name": "Critical"
+    },
+    // END NEW PROPERTIES ⬆️
+
     "createdAt": "2024-01-15T10:30:00.000Z",
     "updatedAt": "2024-01-15T10:30:00.000Z"
   }
 }
 ```
 
-**Error Responses:**
+### 2. Update Ticket (PUT /api/tickets/:id)
 
-**400 - Missing Name:**
+**New Request Body Properties:**
 
-```json
-{
-  "success": false,
-  "message": "Department name is required"
-}
-```
-
-**400 - Duplicate Name:**
+You can update any of the new properties individually or together:
 
 ```json
 {
-  "success": false,
-  "message": "Department name already exists",
-  "field": "name"
+  "environment": "60d5ec49f1b2c72b8c8e4f1d",
+  "feature": "60d5ec49f1b2c72b8c8e4f1e",
+  "department": "60d5ec49f1b2c72b8c8e4f1f",
+  "productType": "60d5ec49f1b2c72b8c8e4f20",
+  "serviceType": "60d5ec49f1b2c72b8c8e4f21",
+  "scope": "60d5ec49f1b2c72b8c8e4f22"
 }
-```
-
-**400 - Validation Error:**
-
-```json
-{
-  "success": false,
-  "message": "Validation failed",
-  "errors": ["Error message 1", "Error message 2"]
-}
-```
-
----
-
-### 2. Get All Departments
-
-**Endpoint:** `GET /api/departments`
-
-**Description:** Retrieves all departments with optional filtering, searching, and pagination
-
-**Query Parameters:**
-
-| Parameter | Type   | Required | Default | Description                                   |
-| --------- | ------ | -------- | ------- | --------------------------------------------- |
-| page      | Number | No       | 1       | Page number for pagination                    |
-| limit     | Number | No       | 10      | Number of items per page                      |
-| isActive  | String | No       | -       | Filter by active status ("true" or "false")   |
-| search    | String | No       | -       | Search departments by name (case-insensitive) |
-
-**Example Request:**
-
-```
-GET /api/departments?page=1&limit=10&isActive=true&search=support
 ```
 
 **Success Response (200):**
+
+Returns the updated ticket with all populated fields (same structure as create response).
+
+### 3. Get All Tickets (GET /api/tickets)
+
+**New Query Parameters for Filtering:**
+
+You can now filter tickets by any of the new properties:
+
+```
+GET /api/tickets?environment={environmentId}
+GET /api/tickets?feature={featureId}
+GET /api/tickets?department={departmentId}
+GET /api/tickets?productType={productTypeId}
+GET /api/tickets?serviceType={serviceTypeId}
+GET /api/tickets?scope={scopeId}
+```
+
+**Combined Filtering Example:**
+
+```
+GET /api/tickets?environment=60d5ec49f1b2c72b8c8e4f1d&department=60d5ec49f1b2c72b8c8e4f1f&status=new
+```
+
+**Response:**
+
+All tickets in the response will have the new properties populated:
 
 ```json
 {
@@ -156,489 +289,561 @@ GET /api/departments?page=1&limit=10&isActive=true&search=support
   "count": 10,
   "total": 25,
   "page": 1,
-  "totalPages": 3,
+  "pages": 3,
   "data": [
     {
-      "_id": "507f1f77bcf86cd799439011",
-      "name": "IT Support",
-      "isActive": true,
-      "createdAt": "2024-01-15T10:30:00.000Z",
-      "updatedAt": "2024-01-15T10:30:00.000Z"
-    },
-    {
-      "_id": "507f1f77bcf86cd799439012",
-      "name": "Customer Support",
-      "isActive": true,
-      "createdAt": "2024-01-14T09:20:00.000Z",
-      "updatedAt": "2024-01-14T09:20:00.000Z"
+      "_id": "60d5ec49f1b2c72b8c8e4f23",
+      "ticketNumber": "TKT-2024-00001",
+      // ... other properties
+      "environment": {
+        "_id": "60d5ec49f1b2c72b8c8e4f1d",
+        "name": "Production",
+        "description": "Production environment"
+      },
+      "feature": {
+        "_id": "60d5ec49f1b2c72b8c8e4f1e",
+        "name": "User Login"
+      }
+      // ... other new properties
     }
   ]
 }
 ```
 
-**Response Fields:**
+### 4. Get Single Ticket (GET /api/tickets/:id)
 
-| Field      | Type    | Description                              |
-| ---------- | ------- | ---------------------------------------- |
-| success    | Boolean | Operation status                         |
-| count      | Number  | Number of items in current page          |
-| total      | Number  | Total number of items matching the query |
-| page       | Number  | Current page number                      |
-| totalPages | Number  | Total number of pages                    |
-| data       | Array   | Array of department objects              |
+**Response:**
 
-**Error Response (500):**
+Returns the ticket with all new properties fully populated (same as above).
+
+### 5. Create Sub-Ticket (POST /api/tickets/:id/sub-ticket)
+
+**New Behavior:**
+
+When creating a sub-ticket, the new properties **automatically inherit** from the parent ticket if not provided:
 
 ```json
 {
-  "success": false,
-  "message": "Error fetching departments",
-  "error": "Error details"
+  "subject": "Sub-task: Fix login validation",
+  "description": "Handle validation errors on login form",
+
+  // Optional: Override parent values
+  "feature": "60d5ec49f1b2c72b8c8e4f99",
+  "scope": "60d5ec49f1b2c72b8c8e4f88"
+
+  // If not provided, these will inherit from parent:
+  // - environment
+  // - department
+  // - productType
+  // - serviceType
 }
 ```
 
 ---
 
-### 3. Get Department by ID
+## Front-End Implementation Guide
 
-**Endpoint:** `GET /api/departments/:id`
+### Step 1: Fetch Reference Data for Dropdowns
 
-**Description:** Retrieves a single department by its ID
-
-**URL Parameters:**
-
-| Parameter | Type   | Required | Description         |
-| --------- | ------ | -------- | ------------------- |
-| id        | String | Yes      | Department ObjectId |
-
-**Example Request:**
-
-```
-GET /api/departments/507f1f77bcf86cd799439011
-```
-
-**Success Response (200):**
-
-```json
-{
-  "success": true,
-  "data": {
-    "_id": "507f1f77bcf86cd799439011",
-    "name": "IT Support",
-    "isActive": true,
-    "createdAt": "2024-01-15T10:30:00.000Z",
-    "updatedAt": "2024-01-15T10:30:00.000Z"
-  }
-}
-```
-
-**Error Responses:**
-
-**404 - Not Found:**
-
-```json
-{
-  "success": false,
-  "message": "Department not found"
-}
-```
-
-**500 - Server Error:**
-
-```json
-{
-  "success": false,
-  "message": "Error fetching department",
-  "error": "Error details"
-}
-```
-
----
-
-### 4. Update Department
-
-**Endpoint:** `PATCH /api/departments/:id`
-
-**Description:** Updates a department by its ID
-
-**URL Parameters:**
-
-| Parameter | Type   | Required | Description         |
-| --------- | ------ | -------- | ------------------- |
-| id        | String | Yes      | Department ObjectId |
-
-**Request Body:**
-
-```json
-{
-  "name": "Updated IT Support",
-  "isActive": false
-}
-```
-
-**Allowed Update Fields:**
-
-- `name` (String)
-- `isActive` (Boolean)
-
-**Note:** Only the fields you want to update need to be included in the request body.
-
-**Success Response (200):**
-
-```json
-{
-  "success": true,
-  "message": "Department updated successfully",
-  "data": {
-    "_id": "507f1f77bcf86cd799439011",
-    "name": "Updated IT Support",
-    "isActive": false,
-    "createdAt": "2024-01-15T10:30:00.000Z",
-    "updatedAt": "2024-01-15T14:45:00.000Z"
-  }
-}
-```
-
-**Error Responses:**
-
-**400 - Invalid Fields:**
-
-```json
-{
-  "success": false,
-  "message": "Invalid updates!",
-  "allowedFields": ["name", "isActive"]
-}
-```
-
-**400 - Duplicate Name:**
-
-```json
-{
-  "success": false,
-  "message": "Department name already exists",
-  "field": "name"
-}
-```
-
-**404 - Not Found:**
-
-```json
-{
-  "success": false,
-  "message": "Department not found"
-}
-```
-
-**500 - Server Error:**
-
-```json
-{
-  "success": false,
-  "message": "Error updating department",
-  "error": "Error details"
-}
-```
-
----
-
-### 5. Delete Department
-
-**Endpoint:** `DELETE /api/departments/:id`
-
-**Description:** Deletes a department by its ID
-
-**URL Parameters:**
-
-| Parameter | Type   | Required | Description         |
-| --------- | ------ | -------- | ------------------- |
-| id        | String | Yes      | Department ObjectId |
-
-**Example Request:**
-
-```
-DELETE /api/departments/507f1f77bcf86cd799439011
-```
-
-**Success Response (200):**
-
-```json
-{
-  "success": true,
-  "message": "Department deleted successfully",
-  "data": {
-    "_id": "507f1f77bcf86cd799439011",
-    "name": "IT Support",
-    "isActive": true,
-    "createdAt": "2024-01-15T10:30:00.000Z",
-    "updatedAt": "2024-01-15T10:30:00.000Z"
-  }
-}
-```
-
-**Error Responses:**
-
-**404 - Not Found:**
-
-```json
-{
-  "success": false,
-  "message": "Department not found"
-}
-```
-
-**500 - Server Error:**
-
-```json
-{
-  "success": false,
-  "message": "Error deleting department",
-  "error": "Error details"
-}
-```
-
----
-
-### 6. Toggle Department Status
-
-**Endpoint:** `PATCH /api/departments/:id/toggle-status`
-
-**Description:** Toggles the active status of a department (active ↔ inactive)
-
-**URL Parameters:**
-
-| Parameter | Type   | Required | Description         |
-| --------- | ------ | -------- | ------------------- |
-| id        | String | Yes      | Department ObjectId |
-
-**Request Body:** None required
-
-**Example Request:**
-
-```
-PATCH /api/departments/507f1f77bcf86cd799439011/toggle-status
-```
-
-**Success Response (200):**
-
-```json
-{
-  "success": true,
-  "message": "Department activated successfully",
-  "data": {
-    "_id": "507f1f77bcf86cd799439011",
-    "name": "IT Support",
-    "isActive": true,
-    "createdAt": "2024-01-15T10:30:00.000Z",
-    "updatedAt": "2024-01-15T14:50:00.000Z"
-  }
-}
-```
-
-**Note:** The message will be either "Department activated successfully" or "Department deactivated successfully" depending on the new status.
-
-**Error Responses:**
-
-**404 - Not Found:**
-
-```json
-{
-  "success": false,
-  "message": "Department not found"
-}
-```
-
-**500 - Server Error:**
-
-```json
-{
-  "success": false,
-  "message": "Error toggling department status",
-  "error": "Error details"
-}
-```
-
----
-
-## Error Handling
-
-All endpoints follow a consistent error response format:
-
-```json
-{
-  "success": false,
-  "message": "Error message",
-  "error": "Detailed error information (optional)",
-  "field": "Field name (for duplicate errors)"
-}
-```
-
-### Common HTTP Status Codes
-
-| Status Code | Description                                                        |
-| ----------- | ------------------------------------------------------------------ |
-| 200         | Success (GET, PATCH, DELETE)                                       |
-| 201         | Created (POST)                                                     |
-| 400         | Bad Request (validation errors, duplicate entries, invalid fields) |
-| 404         | Not Found (resource doesn't exist)                                 |
-| 500         | Internal Server Error                                              |
-
----
-
-## Examples
-
-### Example 1: Creating and Listing Departments
-
-**Step 1: Create a new department**
-
-```javascript
-// POST /api/departments
-const response = await fetch("/api/departments", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({
-    name: "IT Support",
-    isActive: true,
-  }),
-});
-
-const result = await response.json();
-console.log(result);
-// {
-//   "success": true,
-//   "message": "Department created successfully",
-//   "data": { ... }
-// }
-```
-
-**Step 2: Get all departments with pagination**
-
-```javascript
-// GET /api/departments?page=1&limit=10
-const response = await fetch("/api/departments?page=1&limit=10");
-const result = await response.json();
-console.log(result);
-// {
-//   "success": true,
-//   "count": 10,
-//   "total": 25,
-//   "page": 1,
-//   "totalPages": 3,
-//   "data": [ ... ]
-// }
-```
-
-### Example 2: Search and Filter
-
-**Search by name**
-
-```javascript
-// GET /api/departments?search=support
-const response = await fetch("/api/departments?search=support");
-const result = await response.json();
-```
-
-**Filter by active status**
-
-```javascript
-// GET /api/departments?isActive=true
-const response = await fetch("/api/departments?isActive=true");
-const result = await response.json();
-```
-
-**Combine search, filter, and pagination**
-
-```javascript
-// GET /api/departments?search=IT&isActive=true&page=1&limit=5
-const response = await fetch(
-  "/api/departments?search=IT&isActive=true&page=1&limit=5"
-);
-const result = await response.json();
-```
-
-### Example 3: Update Department
-
-**Update department name**
-
-```javascript
-// PATCH /api/departments/507f1f77bcf86cd799439011
-const response = await fetch("/api/departments/507f1f77bcf86cd799439011", {
-  method: "PATCH",
-  headers: {
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({
-    name: "Updated IT Support",
-  }),
-});
-
-const result = await response.json();
-console.log(result);
-```
-
-**Update active status**
-
-```javascript
-// PATCH /api/departments/507f1f77bcf86cd799439011
-const response = await fetch("/api/departments/507f1f77bcf86cd799439011", {
-  method: "PATCH",
-  headers: {
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({
-    isActive: false,
-  }),
-});
-```
-
-### Example 4: Toggle Status
-
-**Toggle department status**
-
-```javascript
-// PATCH /api/departments/507f1f77bcf86cd799439011/toggle-status
-const response = await fetch(
-  "/api/departments/507f1f77bcf86cd799439011/toggle-status",
-  {
-    method: "PATCH",
-  }
-);
-
-const result = await response.json();
-console.log(result);
-// {
-//   "success": true,
-//   "message": "Department deactivated successfully",
-//   "data": { ... }
-// }
-```
-
-### Example 5: Delete Department
-
-**Delete a department**
-
-```javascript
-// DELETE /api/departments/507f1f77bcf86cd799439011
-const response = await fetch("/api/departments/507f1f77bcf86cd799439011", {
-  method: "DELETE",
-});
-
-const result = await response.json();
-console.log(result);
-// {
-//   "success": true,
-//   "message": "Department deleted successfully",
-//   "data": { ... }
-// }
-```
-
-### Example 6: React/TypeScript Integration
-
-**TypeScript Interface**
+Before creating or editing tickets, you need to fetch the data for all dropdown/select fields:
 
 ```typescript
+// Fetch all reference data for ticket form
+const fetchTicketReferenceData = async () => {
+  try {
+    const [
+      environmentsRes,
+      featuresRes,
+      departmentsRes,
+      productTypesRes,
+      serviceTypesRes,
+      scopesRes,
+    ] = await Promise.all([
+      fetch("/api/environments?isActive=true"),
+      fetch("/api/features?isActive=true"),
+      fetch("/api/departments?isActive=true"),
+      fetch("/api/product-types?isActive=true"),
+      fetch("/api/service-types?isActive=true"),
+      fetch("/api/scopes?isActive=true"),
+    ]);
+
+    const environments = await environmentsRes.json();
+    const features = await featuresRes.json();
+    const departments = await departmentsRes.json();
+    const productTypes = await productTypesRes.json();
+    const serviceTypes = await serviceTypesRes.json();
+    const scopes = await scopesRes.json();
+
+    return {
+      environments: environments.data || [],
+      features: features.data || [],
+      departments: departments.data || [],
+      productTypes: productTypes.data || [],
+      serviceTypes: serviceTypes.data || [],
+      scopes: scopes.data || [],
+    };
+  } catch (error) {
+    console.error("Error fetching reference data:", error);
+    throw error;
+  }
+};
+```
+
+### Step 2: Create Ticket Form Component
+
+**React Example with TypeScript:**
+
+```typescript
+import React, { useState, useEffect } from "react";
+
+interface TicketFormData {
+  customer: string;
+  subject: string;
+  description: string;
+  category: string;
+  priority: string;
+  environment?: string;
+  feature?: string;
+  department?: string;
+  productType?: string;
+  serviceType?: string;
+  scope?: string;
+}
+
+const CreateTicketForm: React.FC = () => {
+  const [formData, setFormData] = useState<TicketFormData>({
+    customer: "",
+    subject: "",
+    description: "",
+    category: "",
+    priority: "medium",
+    environment: "",
+    feature: "",
+    department: "",
+    productType: "",
+    serviceType: "",
+    scope: "",
+  });
+
+  const [referenceData, setReferenceData] = useState({
+    environments: [],
+    features: [],
+    departments: [],
+    productTypes: [],
+    serviceTypes: [],
+    scopes: [],
+  });
+
+  useEffect(() => {
+    // Load reference data on component mount
+    fetchTicketReferenceData().then((data) => {
+      setReferenceData(data);
+    });
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Remove empty optional fields
+    const cleanedData = Object.fromEntries(
+      Object.entries(formData).filter(([_, value]) => value !== "")
+    );
+
+    try {
+      const response = await fetch("/api/tickets", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(cleanedData),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        console.log("Ticket created:", result.data);
+        // Handle success (redirect, show message, etc.)
+      } else {
+        console.error("Error creating ticket:", result.message);
+      }
+    } catch (error) {
+      console.error("Network error:", error);
+    }
+  };
+
+  const handleChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >
+  ) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      {/* Existing required fields */}
+      <div>
+        <label>Subject *</label>
+        <input
+          type="text"
+          name="subject"
+          value={formData.subject}
+          onChange={handleChange}
+          required
+        />
+      </div>
+
+      <div>
+        <label>Description *</label>
+        <textarea
+          name="description"
+          value={formData.description}
+          onChange={handleChange}
+          required
+        />
+      </div>
+
+      <div>
+        <label>Priority *</label>
+        <select
+          name="priority"
+          value={formData.priority}
+          onChange={handleChange}
+          required
+        >
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+          <option value="critical">Critical</option>
+        </select>
+      </div>
+
+      {/* NEW OPTIONAL FIELDS ⬇️ */}
+
+      <div>
+        <label>Environment</label>
+        <select
+          name="environment"
+          value={formData.environment}
+          onChange={handleChange}
+        >
+          <option value="">-- Select Environment --</option>
+          {referenceData.environments.map((env: any) => (
+            <option key={env._id} value={env._id}>
+              {env.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <label>Feature</label>
+        <select name="feature" value={formData.feature} onChange={handleChange}>
+          <option value="">-- Select Feature --</option>
+          {referenceData.features.map((feature: any) => (
+            <option key={feature._id} value={feature._id}>
+              {feature.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <label>Department</label>
+        <select
+          name="department"
+          value={formData.department}
+          onChange={handleChange}
+        >
+          <option value="">-- Select Department --</option>
+          {referenceData.departments.map((dept: any) => (
+            <option key={dept._id} value={dept._id}>
+              {dept.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <label>Product Type</label>
+        <select
+          name="productType"
+          value={formData.productType}
+          onChange={handleChange}
+        >
+          <option value="">-- Select Product Type --</option>
+          {referenceData.productTypes.map((type: any) => (
+            <option key={type._id} value={type._id}>
+              {type.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <label>Service Type</label>
+        <select
+          name="serviceType"
+          value={formData.serviceType}
+          onChange={handleChange}
+        >
+          <option value="">-- Select Service Type --</option>
+          {referenceData.serviceTypes.map((type: any) => (
+            <option key={type._id} value={type._id}>
+              {type.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <label>Scope</label>
+        <select name="scope" value={formData.scope} onChange={handleChange}>
+          <option value="">-- Select Scope --</option>
+          {referenceData.scopes.map((scope: any) => (
+            <option key={scope._id} value={scope._id}>
+              {scope.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* END NEW FIELDS ⬆️ */}
+
+      <button type="submit">Create Ticket</button>
+    </form>
+  );
+};
+
+export default CreateTicketForm;
+```
+
+### Step 3: Display Ticket Details
+
+When displaying a ticket, show the new properties:
+
+```typescript
+interface TicketDetailsProps {
+  ticket: Ticket;
+}
+
+const TicketDetails: React.FC<TicketDetailsProps> = ({ ticket }) => {
+  return (
+    <div className="ticket-details">
+      <h2>{ticket.subject}</h2>
+      <p>
+        <strong>Ticket Number:</strong> {ticket.ticketNumber}
+      </p>
+      <p>
+        <strong>Description:</strong> {ticket.description}
+      </p>
+      <p>
+        <strong>Status:</strong> {ticket.status}
+      </p>
+      <p>
+        <strong>Priority:</strong> {ticket.priority}
+      </p>
+
+      {/* NEW FIELDS DISPLAY ⬇️ */}
+      {ticket.environment && (
+        <p>
+          <strong>Environment:</strong> {ticket.environment.name}
+        </p>
+      )}
+
+      {ticket.feature && (
+        <p>
+          <strong>Feature:</strong> {ticket.feature.name}
+        </p>
+      )}
+
+      {ticket.department && (
+        <p>
+          <strong>Department:</strong> {ticket.department.name}
+        </p>
+      )}
+
+      {ticket.productType && (
+        <p>
+          <strong>Product Type:</strong> {ticket.productType.name}
+        </p>
+      )}
+
+      {ticket.serviceType && (
+        <p>
+          <strong>Service Type:</strong> {ticket.serviceType.name}
+        </p>
+      )}
+
+      {ticket.scope && (
+        <p>
+          <strong>Scope:</strong> {ticket.scope.name}
+        </p>
+      )}
+      {/* END NEW FIELDS ⬆️ */}
+
+      <p>
+        <strong>Created:</strong> {new Date(ticket.createdAt).toLocaleString()}
+      </p>
+    </div>
+  );
+};
+```
+
+### Step 4: Filter Tickets
+
+Add filter controls for the new properties:
+
+```typescript
+const TicketList: React.FC = () => {
+  const [filters, setFilters] = useState({
+    status: "",
+    priority: "",
+    environment: "",
+    feature: "",
+    department: "",
+    productType: "",
+    serviceType: "",
+    scope: "",
+  });
+
+  const [tickets, setTickets] = useState([]);
+
+  const fetchTickets = async () => {
+    // Build query string from filters
+    const queryParams = new URLSearchParams();
+
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value) {
+        queryParams.append(key, value);
+      }
+    });
+
+    const queryString = queryParams.toString();
+    const url = `/api/tickets${queryString ? "?" + queryString : ""}`;
+
+    try {
+      const response = await fetch(url);
+      const result = await response.json();
+
+      if (result.success) {
+        setTickets(result.data);
+      }
+    } catch (error) {
+      console.error("Error fetching tickets:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchTickets();
+  }, [filters]);
+
+  return (
+    <div>
+      <div className="filters">
+        <select
+          value={filters.environment}
+          onChange={(e) =>
+            setFilters({ ...filters, environment: e.target.value })
+          }
+        >
+          <option value="">All Environments</option>
+          {/* Load environments dynamically */}
+        </select>
+
+        <select
+          value={filters.department}
+          onChange={(e) =>
+            setFilters({ ...filters, department: e.target.value })
+          }
+        >
+          <option value="">All Departments</option>
+          {/* Load departments dynamically */}
+        </select>
+
+        {/* Add more filter dropdowns as needed */}
+      </div>
+
+      <div className="ticket-list">
+        {tickets.map((ticket: any) => (
+          <TicketCard key={ticket._id} ticket={ticket} />
+        ))}
+      </div>
+    </div>
+  );
+};
+```
+
+### Step 5: Update Ticket
+
+```typescript
+const updateTicket = async (
+  ticketId: string,
+  updates: Partial<TicketFormData>
+) => {
+  try {
+    const response = await fetch(`/api/tickets/${ticketId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(updates),
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      console.log("Ticket updated:", result.data);
+      return result.data;
+    } else {
+      console.error("Error updating ticket:", result.message);
+      throw new Error(result.message);
+    }
+  } catch (error) {
+    console.error("Network error:", error);
+    throw error;
+  }
+};
+
+// Example usage: Update only the environment
+await updateTicket("60d5ec49f1b2c72b8c8e4f23", {
+  environment: "60d5ec49f1b2c72b8c8e4f1d",
+});
+
+// Example usage: Update multiple properties
+await updateTicket("60d5ec49f1b2c72b8c8e4f23", {
+  environment: "60d5ec49f1b2c72b8c8e4f1d",
+  department: "60d5ec49f1b2c72b8c8e4f1f",
+  scope: "60d5ec49f1b2c72b8c8e4f22",
+});
+```
+
+---
+
+## Complete TypeScript Interfaces
+
+```typescript
+// Base interfaces for reference data
+interface Environment {
+  _id: string;
+  name: string;
+  description?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface Feature {
+  _id: string;
+  name: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 interface Department {
   _id: string;
   name: string;
@@ -647,170 +852,316 @@ interface Department {
   updatedAt: string;
 }
 
-interface DepartmentResponse {
+interface ProductType {
+  _id: string;
+  name: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface ServiceType {
+  _id: string;
+  name: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface Scope {
+  _id: string;
+  name: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Updated Ticket interface
+interface Ticket {
+  _id: string;
+  ticketNumber: string;
+  customer:
+    | string
+    | {
+        _id: string;
+        companyName: string;
+        email: string;
+        contactPerson: string;
+      };
+  subject: string;
+  description: string;
+  category:
+    | string
+    | {
+        _id: string;
+        name: string;
+        description?: string;
+      };
+  priority: "low" | "medium" | "high" | "critical";
+  status:
+    | "new"
+    | "assigned"
+    | "in_progress"
+    | "resolved"
+    | "closed"
+    | "reopened";
+
+  // New properties
+  environment?: string | Environment;
+  feature?: string | Feature;
+  department?: string | Department;
+  productType?: string | ProductType;
+  serviceType?: string | ServiceType;
+  scope?: string | Scope;
+
+  // Other existing properties
+  sla?: string | object;
+  assignedTeam?: string | object;
+  assignedBy?: string | object;
+  acceptedBy?: string | object;
+  acceptedAt?: string;
+  firstResponseAt?: string;
+  resolvedAt?: string;
+  closedAt?: string;
+  slaDueDate?: string;
+  isSlaBreached: boolean;
+  customerRating?: number;
+  customerFeedback?: string;
+  parentTicket?: string | object;
+  isSubTicket: boolean;
+  startDate?: string;
+  endDate?: string;
+  estimatedTime?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// API Response types
+interface TicketResponse {
   success: boolean;
   message?: string;
-  data?: Department;
-  count?: number;
-  total?: number;
-  page?: number;
-  totalPages?: number;
-  error?: string;
+  data?: Ticket;
 }
-```
 
-**React Hook Example**
+interface TicketsListResponse {
+  success: boolean;
+  count: number;
+  total: number;
+  page: number;
+  pages: number;
+  data: Ticket[];
+}
 
-```typescript
-import { useState, useEffect } from "react";
-
-const useDepartments = (page = 1, limit = 10) => {
-  const [departments, setDepartments] = useState<Department[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [pagination, setPagination] = useState({
-    total: 0,
-    page: 1,
-    totalPages: 0,
-  });
-
-  useEffect(() => {
-    const fetchDepartments = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch(
-          `/api/departments?page=${page}&limit=${limit}`
-        );
-        const result: DepartmentResponse = await response.json();
-
-        if (result.success && result.data) {
-          setDepartments(result.data);
-          setPagination({
-            total: result.total || 0,
-            page: result.page || 1,
-            totalPages: result.totalPages || 0,
-          });
-        } else {
-          setError(result.message || "Failed to fetch departments");
-        }
-      } catch (err) {
-        setError("Network error");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchDepartments();
-  }, [page, limit]);
-
-  return { departments, loading, error, pagination };
-};
-```
-
-**Create Department Function**
-
-```typescript
-const createDepartment = async (name: string, isActive: boolean = true) => {
-  try {
-    const response = await fetch("/api/departments", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ name, isActive }),
-    });
-
-    const result: DepartmentResponse = await response.json();
-
-    if (!result.success) {
-      throw new Error(result.message || "Failed to create department");
-    }
-
-    return result.data;
-  } catch (error) {
-    console.error("Error creating department:", error);
-    throw error;
-  }
-};
-```
-
-**Update Department Function**
-
-```typescript
-const updateDepartment = async (
-  id: string,
-  updates: Partial<Pick<Department, "name" | "isActive">>
-) => {
-  try {
-    const response = await fetch(`/api/departments/${id}`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(updates),
-    });
-
-    const result: DepartmentResponse = await response.json();
-
-    if (!result.success) {
-      throw new Error(result.message || "Failed to update department");
-    }
-
-    return result.data;
-  } catch (error) {
-    console.error("Error updating department:", error);
-    throw error;
-  }
-};
-```
-
-**Delete Department Function**
-
-```typescript
-const deleteDepartment = async (id: string) => {
-  try {
-    const response = await fetch(`/api/departments/${id}`, {
-      method: "DELETE",
-    });
-
-    const result: DepartmentResponse = await response.json();
-
-    if (!result.success) {
-      throw new Error(result.message || "Failed to delete department");
-    }
-
-    return result.data;
-  } catch (error) {
-    console.error("Error deleting department:", error);
-    throw error;
-  }
-};
+interface ReferenceDataResponse {
+  success: boolean;
+  count: number;
+  total: number;
+  page: number;
+  totalPages: number;
+  data:
+    | Environment[]
+    | Feature[]
+    | Department[]
+    | ProductType[]
+    | ServiceType[]
+    | Scope[];
+}
 ```
 
 ---
 
-## Notes for Front-End Team
+## Best Practices
 
-1. **Base URL**: All endpoints are prefixed with `/api/departments`
+### 1. Handle Missing References Gracefully
 
-2. **Content-Type**: Always use `Content-Type: application/json` for POST and PATCH requests
+Not all tickets will have all properties filled. Always check for existence:
 
-3. **Response Format**: All responses follow a consistent format with a `success` boolean flag
+```typescript
+// Good
+{
+  ticket.environment && <p>Environment: {ticket.environment.name}</p>;
+}
 
-4. **Pagination**: The GET all endpoint returns pagination metadata (`count`, `total`, `page`, `totalPages`)
+// Bad
+<p>Environment: {ticket.environment.name}</p>; // This will crash if environment is null/undefined
+```
 
-5. **Filtering**: Use query parameters for filtering and searching:
+### 2. Cache Reference Data
 
-   - `isActive` for status filtering
-   - `search` for name searching (case-insensitive)
-   - `page` and `limit` for pagination
+Since reference data doesn't change frequently, cache it to avoid repeated API calls:
 
-6. **Error Handling**: Check the `success` field in responses to determine if the operation succeeded
+```typescript
+// Using React Context
+const ReferenceDataContext = React.createContext(null);
 
-7. **Unique Constraint**: Department names must be unique (case-sensitive after trimming)
+export const ReferenceDataProvider: React.FC = ({ children }) => {
+  const [referenceData, setReferenceData] = useState(null);
 
-8. **Validation**: The `name` field is required and cannot be empty
+  useEffect(() => {
+    fetchTicketReferenceData().then((data) => {
+      setReferenceData(data);
+    });
+  }, []);
 
-9. **Status Toggle**: Use the `/toggle-status` endpoint for a convenient way to activate/deactivate departments
+  return (
+    <ReferenceDataContext.Provider value={referenceData}>
+      {children}
+    </ReferenceDataContext.Provider>
+  );
+};
 
-10. **Update Flexibility**: You can update only the fields you need - partial updates are supported
+// Use in components
+const { environments, features, departments } =
+  useContext(ReferenceDataContext);
+```
+
+### 3. Filter Only Active Items
+
+When populating dropdowns, only show active items:
+
+```typescript
+const activeEnvironments = environments.filter((env) => env.isActive);
+```
+
+### 4. Provide Clear Labels
+
+Use descriptive labels in your UI:
+
+```
+Environment → "Environment (e.g., Production, Staging)"
+Feature → "Related Feature or Module"
+Department → "Responsible Department"
+Product Type → "Product Type"
+Service Type → "Service Type"
+Scope → "Issue Scope or Impact Level"
+```
+
+### 5. Support Bulk Operations
+
+When updating multiple tickets, allow setting these properties in bulk:
+
+```typescript
+const bulkUpdateTickets = async (
+  ticketIds: string[],
+  updates: Partial<TicketFormData>
+) => {
+  const promises = ticketIds.map((id) => updateTicket(id, updates));
+  return await Promise.all(promises);
+};
+
+// Example: Assign all selected tickets to IT Department
+await bulkUpdateTickets(["id1", "id2", "id3"], {
+  department: "60d5ec49f1b2c72b8c8e4f1f",
+});
+```
+
+---
+
+## Common Use Cases
+
+### Use Case 1: Filter by Environment and Department
+
+```typescript
+// Get all high priority tickets in Production for IT Department
+const url =
+  "/api/tickets?priority=high&environment=60d5ec49f1b2c72b8c8e4f1d&department=60d5ec49f1b2c72b8c8e4f1f";
+```
+
+### Use Case 2: Create Categorized Ticket
+
+```typescript
+const newTicket = {
+  customer: customerId,
+  subject: "Payment gateway down",
+  description: "Users cannot complete payments",
+  category: categoryId,
+  priority: "critical",
+  environment: productionEnvId,
+  feature: paymentFeatureId,
+  department: techSupportDeptId,
+  serviceType: technicalServiceId,
+  scope: criticalScopeId,
+};
+```
+
+### Use Case 3: Dashboard Statistics
+
+```typescript
+// Group tickets by environment
+const ticketsByEnvironment = tickets.reduce((acc, ticket) => {
+  const envName = ticket.environment?.name || "Unspecified";
+  acc[envName] = (acc[envName] || 0) + 1;
+  return acc;
+}, {});
+
+// Group tickets by department
+const ticketsByDepartment = tickets.reduce((acc, ticket) => {
+  const deptName = ticket.department?.name || "Unassigned";
+  acc[deptName] = (acc[deptName] || 0) + 1;
+  return acc;
+}, {});
+```
+
+---
+
+## Migration Notes
+
+### For Existing Tickets
+
+- All existing tickets will have these new properties set to `null` or `undefined`
+- The API will handle this gracefully and return appropriate responses
+- You should provide a way for users to update existing tickets with these new properties
+
+### Backward Compatibility
+
+- All new properties are **optional**
+- Existing code that doesn't use these properties will continue to work
+- The API will accept tickets with or without these properties
+
+---
+
+## Testing Checklist
+
+- [ ] Create ticket without any new properties (should work)
+- [ ] Create ticket with all new properties filled
+- [ ] Create ticket with some new properties filled
+- [ ] Update ticket to add new properties
+- [ ] Update ticket to remove new properties (set to null/empty)
+- [ ] Filter tickets by each new property
+- [ ] Filter tickets by multiple new properties combined
+- [ ] Display ticket details with populated properties
+- [ ] Display ticket details with null properties (should not crash)
+- [ ] Create sub-ticket (should inherit parent properties)
+- [ ] Verify dropdown options only show active items
+
+---
+
+## Support
+
+For questions or issues related to these new properties, contact the backend team or refer to:
+
+- Department API Documentation: `DOC/DEPARTMENT_API_DOCUMENTATION.md`
+- Other module API documentation files (when available)
+
+---
+
+## Summary
+
+The 6 new optional properties provide better organization and categorization of tickets:
+
+1. **environment** - Where the issue occurs
+2. **feature** - What feature is affected
+3. **department** - Who handles it
+4. **productType** - What product
+5. **serviceType** - What type of service
+6. **scope** - Impact level
+
+All properties are:
+
+- ✅ Optional (not required)
+- ✅ Fully populated in responses
+- ✅ Filterable in queries
+- ✅ Updateable
+- ✅ Inherited by sub-tickets
+
+**Remember:** Always check if a property exists before accessing its nested properties to avoid runtime errors!

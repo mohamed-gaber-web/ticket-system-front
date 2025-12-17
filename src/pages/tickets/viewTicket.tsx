@@ -25,6 +25,12 @@ import {
   Building2,
   ChevronDown,
   ChevronUp,
+  Server,
+  Sparkles,
+  Package,
+  Target,
+  Wrench,
+  Layers,
 } from 'lucide-react';
 
 export default function ViewTicket() {
@@ -111,6 +117,14 @@ export default function ViewTicket() {
       ? currentTicket.parentTicket
       : null;
 
+  // Extract new reference properties
+  const environment = currentTicket.environment && typeof currentTicket.environment !== 'string' ? currentTicket.environment : null;
+  const feature = currentTicket.feature && typeof currentTicket.feature !== 'string' ? currentTicket.feature : null;
+  const department = currentTicket.department && typeof currentTicket.department !== 'string' ? currentTicket.department : null;
+  const productType = currentTicket.productType && typeof currentTicket.productType !== 'string' ? currentTicket.productType : null;
+  const serviceType = currentTicket.serviceType && typeof currentTicket.serviceType !== 'string' ? currentTicket.serviceType : null;
+  const scope = currentTicket.scope && typeof currentTicket.scope !== 'string' ? currentTicket.scope : null;
+
   const priorityConfig = getPriorityConfig(currentTicket.priority);
   const statusConfig = getStatusConfig(currentTicket.status);
   const StatusIcon = statusConfig.icon;
@@ -161,12 +175,6 @@ export default function ViewTicket() {
                   <Building2 className="h-3.5 w-3.5 text-gray-600" />
                   <span className="font-medium text-gray-700">
                     {customer ? customer.companyName : 'N/A'}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 rounded-full text-xs">
-                  <Tag className="h-3.5 w-3.5 text-gray-600" />
-                  <span className="font-medium text-gray-700">
-                    {category ? category.name : 'N/A'}
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 rounded-full text-xs">
@@ -342,6 +350,111 @@ export default function ViewTicket() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Categorization Info - NEW */}
+            {(category || environment || feature || department || productType || serviceType || scope) && (
+              <Card className="shadow-lg border-0 overflow-hidden p-0">
+                <CardHeader className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-3 m-0">
+                  <CardTitle className="text-base font-semibold flex items-center gap-2 m-0">
+                    <Layers className="h-4 w-4" />
+                    Categorization
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-3 space-y-3">
+                  <div className="space-y-2.5">
+                    {category && (
+                      <div className="flex items-start gap-2.5">
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                          <Tag className="h-4 w-4 text-blue-600" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 font-medium">Category</p>
+                          <p className="text-xs font-semibold text-gray-900">{category.name}</p>
+                          {category.description && (
+                            <p className="text-xs text-gray-600 mt-0.5">{category.description}</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {environment && (
+                      <div className="flex items-start gap-2.5">
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-cyan-100 flex items-center justify-center">
+                          <Server className="h-4 w-4 text-cyan-600" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 font-medium">Environment</p>
+                          <p className="text-xs font-semibold text-gray-900">{environment.name}</p>
+                          {environment.description && (
+                            <p className="text-xs text-gray-600 mt-0.5">{environment.description}</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {feature && (
+                      <div className="flex items-start gap-2.5">
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center">
+                          <Sparkles className="h-4 w-4 text-pink-600" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 font-medium">Feature</p>
+                          <p className="text-xs font-semibold text-gray-900">{feature.name}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {department && (
+                      <div className="flex items-start gap-2.5">
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center">
+                          <Building2 className="h-4 w-4 text-orange-600" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 font-medium">Department</p>
+                          <p className="text-xs font-semibold text-gray-900">{department.name}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {productType && (
+                      <div className="flex items-start gap-2.5">
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center">
+                          <Package className="h-4 w-4 text-violet-600" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 font-medium">Product Type</p>
+                          <p className="text-xs font-semibold text-gray-900">{productType.name}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {serviceType && (
+                      <div className="flex items-start gap-2.5">
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center">
+                          <Wrench className="h-4 w-4 text-teal-600" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 font-medium">Service Type</p>
+                          <p className="text-xs font-semibold text-gray-900">{serviceType.name}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {scope && (
+                      <div className="flex items-start gap-2.5">
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-rose-100 flex items-center justify-center">
+                          <Target className="h-4 w-4 text-rose-600" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 font-medium">Scope</p>
+                          <p className="text-xs font-semibold text-gray-900">{scope.name}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Attachments Card */}
             <Card className="shadow-lg border-0 overflow-hidden p-0">

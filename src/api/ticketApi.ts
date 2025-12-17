@@ -117,3 +117,14 @@ export const acceptTicket = async (ticketId: string): Promise<TicketResponse> =>
   console.log('Accept ticket API response:', response.data);
   return response.data;
 };
+
+// Close ticket
+export const closeTicket = async (ticketId: string): Promise<TicketResponse> => {
+  const response = await api.patch<TicketResponse>(`/tickets/${ticketId}`, { status: 'closed' }, {
+    headers: {
+      'Cache-Control': 'no-cache',
+    },
+  });
+  console.log('Close ticket API response:', response.data);
+  return response.data;
+};

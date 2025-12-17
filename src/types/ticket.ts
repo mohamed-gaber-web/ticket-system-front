@@ -1,3 +1,11 @@
+// Import reference types for new properties
+import type { Environment } from './environment.types';
+import type { Feature } from './feature.types';
+import type { Department } from './department.types';
+import type { ProductType } from './productType.types';
+import type { ServiceType } from './serviceType.types';
+import type { Scope } from './scope.types';
+
 export interface Customer {
   _id: string;
   companyName: string;
@@ -78,6 +86,16 @@ export interface Ticket {
   sla?: string | SLA;
   assignedTeam?: string | Team;
   assignedBy?: string | Consultant;
+
+  // NEW PROPERTIES - Reference fields for better categorization
+  environment?: string | Environment;
+  feature?: string | Feature;
+  department?: string | Department;
+  productType?: string | ProductType;
+  serviceType?: string | ServiceType;
+  scope?: string | Scope;
+  // END NEW PROPERTIES
+
   acceptedBy?: string | Consultant; // Consultant who accepted the ticket
   acceptedAt?: string; // When the ticket was accepted
   firstResponseAt?: string;
@@ -113,6 +131,13 @@ export interface CreateTicketData {
   startDate?: string;
   endDate?: string;
   estimatedTime?: number;
+  // New optional properties
+  environment?: string;
+  feature?: string;
+  department?: string;
+  productType?: string;
+  serviceType?: string;
+  scope?: string;
 }
 
 export interface CreateSubTicketData {
@@ -160,6 +185,13 @@ export interface UpdateTicketData {
   startDate?: string;
   endDate?: string;
   estimatedTime?: number;
+  // New optional properties
+  environment?: string;
+  feature?: string;
+  department?: string;
+  productType?: string;
+  serviceType?: string;
+  scope?: string;
 }
 
 export interface TicketQueryParams {
@@ -170,6 +202,13 @@ export interface TicketQueryParams {
   page?: number;
   limit?: number;
   search?: string;
+  // New filter parameters
+  environment?: string;
+  feature?: string;
+  department?: string;
+  productType?: string;
+  serviceType?: string;
+  scope?: string;
 }
 
 export interface TicketResponse {

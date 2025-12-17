@@ -187,6 +187,21 @@ export const acceptTicket = createAsyncThunk(
   }
 );
 
+export const closeTicket = createAsyncThunk(
+  'tickets/closeTicket',
+  async (ticketId: string, { rejectWithValue }) => {
+    try {
+      const response = await ticketApi.closeTicket(ticketId);
+      toast.success('Ticket closed successfully!');
+      return response.data;
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Failed to close ticket';
+      toast.error(message);
+      return rejectWithValue(message);
+    }
+  }
+);
+
 // Slice
 const ticketSlice = createSlice({
   name: 'tickets',
@@ -377,6 +392,29 @@ const ticketSlice = createSlice({
         }
       })
       .addCase(acceptTicket.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      });
+
+    // Close ticket
+    builder
+      .addCase(closeTicket.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(closeTicket.fulfilled, (state, action) => {
+        state.loading = false;
+        // Update the ticket in the tickets array
+        const index = state.tickets.findIndex(t => t._id === action.payload._id);
+        if (index !== -1) {
+          state.tickets[index] = action.payload;
+        }
+        // Update current ticket if it's the same ticket
+        if (state.currentTicket && state.currentTicket._id === action.payload._id) {
+          state.currentTicket = action.payload;
+        }
+      })
+      .addCase(closeTicket.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       });

@@ -17,24 +17,32 @@ import {
   Wrench,
   Database,
   Hash,
-  Building2
+  Building2,
+  Layers
 } from "lucide-react";
 
 export const ROUTERLINKS = [
   { name: "Dashboard", path: "/", icon: LayoutDashboard },
   { name: "Customers", path: "/customers", icon: Users },
   { name: "Tickets", path: "/tickets", icon: Ticket },
-  // HIDDEN: Categories is not currently in use
-  // { name: "Categories", path: "/categories", icon: FolderKanban },
   { name: "Consultants", path: "/consultants", icon: UserCog },
-  { name: "Environments", path: "/environments", icon: Server },
-  { name: "Features", path: "/features", icon: Sparkles },
-  { name: "Product Types", path: "/product-types", icon: Package },
-  { name: "Scopes", path: "/scopes", icon: Target },
-  { name: "Service Types", path: "/service-types", icon: Wrench },
-  { name: "ERP Types", path: "/erp-types", icon: Database },
-  { name: "Version Numbers", path: "/version-numbers", icon: Hash },
-  { name: "Departments", path: "/departments", icon: Building2 },
+  // Modules Group
+  {
+    name: "Modules",
+    icon: Layers,
+    isGroup: true,
+    children: [
+      { name: "Categories", path: "/categories", icon: FolderKanban },
+      { name: "Environments", path: "/environments", icon: Server },
+      { name: "Features", path: "/features", icon: Sparkles },
+      { name: "Departments", path: "/departments", icon: Building2 },
+      { name: "Product Types", path: "/product-types", icon: Package },
+      { name: "Service Types", path: "/service-types", icon: Wrench },
+      { name: "Scopes", path: "/scopes", icon: Target },
+      { name: "ERP Types", path: "/erp-types", icon: Database },
+      { name: "Version Numbers", path: "/version-numbers", icon: Hash },
+    ]
+  },
   // HIDDEN: Teams and Team Members are not currently in use
   // { name: "Teams", path: "/teams", icon: UsersRound },
   // { name: "Team Members", path: "/team-members", icon: UserCheck },
@@ -52,18 +60,25 @@ const CUSTOMER_LINKS = [
 const CONSULTANT_LINKS = [
   { name: "Dashboard", path: "/", icon: LayoutDashboard },
   { name: "Customers", path: "/customers", icon: Users },
-  // HIDDEN: Categories is not currently in use
-  // { name: "Categories", path: "/categories", icon: FolderKanban },
-  { name: "Consultants", path: "/consultants", icon: UserCog },
-  { name: "Environments", path: "/environments", icon: Server },
-  { name: "Features", path: "/features", icon: Sparkles },
-  { name: "Product Types", path: "/product-types", icon: Package },
-  { name: "Scopes", path: "/scopes", icon: Target },
-  { name: "Service Types", path: "/service-types", icon: Wrench },
-  { name: "ERP Types", path: "/erp-types", icon: Database },
-  { name: "Version Numbers", path: "/version-numbers", icon: Hash },
-  { name: "Departments", path: "/departments", icon: Building2 },
   { name: "Tickets", path: "/tickets", icon: Ticket },
+  { name: "Consultants", path: "/consultants", icon: UserCog },
+  // Modules Group
+  {
+    name: "Modules",
+    icon: Layers,
+    isGroup: true,
+    children: [
+      { name: "Categories", path: "/categories", icon: FolderKanban },
+      { name: "Environments", path: "/environments", icon: Server },
+      { name: "Features", path: "/features", icon: Sparkles },
+      { name: "Departments", path: "/departments", icon: Building2 },
+      { name: "Product Types", path: "/product-types", icon: Package },
+      { name: "Service Types", path: "/service-types", icon: Wrench },
+      { name: "Scopes", path: "/scopes", icon: Target },
+      { name: "ERP Types", path: "/erp-types", icon: Database },
+      { name: "Version Numbers", path: "/version-numbers", icon: Hash },
+    ]
+  },
   // HIDDEN: Teams and Team Members are not currently in use
   // { name: "Teams", path: "/teams", icon: UsersRound },
   // { name: "Team Members", path: "/team-members", icon: UserCheck },

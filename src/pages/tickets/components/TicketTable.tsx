@@ -8,12 +8,12 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Edit, Trash2, Ticket as TicketIcon, Eye, CheckCircle, GitBranch, Layers } from 'lucide-react';
+import { Edit, Trash2, Ticket as TicketIcon, Eye, CheckCircle, GitBranch, Layers, XCircle } from 'lucide-react';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
 import type { Ticket, Customer, Category, Consultant } from '@/types/ticket';
 import { useAppSelector, useAppDispatch } from '@/redux/hooks/hooks';
-import { acceptTicket } from '@/redux/slices/ticketSlice';
+import { acceptTicket, closeTicket } from '@/redux/slices/ticketSlice';
 
 const MySwal = withReactContent(Swal);
 
@@ -78,6 +78,32 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
     }).then((result) => {
       if (result.isConfirmed) {
         dispatch(acceptTicket(ticket._id));
+      }
+    });
+  };
+
+  const handleClose = async (ticket: Ticket) => {
+    MySwal.fire({
+      title: 'Close this ticket?',
+      html: `
+        <div class="text-left">
+          <p class="mb-2">You are about to close:</p>
+          <p class="font-semibold text-lg">${ticket.ticketNumber}</p>
+          <p class="text-sm text-gray-600">${ticket.subject}</p>
+          <p class="mt-3 text-orange-600">This will mark the ticket as closed.</p>
+        </div>
+      `,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#F59E0B',
+      cancelButtonColor: '#6B7280',
+      confirmButtonText: 'Yes, close it!',
+      cancelButtonText: 'Cancel',
+      reverseButtons: true,
+      focusCancel: true,
+    }).then((result) => {
+      if (result.isConfirmed) {
+        dispatch(closeTicket(ticket._id));
       }
     });
   };
@@ -225,7 +251,9 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
               <TableHead className="font-semibold min-w-[100px]">Priority</TableHead>
               <TableHead className="font-semibold min-w-[120px]">Status</TableHead>
               <TableHead className="font-semibold min-w-[150px]">Accepted At</TableHead>
-              <TableHead className="text-right font-semibold min-w-[200px]">Actions</TableHead>
+              <TableHead className="font-semibold min-w-[150px]">Last Updated</TableHead>
+              <TableHead className="font-semibold min-w-[150px]">Closed At</TableHead>
+              <TableHead className="text-right font-semibold min-w-[280px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
         <TableBody>
@@ -296,6 +324,48 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                   )}
                 </TableCell>
                 <TableCell>
+                  {ticket.updatedAt ? (
+                    <div className="text-sm">
+                      <div className="text-gray-900 font-medium">
+                        {new Date(ticket.updatedAt).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                        })}
+                      </div>
+                      <div className="text-gray-500 text-xs">
+                        {new Date(ticket.updatedAt).toLocaleTimeString('en-US', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </div>
+                    </div>
+                  ) : (
+                    <span className="text-gray-400 text-sm">No updates</span>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {ticket.closedAt ? (
+                    <div className="text-sm">
+                      <div className="text-gray-900 font-medium">
+                        {new Date(ticket.closedAt).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                        })}
+                      </div>
+                      <div className="text-gray-500 text-xs">
+                        {new Date(ticket.closedAt).toLocaleTimeString('en-US', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </div>
+                    </div>
+                  ) : (
+                    <span className="text-gray-400 text-sm">Not closed</span>
+                  )}
+                </TableCell>
+                <TableCell>
                   <div className="flex items-center justify-end gap-2">
                     {/* Accept button - only for consultants on new main tickets that haven't been accepted */}
                     {isConsultant && !isSubTicket && ticket.status === 'new' && !ticket.acceptedBy && (
@@ -322,28 +392,42 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                       size="sm"
                       variant="outline"
                       onClick={() => navigate(`/tickets/view/${ticket._id}`)}
-                      className="text-blue-600 hover:text-blue-700 hover:border-blue-300 whitespace-nowrap"
+                      className="text-blue-600 hover:text-blue-700 hover:border-blue-300"
+                      title="View"
                     >
-                      <Eye className="w-4 h-4 mr-1" />
-                      View
+                      <Eye className="w-4 h-4" />
                     </Button>
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={() => navigate(`/tickets/edit/${ticket._id}`)}
-                      className="whitespace-nowrap"
+                      title="Edit"
                     >
-                      <Edit className="w-4 h-4 mr-1" />
-                      Edit
+                      <Edit className="w-4 h-4" />
                     </Button>
+
+                    {/* Close button - only show if ticket is not already closed */}
+                    {ticket.status !== 'closed' && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleClose(ticket)}
+                        disabled={ticketLoading}
+                        className="text-orange-600 hover:text-orange-700 hover:border-orange-300"
+                        title="Close"
+                      >
+                        <XCircle className="w-4 h-4" />
+                      </Button>
+                    )}
+
                     <Button
                       size="sm"
                       variant="outline"
-                      className="text-red-600 hover:text-red-700 hover:border-red-300 whitespace-nowrap"
+                      className="text-red-600 hover:text-red-700 hover:border-red-300"
                       onClick={() => handleDelete(ticket)}
+                      title="Delete"
                     >
-                      <Trash2 className="w-4 h-4 mr-1" />
-                      Delete
+                      <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
                 </TableCell>
