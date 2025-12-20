@@ -3,11 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Building2, User, Mail, Phone, MapPin, Lock, Database, Plus } from 'lucide-react';
+import { Loader2, Building2, User, Mail, Phone, MapPin, Lock, Database, Plus, Users } from 'lucide-react';
 import type { CreateCustomerData, Customer, UpdateCustomerData } from '@/types/customer.types';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchErpTypes, createErpType } from '@/redux/slices/erpTypeSlice';
 import { fetchVersionNumbers, createVersionNumber } from '@/redux/slices/versionNumberSlice';
+import { fetchConsultants } from '@/redux/slices/consultantSlice';
 import {
   Dialog,
   DialogContent,
@@ -30,6 +31,7 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
 
   const { erpTypes } = useAppSelector((state) => state.erpTypes);
   const { versionNumbers } = useAppSelector((state) => state.versionNumbers);
+  const { consultants } = useAppSelector((state) => state.consultants);
 
   const [formData, setFormData] = useState({
     companyName: '',
@@ -43,6 +45,7 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
     status: 'active' as 'active' | 'inactive' | 'suspended',
     erpType: '',
     versionNumber: '',
+    consultants: [] as string[],
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -56,10 +59,15 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
   useEffect(() => {
     dispatch(fetchErpTypes({ isActive: true }));
     dispatch(fetchVersionNumbers({ isActive: true }));
+    dispatch(fetchConsultants({ status: 'active' }));
   }, [dispatch]);
 
   useEffect(() => {
     if (customer && isEditMode) {
+      const consultantIds = Array.isArray(customer.consultants)
+        ? customer.consultants.map((c: any) => typeof c === 'string' ? c : c._id)
+        : [];
+
       setFormData({
         companyName: customer.companyName || '',
         contactPerson: customer.contactPerson || '',
@@ -70,8 +78,9 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
         city: customer.city || '',
         country: customer.country || '',
         status: customer.status || 'active',
-        erpType: customer.erpType || '',
-        versionNumber: customer.versionNumber || '',
+        erpType: (typeof customer.erpType === 'string' ? customer.erpType : customer.erpType?._id) || '',
+        versionNumber: (typeof customer.versionNumber === 'string' ? customer.versionNumber : customer.versionNumber?._id) || '',
+        consultants: consultantIds,
       });
     }
   }, [customer, isEditMode]);
@@ -183,6 +192,7 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
       if (formData.country) submitData.country = formData.country;
       if (formData.erpType) submitData.erpType = formData.erpType;
       if (formData.versionNumber) submitData.versionNumber = formData.versionNumber;
+      if (formData.consultants.length > 0) submitData.consultants = formData.consultants;
 
       await onSubmit(submitData);
     } else {
@@ -199,13 +209,7 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
       if (formData.country) submitData.country = formData.country;
       if (formData.erpType) submitData.erpType = formData.erpType;
       if (formData.versionNumber) submitData.versionNumber = formData.versionNumber;
-
-      console.log('=== SUBMIT DATA DEBUG ===');
-      console.log('Form password:', formData.password);
-      console.log('Submit data:', JSON.stringify(submitData, null, 2));
-      console.log('Password in submitData:', submitData.password);
-      console.log('Password length:', submitData.password?.length);
-      console.log('========================');
+      if (formData.consultants.length > 0) submitData.consultants = formData.consultants;
 
       await onSubmit(submitData);
     }
@@ -419,6 +423,52 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
                   </Button>
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Consultant Assignment Section */}
+          <div className="space-y-6">
+            <div className="flex items-center gap-3 pb-3 border-b-2 border-orange-600">
+              <div className="p-2 bg-orange-100 rounded-lg">
+                <Users className="w-5 h-5 text-orange-600" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-800">Assign Consultants</h3>
+              <span className="text-sm text-gray-500 font-normal">(Optional)</span>
+            </div>
+
+            <div className="space-y-3">
+              <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                <Users className="w-4 h-4 text-orange-600" />
+                Select Consultants to work with this customer
+              </label>
+              <select
+                multiple
+                size={8}
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+                value={formData.consultants}
+                onChange={(e) => {
+                  const selected = Array.from(e.target.selectedOptions, option => option.value);
+                  setFormData(prev => ({ ...prev, consultants: selected }));
+                }}
+              >
+                {consultants
+                  .filter(c => c.status === 'active')
+                  .map((consultant) => (
+                    <option
+                      key={consultant._id}
+                      value={consultant._id}
+                      className="py-2 px-2 hover:bg-orange-100"
+                    >
+                      {consultant.fullName || `${consultant.firstName} ${consultant.lastName}`}
+                    </option>
+                  ))}
+              </select>
+              <p className="text-xs text-gray-500 italic">Hold Ctrl (or Cmd on Mac) and click to select multiple consultants</p>
+              {formData.consultants.length > 0 && (
+                <p className="text-sm text-orange-600 font-semibold">
+                  ✓ {formData.consultants.length} consultant{formData.consultants.length > 1 ? 's' : ''} selected
+                </p>
+              )}
             </div>
           </div>
 

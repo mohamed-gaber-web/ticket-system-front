@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchTickets, deleteTicket } from '@/redux/slices/ticketSlice';
+import { fetchConsultants } from '@/redux/slices/consultantSlice';
 import TicketTable from './components/TicketTable';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,6 +21,8 @@ export default function Tickets() {
 
   useEffect(() => {
     loadTickets();
+    // Load consultants to display their names
+    dispatch(fetchConsultants());
   }, []);
 
   const loadTickets = () => {

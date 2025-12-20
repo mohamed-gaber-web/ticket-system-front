@@ -132,7 +132,14 @@ export const routes: RouteObject[] = [
 
       // Customer Routes (accessible by customers)
       { path: "/customers", element: <Customers /> },
-      { path: "/customers/create", element: <CreateCustomer /> },
+      {
+        path: "/customers/create",
+        element: (
+          <ProtectedRoute allowedUserTypes={['consultant']}>
+            <CreateCustomer />
+          </ProtectedRoute>
+        )
+      },
       { path: "/customers/edit/:id", element: <EditCustomer /> },
       { path: "/customers/view/:id", element: <ViewCustomer /> },
 

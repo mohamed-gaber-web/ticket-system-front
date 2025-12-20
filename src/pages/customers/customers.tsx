@@ -13,6 +13,7 @@ import type { Customer, CreateCustomerData, UpdateCustomerData } from '@/types/c
 export default function Customers() {
   const dispatch = useAppDispatch();
   const { customers, loading, total } = useAppSelector((state) => state.customers);
+  const { userType } = useAppSelector((state) => state.auth);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -84,10 +85,12 @@ export default function Customers() {
           <h1 className="text-3xl font-bold text-gray-900">Customers</h1>
           <p className="text-gray-600 mt-1">Manage your customer accounts</p>
         </div>
-        <Button onClick={handleCreate} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Add Customer
-        </Button>
+        {userType === 'consultant' && (
+          <Button onClick={handleCreate} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Add Customer
+          </Button>
+        )}
       </div>
 
       {/* Filters */}

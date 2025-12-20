@@ -57,9 +57,19 @@ export const createCustomer = createAsyncThunk(
   'customers/createCustomer',
   async (data: CreateCustomerData, { rejectWithValue }) => {
     try {
+      // Backend automatically sends emails to assigned consultants
+      // No need to send emails from frontend
       const response = await customerApi.createCustomer(data);
+      const createdCustomer = response.data;
+
       toast.success('Customer created successfully!');
-      return response.data;
+
+      // Show notification about email sending (backend handles it)
+      if (data.consultants && data.consultants.length > 0) {
+        toast.success(`Notification emails will be sent to ${data.consultants.length} consultant${data.consultants.length > 1 ? 's' : ''}`);
+      }
+
+      return createdCustomer;
     } catch (error: any) {
       const message = error.response?.data?.message || 'Failed to create customer';
       toast.error(message);

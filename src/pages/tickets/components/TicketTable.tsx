@@ -8,12 +8,12 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Edit, Trash2, Ticket as TicketIcon, Eye, CheckCircle, GitBranch, Layers, XCircle } from 'lucide-react';
+import { Edit, Trash2, Ticket as TicketIcon, Eye, CheckCircle, GitBranch, Layers } from 'lucide-react';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
 import type { Ticket, Customer, Category, Consultant } from '@/types/ticket';
 import { useAppSelector, useAppDispatch } from '@/redux/hooks/hooks';
-import { acceptTicket, closeTicket } from '@/redux/slices/ticketSlice';
+import { acceptTicket } from '@/redux/slices/ticketSlice';
 
 const MySwal = withReactContent(Swal);
 
@@ -28,6 +28,7 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
   const dispatch = useAppDispatch();
   const { userType, user } = useAppSelector((state) => state.auth);
   const { loading: ticketLoading } = useAppSelector((state) => state.tickets);
+  const { consultants } = useAppSelector((state) => state.consultants);
   const isConsultant = userType === 'consultant';
 
   const handleDelete = (ticket: Ticket) => {
@@ -82,35 +83,18 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
     });
   };
 
-  const handleClose = async (ticket: Ticket) => {
-    MySwal.fire({
-      title: 'Close this ticket?',
-      html: `
-        <div class="text-left">
-          <p class="mb-2">You are about to close:</p>
-          <p class="font-semibold text-lg">${ticket.ticketNumber}</p>
-          <p class="text-sm text-gray-600">${ticket.subject}</p>
-          <p class="mt-3 text-orange-600">This will mark the ticket as closed.</p>
-        </div>
-      `,
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#F59E0B',
-      cancelButtonColor: '#6B7280',
-      confirmButtonText: 'Yes, close it!',
-      cancelButtonText: 'Cancel',
-      reverseButtons: true,
-      focusCancel: true,
-    }).then((result) => {
-      if (result.isConfirmed) {
-        dispatch(closeTicket(ticket._id));
-      }
-    });
-  };
-
   const getAcceptedByName = (acceptedBy: string | Consultant | undefined) => {
     if (!acceptedBy) return null;
-    if (typeof acceptedBy === 'string') return 'Consultant';
+
+    if (typeof acceptedBy === 'string') {
+      // Look up consultant from Redux state
+      const consultant = consultants.find(c => c._id === acceptedBy);
+      if (consultant) {
+        return `${consultant.firstName} ${consultant.lastName}`;
+      }
+      return 'Unknown Consultant';
+    }
+
     return `${acceptedBy.firstName} ${acceptedBy.lastName}`;
   };
 
@@ -384,7 +368,7 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                     {/* Show "Accepted" badge if ticket is accepted */}
                     {isConsultant && !isSubTicket && ticket.acceptedBy && (
                       <div className="px-3 py-1 rounded-full text-xs font-semibold border bg-green-50 text-green-700 border-green-200 whitespace-nowrap">
-                        {isAcceptedByCurrentUser(ticket) ? 'Accepted by You' : `Accepted by ${getAcceptedByName(ticket.acceptedBy)}`}
+                        {isAcceptedByCurrentUser(ticket) ? 'You' : getAcceptedByName(ticket.acceptedBy)}
                       </div>
                     )}
 
@@ -405,20 +389,6 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                     >
                       <Edit className="w-4 h-4" />
                     </Button>
-
-                    {/* Close button - only show if ticket is not already closed */}
-                    {ticket.status !== 'closed' && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleClose(ticket)}
-                        disabled={ticketLoading}
-                        className="text-orange-600 hover:text-orange-700 hover:border-orange-300"
-                        title="Close"
-                      >
-                        <XCircle className="w-4 h-4" />
-                      </Button>
-                    )}
 
                     <Button
                       size="sm"

@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, Building2, User, Mail, Phone, MapPin, Lock, Database, Plus } from 'lucide-react';
+import { Loader2, Building2, Mail, MapPin, Database, Plus, Users } from 'lucide-react';
 import type { CreateCustomerData, Customer, UpdateCustomerData } from '@/types/customer.types';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchErpTypes, createErpType } from '@/redux/slices/erpTypeSlice';
 import { fetchVersionNumbers, createVersionNumber } from '@/redux/slices/versionNumberSlice';
+import { fetchConsultants } from '@/redux/slices/consultantSlice';
 import {
   Dialog,
   DialogContent,
@@ -33,6 +34,7 @@ export default function CustomerFormDialog({
   const dispatch = useAppDispatch();
   const { erpTypes } = useAppSelector((state) => state.erpTypes);
   const { versionNumbers } = useAppSelector((state) => state.versionNumbers);
+  const { consultants } = useAppSelector((state) => state.consultants);
 
   const isEditMode = !!customer;
 
@@ -48,6 +50,7 @@ export default function CustomerFormDialog({
     status: 'active' as 'active' | 'inactive' | 'suspended',
     erpType: '',
     versionNumber: '',
+    consultants: [] as string[],
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -61,10 +64,15 @@ export default function CustomerFormDialog({
   useEffect(() => {
     dispatch(fetchErpTypes({ isActive: true }));
     dispatch(fetchVersionNumbers({ isActive: true }));
+    dispatch(fetchConsultants({ status: 'active' }));
   }, [dispatch]);
 
   useEffect(() => {
     if (customer && isEditMode) {
+      const consultantIds = Array.isArray(customer.consultants)
+        ? customer.consultants.map((c: any) => typeof c === 'string' ? c : c._id)
+        : [];
+
       setFormData({
         companyName: customer.companyName || '',
         contactPerson: customer.contactPerson || '',
@@ -77,6 +85,7 @@ export default function CustomerFormDialog({
         status: customer.status || 'active',
         erpType: typeof customer.erpType === 'string' ? customer.erpType : customer.erpType?._id || '',
         versionNumber: typeof customer.versionNumber === 'string' ? customer.versionNumber : customer.versionNumber?._id || '',
+        consultants: consultantIds,
       });
     } else {
       setFormData({
@@ -91,6 +100,7 @@ export default function CustomerFormDialog({
         status: 'active',
         erpType: '',
         versionNumber: '',
+        consultants: [],
       });
     }
     setErrors({});
@@ -203,6 +213,7 @@ export default function CustomerFormDialog({
       if (formData.country) submitData.country = formData.country;
       if (formData.erpType) submitData.erpType = formData.erpType;
       if (formData.versionNumber) submitData.versionNumber = formData.versionNumber;
+      if (formData.consultants.length > 0) submitData.consultants = formData.consultants;
 
       await onSubmit(submitData);
     } else {
@@ -219,6 +230,7 @@ export default function CustomerFormDialog({
       if (formData.country) submitData.country = formData.country;
       if (formData.erpType) submitData.erpType = formData.erpType;
       if (formData.versionNumber) submitData.versionNumber = formData.versionNumber;
+      if (formData.consultants.length > 0) submitData.consultants = formData.consultants;
 
       await onSubmit(submitData);
     }
@@ -405,6 +417,41 @@ export default function CustomerFormDialog({
                     </Button>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            {/* Consultant Assignment */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <Users className="w-5 h-5 text-orange-600" />
+                Assign Consultants
+              </h3>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Select Consultants</label>
+                <select
+                  multiple
+                  size={6}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  value={formData.consultants}
+                  onChange={(e) => {
+                    const selected = Array.from(e.target.selectedOptions, option => option.value);
+                    setFormData(prev => ({ ...prev, consultants: selected }));
+                  }}
+                >
+                  {consultants
+                    .filter(c => c.status === 'active')
+                    .map((consultant) => (
+                      <option key={consultant._id} value={consultant._id}>
+                        {consultant.fullName || `${consultant.firstName} ${consultant.lastName}`}
+                      </option>
+                    ))}
+                </select>
+                <p className="text-xs text-gray-500">Hold Ctrl (or Cmd) to select multiple consultants</p>
+                {formData.consultants.length > 0 && (
+                  <p className="text-sm text-orange-600 font-medium">
+                    {formData.consultants.length} consultant{formData.consultants.length > 1 ? 's' : ''} selected
+                  </p>
+                )}
               </div>
             </div>
 

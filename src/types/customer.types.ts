@@ -10,6 +10,14 @@ export interface VersionNumberRef {
   isActive: boolean;
 }
 
+export interface ConsultantRef {
+  _id: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  email: string;
+}
+
 export interface Customer {
   _id: string;
   companyName: string;
@@ -22,6 +30,7 @@ export interface Customer {
   status: 'active' | 'inactive' | 'suspended';
   erpType?: ERPTypeRef | string;
   versionNumber?: VersionNumberRef | string;
+  consultants?: ConsultantRef[] | string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -37,6 +46,7 @@ export interface CreateCustomerData {
   country?: string;
   erpType?: string;
   versionNumber?: string;
+  consultants?: string[];
 }
 
 export interface UpdateCustomerData {
@@ -50,6 +60,7 @@ export interface UpdateCustomerData {
   status?: 'active' | 'inactive' | 'suspended';
   erpType?: string;
   versionNumber?: string;
+  consultants?: string[];
 }
 
 export interface CustomerResponse {
