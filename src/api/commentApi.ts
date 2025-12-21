@@ -1,6 +1,5 @@
 import api from './axiosConfig';
 import type {
-  TicketComment,
   CommentsResponse,
   CommentResponse,
   CreateCommentPayload,

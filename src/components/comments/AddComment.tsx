@@ -16,8 +16,6 @@ interface AddCommentProps {
 }
 
 const AddComment: React.FC<AddCommentProps> = ({
-  ticketId,
-  userId,
   userType,
   onSubmit,
   loading = false,

@@ -8,10 +8,10 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Edit, Trash2, Ticket as TicketIcon, Eye, CheckCircle, GitBranch, Layers } from 'lucide-react';
+import { Edit, Trash2, Ticket as TicketIcon, Eye, CheckCircle, GitBranch } from 'lucide-react';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
-import type { Ticket, Customer, Category, Consultant } from '@/types/ticket';
+import type { Ticket, Consultant } from '@/types/ticket';
 import { useAppSelector, useAppDispatch } from '@/redux/hooks/hooks';
 import { acceptTicket } from '@/redux/slices/ticketSlice';
 
@@ -143,30 +143,6 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
         {displayStatus.charAt(0).toUpperCase() + displayStatus.slice(1)}
       </span>
     );
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
-
-  const getCustomerName = (customer: string | Customer) => {
-    if (typeof customer === 'string') return customer;
-    return customer.companyName;
-  };
-
-  const getCategoryName = (category: string | Category) => {
-    if (typeof category === 'string') return category;
-    return category.name;
-  };
-
-  const getParentTicketNumber = (parentTicket: string | Ticket | undefined) => {
-    if (!parentTicket) return null;
-    if (typeof parentTicket === 'string') return parentTicket;
-    return parentTicket.ticketNumber;
   };
 
   // Organize tickets: main tickets with their sub-tickets

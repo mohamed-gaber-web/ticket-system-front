@@ -40,7 +40,8 @@ export const notificationApi = {
       : Array.isArray(data.data?.docs)
       ? data.data.docs
       : [];
-    return { success: data?.success ?? true, data: payload, total: data?.total ?? data?.data?.total };
+    const total = Array.isArray(data.data) ? undefined : (data?.total ?? (typeof data.data === 'object' && data.data && 'total' in data.data ? data.data.total : undefined));
+    return { success: data?.success ?? true, data: payload, total };
   },
 
   async getUnreadCount(userId: string, userType: NotificationUserType) {

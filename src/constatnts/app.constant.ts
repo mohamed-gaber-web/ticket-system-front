@@ -30,7 +30,7 @@ export const ROUTERLINKS = [
   {
     name: "Modules",
     icon: Layers,
-    isGroup: true,
+    isGroup: true as const,
     children: [
       { name: "Categories", path: "/categories", icon: FolderKanban },
       { name: "Environments", path: "/environments", icon: Server },
@@ -66,7 +66,7 @@ const CONSULTANT_LINKS = [
   {
     name: "Modules",
     icon: Layers,
-    isGroup: true,
+    isGroup: true as const,
     children: [
       { name: "Categories", path: "/categories", icon: FolderKanban },
       { name: "Environments", path: "/environments", icon: Server },

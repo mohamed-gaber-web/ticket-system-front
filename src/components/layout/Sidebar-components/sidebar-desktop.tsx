@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Menu, ChevronLeft, Sparkles, ChevronDown, ChevronRight } from "lucide-react";
+import { Menu, ChevronLeft, Sparkles, ChevronDown } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";

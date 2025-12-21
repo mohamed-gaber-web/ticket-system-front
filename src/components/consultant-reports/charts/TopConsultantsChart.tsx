@@ -48,7 +48,7 @@ export default function TopConsultantsChart({ data, limit = 10 }: TopConsultants
             <YAxis type="category" dataKey="name" />
             <Tooltip />
             <Bar dataKey="assignments" fill="#3b82f6" radius={[0, 4, 4, 0]}>
-              {sortedData.map((entry, index) => (
+              {sortedData.map((_entry, index) => (
                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
               ))}
             </Bar>

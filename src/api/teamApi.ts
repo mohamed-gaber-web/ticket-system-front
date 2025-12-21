@@ -1,7 +1,6 @@
 import type {
   CreateTeamData,
   DeleteTeamResponse,
-  Team,
   TeamMembersListResponse,
   TeamQueryParams,
   TeamResponse,

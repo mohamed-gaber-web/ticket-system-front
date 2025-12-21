@@ -13,10 +13,10 @@ export default function ConsultantDashboard() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
 
-  const { stats: consultantStats, statsLoading: consultantLoading } = useAppSelector(
+  const { stats: consultantStats } = useAppSelector(
     (state) => state.consultants
   );
-  const { stats: assignmentStats, statsLoading: assignmentLoading } = useAppSelector(
+  const { stats: assignmentStats } = useAppSelector(
     (state) => state.assignments
   );
 
@@ -24,8 +24,6 @@ export default function ConsultantDashboard() {
     dispatch(fetchConsultantStats());
     dispatch(fetchAssignmentStats());
   }, [dispatch]);
-
-  const isLoading = consultantLoading || assignmentLoading;
 
   return (
     <div className="p-6 space-y-6">

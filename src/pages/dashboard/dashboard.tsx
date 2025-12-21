@@ -61,7 +61,7 @@ const StatCard = ({ title, value, icon: Icon, gradient, delay = 0 }: Omit<StatCa
 const Dashboard = () => {
   const dispatch = useAppDispatch();
   const { tickets, total: totalTickets, loading: ticketsLoading } = useAppSelector((state) => state.tickets);
-  const { customers, total: totalCustomers, loading: customersLoading } = useAppSelector((state) => state.customers);
+  const { total: totalCustomers, loading: customersLoading } = useAppSelector((state) => state.customers);
 
   useEffect(() => {
     dispatch(fetchTickets());
@@ -71,7 +71,7 @@ const Dashboard = () => {
   // Calculate ticket statistics from real data
   const ticketStats = useMemo(() => {
     const openTickets = tickets.filter(
-      (ticket) => ticket.status === "open" || ticket.status === "new" || ticket.status === "assigned"
+      (ticket) => ticket.status === "new" || ticket.status === "assigned"
     ).length;
 
     const closedTickets = tickets.filter(
@@ -79,7 +79,7 @@ const Dashboard = () => {
     ).length;
 
     const inProgressTickets = tickets.filter(
-      (ticket) => ticket.status === "in-progress"
+      (ticket) => ticket.status === "in_progress"
     ).length;
 
     const newTickets = tickets.filter(
@@ -327,9 +327,8 @@ const Dashboard = () => {
                           case "closed":
                           case "resolved":
                             return { icon: CheckCircle2, color: "text-green-600" };
-                          case "in-progress":
+                          case "in_progress":
                             return { icon: Activity, color: "text-blue-600" };
-                          case "open":
                           case "assigned":
                             return { icon: Ticket, color: "text-orange-600" };
                           default:
@@ -353,7 +352,7 @@ const Dashboard = () => {
                             <Icon className={`h-4 w-4 ${color}`} />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold truncate">{ticket.title}</p>
+                            <p className="text-sm font-semibold truncate">{ticket.subject}</p>
                             <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
                               <span className="font-mono">{ticket.ticketNumber}</span>
                               <span>•</span>

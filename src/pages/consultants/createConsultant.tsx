@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Save } from 'lucide-react';
-import type { CreateConsultantData, ConsultantRole, ConsultantStatus } from '@/types/consultant.types';
+import type { CreateConsultantData } from '@/types/consultant.types';
 
 export default function CreateConsultant() {
   const navigate = useNavigate();

@@ -251,7 +251,7 @@ export default function ViewTicket() {
               parentTicketId={currentTicket._id}
               parentTicketNumber={currentTicket.ticketNumber}
               isSubTicket={currentTicket.isSubTicket}
-              userType={userType}
+              userType={userType || undefined}
             />
 
             {/* Comments */}

@@ -3,17 +3,16 @@ import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { createCustomer } from '@/redux/slices/customerSlice';
 import CustomerForm from './components/CustomerForm';
 import { ArrowLeft } from 'lucide-react';
-import type { CreateCustomerData } from '@/types/customer.types';
+import type { CreateCustomerData, UpdateCustomerData } from '@/types/customer.types';
 import { Button } from '@/components/ui/button';
 
 export default function CreateCustomer() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { loading } = useAppSelector((state) => state.customers);
-  const { userType } = useAppSelector((state) => state.auth);
 
-  const handleSubmit = async (data: CreateCustomerData) => {
-    const result = await dispatch(createCustomer(data));
+  const handleSubmit = async (data: CreateCustomerData | UpdateCustomerData): Promise<void> => {
+    const result = await dispatch(createCustomer(data as CreateCustomerData));
     if (createCustomer.fulfilled.match(result)) {
       // Check if came from ticket creation (referrer check)
       const referrer = sessionStorage.getItem('customerCreateReferrer');

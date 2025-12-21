@@ -78,6 +78,7 @@ export function CreateSubTicketDialog({
         // First create the assignment
         const assignmentResult = await dispatch(createAssignment({
           ticket: subTicket._id,
+          assignedToTeam: '', // Empty team for now
           assignedByConsultant: user._id,
           assignmentNotes: `Sub-ticket created from ${parentTicketNumber}`,
         }));

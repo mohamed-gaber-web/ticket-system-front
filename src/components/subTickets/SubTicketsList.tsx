@@ -98,7 +98,6 @@ export function SubTicketsList({ parentTicketId, parentTicketNumber, isSubTicket
               parentTicketId={parentTicketId}
               parentTicketNumber={parentTicketNumber}
               onSuccess={handleRefresh}
-              userType={userType}
             />
             {showSubTickets ? (
               <ChevronUp className="h-5 w-5" />
