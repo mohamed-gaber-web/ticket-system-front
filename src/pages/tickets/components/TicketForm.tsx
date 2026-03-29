@@ -13,6 +13,7 @@ import { fetchDepartments } from '@/redux/slices/departmentSlice';
 import { fetchProductTypes } from '@/redux/slices/productTypeSlice';
 import { fetchServiceTypes } from '@/redux/slices/serviceTypeSlice';
 import { fetchScopes } from '@/redux/slices/scopeSlice';
+import { fetchSources } from '@/redux/slices/sourceSlice';
 import { UserPlus, Upload, X, File, Image as ImageIcon, Video } from 'lucide-react';
 import { validateFile, formatFileSize } from '@/api/attachmentApi';
 
@@ -40,6 +41,7 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
   const { productTypes } = useAppSelector((state) => state.productTypes);
   const { serviceTypes } = useAppSelector((state) => state.serviceTypes);
   const { scopes } = useAppSelector((state) => state.scopes);
+  const { sources } = useAppSelector((state) => state.sources);
   const { user, userType } = useAppSelector((state) => state.auth);
 
   // Get customer ID - if consultant, leave empty for selection; if customer, use their ID
@@ -63,6 +65,7 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
           productType: '',
           serviceType: '',
           scope: '',
+          source: '',
         }
       : {
           ticketNumber: generateTicketNumber(),
@@ -80,6 +83,7 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
           productType: '',
           serviceType: '',
           scope: '',
+          source: '',
         }
   );
 
@@ -100,6 +104,7 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
     dispatch(fetchProductTypes({ isActive: true }));
     dispatch(fetchServiceTypes({ isActive: true }));
     dispatch(fetchScopes({ isActive: true }));
+    dispatch(fetchSources({ isActive: true }));
   }, [dispatch, isConsultant]);
 
   // Update customer ID when user is loaded
@@ -140,6 +145,7 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
           productType: extractId(initialData.productType),
           serviceType: extractId(initialData.serviceType),
           scope: extractId(initialData.scope),
+          source: extractId(initialData.source),
         });
       } else {
         setFormData({
@@ -158,6 +164,7 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
           productType: extractId(initialData.productType),
           serviceType: extractId(initialData.serviceType),
           scope: extractId(initialData.scope),
+          source: extractId(initialData.source),
         });
       }
     }
@@ -487,6 +494,18 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
               options={[
                 { value: '', label: '-- Select Scope --' },
                 ...(scopes?.filter(s => s.isActive).map((scope) => ({ value: scope._id, label: scope.name })) || []),
+              ]}
+            />
+          </div>
+          <div>
+            <label className="form-label">Source</label>
+            <CustomSelect
+              value={formData.source || ''}
+              onChange={(val) => setFormData({ ...formData, source: val })}
+              placeholder="-- Select Source --"
+              options={[
+                { value: '', label: '-- Select Source --' },
+                ...(sources?.filter(s => s.isActive).map((source) => ({ value: source._id, label: source.name })) || []),
               ]}
             />
           </div>

@@ -90,6 +90,9 @@ import VersionNumbers from "@/pages/version-numbers/VersionNumbers";
 // Department Module
 import Departments from "@/pages/departments/Departments";
 
+// Source Module
+import Sources from "@/pages/sources/Sources";
+
 export const routes: RouteObject[] = [
   // Public Routes (Authentication)
   {
@@ -204,6 +207,9 @@ export const routes: RouteObject[] = [
 
       // Department Routes
       { path: "/departments", element: <Departments /> },
+
+      // Source Routes
+      { path: "/sources", element: <Sources /> },
     ],
   },
 ];

@@ -30,6 +30,7 @@ import {
   Layers,
   Edit,
   ChevronRight,
+  Globe,
 } from 'lucide-react';
 
 export default function ViewTicket() {
@@ -87,6 +88,7 @@ export default function ViewTicket() {
   const productType = currentTicket.productType && typeof currentTicket.productType !== 'string' ? currentTicket.productType : null;
   const serviceType = currentTicket.serviceType && typeof currentTicket.serviceType !== 'string' ? currentTicket.serviceType : null;
   const scope = currentTicket.scope && typeof currentTicket.scope !== 'string' ? currentTicket.scope : null;
+  const source = currentTicket.source && typeof currentTicket.source !== 'string' ? currentTicket.source : null;
 
   const displayStatus = currentTicket.status.replace('_', ' ');
 
@@ -264,7 +266,7 @@ export default function ViewTicket() {
             </div>
 
             {/* Properties */}
-            {(environment || feature || department || productType || serviceType || scope) && (
+            {(environment || feature || department || productType || serviceType || scope || source) && (
               <div className="bg-surface-container-lowest rounded-[1rem] p-6">
                 <h3 className="label-technical mb-5 flex items-center gap-2">
                   <Layers className="h-3.5 w-3.5" />
@@ -277,6 +279,7 @@ export default function ViewTicket() {
                   {productType && <PropertyRow icon={Package} label="Product" value={productType.name} />}
                   {serviceType && <PropertyRow icon={Wrench} label="Service" value={serviceType.name} />}
                   {scope && <PropertyRow icon={Target} label="Scope" value={scope.name} />}
+                  {source && <PropertyRow icon={Globe} label="Source" value={source.name} />}
                 </div>
               </div>
             )}

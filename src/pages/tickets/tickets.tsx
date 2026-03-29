@@ -7,6 +7,7 @@ import TicketTable from './components/TicketTable';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { CustomSelect } from '@/components/ui/custom-select';
+import { fetchSources } from '@/redux/slices/sourceSlice';
 import { Plus, SlidersHorizontal, Download, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -17,15 +18,18 @@ export default function Tickets() {
   const dispatch = useAppDispatch();
   const { tickets, loading, total, page, pages } = useAppSelector((state) => state.tickets);
   const { user, userType } = useAppSelector((state) => state.auth);
+  const { sources } = useAppSelector((state) => state.sources);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
+  const [sourceFilter, setSourceFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     loadTickets();
     dispatch(fetchConsultants());
+    dispatch(fetchSources({ isActive: true }));
   }, []);
 
   const loadTickets = useCallback((pageNum?: number) => {
@@ -36,18 +40,19 @@ export default function Tickets() {
     if (searchTerm) params.search = searchTerm;
     if (statusFilter) params.status = statusFilter;
     if (priorityFilter) params.priority = priorityFilter;
+    if (sourceFilter) params.source = sourceFilter;
 
     if (userType === 'customer' && user?._id) {
       params.customer = user._id;
     }
 
     dispatch(fetchTickets(params));
-  }, [searchTerm, statusFilter, priorityFilter, currentPage, userType, user]);
+  }, [searchTerm, statusFilter, priorityFilter, sourceFilter, currentPage, userType, user]);
 
   useEffect(() => {
     setCurrentPage(1);
     loadTickets(1);
-  }, [statusFilter, priorityFilter]);
+  }, [statusFilter, priorityFilter, sourceFilter]);
 
   const handleSearch = () => {
     setCurrentPage(1);
@@ -168,6 +173,18 @@ export default function Tickets() {
               { value: 'in_progress', label: 'In Progress' },
               { value: 'resolved', label: 'Resolved' },
               { value: 'closed', label: 'Closed' },
+            ]}
+          />
+
+          {/* Source Filter Dropdown */}
+          <CustomSelect
+            variant="filter"
+            value={sourceFilter}
+            onChange={setSourceFilter}
+            label="Source"
+            options={[
+              { value: '', label: 'All' },
+              ...(sources?.filter(s => s.isActive).map((source) => ({ value: source._id, label: source.name })) || []),
             ]}
           />
 

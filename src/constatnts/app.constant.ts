@@ -18,7 +18,8 @@ import {
   Database,
   Hash,
   Building2,
-  Layers
+  Layers,
+  Globe
 } from "lucide-react";
 
 export const ROUTERLINKS = [
@@ -41,6 +42,7 @@ export const ROUTERLINKS = [
       { name: "Scopes", path: "/scopes", icon: Target },
       { name: "ERP Types", path: "/erp-types", icon: Database },
       { name: "Version Numbers", path: "/version-numbers", icon: Hash },
+      { name: "Sources", path: "/sources", icon: Globe },
     ]
   },
   // HIDDEN: Teams and Team Members are not currently in use
@@ -77,6 +79,7 @@ const CONSULTANT_LINKS = [
       { name: "Scopes", path: "/scopes", icon: Target },
       { name: "ERP Types", path: "/erp-types", icon: Database },
       { name: "Version Numbers", path: "/version-numbers", icon: Hash },
+      { name: "Sources", path: "/sources", icon: Globe },
     ]
   },
   // HIDDEN: Teams and Team Members are not currently in use

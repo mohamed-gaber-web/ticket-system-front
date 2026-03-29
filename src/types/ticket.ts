@@ -5,6 +5,7 @@ import type { Department } from './department.types';
 import type { ProductType } from './productType.types';
 import type { ServiceType } from './serviceType.types';
 import type { Scope } from './scope.types';
+import type { Source } from './source.types';
 
 export interface Customer {
   _id: string;
@@ -94,6 +95,7 @@ export interface Ticket {
   productType?: string | ProductType;
   serviceType?: string | ServiceType;
   scope?: string | Scope;
+  source?: string | Source;
   // END NEW PROPERTIES
 
   acceptedBy?: string | Consultant; // Consultant who accepted the ticket
@@ -138,6 +140,7 @@ export interface CreateTicketData {
   productType?: string;
   serviceType?: string;
   scope?: string;
+  source?: string;
 }
 
 export interface CreateSubTicketData {
@@ -192,6 +195,7 @@ export interface UpdateTicketData {
   productType?: string;
   serviceType?: string;
   scope?: string;
+  source?: string;
 }
 
 export interface TicketQueryParams {
@@ -209,6 +213,7 @@ export interface TicketQueryParams {
   productType?: string;
   serviceType?: string;
   scope?: string;
+  source?: string;
 }
 
 export interface TicketResponse {
