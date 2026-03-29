@@ -31,22 +31,22 @@ export default function EditCategory() {
 
   if (loading) {
     return (
-      <div className="p-6">
-        <p className="text-gray-500">Loading category...</p>
+      <div className="p-8">
+        <p className="text-on-surface-variant">Loading category...</p>
       </div>
     );
   }
 
   if (!currentCategory) {
     return (
-      <div className="p-6">
-        <p className="text-red-500">Category not found</p>
+      <div className="p-8">
+        <p className="text-error">Category not found</p>
       </div>
     );
   }
 
   return (
-    <div className="p-6">
+    <div className="p-8">
       <h1 className="text-md font-bold mb-6">Edit Category</h1>
       <CategoryForm initialData={currentCategory} onSubmit={handleSubmit} isEdit={true} />
     </div>

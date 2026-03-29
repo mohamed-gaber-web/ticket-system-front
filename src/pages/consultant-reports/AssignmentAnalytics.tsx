@@ -21,7 +21,7 @@ export default function AssignmentAnalytics() {
     return (
       <div className="p-6">
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600" />
         </div>
       </div>
     );
@@ -103,7 +103,7 @@ export default function AssignmentAnalytics() {
                         <div className="flex items-center gap-2">
                           <div className="w-full max-w-xs bg-gray-200 rounded-full h-2">
                             <div
-                              className="bg-blue-600 h-2 rounded-full transition-all"
+                              className="bg-brand-600 h-2 rounded-full transition-all"
                               style={{ width: `${acceptanceRate}%` }}
                             />
                           </div>
@@ -182,14 +182,14 @@ export default function AssignmentAnalytics() {
         <Card>
           <CardContent className="p-6">
             <p className="text-sm font-medium text-gray-600 uppercase">Total Assignments</p>
-            <h3 className="text-3xl font-bold text-blue-600 mt-2">{stats.total}</h3>
+            <h3 className="text-3xl font-bold text-brand-600 mt-2">{stats.total}</h3>
             <p className="text-sm text-gray-500 mt-1">All time</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-6">
             <p className="text-sm font-medium text-gray-600 uppercase">Current Active</p>
-            <h3 className="text-3xl font-bold text-purple-600 mt-2">{stats.current}</h3>
+            <h3 className="text-3xl font-bold text-accent-orange-600 mt-2">{stats.current}</h3>
             <p className="text-sm text-gray-500 mt-1">
               {((stats.current / stats.total) * 100).toFixed(1)}% of total
             </p>

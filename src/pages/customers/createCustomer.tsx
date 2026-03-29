@@ -26,7 +26,7 @@ export default function CreateCustomer() {
   };
 
   return (
-    <div className="p-6 w-full space-y-6">
+    <div className="p-8 w-full space-y-8">
       {/* Back Button */}
       <Button
         variant="ghost"

@@ -121,7 +121,7 @@ export function NotificationDropdown({ isOpen, excludeTypes = [] }: Notification
                 <div
                   key={item._id}
                   className={`px-4 py-3 border-b border-gray-100 last:border-b-0 hover:bg-gray-50 transition ${
-                    !item.isRead ? 'bg-blue-50/40' : ''
+                    !item.isRead ? 'bg-brand-50/40' : ''
                   }`}
                 >
                   <div className="flex justify-between gap-2">
@@ -130,7 +130,7 @@ export function NotificationDropdown({ isOpen, excludeTypes = [] }: Notification
                         <span className="text-xs font-semibold text-gray-700 capitalize">
                           {item.notificationType.replace(/_/g, ' ')}
                         </span>
-                        {!item.isRead && <span className="h-2 w-2 rounded-full bg-blue-500 inline-block" />}
+                        {!item.isRead && <span className="h-2 w-2 rounded-full bg-brand-500 inline-block" />}
                       </div>
                       <p className="text-sm text-gray-800 mt-1 break-words">{item.message}</p>
                       {item.ticket && (

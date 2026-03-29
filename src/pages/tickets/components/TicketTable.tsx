@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Edit, Trash2, Ticket as TicketIcon, Eye, CheckCircle, GitBranch } from 'lucide-react';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
-import type { Ticket, Consultant } from '@/types/ticket';
+import type { Ticket, Consultant, Category } from '@/types/ticket';
 import { useAppSelector, useAppDispatch } from '@/redux/hooks/hooks';
 import { acceptTicket } from '@/redux/slices/ticketSlice';
 
@@ -21,6 +21,25 @@ interface TicketTableProps {
   tickets: Ticket[];
   onDelete: (id: string) => void;
   loading: boolean;
+}
+
+function getRelativeTime(dateStr: string): string {
+  const now = new Date();
+  const date = new Date(dateStr);
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins} mins ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return new Date(dateStr).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+  });
 }
 
 export default function TicketTable({ tickets, onDelete, loading }: TicketTableProps) {
@@ -38,14 +57,14 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
         <div class="text-left">
           <p class="mb-2">You are about to delete:</p>
           <p class="font-semibold text-lg">${ticket.ticketNumber}</p>
-          <p class="text-sm text-gray-600">${ticket.subject}</p>
-          <p class="mt-3 text-red-600">This action cannot be undone!</p>
+          <p class="text-sm" style="color: #434653">${ticket.subject}</p>
+          <p class="mt-3" style="color: #BA1A1A">This action cannot be undone!</p>
         </div>
       `,
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonColor: '#EF4444',
-      cancelButtonColor: '#6B7280',
+      confirmButtonColor: '#BA1A1A',
+      cancelButtonColor: '#434653',
       confirmButtonText: 'Yes, delete it!',
       cancelButtonText: 'Cancel',
       reverseButtons: true,
@@ -64,14 +83,14 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
         <div class="text-left">
           <p class="mb-2">You are about to accept:</p>
           <p class="font-semibold text-lg">${ticket.ticketNumber}</p>
-          <p class="text-sm text-gray-600">${ticket.subject}</p>
-          <p class="mt-3 text-blue-600">This ticket will be assigned to you.</p>
+          <p class="text-sm" style="color: #434653">${ticket.subject}</p>
+          <p class="mt-3" style="color: #003A8F">This ticket will be assigned to you.</p>
         </div>
       `,
       icon: 'question',
       showCancelButton: true,
-      confirmButtonColor: '#3B82F6',
-      cancelButtonColor: '#6B7280',
+      confirmButtonColor: '#003A8F',
+      cancelButtonColor: '#434653',
       confirmButtonText: 'Yes, accept it!',
       cancelButtonText: 'Cancel',
       reverseButtons: true,
@@ -87,7 +106,6 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
     if (!acceptedBy) return null;
 
     if (typeof acceptedBy === 'string') {
-      // Look up consultant from Redux state
       const consultant = consultants.find(c => c._id === acceptedBy);
       if (consultant) {
         return `${consultant.firstName} ${consultant.lastName}`;
@@ -104,53 +122,63 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
     return acceptedById === user._id;
   };
 
-  const getPriorityBadge = (priority: string) => {
-    const priorityStyles = {
-      critical: 'bg-red-100 text-red-800 border-red-200',
-      high: 'bg-orange-100 text-orange-800 border-orange-200',
-      medium: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-      low: 'bg-green-100 text-green-800 border-green-200',
+  const getCategoryName = (category: string | Category | undefined): string | null => {
+    if (!category) return null;
+    if (typeof category === 'string') return null;
+    return category.name;
+  };
+
+  const getPriorityDisplay = (priority: string) => {
+    const dotColors: Record<string, string> = {
+      critical: 'bg-error',
+      high: 'bg-accent-orange-500',
+      medium: 'bg-yellow-500',
+      low: 'bg-green-500',
+    };
+
+    const textColors: Record<string, string> = {
+      critical: 'text-error',
+      high: 'text-accent-orange-600',
+      medium: 'text-yellow-600',
+      low: 'text-green-600',
     };
 
     return (
-      <span
-        className={`px-3 py-1 rounded-full text-xs font-semibold border ${
-          priorityStyles[priority as keyof typeof priorityStyles] || priorityStyles.medium
-        }`}
-      >
-        {priority.charAt(0).toUpperCase() + priority.slice(1)}
-      </span>
+      <div className="flex items-center gap-2">
+        <span className={`w-2.5 h-2.5 rounded-full ${dotColors[priority] || dotColors.medium}`} />
+        <span className={`text-xs font-bold tracking-[0.05em] uppercase ${textColors[priority] || textColors.medium}`}>
+          {priority}
+        </span>
+      </div>
     );
   };
 
   const getStatusBadge = (status: string) => {
-    const statusStyles = {
-      new: 'bg-blue-100 text-blue-800 border-blue-200',
-      assigned: 'bg-purple-100 text-purple-800 border-purple-200',
-      in_progress: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-      resolved: 'bg-green-100 text-green-800 border-green-200',
-      closed: 'bg-gray-100 text-gray-800 border-gray-200',
+    const statusStyles: Record<string, string> = {
+      new: 'bg-accent-orange-400 text-white',
+      assigned: 'bg-brand-400 text-white',
+      in_progress: 'bg-yellow-500 text-white',
+      resolved: 'bg-green-500 text-white',
+      closed: 'bg-surface-container-highest text-on-surface-variant',
     };
 
     const displayStatus = status.replace('_', ' ');
 
     return (
       <span
-        className={`px-3 py-1 rounded-full text-xs font-semibold border ${
-          statusStyles[status as keyof typeof statusStyles] || statusStyles.new
+        className={`inline-block px-3 py-1 rounded-[0.5rem] text-xs font-bold uppercase tracking-[0.05em] ${
+          statusStyles[status] || statusStyles.new
         }`}
       >
-        {displayStatus.charAt(0).toUpperCase() + displayStatus.slice(1)}
+        {displayStatus}
       </span>
     );
   };
 
-  // Organize tickets: main tickets with their sub-tickets
   const organizeTickets = () => {
     const mainTickets: Ticket[] = [];
     const subTicketsMap = new Map<string, Ticket[]>();
 
-    // Separate main tickets and group sub-tickets by parent
     tickets.forEach((ticket) => {
       if (ticket.isSubTicket && ticket.parentTicket) {
         const parentId = typeof ticket.parentTicket === 'string'
@@ -166,7 +194,6 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
       }
     });
 
-    // Create organized list with main tickets followed by their sub-tickets
     const organized: Ticket[] = [];
     mainTickets.forEach((mainTicket) => {
       organized.push(mainTicket);
@@ -181,19 +208,19 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center py-12">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="flex justify-center items-center py-16">
+        <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary/20 border-t-primary"></div>
       </div>
     );
   }
 
   if (tickets.length === 0) {
     return (
-      <div className="text-center py-12">
-        <TicketIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-        <p className="text-gray-600 text-lg">No tickets found</p>
-        <p className="text-gray-500 text-sm mt-2">Create your first ticket to get started</p>
-        <Button onClick={() => navigate('/tickets/create')} className="mt-4">
+      <div className="text-center py-16">
+        <TicketIcon className="mx-auto h-12 w-12 text-on-surface-variant/40 mb-4" />
+        <p className="text-on-surface text-lg font-semibold">No tickets found</p>
+        <p className="text-on-surface-variant text-sm mt-2">Create your first ticket to get started</p>
+        <Button onClick={() => navigate('/tickets/create')} className="mt-6">
           Create Ticket
         </Button>
       </div>
@@ -201,186 +228,147 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
   }
 
   return (
-    <div className="rounded-lg border bg-white shadow-sm overflow-hidden w-full">
+    <div className="rounded-[1rem] bg-surface-container-lowest overflow-hidden w-full">
       <div className="w-full overflow-x-auto">
         <Table className="w-full">
           <TableHeader>
-            <TableRow className="bg-gray-50">
-              <TableHead className="font-semibold min-w-[140px]">Ticket #</TableHead>
-              <TableHead className="font-semibold min-w-[200px]">Subject</TableHead>
-              <TableHead className="font-semibold min-w-[100px]">Priority</TableHead>
-              <TableHead className="font-semibold min-w-[120px]">Status</TableHead>
-              <TableHead className="font-semibold min-w-[150px]">Accepted At</TableHead>
-              <TableHead className="font-semibold min-w-[150px]">Last Updated</TableHead>
-              <TableHead className="font-semibold min-w-[150px]">Closed At</TableHead>
-              <TableHead className="text-right font-semibold min-w-[280px]">Actions</TableHead>
+            <TableRow>
+              <TableHead className="min-w-[100px]">Ticket #</TableHead>
+              <TableHead className="min-w-[200px]">Subject</TableHead>
+              <TableHead className="min-w-[100px]">Priority</TableHead>
+              <TableHead className="min-w-[120px]">Status</TableHead>
+              <TableHead className="min-w-[120px]">Accepted At</TableHead>
+              <TableHead className="min-w-[120px]">Last Updated</TableHead>
+              <TableHead className="min-w-[120px]">Closed At</TableHead>
+              <TableHead className="text-right min-w-[120px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
-        <TableBody>
-          {organizedTickets.map((ticket) => {
-            const isSubTicket = ticket.isSubTicket;
+          <TableBody>
+            {organizedTickets.map((ticket) => {
+              const isSubTicket = ticket.isSubTicket;
+              const categoryName = getCategoryName(ticket.category);
 
-            return (
-              <TableRow
-                key={ticket._id}
-                className={`hover:bg-gray-50 transition-colors ${
-                  isSubTicket ? 'bg-blue-50/30' : ''
-                }`}
-              >
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    {isSubTicket && (
-                      <div className="flex items-center gap-1 ml-4">
-                        <div className="w-6 border-t-2 border-l-2 border-gray-300 h-4 rounded-tl-lg"></div>
-                        <GitBranch className="h-3 w-3 text-indigo-500 flex-shrink-0" />
-                      </div>
-                    )}
-                    <div className={`h-9 w-9 rounded-lg flex items-center justify-center text-white font-semibold text-xs flex-shrink-0 ${
-                      isSubTicket
-                        ? 'bg-gradient-to-br from-indigo-500 to-purple-500'
-                        : 'bg-gradient-to-br from-blue-500 to-purple-600'
-                    }`}>
-                      {isSubTicket ? <GitBranch className="h-4 w-4" /> : <span>{ticket.ticketNumber.split('-')[0]}</span>}
-                    </div>
-                    <span className="font-semibold text-gray-900 text-sm whitespace-nowrap">
-                      {ticket.ticketNumber}
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div>
-                    <p className={`font-medium text-sm ${isSubTicket ? 'text-indigo-900' : 'text-gray-900'}`}>
-                      {ticket.subject}
-                    </p>
-                    {isSubTicket && (
-                      <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700 border border-indigo-200">
-                        <GitBranch className="h-3 w-3" />
-                        Sub-ticket
+              return (
+                <TableRow
+                  key={ticket._id}
+                  className={isSubTicket ? 'bg-primary-fixed/20' : ''}
+                >
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      {isSubTicket && (
+                        <div className="flex items-center gap-1 ml-2">
+                          <div className="w-4 border-t-2 border-l-2 border-outline-variant h-3 rounded-tl-md"></div>
+                          <GitBranch className="h-3 w-3 text-brand-400 flex-shrink-0" />
+                        </div>
+                      )}
+                      <span className="font-semibold text-on-surface text-sm whitespace-nowrap">
+                        #{ticket.ticketNumber}
                       </span>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell>{getPriorityBadge(ticket.priority)}</TableCell>
-                <TableCell>{getStatusBadge(ticket.status)}</TableCell>
-                <TableCell>
-                  {ticket.acceptedAt ? (
-                    <div className="text-sm">
-                      <div className="text-gray-900 font-medium">
-                        {new Date(ticket.acceptedAt).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                        })}
-                      </div>
-                      <div className="text-gray-500 text-xs">
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div>
+                      <p className={`font-medium text-sm ${isSubTicket ? 'text-brand-500' : 'text-on-surface'}`}>
+                        {ticket.subject}
+                      </p>
+                      {categoryName && (
+                        <p className="text-xs text-on-surface-variant mt-0.5">{categoryName}</p>
+                      )}
+                      {isSubTicket && !categoryName && (
+                        <span className="inline-flex items-center gap-1 mt-0.5 text-xs text-brand-400">
+                          <GitBranch className="h-3 w-3" />
+                          Sub-ticket
+                        </span>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>{getPriorityDisplay(ticket.priority)}</TableCell>
+                  <TableCell>{getStatusBadge(ticket.status)}</TableCell>
+                  <TableCell>
+                    {ticket.acceptedAt ? (
+                      <span className="text-sm text-on-surface">
                         {new Date(ticket.acceptedAt).toLocaleTimeString('en-US', {
                           hour: '2-digit',
                           minute: '2-digit',
+                          hour12: true,
                         })}
-                      </div>
-                    </div>
-                  ) : (
-                    <span className="text-gray-400 text-sm">Not accepted</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {ticket.updatedAt ? (
-                    <div className="text-sm">
-                      <div className="text-gray-900 font-medium">
-                        {new Date(ticket.updatedAt).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                        })}
-                      </div>
-                      <div className="text-gray-500 text-xs">
-                        {new Date(ticket.updatedAt).toLocaleTimeString('en-US', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </div>
-                    </div>
-                  ) : (
-                    <span className="text-gray-400 text-sm">No updates</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {ticket.closedAt ? (
-                    <div className="text-sm">
-                      <div className="text-gray-900 font-medium">
-                        {new Date(ticket.closedAt).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                        })}
-                      </div>
-                      <div className="text-gray-500 text-xs">
+                      </span>
+                    ) : (
+                      <span className="text-on-surface-variant/40">&mdash;</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-sm text-on-surface-variant">
+                      {getRelativeTime(ticket.updatedAt)}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    {ticket.closedAt ? (
+                      <span className="text-sm text-on-surface">
                         {new Date(ticket.closedAt).toLocaleTimeString('en-US', {
                           hour: '2-digit',
                           minute: '2-digit',
+                          hour12: true,
                         })}
-                      </div>
-                    </div>
-                  ) : (
-                    <span className="text-gray-400 text-sm">Not closed</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center justify-end gap-2">
-                    {/* Accept button - only for consultants on new main tickets that haven't been accepted */}
-                    {isConsultant && !isSubTicket && ticket.status === 'new' && !ticket.acceptedBy && (
+                      </span>
+                    ) : (
+                      <span className="text-on-surface-variant/40">&mdash;</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center justify-end gap-1">
+                      {isConsultant && !isSubTicket && ticket.status === 'new' && !ticket.acceptedBy && (
+                        <Button
+                          size="sm"
+                          variant="tertiary"
+                          onClick={() => handleAccept(ticket)}
+                          disabled={ticketLoading}
+                          className="text-green-600 hover:text-green-700 whitespace-nowrap h-8 text-xs"
+                        >
+                          <CheckCircle className="w-3.5 h-3.5 mr-1" />
+                          Accept
+                        </Button>
+                      )}
+
+                      {isConsultant && !isSubTicket && ticket.acceptedBy && (
+                        <div className="px-2.5 py-0.5 rounded-[0.5rem] text-xs font-semibold bg-primary-fixed text-on-primary-fixed whitespace-nowrap">
+                          {isAcceptedByCurrentUser(ticket) ? 'You' : getAcceptedByName(ticket.acceptedBy)}
+                        </div>
+                      )}
+
                       <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleAccept(ticket)}
-                        disabled={ticketLoading}
-                        className="text-green-600 hover:text-green-700 hover:border-green-300 whitespace-nowrap"
+                        size="icon-sm"
+                        variant="ghost"
+                        onClick={() => navigate(`/tickets/view/${ticket._id}`)}
+                        className="text-on-surface-variant hover:text-brand-500"
+                        title="View"
                       >
-                        <CheckCircle className="w-4 h-4 mr-1" />
-                        Accept
+                        <Eye className="w-4 h-4" />
                       </Button>
-                    )}
-
-                    {/* Show "Accepted" badge if ticket is accepted */}
-                    {isConsultant && !isSubTicket && ticket.acceptedBy && (
-                      <div className="px-3 py-1 rounded-full text-xs font-semibold border bg-green-50 text-green-700 border-green-200 whitespace-nowrap">
-                        {isAcceptedByCurrentUser(ticket) ? 'You' : getAcceptedByName(ticket.acceptedBy)}
-                      </div>
-                    )}
-
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => navigate(`/tickets/view/${ticket._id}`)}
-                      className="text-blue-600 hover:text-blue-700 hover:border-blue-300"
-                      title="View"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => navigate(`/tickets/edit/${ticket._id}`)}
-                      title="Edit"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </Button>
-
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="text-red-600 hover:text-red-700 hover:border-red-300"
-                      onClick={() => handleDelete(ticket)}
-                      title="Delete"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
+                      <Button
+                        size="icon-sm"
+                        variant="ghost"
+                        onClick={() => navigate(`/tickets/edit/${ticket._id}`)}
+                        className="text-on-surface-variant hover:text-on-surface"
+                        title="Edit"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="icon-sm"
+                        variant="ghost"
+                        className="text-on-surface-variant hover:text-error"
+                        onClick={() => handleDelete(ticket)}
+                        title="Delete"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
         </Table>
       </div>
     </div>

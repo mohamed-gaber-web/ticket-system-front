@@ -54,7 +54,7 @@ export default function ConsultantDashboard() {
           title="Total Consultants"
           value={consultantStats?.total || 0}
           icon={Users}
-          colorClass="text-blue-600"
+          colorClass="text-brand-600"
         />
         <StatCard
           title="Active"
@@ -88,14 +88,14 @@ export default function ConsultantDashboard() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <p className="text-sm font-medium text-blue-600 uppercase">Total Assignments</p>
+              <div className="bg-brand-50 border border-brand-200 rounded-lg p-4">
+                <p className="text-sm font-medium text-brand-600 uppercase">Total Assignments</p>
                 <h3 className="text-2xl font-bold text-blue-900 mt-2">
                   {assignmentStats?.total || 0}
                 </h3>
               </div>
-              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                <p className="text-sm font-medium text-purple-600 uppercase">Current</p>
+              <div className="bg-accent-orange-50 border border-accent-orange-200 rounded-lg p-4">
+                <p className="text-sm font-medium text-accent-orange-600 uppercase">Current</p>
                 <h3 className="text-2xl font-bold text-purple-900 mt-2">
                   {assignmentStats?.current || 0}
                 </h3>
@@ -149,8 +149,8 @@ export default function ConsultantDashboard() {
 
                 return (
                   <div key={consultant._id} className="flex items-center gap-4">
-                    <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                      <span className="text-sm font-bold text-blue-600">{index + 1}</span>
+                    <div className="flex-shrink-0 w-8 h-8 bg-brand-100 rounded-full flex items-center justify-center">
+                      <span className="text-sm font-bold text-brand-600">{index + 1}</span>
                     </div>
                     <div className="flex-1">
                       <div className="flex justify-between items-center mb-1">
@@ -163,7 +163,7 @@ export default function ConsultantDashboard() {
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
                         <div
-                          className="bg-blue-600 h-2 rounded-full transition-all"
+                          className="bg-brand-600 h-2 rounded-full transition-all"
                           style={{ width: `${percentage}%` }}
                         />
                       </div>

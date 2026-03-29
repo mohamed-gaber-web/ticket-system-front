@@ -152,11 +152,11 @@ const SignupPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-gradient-to-br from-blue-50 via-white to-purple-50 py-12">
-      {/* Animated Background Elements */}
+    <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-surface py-12">
+      {/* Subtle Background Gradient */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <motion.div
-          className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-br from-blue-400/10 to-purple-400/10 rounded-full blur-3xl"
+          className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-br from-brand-100/30 to-transparent rounded-full blur-3xl"
           animate={{
             scale: [1, 1.2, 1],
             rotate: [0, 90, 0],
@@ -168,7 +168,7 @@ const SignupPage = () => {
           }}
         />
         <motion.div
-          className="absolute -bottom-1/2 -right-1/2 w-full h-full bg-gradient-to-tl from-purple-400/10 to-pink-400/10 rounded-full blur-3xl"
+          className="absolute -bottom-1/2 -right-1/2 w-full h-full bg-gradient-to-tl from-accent-orange-100/20 to-transparent rounded-full blur-3xl"
           animate={{
             scale: [1.2, 1, 1.2],
             rotate: [90, 0, 90],
@@ -195,34 +195,34 @@ const SignupPage = () => {
           transition={{ delay: 0.2 }}
           className="text-center mb-8"
         >
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 shadow-lg shadow-blue-500/50 mb-4">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-[1.25rem] bg-primary-gradient mb-4">
             <Sparkles className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <h1 className="display-sm text-on-surface">
             Create Your Account
           </h1>
-          <p className="text-gray-600 mt-2">Join us and start managing your tickets</p>
+          <p className="text-on-surface-variant mt-2">Join us and start managing your tickets</p>
         </motion.div>
 
-        {/* Sign Up Card */}
+        {/* Sign Up Card - Glassmorphism */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl shadow-gray-200/50 border border-gray-100 p-8"
+          className="glass rounded-[1.5rem] shadow-ambient p-8"
         >
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Company Information Section */}
             <div className="space-y-4">
-              <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-blue-500" />
+              <h3 className="form-section-title flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-brand-500" />
                 Company Information
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Company Name */}
                 <div className="space-y-2">
-                  <label htmlFor="companyName" className="text-sm font-semibold text-gray-700">
+                  <label htmlFor="companyName" className="form-label">
                     Company Name
                   </label>
                   <Input
@@ -232,17 +232,17 @@ const SignupPage = () => {
                     value={formData.companyName}
                     onChange={handleChange}
                     placeholder="Acme Corporation"
-                    className={`h-12 pl-4 pr-4 rounded-xl border-2 transition-all duration-200 ${
+                    className={`h-12 ${
                       validationErrors.companyName
-                        ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-                        : 'border-gray-200 focus:border-blue-500 focus:ring-blue-500 hover:border-gray-300'
-                    } bg-white/50`}
+                        ? 'ring-[2px] ring-error/30'
+                        : ''
+                    }`}
                   />
                   {validationErrors.companyName && (
                     <motion.p
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="text-red-500 text-xs"
+                      className="text-error text-xs"
                     >
                       {validationErrors.companyName}
                     </motion.p>
@@ -251,8 +251,8 @@ const SignupPage = () => {
 
                 {/* Contact Person */}
                 <div className="space-y-2">
-                  <label htmlFor="contactPerson" className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                    <User className="w-4 h-4 text-blue-500" />
+                  <label htmlFor="contactPerson" className="form-label flex items-center gap-2">
+                    <User className="w-4 h-4 text-brand-500" />
                     Contact Person
                   </label>
                   <Input
@@ -262,17 +262,17 @@ const SignupPage = () => {
                     value={formData.contactPerson}
                     onChange={handleChange}
                     placeholder="John Doe"
-                    className={`h-12 pl-4 pr-4 rounded-xl border-2 transition-all duration-200 ${
+                    className={`h-12 ${
                       validationErrors.contactPerson
-                        ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-                        : 'border-gray-200 focus:border-blue-500 focus:ring-blue-500 hover:border-gray-300'
-                    } bg-white/50`}
+                        ? 'ring-[2px] ring-error/30'
+                        : ''
+                    }`}
                   />
                   {validationErrors.contactPerson && (
                     <motion.p
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="text-red-500 text-xs"
+                      className="text-error text-xs"
                     >
                       {validationErrors.contactPerson}
                     </motion.p>
@@ -283,15 +283,15 @@ const SignupPage = () => {
 
             {/* Contact Information Section */}
             <div className="space-y-4">
-              <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
-                <Mail className="w-4 h-4 text-blue-500" />
+              <h3 className="form-section-title flex items-center gap-2">
+                <Mail className="w-4 h-4 text-brand-500" />
                 Contact Details
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Email */}
                 <div className="space-y-2">
-                  <label htmlFor="email" className="text-sm font-semibold text-gray-700">
+                  <label htmlFor="email" className="form-label">
                     Email Address
                   </label>
                   <Input
@@ -302,17 +302,17 @@ const SignupPage = () => {
                     onChange={handleChange}
                     placeholder="you@example.com"
                     autoComplete="email"
-                    className={`h-12 pl-4 pr-4 rounded-xl border-2 transition-all duration-200 ${
+                    className={`h-12 ${
                       validationErrors.email
-                        ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-                        : 'border-gray-200 focus:border-blue-500 focus:ring-blue-500 hover:border-gray-300'
-                    } bg-white/50`}
+                        ? 'ring-[2px] ring-error/30'
+                        : ''
+                    }`}
                   />
                   {validationErrors.email && (
                     <motion.p
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="text-red-500 text-xs"
+                      className="text-error text-xs"
                     >
                       {validationErrors.email}
                     </motion.p>
@@ -321,8 +321,8 @@ const SignupPage = () => {
 
                 {/* Phone */}
                 <div className="space-y-2">
-                  <label htmlFor="phone" className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                    <Phone className="w-4 h-4 text-blue-500" />
+                  <label htmlFor="phone" className="form-label flex items-center gap-2">
+                    <Phone className="w-4 h-4 text-brand-500" />
                     Phone Number
                   </label>
                   <Input
@@ -332,17 +332,17 @@ const SignupPage = () => {
                     value={formData.phone}
                     onChange={handleChange}
                     placeholder="+1 (555) 000-0000"
-                    className={`h-12 pl-4 pr-4 rounded-xl border-2 transition-all duration-200 ${
+                    className={`h-12 ${
                       validationErrors.phone
-                        ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-                        : 'border-gray-200 focus:border-blue-500 focus:ring-blue-500 hover:border-gray-300'
-                    } bg-white/50`}
+                        ? 'ring-[2px] ring-error/30'
+                        : ''
+                    }`}
                   />
                   {validationErrors.phone && (
                     <motion.p
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="text-red-500 text-xs"
+                      className="text-error text-xs"
                     >
                       {validationErrors.phone}
                     </motion.p>
@@ -353,15 +353,15 @@ const SignupPage = () => {
 
             {/* Password Section */}
             <div className="space-y-4">
-              <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
-                <Lock className="w-4 h-4 text-blue-500" />
+              <h3 className="form-section-title flex items-center gap-2">
+                <Lock className="w-4 h-4 text-brand-500" />
                 Security
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Password */}
                 <div className="space-y-2">
-                  <label htmlFor="password" className="text-sm font-semibold text-gray-700">
+                  <label htmlFor="password" className="form-label">
                     Password
                   </label>
                   <div className="relative">
@@ -372,16 +372,16 @@ const SignupPage = () => {
                       value={formData.password}
                       onChange={handleChange}
                       placeholder="At least 6 characters"
-                      className={`h-12 pl-4 pr-12 rounded-xl border-2 transition-all duration-200 ${
+                      className={`h-12 pr-12 ${
                         validationErrors.password
-                          ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-                          : 'border-gray-200 focus:border-blue-500 focus:ring-blue-500 hover:border-gray-300'
-                      } bg-white/50`}
+                          ? 'ring-[2px] ring-error/30'
+                          : ''
+                      }`}
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface transition-colors"
                     >
                       {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                     </button>
@@ -390,7 +390,7 @@ const SignupPage = () => {
                     <motion.p
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="text-red-500 text-xs"
+                      className="text-error text-xs"
                     >
                       {validationErrors.password}
                     </motion.p>
@@ -399,7 +399,7 @@ const SignupPage = () => {
 
                 {/* Confirm Password */}
                 <div className="space-y-2">
-                  <label htmlFor="confirmPassword" className="text-sm font-semibold text-gray-700">
+                  <label htmlFor="confirmPassword" className="form-label">
                     Confirm Password
                   </label>
                   <div className="relative">
@@ -410,16 +410,16 @@ const SignupPage = () => {
                       value={formData.confirmPassword}
                       onChange={handleChange}
                       placeholder="Re-enter password"
-                      className={`h-12 pl-4 pr-12 rounded-xl border-2 transition-all duration-200 ${
+                      className={`h-12 pr-12 ${
                         validationErrors.confirmPassword
-                          ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-                          : 'border-gray-200 focus:border-blue-500 focus:ring-blue-500 hover:border-gray-300'
-                      } bg-white/50`}
+                          ? 'ring-[2px] ring-error/30'
+                          : ''
+                      }`}
                     />
                     <button
                       type="button"
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface transition-colors"
                     >
                       {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                     </button>
@@ -428,7 +428,7 @@ const SignupPage = () => {
                     <motion.p
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="text-red-500 text-xs"
+                      className="text-error text-xs"
                     >
                       {validationErrors.confirmPassword}
                     </motion.p>
@@ -439,14 +439,14 @@ const SignupPage = () => {
 
             {/* Address Section */}
             <div className="space-y-4">
-              <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-blue-500" />
+              <h3 className="form-section-title flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-brand-500" />
                 Address
               </h3>
 
               {/* Address */}
               <div className="space-y-2">
-                <label htmlFor="address" className="text-sm font-semibold text-gray-700">
+                <label htmlFor="address" className="form-label">
                   Street Address
                 </label>
                 <Input
@@ -456,17 +456,17 @@ const SignupPage = () => {
                   value={formData.address}
                   onChange={handleChange}
                   placeholder="123 Main Street"
-                  className={`h-12 pl-4 pr-4 rounded-xl border-2 transition-all duration-200 ${
+                  className={`h-12 ${
                     validationErrors.address
-                      ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-                      : 'border-gray-200 focus:border-blue-500 focus:ring-blue-500 hover:border-gray-300'
-                  } bg-white/50`}
+                      ? 'ring-[2px] ring-error/30'
+                      : ''
+                  }`}
                 />
                 {validationErrors.address && (
                   <motion.p
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="text-red-500 text-xs"
+                    className="text-error text-xs"
                   >
                     {validationErrors.address}
                   </motion.p>
@@ -476,7 +476,7 @@ const SignupPage = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* City */}
                 <div className="space-y-2">
-                  <label htmlFor="city" className="text-sm font-semibold text-gray-700">
+                  <label htmlFor="city" className="form-label">
                     City
                   </label>
                   <Input
@@ -486,17 +486,17 @@ const SignupPage = () => {
                     value={formData.city}
                     onChange={handleChange}
                     placeholder="New York"
-                    className={`h-12 pl-4 pr-4 rounded-xl border-2 transition-all duration-200 ${
+                    className={`h-12 ${
                       validationErrors.city
-                        ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-                        : 'border-gray-200 focus:border-blue-500 focus:ring-blue-500 hover:border-gray-300'
-                    } bg-white/50`}
+                        ? 'ring-[2px] ring-error/30'
+                        : ''
+                    }`}
                   />
                   {validationErrors.city && (
                     <motion.p
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="text-red-500 text-xs"
+                      className="text-error text-xs"
                     >
                       {validationErrors.city}
                     </motion.p>
@@ -505,8 +505,8 @@ const SignupPage = () => {
 
                 {/* Country */}
                 <div className="space-y-2">
-                  <label htmlFor="country" className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                    <Globe className="w-4 h-4 text-blue-500" />
+                  <label htmlFor="country" className="form-label flex items-center gap-2">
+                    <Globe className="w-4 h-4 text-brand-500" />
                     Country
                   </label>
                   <Input
@@ -516,17 +516,17 @@ const SignupPage = () => {
                     value={formData.country}
                     onChange={handleChange}
                     placeholder="United States"
-                    className={`h-12 pl-4 pr-4 rounded-xl border-2 transition-all duration-200 ${
+                    className={`h-12 ${
                       validationErrors.country
-                        ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-                        : 'border-gray-200 focus:border-blue-500 focus:ring-blue-500 hover:border-gray-300'
-                    } bg-white/50`}
+                        ? 'ring-[2px] ring-error/30'
+                        : ''
+                    }`}
                   />
                   {validationErrors.country && (
                     <motion.p
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="text-red-500 text-xs"
+                      className="text-error text-xs"
                     >
                       {validationErrors.country}
                     </motion.p>
@@ -540,7 +540,8 @@ const SignupPage = () => {
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="w-full h-12 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold shadow-lg shadow-blue-500/30 transition-all duration-200 flex items-center justify-center gap-2"
+                size="xl"
+                className="w-full"
               >
                 {isLoading ? (
                   <>
@@ -563,10 +564,10 @@ const SignupPage = () => {
             {/* Divider */}
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-200"></div>
+                <div className="w-full h-px bg-surface-container-high"></div>
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-4 bg-white text-gray-500">Already have an account?</span>
+                <span className="px-4 bg-surface-container-lowest text-on-surface-variant">Already have an account?</span>
               </div>
             </div>
 
@@ -574,14 +575,14 @@ const SignupPage = () => {
             <div className="text-center">
               <Link
                 to="/signin"
-                className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors"
+                className="inline-flex items-center gap-2 text-sm font-medium text-on-surface-variant hover:text-brand-500 transition-colors"
               >
                 Sign in instead
                 <motion.span
                   animate={{ x: [0, 4, 0] }}
                   transition={{ duration: 1.5, repeat: Infinity }}
                 >
-                  →
+                  &rarr;
                 </motion.span>
               </Link>
             </div>
@@ -593,7 +594,7 @@ const SignupPage = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
-          className="text-center text-sm text-gray-500 mt-6"
+          className="text-center text-sm text-on-surface-variant mt-6"
         >
           By creating an account, you agree to our Terms of Service and Privacy Policy
         </motion.p>

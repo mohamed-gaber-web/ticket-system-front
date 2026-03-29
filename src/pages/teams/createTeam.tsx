@@ -71,7 +71,7 @@ export default function CreateTeam() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-8 space-y-8">
       {/* Header */}
       <div className="flex items-center gap-4">
         <Button variant="outline" size="sm" onClick={() => navigate('/teams')}>
@@ -79,8 +79,8 @@ export default function CreateTeam() {
           Back
         </Button>
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Create New Team</h1>
-          <p className="text-gray-600 mt-1">Add a new team to the system</p>
+          <h1 className="display-sm text-on-surface">Create New Team</h1>
+          <p className="text-on-surface-variant mt-1">Add a new team to the system</p>
         </div>
       </div>
 
@@ -94,53 +94,54 @@ export default function CreateTeam() {
             {/* Team Name & Department */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Team Name <span className="text-red-500">*</span> <span className="text-gray-400 text-xs">(max 100 chars)</span>
+                <label className="form-label">
+                  Team Name <span className="text-error">*</span> <span className="text-on-surface-variant text-xs">(max 100 chars)</span>
                 </label>
                 <Input
                   value={formData.teamName}
                   onChange={(e) => handleChange('teamName', e.target.value)}
                   placeholder="Enter team name"
                   maxLength={100}
-                  className={errors.teamName ? 'border-red-500' : ''}
+                  className={errors.teamName ? 'border-error' : ''}
                 />
-                {errors.teamName && <p className="text-red-500 text-sm mt-1">{errors.teamName}</p>}
+                {errors.teamName && <p className="text-error text-sm mt-1">{errors.teamName}</p>}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Department <span className="text-red-500">*</span> <span className="text-gray-400 text-xs">(max 100 chars)</span>
+                <label className="form-label">
+                  Department <span className="text-error">*</span> <span className="text-on-surface-variant text-xs">(max 100 chars)</span>
                 </label>
                 <Input
                   value={formData.department}
                   onChange={(e) => handleChange('department', e.target.value)}
                   placeholder="e.g., Customer Support, Technical"
                   maxLength={100}
-                  className={errors.department ? 'border-red-500' : ''}
+                  className={errors.department ? 'border-error' : ''}
                 />
-                {errors.department && <p className="text-red-500 text-sm mt-1">{errors.department}</p>}
+                {errors.department && <p className="text-error text-sm mt-1">{errors.department}</p>}
               </div>
             </div>
 
             {/* Specialization */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Specialization <span className="text-gray-400 text-xs">(max 150 chars)</span>
+                <label className="form-label">
+                  Specialization <span className="text-on-surface-variant text-xs">(max 150 chars)</span>
                 </label>
                 <Input
                   value={formData.specialization}
                   onChange={(e) => handleChange('specialization', e.target.value)}
                   placeholder="e.g., Technical Support, Customer Service"
                   maxLength={150}
-                  className={errors.specialization ? 'border-red-500' : ''}
+                  className={errors.specialization ? 'border-error' : ''}
                 />
-                {errors.specialization && <p className="text-red-500 text-sm mt-1">{errors.specialization}</p>}
+                {errors.specialization && <p className="text-error text-sm mt-1">{errors.specialization}</p>}
               </div>
             </div>
 
             {/* Action Buttons */}
-            <div className="flex gap-3 pt-6 border-t">
+            <div className="flex gap-3 pt-6">
+              <div className="h-px bg-surface-container-high w-full absolute -mt-3 left-0" />
               <Button type="submit" disabled={loading}>
                 {loading ? (
                   <>

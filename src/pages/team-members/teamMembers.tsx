@@ -6,6 +6,7 @@ import { fetchActiveTeams } from '@/redux/slices/teamSlice';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Search, RefreshCw, Edit, Trash2 } from 'lucide-react';
+import { CustomSelect } from '@/components/ui/custom-select';
 import { cn } from '@/lib/utils';
 import Swal from 'sweetalert2';
 
@@ -70,9 +71,9 @@ export default function TeamMembers() {
   };
 
   const ROLE_STYLES = {
-    team_lead: 'bg-purple-100 text-purple-800 border-purple-200',
-    senior_member: 'bg-blue-100 text-blue-800 border-blue-200',
-    member: 'bg-gray-100 text-gray-800 border-gray-200',
+    team_lead: 'bg-accent-orange-100 text-purple-800 border-accent-orange-200',
+    senior_member: 'bg-brand-100 text-brand-800 border-brand-200',
+    member: 'bg-surface-container-high text-on-surface border-surface-container-high',
     support_agent: 'bg-indigo-100 text-indigo-800 border-indigo-200',
   };
 
@@ -91,12 +92,12 @@ export default function TeamMembers() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-8 space-y-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Team Members</h1>
-          <p className="text-gray-600 mt-1">Manage team member accounts and assignments</p>
+          <h1 className="display-sm text-on-surface">Team Members</h1>
+          <p className="text-on-surface-variant mt-1">Manage team member accounts and assignments</p>
         </div>
         <Button onClick={() => navigate('/team-members/create')}>
           <Plus className="w-4 h-4 mr-2" />
@@ -105,7 +106,7 @@ export default function TeamMembers() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow-sm border p-4">
+      <div className="bg-surface-container-lowest rounded-[1rem] p-4">
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <div className="md:col-span-2">
             <Input
@@ -115,43 +116,42 @@ export default function TeamMembers() {
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
             />
           </div>
-          <div>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full h-10 px-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
-            >
-              <option value="">All Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-              <option value="on_leave">On Leave</option>
-            </select>
-          </div>
-          <div>
-            <select
-              value={roleFilter}
-              onChange={(e) => setRoleFilter(e.target.value)}
-              className="w-full h-10 px-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
-            >
-              <option value="">All Roles</option>
-              <option value="team_lead">Team Lead</option>
-              <option value="member">Member</option>
-            </select>
-          </div>
-          <div>
-            <select
-              value={teamFilter}
-              onChange={(e) => setTeamFilter(e.target.value)}
-              className="w-full h-10 px-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
-            >
-              <option value="">All Teams</option>
-              {teams.map((team) => (
-                <option key={team._id} value={team._id}>
-                  {team.teamName}
-                </option>
-              ))}
-            </select>
-          </div>
+          <CustomSelect
+            variant="filter"
+            value={statusFilter}
+            onChange={setStatusFilter}
+            label="Status"
+            options={[
+              { value: '', label: 'All' },
+              { value: 'active', label: 'Active' },
+              { value: 'inactive', label: 'Inactive' },
+              { value: 'on_leave', label: 'On Leave' },
+            ]}
+          />
+          <CustomSelect
+            variant="filter"
+            value={roleFilter}
+            onChange={setRoleFilter}
+            label="Role"
+            options={[
+              { value: '', label: 'All' },
+              { value: 'team_lead', label: 'Team Lead' },
+              { value: 'member', label: 'Member' },
+            ]}
+          />
+          <CustomSelect
+            variant="filter"
+            value={teamFilter}
+            onChange={setTeamFilter}
+            label="Team"
+            options={[
+              { value: '', label: 'All' },
+              ...teams.map((team) => ({
+                value: team._id,
+                label: team.teamName,
+              })),
+            ]}
+          />
         </div>
         <div className="flex gap-2 mt-4">
           <Button onClick={handleSearch} size="sm">
@@ -166,68 +166,68 @@ export default function TeamMembers() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
+      <div className="bg-surface-container-lowest rounded-[1rem] overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600" />
           </div>
         ) : teamMembers.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-gray-500">No team members found</p>
+            <p className="text-on-surface-variant">No team members found</p>
           </div>
         ) : (
           <>
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50 border-b">
+                <thead className="bg-surface-container-low">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase tracking-wider">
                       Full Name
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase tracking-wider">
                       Email
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase tracking-wider">
                       Phone
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase tracking-wider">
                       Team
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase tracking-wider">
                       Role
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-center text-xs font-medium text-on-surface-variant uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody className="divide-y divide-surface-container-high">
                   {teamMembers.map((member) => (
-                    <tr key={member._id} className="hover:bg-gray-50">
+                    <tr key={member._id} className="hover:bg-surface-container-low">
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
+                        <div className="text-sm font-medium text-on-surface">
                           {member.fullName || `${member.firstName} ${member.lastName}`}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-600">{member.email}</div>
+                        <div className="text-sm text-on-surface-variant">{member.email}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-600">
+                        <div className="text-sm text-on-surface-variant">
                           {member.phone || member.phoneNumber || 'N/A'}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-600">{getTeamName(member.team)}</div>
+                        <div className="text-sm text-on-surface-variant">{getTeamName(member.team)}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
                           className={cn(
                             'px-2 py-1 text-xs font-medium rounded-md border',
-                            ROLE_STYLES[member.role as keyof typeof ROLE_STYLES] || 'bg-gray-100 text-gray-800 border-gray-200'
+                            ROLE_STYLES[member.role as keyof typeof ROLE_STYLES] || 'bg-surface-container-high text-on-surface border-surface-container-high'
                           )}
                         >
                           {formatRole(String(member.role))}
@@ -237,7 +237,7 @@ export default function TeamMembers() {
                         <span
                           className={cn(
                             'px-2 py-1 text-xs font-medium rounded-md border',
-                            STATUS_STYLES[member.status as keyof typeof STATUS_STYLES] || 'bg-gray-100 text-gray-800 border-gray-200'
+                            STATUS_STYLES[member.status as keyof typeof STATUS_STYLES] || 'bg-surface-container-high text-on-surface border-surface-container-high'
                           )}
                         >
                           {formatStatus(String(member.status))}
@@ -256,7 +256,7 @@ export default function TeamMembers() {
                           <Button
                             size="sm"
                             variant="outline"
-                            className="text-red-600 hover:text-red-700 hover:border-red-300"
+                            className="text-error hover:text-error hover:border-red-300"
                             onClick={() => handleDelete(member._id, member.fullName || `${member.firstName} ${member.lastName}`)}
                           >
                             <Trash2 className="w-4 h-4 mr-1" />
@@ -269,8 +269,8 @@ export default function TeamMembers() {
                 </tbody>
               </table>
             </div>
-            <div className="bg-gray-50 px-6 py-3 border-t">
-              <p className="text-sm text-gray-700">
+            <div className="bg-surface-container-low px-6 py-3">
+              <p className="text-sm text-on-surface">
                 Showing {teamMembers.length} of {total} team members
               </p>
             </div>

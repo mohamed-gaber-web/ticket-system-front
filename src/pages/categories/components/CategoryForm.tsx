@@ -44,10 +44,10 @@ export default function CategoryForm({ initialData, onSubmit, isEdit = false }: 
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 p-6 bg-white rounded-lg shadow">
+    <form onSubmit={handleSubmit} className="form-card space-y-4 p-6">
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium mb-2">Category Name</label>
+          <label className="form-label">Category Name</label>
           <Input
             name="name"
             value={formData.name || ''}
@@ -58,20 +58,20 @@ export default function CategoryForm({ initialData, onSubmit, isEdit = false }: 
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-2">Description</label>
+          <label className="form-label">Description</label>
           <textarea
             name="description"
             value={formData.description || ''}
             onChange={handleChange}
             placeholder="Enter category description"
             required
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[100px]"
+            className="form-select min-h-[120px] h-auto py-2.5"
           />
         </div>
       </div>
 
       <div className="flex justify-end">
-        <Button type="submit" className="bg-blue-500 text-white hover:bg-blue-600 font-semibold">
+        <Button type="submit">
           {isEdit ? 'Update Category' : 'Create Category'}
         </Button>
       </div>

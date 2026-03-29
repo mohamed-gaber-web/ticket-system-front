@@ -29,64 +29,28 @@ const CommentItem: React.FC<CommentItemProps> = ({
   const isOwnComment = comment.commentByUserId === currentUserId;
   const canSeeInternal = currentUserType !== 'customer';
 
-  // Debug logging for edit/delete buttons visibility
-  console.log('🔍 Comment Item Debug:', {
-    commentId: comment._id,
-    commentByUserId: comment.commentByUserId,
-    currentUserId: currentUserId,
-    isOwnComment: isOwnComment,
-    bothDefined: Boolean(comment.commentByUserId && currentUserId),
-    typesMatch: typeof comment.commentByUserId === typeof currentUserId,
-  });
-
   const getAuthorName = () => {
     const author = comment.commentBy;
 
-    if (!author) {
-      return 'Unknown User';
-    }
-
-    // For consultants and team members - use firstName + lastName
-    if (author.firstName && author.lastName) {
-      return `${author.firstName} ${author.lastName}`;
-    }
-
-    // For consultants/team members with only firstName
-    if (author.firstName) {
-      return author.firstName;
-    }
-
-    // For customers - use companyName or contactPerson
-    if (author.companyName) {
-      return author.companyName;
-    }
-
-    if (author.contactPerson) {
-      return author.contactPerson;
-    }
-
-    // Fallback to email username
+    if (!author) return 'Unknown User';
+    if (author.firstName && author.lastName) return `${author.firstName} ${author.lastName}`;
+    if (author.firstName) return author.firstName;
+    if (author.companyName) return author.companyName;
+    if (author.contactPerson) return author.contactPerson;
     return author.email?.split('@')[0] || 'Unknown User';
   };
 
   const getUserTypeBadgeVariant = (userType: UserType) => {
     switch (userType) {
-      case 'customer':
-        return 'default';
-      case 'consultant':
-        return 'secondary';
-      case 'team_member':
-        return 'outline';
-      default:
-        return 'default';
+      case 'customer': return 'default';
+      case 'consultant': return 'secondary';
+      case 'team_member': return 'outline';
+      default: return 'default';
     }
   };
 
   const handleSaveEdit = () => {
-    if (!editedText.trim()) {
-      return; // Don't allow empty comments
-    }
-
+    if (!editedText.trim()) return;
     if (onUpdate && editedText.trim() !== comment.commentText) {
       onUpdate(comment._id, editedText.trim(), comment.isInternal);
     }
@@ -105,22 +69,22 @@ const CommentItem: React.FC<CommentItemProps> = ({
   };
 
   return (
-    <Card className={`p-4 ${comment.isInternal && canSeeInternal ? 'border-amber-200 bg-amber-50/50' : ''}`}>
+    <Card className={`p-4 ${comment.isInternal && canSeeInternal ? 'bg-yellow-500/5' : ''}`}>
       <div className="flex flex-col gap-3">
         <div className="flex items-start justify-between">
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-1.5">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-semibold text-gray-900">{getAuthorName()}</span>
+              <span className="font-semibold text-on-surface">{getAuthorName()}</span>
               <Badge variant={getUserTypeBadgeVariant(comment.commentByUserType)}>
                 {comment.commentByUserType.replace('_', ' ')}
               </Badge>
               {comment.isInternal && canSeeInternal && (
-                <Badge variant="destructive" className="bg-amber-500 hover:bg-amber-600">
+                <Badge className="bg-yellow-500/15 text-yellow-700">
                   Internal Note
                 </Badge>
               )}
             </div>
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-on-surface-variant">
               {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
               {comment.updatedAt !== comment.createdAt && ' (edited)'}
             </span>
@@ -132,43 +96,43 @@ const CommentItem: React.FC<CommentItemProps> = ({
                 <>
                   <Button
                     variant="ghost"
-                    size="sm"
+                    size="icon-sm"
                     onClick={() => setIsEditing(true)}
-                    className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                    className="text-on-surface-variant hover:text-brand-500"
                     title="Edit comment"
                   >
-                    <Pencil className="h-4 w-4" />
+                    <Pencil className="h-3.5 w-3.5" />
                   </Button>
                   <Button
                     variant="ghost"
-                    size="sm"
+                    size="icon-sm"
                     onClick={handleDelete}
-                    className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                    className="text-on-surface-variant hover:text-error"
                     title="Delete comment"
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </>
               ) : (
                 <>
                   <Button
                     variant="ghost"
-                    size="sm"
+                    size="icon-sm"
                     onClick={handleSaveEdit}
-                    className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
+                    className="text-green-600 hover:text-green-700"
                     title="Save changes"
                     disabled={!editedText.trim()}
                   >
-                    <Check className="h-4 w-4" />
+                    <Check className="h-3.5 w-3.5" />
                   </Button>
                   <Button
                     variant="ghost"
-                    size="sm"
+                    size="icon-sm"
                     onClick={handleCancelEdit}
-                    className="h-8 w-8 p-0 text-gray-600 hover:text-gray-700 hover:bg-gray-100"
+                    className="text-on-surface-variant hover:text-on-surface"
                     title="Cancel editing"
                   >
-                    <X className="h-4 w-4" />
+                    <X className="h-3.5 w-3.5" />
                   </Button>
                 </>
               )}
@@ -176,7 +140,7 @@ const CommentItem: React.FC<CommentItemProps> = ({
           )}
         </div>
 
-        <div className="text-gray-700">
+        <div className="text-on-surface text-sm">
           {isEditing ? (
             <Textarea
               value={editedText}
@@ -185,7 +149,7 @@ const CommentItem: React.FC<CommentItemProps> = ({
               autoFocus
             />
           ) : (
-            <p className="whitespace-pre-wrap break-words">{comment.commentText}</p>
+            <p className="whitespace-pre-wrap break-words leading-relaxed">{comment.commentText}</p>
           )}
         </div>
       </div>

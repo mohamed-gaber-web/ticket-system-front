@@ -76,16 +76,16 @@ export default function DepartmentFormDialog({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+    <div className="form-dialog-overlay">
+      <div className="form-dialog-content max-w-md">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-xl font-semibold text-gray-900">
+        <div className="flex items-center justify-between p-6">
+          <h2 className="text-xl font-semibold text-on-surface">
             {department ? 'Edit Department' : 'Create Department'}
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-on-surface-variant hover:text-on-surface transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -95,8 +95,8 @@ export default function DepartmentFormDialog({
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {/* Name */}
           <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-              Name <span className="text-red-500">*</span>
+            <label htmlFor="name" className="form-label">
+              Name <span className="text-error">*</span>
             </label>
             <Input
               id="name"
@@ -105,9 +105,9 @@ export default function DepartmentFormDialog({
               value={formData.name}
               onChange={handleChange}
               placeholder="Enter department name (e.g., IT Support)"
-              className={errors.name ? 'border-red-500' : ''}
+              className={errors.name ? 'ring-[2px] ring-error/30' : ''}
             />
-            {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
+            {errors.name && <p className="form-error">{errors.name}</p>}
           </div>
 
           {/* Active Status */}
@@ -118,9 +118,9 @@ export default function DepartmentFormDialog({
               type="checkbox"
               checked={formData.isActive}
               onChange={handleCheckboxChange}
-              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              className="form-checkbox"
             />
-            <label htmlFor="isActive" className="ml-2 text-sm font-medium text-gray-700">
+            <label htmlFor="isActive" className="ml-2.5 text-sm font-medium text-on-surface cursor-pointer">
               Active
             </label>
           </div>

@@ -49,12 +49,12 @@ export default function CategoryList() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-8 space-y-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Categories</h1>
-          <p className="text-gray-600 mt-1">Manage your ticket categories</p>
+          <h1 className="display-sm text-on-surface">Categories</h1>
+          <p className="text-on-surface-variant mt-1">Manage your ticket categories</p>
         </div>
         <Button onClick={() => navigate('/categories/create')} className="gap-2">
           <Plus className="h-4 w-4" />
@@ -63,11 +63,11 @@ export default function CategoryList() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow-sm border p-4">
+      <div className="bg-surface-container-lowest rounded-[1rem] p-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="md:col-span-2">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-on-surface-variant" />
               <Input
                 type="search"
                 placeholder="Search by category name or description..."
@@ -91,7 +91,7 @@ export default function CategoryList() {
         </div>
 
         {/* Results count */}
-        <div className="mt-4 text-sm text-gray-600">
+        <div className="mt-4 text-sm text-on-surface-variant">
           Showing <span className="font-semibold">{categories.length}</span> of{' '}
           <span className="font-semibold">{total}</span> categories
         </div>

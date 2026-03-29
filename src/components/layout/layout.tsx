@@ -24,7 +24,7 @@ export default function Layout() {
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header />
-        <main className="flex-1 overflow-y-auto overflow-x-hidden bg-gray-50">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden bg-surface">
           <Outlet />
           <Toaster position="top-right" />
         </main>

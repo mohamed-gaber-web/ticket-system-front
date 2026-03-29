@@ -4,9 +4,8 @@ import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchTicketById, clearCurrentTicket } from '@/redux/slices/ticketSlice';
 import { fetchCurrentAssignment } from '@/redux/slices/assignmentSlice';
 import { fetchTicketAttachments } from '@/redux/slices/attachmentSlice';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { SubTicketsList } from '@/components/subTickets/SubTicketsList';
 import { ConsultantAssignmentsList } from '@/components/consultantAssignment/ConsultantAssignmentsList';
 import FileUpload from '@/components/attachments/FileUpload';
@@ -23,14 +22,14 @@ import {
   Users,
   Activity,
   Building2,
-  ChevronDown,
-  ChevronUp,
   Server,
   Sparkles,
   Package,
   Target,
   Wrench,
   Layers,
+  Edit,
+  ChevronRight,
 } from 'lucide-react';
 
 export default function ViewTicket() {
@@ -41,83 +40,47 @@ export default function ViewTicket() {
   const { currentAssignment } = useAppSelector((state) => state.assignments);
   const { user, userType } = useAppSelector((state) => state.auth);
 
-  const [showDetails, setShowDetails] = useState(true);
-  const [showAttachments, setShowAttachments] = useState(true);
+  const [activeTab, setActiveTab] = useState<'details' | 'comments' | 'attachments'>('details');
 
   useEffect(() => {
     if (id) {
       dispatch(fetchTicketById(id));
       dispatch(fetchCurrentAssignment(id));
     }
-
-    return () => {
-      dispatch(clearCurrentTicket());
-    };
+    return () => { dispatch(clearCurrentTicket()); };
   }, [dispatch, id]);
 
-  const handleRefreshAssignment = () => {
-    if (id) {
-      dispatch(fetchCurrentAssignment(id));
-    }
-  };
-
-  const handleUploadSuccess = () => {
-    if (id) {
-      dispatch(fetchTicketAttachments({ ticketId: id }));
-    }
-  };
+  const handleRefreshAssignment = () => { if (id) dispatch(fetchCurrentAssignment(id)); };
+  const handleUploadSuccess = () => { if (id) dispatch(fetchTicketAttachments({ ticketId: id })); };
 
   if (loading || !currentTicket) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="flex items-center justify-center h-[60vh]">
         <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">Loading ticket details...</p>
+          <Loader2 className="h-10 w-10 animate-spin text-brand-500 mx-auto mb-4" />
+          <p className="text-on-surface-variant text-sm">Loading ticket...</p>
         </div>
       </div>
     );
   }
 
-  const getPriorityConfig = (priority: string) => {
-    switch (priority) {
-      case 'critical':
-        return { variant: 'destructive' as const, icon: '🔴', color: 'text-red-600' };
-      case 'high':
-        return { variant: 'default' as const, icon: '🟠', color: 'text-orange-600' };
-      case 'medium':
-        return { variant: 'secondary' as const, icon: '🟡', color: 'text-yellow-600' };
-      case 'low':
-        return { variant: 'outline' as const, icon: '🟢', color: 'text-green-600' };
-      default:
-        return { variant: 'outline' as const, icon: '⚪', color: 'text-gray-600' };
-    }
+  const priorityDot: Record<string, string> = {
+    critical: 'bg-error', high: 'bg-accent-orange-500', medium: 'bg-yellow-500', low: 'bg-green-500',
   };
-
-  const getStatusConfig = (status: string) => {
-    switch (status) {
-      case 'new':
-        return { className: 'bg-blue-500 text-white', label: 'New', icon: Activity };
-      case 'assigned':
-        return { className: 'bg-purple-500 text-white', label: 'Assigned', icon: Users };
-      case 'in_progress':
-        return { className: 'bg-amber-500 text-white', label: 'In Progress', icon: Clock };
-      case 'resolved':
-        return { className: 'bg-green-500 text-white', label: 'Resolved', icon: Activity };
-      case 'closed':
-        return { className: 'bg-gray-500 text-white', label: 'Closed', icon: Activity };
-      default:
-        return { className: 'bg-gray-500 text-white', label: status, icon: Activity };
-    }
+  const priorityText: Record<string, string> = {
+    critical: 'text-error', high: 'text-accent-orange-600', medium: 'text-yellow-600', low: 'text-green-600',
+  };
+  const statusStyle: Record<string, string> = {
+    new: 'bg-accent-orange-400 text-white',
+    assigned: 'bg-brand-400 text-white',
+    in_progress: 'bg-yellow-500 text-white',
+    resolved: 'bg-green-500 text-white',
+    closed: 'bg-surface-container-highest text-on-surface-variant',
   };
 
   const customer = typeof currentTicket.customer === 'string' ? null : currentTicket.customer;
   const category = typeof currentTicket.category === 'string' ? null : currentTicket.category;
-  const parentTicket =
-    currentTicket.parentTicket && typeof currentTicket.parentTicket !== 'string'
-      ? currentTicket.parentTicket
-      : null;
-
-  // Extract new reference properties
+  const parentTicket = currentTicket.parentTicket && typeof currentTicket.parentTicket !== 'string' ? currentTicket.parentTicket : null;
   const environment = currentTicket.environment && typeof currentTicket.environment !== 'string' ? currentTicket.environment : null;
   const feature = currentTicket.feature && typeof currentTicket.feature !== 'string' ? currentTicket.feature : null;
   const department = currentTicket.department && typeof currentTicket.department !== 'string' ? currentTicket.department : null;
@@ -125,116 +88,142 @@ export default function ViewTicket() {
   const serviceType = currentTicket.serviceType && typeof currentTicket.serviceType !== 'string' ? currentTicket.serviceType : null;
   const scope = currentTicket.scope && typeof currentTicket.scope !== 'string' ? currentTicket.scope : null;
 
-  const priorityConfig = getPriorityConfig(currentTicket.priority);
-  const statusConfig = getStatusConfig(currentTicket.status);
-  const StatusIcon = statusConfig.icon;
+  const displayStatus = currentTicket.status.replace('_', ' ');
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-      {/* Header Section */}
-      <div className="bg-white border-b shadow-sm sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <Button
-            variant="ghost"
-            onClick={() => navigate(-1)}
-            className="gap-2 mb-3 hover:bg-gray-100"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Tickets
-          </Button>
+    <div className="p-8 space-y-0 w-full">
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-2 text-sm text-on-surface-variant mb-6">
+        <button onClick={() => navigate('/tickets')} className="hover:text-brand-500 transition-colors font-medium">
+          Tickets
+        </button>
+        <ChevronRight className="h-3.5 w-3.5" />
+        <span className="text-on-surface font-semibold">{currentTicket.ticketNumber}</span>
+        {parentTicket && (
+          <>
+            <span className="text-on-surface-variant/40 mx-1">·</span>
+            <button
+              onClick={() => navigate(`/tickets/view/${parentTicket._id}`)}
+              className="text-brand-500 hover:text-brand-600 font-medium"
+            >
+              Parent: {parentTicket.ticketNumber}
+            </button>
+          </>
+        )}
+      </div>
 
-          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-            {/* Left Side - Ticket Info */}
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">
-                  {currentTicket.ticketNumber}
-                </h1>
-                {parentTicket && (
-                  <Badge variant="outline" className="text-xs bg-indigo-50 border-indigo-200">
-                    Sub-ticket
-                  </Badge>
-                )}
+      {/* Hero Header */}
+      <div className="bg-surface-container-lowest rounded-[1.5rem] p-8 mb-8">
+        <div className="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-6">
+          {/* Left: Ticket Identity */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-3 mb-3 flex-wrap">
+              <span className="text-on-surface-variant font-mono text-sm font-semibold">
+                #{currentTicket.ticketNumber}
+              </span>
+              <span className={`px-3 py-1 rounded-[0.5rem] text-xs font-bold uppercase tracking-[0.05em] ${statusStyle[currentTicket.status] || statusStyle.new}`}>
+                {displayStatus}
+              </span>
+              <div className="flex items-center gap-1.5">
+                <span className={`w-2 h-2 rounded-full ${priorityDot[currentTicket.priority] || priorityDot.medium}`} />
+                <span className={`text-xs font-bold uppercase tracking-[0.05em] ${priorityText[currentTicket.priority] || priorityText.medium}`}>
+                  {currentTicket.priority}
+                </span>
               </div>
-
               {parentTicket && (
-                <button
-                  onClick={() => navigate(`/tickets/view/${parentTicket._id}`)}
-                  className="text-sm text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1 mb-3"
-                >
-                  <ArrowLeft className="h-3 w-3" />
-                  Parent: {parentTicket.ticketNumber}
-                </button>
+                <Badge className="bg-primary-fixed text-on-primary-fixed text-xs">Sub-ticket</Badge>
               )}
+            </div>
 
-              <h2 className="text-lg font-semibold text-gray-800 mb-2">{currentTicket.subject}</h2>
+            <h1 className="text-2xl lg:text-3xl font-bold text-on-surface tracking-tight leading-tight mb-4">
+              {currentTicket.subject}
+            </h1>
 
-              {/* Quick Info Pills */}
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 rounded-full text-xs">
-                  <Building2 className="h-3.5 w-3.5 text-gray-600" />
-                  <span className="font-medium text-gray-700">
-                    {customer ? customer.companyName : 'N/A'}
-                  </span>
+            {/* Meta Row */}
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-on-surface-variant">
+              {customer && (
+                <div className="flex items-center gap-1.5">
+                  <Building2 className="h-3.5 w-3.5" />
+                  <span className="font-medium">{customer.companyName}</span>
                 </div>
-                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 rounded-full text-xs">
-                  <Calendar className="h-3.5 w-3.5 text-gray-600" />
-                  <span className="font-medium text-gray-700">
-                    {new Date(currentTicket.createdAt).toLocaleDateString()}
-                  </span>
-                </div>
+              )}
+              <div className="flex items-center gap-1.5">
+                <Calendar className="h-3.5 w-3.5" />
+                <span>{new Date(currentTicket.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
               </div>
+              {category && (
+                <div className="flex items-center gap-1.5">
+                  <Tag className="h-3.5 w-3.5" />
+                  <span>{category.name}</span>
+                </div>
+              )}
+              {currentTicket.estimatedTime !== undefined && (
+                <div className="flex items-center gap-1.5">
+                  <Clock className="h-3.5 w-3.5" />
+                  <span>{currentTicket.estimatedTime}h estimated</span>
+                </div>
+              )}
             </div>
+          </div>
 
-            {/* Right Side - Status & Priority */}
-            <div className="flex flex-col gap-2">
-              <Badge className={`${statusConfig.className} px-4 py-2 text-sm font-semibold`}>
-                <StatusIcon className="h-4 w-4 mr-2" />
-                {statusConfig.label}
-              </Badge>
-              <Badge
-                variant={priorityConfig.variant}
-                className="px-4 py-2 text-sm font-semibold justify-center"
-              >
-                <span className="mr-2">{priorityConfig.icon}</span>
-                {currentTicket.priority.toUpperCase()} PRIORITY
-              </Badge>
-            </div>
+          {/* Right: Actions */}
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate(`/tickets/edit/${currentTicket._id}`)}
+              className="gap-1.5"
+            >
+              <Edit className="h-3.5 w-3.5" />
+              Edit
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate(-1)}
+              className="gap-1.5 text-on-surface-variant"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Back
+            </Button>
           </div>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Main Content */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Description Card */}
-            <Card className="shadow-lg border-0 overflow-hidden p-0">
-              <CardHeader
-                className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white cursor-pointer p-4 m-0"
-                onClick={() => setShowDetails(!showDetails)}
-              >
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg font-semibold flex items-center gap-2 m-0">
-                    <FileText className="h-5 w-5" />
-                    Description
-                  </CardTitle>
-                  {showDetails ? (
-                    <ChevronUp className="h-5 w-5" />
-                  ) : (
-                    <ChevronDown className="h-5 w-5" />
-                  )}
-                </div>
-              </CardHeader>
-              {showDetails && (
-                <CardContent className="p-4">
-                  <p className="text-gray-700 whitespace-pre-wrap leading-relaxed text-sm">
-                    {currentTicket.description}
-                  </p>
-                </CardContent>
-              )}
-            </Card>
+      {/* Tab Navigation */}
+      <div className="flex items-center gap-1 mb-8 bg-surface-container-low rounded-[1rem] p-1.5 w-fit">
+        {(['details', 'comments', 'attachments'] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`px-5 py-2 rounded-[0.75rem] text-sm font-semibold transition-all capitalize ${
+              activeTab === tab
+                ? 'bg-surface-container-lowest text-on-surface shadow-ambient'
+                : 'text-on-surface-variant hover:text-on-surface'
+            }`}
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab Content */}
+      {activeTab === 'details' && (
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+          {/* Main Column */}
+          <div className="xl:col-span-2 space-y-8">
+            {/* Description */}
+            <section>
+              <div className="flex items-center gap-2 mb-4">
+                <FileText className="h-4 w-4 text-on-surface-variant" />
+                <h3 className="label-technical">Description</h3>
+              </div>
+              <div className="bg-surface-container-lowest rounded-[1rem] p-6">
+                <p className="text-on-surface whitespace-pre-wrap leading-relaxed text-[15px]">
+                  {currentTicket.description}
+                </p>
+              </div>
+            </section>
 
             {/* Assignments */}
             {currentAssignment && currentAssignment.assignedToConsultants && (
@@ -253,241 +242,118 @@ export default function ViewTicket() {
               isSubTicket={currentTicket.isSubTicket}
               userType={userType || undefined}
             />
-
-            {/* Comments */}
-            <TicketComments ticketId={currentTicket._id} />
           </div>
 
-          {/* Right Column - Sidebar */}
+          {/* Sidebar */}
           <div className="space-y-6">
-            {/* Timeline Info */}
-            <Card className="shadow-lg border-0 overflow-hidden p-0">
-              <CardHeader className="bg-gradient-to-r from-slate-600 to-slate-700 text-white p-3 m-0">
-                <CardTitle className="text-base font-semibold flex items-center gap-2 m-0">
-                  <Clock className="h-4 w-4" />
-                  Timeline
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-3 space-y-3">
-                <div className="space-y-2.5">
-                  <div className="flex items-start gap-2.5">
-                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                      <Calendar className="h-4 w-4 text-blue-600" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500 font-medium">Created</p>
-                      <p className="text-xs font-semibold text-gray-900">
-                        {new Date(currentTicket.createdAt).toLocaleString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </p>
-                    </div>
-                  </div>
+            {/* Timeline */}
+            <div className="bg-surface-container-lowest rounded-[1rem] p-6">
+              <h3 className="label-technical mb-5 flex items-center gap-2">
+                <Clock className="h-3.5 w-3.5" />
+                Timeline
+              </h3>
+              <div className="space-y-5">
+                <TimelineEntry label="Created" date={currentTicket.createdAt} color="brand" />
+                <TimelineEntry label="Last Updated" date={currentTicket.updatedAt} color="green" />
+                {currentTicket.acceptedAt && <TimelineEntry label="Accepted" date={currentTicket.acceptedAt} color="blue" />}
+                {currentTicket.startDate && <TimelineEntry label="Start Date" date={currentTicket.startDate} color="orange" />}
+                {currentTicket.endDate && <TimelineEntry label="Due Date" date={currentTicket.endDate} color="red" />}
+                {currentTicket.resolvedAt && <TimelineEntry label="Resolved" date={currentTicket.resolvedAt} color="green" />}
+                {currentTicket.closedAt && <TimelineEntry label="Closed" date={currentTicket.closedAt} color="gray" />}
+              </div>
+            </div>
 
-                  <div className="flex items-start gap-2.5">
-                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
-                      <Activity className="h-4 w-4 text-green-600" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500 font-medium">Last Updated</p>
-                      <p className="text-xs font-semibold text-gray-900">
-                        {new Date(currentTicket.updatedAt).toLocaleString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </p>
-                    </div>
-                  </div>
-
-                  {currentTicket.startDate && (
-                    <div className="flex items-start gap-2.5">
-                      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
-                        <Calendar className="h-4 w-4 text-purple-600" />
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500 font-medium">Start Date</p>
-                        <p className="text-xs font-semibold text-gray-900">
-                          {new Date(currentTicket.startDate).toLocaleDateString()}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-                  {currentTicket.endDate && (
-                    <div className="flex items-start gap-2.5">
-                      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">
-                        <Calendar className="h-4 w-4 text-red-600" />
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500 font-medium">Due Date</p>
-                        <p className="text-xs font-semibold text-gray-900">
-                          {new Date(currentTicket.endDate).toLocaleDateString()}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-                  {currentTicket.estimatedTime !== undefined && (
-                    <div className="flex items-start gap-2.5">
-                      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
-                        <Clock className="h-4 w-4 text-amber-600" />
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500 font-medium">Estimated Time</p>
-                        <p className="text-xs font-semibold text-gray-900">
-                          {currentTicket.estimatedTime} hours
-                        </p>
-                      </div>
-                    </div>
-                  )}
+            {/* Properties */}
+            {(environment || feature || department || productType || serviceType || scope) && (
+              <div className="bg-surface-container-lowest rounded-[1rem] p-6">
+                <h3 className="label-technical mb-5 flex items-center gap-2">
+                  <Layers className="h-3.5 w-3.5" />
+                  Properties
+                </h3>
+                <div className="space-y-4">
+                  {environment && <PropertyRow icon={Server} label="Environment" value={environment.name} />}
+                  {feature && <PropertyRow icon={Sparkles} label="Feature" value={feature.name} />}
+                  {department && <PropertyRow icon={Building2} label="Department" value={department.name} />}
+                  {productType && <PropertyRow icon={Package} label="Product" value={productType.name} />}
+                  {serviceType && <PropertyRow icon={Wrench} label="Service" value={serviceType.name} />}
+                  {scope && <PropertyRow icon={Target} label="Scope" value={scope.name} />}
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Categorization Info - NEW */}
-            {(category || environment || feature || department || productType || serviceType || scope) && (
-              <Card className="shadow-lg border-0 overflow-hidden p-0">
-                <CardHeader className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-3 m-0">
-                  <CardTitle className="text-base font-semibold flex items-center gap-2 m-0">
-                    <Layers className="h-4 w-4" />
-                    Categorization
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-3 space-y-3">
-                  <div className="space-y-2.5">
-                    {category && (
-                      <div className="flex items-start gap-2.5">
-                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                          <Tag className="h-4 w-4 text-blue-600" />
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500 font-medium">Category</p>
-                          <p className="text-xs font-semibold text-gray-900">{category.name}</p>
-                          {category.description && (
-                            <p className="text-xs text-gray-600 mt-0.5">{category.description}</p>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {environment && (
-                      <div className="flex items-start gap-2.5">
-                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-cyan-100 flex items-center justify-center">
-                          <Server className="h-4 w-4 text-cyan-600" />
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500 font-medium">Environment</p>
-                          <p className="text-xs font-semibold text-gray-900">{environment.name}</p>
-                          {environment.description && (
-                            <p className="text-xs text-gray-600 mt-0.5">{environment.description}</p>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {feature && (
-                      <div className="flex items-start gap-2.5">
-                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center">
-                          <Sparkles className="h-4 w-4 text-pink-600" />
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500 font-medium">Feature</p>
-                          <p className="text-xs font-semibold text-gray-900">{feature.name}</p>
-                        </div>
-                      </div>
-                    )}
-
-                    {department && (
-                      <div className="flex items-start gap-2.5">
-                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center">
-                          <Building2 className="h-4 w-4 text-orange-600" />
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500 font-medium">Department</p>
-                          <p className="text-xs font-semibold text-gray-900">{department.name}</p>
-                        </div>
-                      </div>
-                    )}
-
-                    {productType && (
-                      <div className="flex items-start gap-2.5">
-                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center">
-                          <Package className="h-4 w-4 text-violet-600" />
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500 font-medium">Product Type</p>
-                          <p className="text-xs font-semibold text-gray-900">{productType.name}</p>
-                        </div>
-                      </div>
-                    )}
-
-                    {serviceType && (
-                      <div className="flex items-start gap-2.5">
-                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center">
-                          <Wrench className="h-4 w-4 text-teal-600" />
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500 font-medium">Service Type</p>
-                          <p className="text-xs font-semibold text-gray-900">{serviceType.name}</p>
-                        </div>
-                      </div>
-                    )}
-
-                    {scope && (
-                      <div className="flex items-start gap-2.5">
-                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-rose-100 flex items-center justify-center">
-                          <Target className="h-4 w-4 text-rose-600" />
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500 font-medium">Scope</p>
-                          <p className="text-xs font-semibold text-gray-900">{scope.name}</p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+              </div>
             )}
 
-            {/* Attachments Card */}
-            <Card className="shadow-lg border-0 overflow-hidden p-0">
-              <CardHeader
-                className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white cursor-pointer p-3 m-0"
-                onClick={() => setShowAttachments(!showAttachments)}
-              >
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base font-semibold flex items-center gap-2 m-0">
-                    <Paperclip className="h-4 w-4" />
-                    Attachments
-                  </CardTitle>
-                  {showAttachments ? (
-                    <ChevronUp className="h-4 w-4" />
-                  ) : (
-                    <ChevronDown className="h-4 w-4" />
-                  )}
+            {/* SLA Info */}
+            {currentTicket.slaDueDate && (
+              <div className={`rounded-[1rem] p-5 ${currentTicket.isSlaBreached ? 'bg-error/5' : 'bg-green-500/5'}`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <div className={`w-2 h-2 rounded-full ${currentTicket.isSlaBreached ? 'bg-error animate-pulse' : 'bg-green-500'}`} />
+                  <span className={`text-xs font-bold uppercase tracking-[0.05em] ${currentTicket.isSlaBreached ? 'text-error' : 'text-green-600'}`}>
+                    {currentTicket.isSlaBreached ? 'SLA Breached' : 'SLA On Track'}
+                  </span>
                 </div>
-              </CardHeader>
-              {showAttachments && (
-                <CardContent className="p-3 space-y-3">
-                  <div>
-                    <FileUpload ticketId={currentTicket._id} onUploadSuccess={handleUploadSuccess} />
-                  </div>
-                  <div className="border-t pt-4">
-                    <AttachmentList ticketId={currentTicket._id} />
-                  </div>
-                </CardContent>
-              )}
-            </Card>
+                <p className="text-sm text-on-surface font-medium">
+                  Due: {new Date(currentTicket.slaDueDate).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                </p>
+              </div>
+            )}
           </div>
         </div>
+      )}
+
+      {activeTab === 'comments' && (
+        <div className="max-w-4xl">
+          <TicketComments ticketId={currentTicket._id} />
+        </div>
+      )}
+
+      {activeTab === 'attachments' && (
+        <div className="max-w-4xl space-y-6">
+          <div className="bg-surface-container-lowest rounded-[1rem] p-6">
+            <h3 className="label-technical mb-4 flex items-center gap-2">
+              <Paperclip className="h-3.5 w-3.5" />
+              Upload
+            </h3>
+            <FileUpload ticketId={currentTicket._id} onUploadSuccess={handleUploadSuccess} />
+          </div>
+          <div className="bg-surface-container-lowest rounded-[1rem] p-6">
+            <AttachmentList ticketId={currentTicket._id} />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TimelineEntry({ label, date, color }: { label: string; date: string; color: string }) {
+  const colorMap: Record<string, string> = {
+    brand: 'bg-brand-500', green: 'bg-green-500', blue: 'bg-brand-400',
+    orange: 'bg-accent-orange-500', red: 'bg-error', gray: 'bg-surface-container-highest',
+  };
+
+  return (
+    <div className="flex items-center gap-3">
+      <div className={`w-1.5 h-1.5 rounded-full ${colorMap[color] || colorMap.gray} shrink-0`} />
+      <div className="flex-1 flex items-baseline justify-between gap-2">
+        <span className="text-xs text-on-surface-variant">{label}</span>
+        <span className="text-xs font-semibold text-on-surface tabular-nums">
+          {new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+          {' '}
+          <span className="text-on-surface-variant font-normal">
+            {new Date(date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+          </span>
+        </span>
       </div>
+    </div>
+  );
+}
+
+function PropertyRow({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center gap-2 text-on-surface-variant">
+        <Icon className="h-3.5 w-3.5" />
+        <span className="text-xs">{label}</span>
+      </div>
+      <span className="text-sm font-semibold text-on-surface truncate text-right">{value}</span>
     </div>
   );
 }

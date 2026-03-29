@@ -5,7 +5,7 @@ import { createTeamMember } from '@/redux/slices/teamMemberSlice';
 import { fetchActiveTeams } from '@/redux/slices/teamSlice';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CustomSelect } from '@/components/ui/custom-select';
 import { ArrowLeft, Save } from 'lucide-react';
 import type { CreateTeamMemberData, TeamMemberRole, TeamMemberStatus } from '@/types/teamMember.types';
 
@@ -94,7 +94,7 @@ export default function CreateTeamMember() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-8 space-y-8">
       {/* Header */}
       <div className="flex items-center gap-4">
         <Button variant="outline" size="sm" onClick={() => navigate('/team-members')}>
@@ -102,178 +102,171 @@ export default function CreateTeamMember() {
           Back
         </Button>
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Create New Team Member</h1>
-          <p className="text-gray-600 mt-1">Add a new team member to the system</p>
+          <h1 className="display-sm text-on-surface">Create New Team Member</h1>
+          <p className="text-on-surface-variant mt-1">Add a new team member to the system</p>
         </div>
       </div>
 
       {/* Form */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Team Member Information</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Personal Information */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  First Name <span className="text-red-500">*</span>
-                </label>
-                <Input
-                  value={formData.firstName}
-                  onChange={(e) => handleChange('firstName', e.target.value)}
-                  placeholder="Enter first name"
-                  className={errors.firstName ? 'border-red-500' : ''}
-                />
-                {errors.firstName && <p className="text-red-500 text-sm mt-1">{errors.firstName}</p>}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Last Name <span className="text-red-500">*</span>
-                </label>
-                <Input
-                  value={formData.lastName}
-                  onChange={(e) => handleChange('lastName', e.target.value)}
-                  placeholder="Enter last name"
-                  className={errors.lastName ? 'border-red-500' : ''}
-                />
-                {errors.lastName && <p className="text-red-500 text-sm mt-1">{errors.lastName}</p>}
-              </div>
-            </div>
-
-            {/* Contact Information */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email <span className="text-red-500">*</span>
-                </label>
-                <Input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => handleChange('email', e.target.value)}
-                  placeholder="member@example.com"
-                  className={errors.email ? 'border-red-500' : ''}
-                />
-                {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
-                <Input
-                  type="tel"
-                  value={formData.phone}
-                  onChange={(e) => handleChange('phone', e.target.value)}
-                  placeholder="+1234567890"
-                  className={errors.phone ? 'border-red-500' : ''}
-                />
-                {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
-              </div>
-            </div>
-
-            {/* Password */}
+      <div className="form-card">
+        <h2 className="form-section-title">Team Member Information</h2>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Personal Information */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Password <span className="text-red-500">*</span>
+              <label className="form-label">
+                First Name <span className="text-error">*</span>
               </label>
               <Input
-                type="password"
-                value={formData.password}
-                onChange={(e) => handleChange('password', e.target.value)}
-                placeholder="Enter password (min 8 characters)"
-                className={errors.password ? 'border-red-500' : ''}
+                value={formData.firstName}
+                onChange={(e) => handleChange('firstName', e.target.value)}
+                placeholder="Enter first name"
+                className={errors.firstName ? 'border-error' : ''}
               />
-              {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
+              {errors.firstName && <p className="text-error text-sm mt-1">{errors.firstName}</p>}
             </div>
 
-            {/* Team Assignment & Role */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Team</label>
-                <select
-                  value={formData.team}
-                  onChange={(e) => handleChange('team', e.target.value)}
-                  className="w-full h-10 px-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
-                >
-                  <option value="">No Team (Unassigned)</option>
-                  {teams.map((team) => (
-                    <option key={team._id} value={team._id}>
-                      {team.teamName}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            <div>
+              <label className="form-label">
+                Last Name <span className="text-error">*</span>
+              </label>
+              <Input
+                value={formData.lastName}
+                onChange={(e) => handleChange('lastName', e.target.value)}
+                placeholder="Enter last name"
+                className={errors.lastName ? 'border-error' : ''}
+              />
+              {errors.lastName && <p className="text-error text-sm mt-1">{errors.lastName}</p>}
+            </div>
+          </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Role <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={formData.role}
-                  onChange={(e) => handleChange('role', e.target.value as TeamMemberRole)}
-                  className="w-full h-10 px-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
-                >
-                  <option value="member">Member</option>
-                  <option value="team_lead">Team Lead</option>
-                </select>
-              </div>
+          {/* Contact Information */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="form-label">
+                Email <span className="text-error">*</span>
+              </label>
+              <Input
+                type="email"
+                value={formData.email}
+                onChange={(e) => handleChange('email', e.target.value)}
+                placeholder="member@example.com"
+                className={errors.email ? 'border-error' : ''}
+              />
+              {errors.email && <p className="text-error text-sm mt-1">{errors.email}</p>}
             </div>
 
-            {/* Specialization & Status */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Specialization <span className="text-gray-400 text-xs">(max 150 chars)</span>
-                </label>
-                <Input
-                  value={formData.specialization}
-                  onChange={(e) => handleChange('specialization', e.target.value)}
-                  placeholder="e.g., Technical Support, Customer Service"
-                  maxLength={150}
-                  className={errors.specialization ? 'border-red-500' : ''}
-                />
-                {errors.specialization && <p className="text-red-500 text-sm mt-1">{errors.specialization}</p>}
-              </div>
+            <div>
+              <label className="form-label">Phone</label>
+              <Input
+                type="tel"
+                value={formData.phone}
+                onChange={(e) => handleChange('phone', e.target.value)}
+                placeholder="+1234567890"
+                className={errors.phone ? 'border-error' : ''}
+              />
+              {errors.phone && <p className="text-error text-sm mt-1">{errors.phone}</p>}
+            </div>
+          </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Status <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={formData.status}
-                  onChange={(e) => handleChange('status', e.target.value as TeamMemberStatus)}
-                  className="w-full h-10 px-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
-                >
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                  <option value="on_leave">On Leave</option>
-                </select>
-              </div>
+          {/* Password */}
+          <div>
+            <label className="form-label">
+              Password <span className="text-error">*</span>
+            </label>
+            <Input
+              type="password"
+              value={formData.password}
+              onChange={(e) => handleChange('password', e.target.value)}
+              placeholder="Enter password (min 8 characters)"
+              className={errors.password ? 'border-error' : ''}
+            />
+            {errors.password && <p className="text-error text-sm mt-1">{errors.password}</p>}
+          </div>
+
+          {/* Team Assignment & Role */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="form-label">Team</label>
+              <CustomSelect
+                value={formData.team || ''}
+                onChange={(val) => handleChange('team', val)}
+                placeholder="No Team (Unassigned)"
+                options={[
+                  { value: '', label: 'No Team (Unassigned)' },
+                  ...teams.map((team) => ({ value: team._id, label: team.teamName })),
+                ]}
+              />
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex gap-3 pt-6 border-t">
-              <Button type="submit" disabled={loading}>
-                {loading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                    Creating...
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4 mr-2" />
-                    Create Team Member
-                  </>
-                )}
-              </Button>
-              <Button type="button" variant="outline" onClick={() => navigate('/team-members')} disabled={loading}>
-                Cancel
-              </Button>
+            <div>
+              <label className="form-label">
+                Role <span className="text-error">*</span>
+              </label>
+              <CustomSelect
+                value={formData.role}
+                onChange={(val) => handleChange('role', val as TeamMemberRole)}
+                options={[
+                  { value: 'member', label: 'Member' },
+                  { value: 'team_lead', label: 'Team Lead' },
+                ]}
+              />
             </div>
-          </form>
-        </CardContent>
-      </Card>
+          </div>
+
+          {/* Specialization & Status */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="form-label">
+                Specialization <span className="text-on-surface-variant text-xs">(max 150 chars)</span>
+              </label>
+              <Input
+                value={formData.specialization}
+                onChange={(e) => handleChange('specialization', e.target.value)}
+                placeholder="e.g., Technical Support, Customer Service"
+                maxLength={150}
+                className={errors.specialization ? 'border-error' : ''}
+              />
+              {errors.specialization && <p className="text-error text-sm mt-1">{errors.specialization}</p>}
+            </div>
+
+            <div>
+              <label className="form-label">
+                Status <span className="text-error">*</span>
+              </label>
+              <CustomSelect
+                value={formData.status}
+                onChange={(val) => handleChange('status', val as TeamMemberStatus)}
+                options={[
+                  { value: 'active', label: 'Active' },
+                  { value: 'inactive', label: 'Inactive' },
+                  { value: 'on_leave', label: 'On Leave' },
+                ]}
+              />
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex gap-3 pt-6">
+            <Button type="submit" disabled={loading}>
+              {loading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4 mr-2" />
+                  Create Team Member
+                </>
+              )}
+            </Button>
+            <Button type="button" variant="outline" onClick={() => navigate('/team-members')} disabled={loading}>
+              Cancel
+            </Button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

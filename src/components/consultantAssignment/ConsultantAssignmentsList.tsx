@@ -54,18 +54,14 @@ export function ConsultantAssignmentsList({
   };
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'pending':
-        return <Badge variant="outline" className="bg-gray-100">⏳ Pending</Badge>;
-      case 'accepted':
-        return <Badge variant="outline" className="bg-green-100 text-green-800">✅ Accepted</Badge>;
-      case 'declined':
-        return <Badge variant="outline" className="bg-red-100 text-red-800">❌ Declined</Badge>;
-      case 'completed':
-        return <Badge variant="outline" className="bg-blue-100 text-blue-800">✅✅ Completed</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
-    }
+    const configs: Record<string, { className: string; label: string }> = {
+      pending: { className: 'bg-surface-container-high text-on-surface-variant', label: 'Pending' },
+      accepted: { className: 'bg-green-500/10 text-green-700', label: 'Accepted' },
+      declined: { className: 'bg-error/10 text-error', label: 'Declined' },
+      completed: { className: 'bg-primary-fixed text-on-primary-fixed', label: 'Completed' },
+    };
+    const config = configs[status] || configs.pending;
+    return <Badge className={config.className}>{config.label}</Badge>;
   };
 
   const currentConsultantIds = consultantAssignments.map((ca) =>
@@ -73,11 +69,11 @@ export function ConsultantAssignmentsList({
   );
 
   return (
-    <Card className="shadow-md">
-      <CardHeader className="flex flex-row items-center justify-between bg-gray-50 border-b">
-        <CardTitle className="text-xl">
-          <div className="flex items-center gap-2">
-            <UserCheck className="h-5 w-5" />
+    <Card className="overflow-hidden p-0">
+      <CardHeader className="flex flex-row items-center justify-between bg-surface-container px-6 py-4 m-0">
+        <CardTitle className="text-base font-semibold m-0">
+          <div className="flex items-center gap-2 text-on-surface">
+            <UserCheck className="h-5 w-5 text-on-surface-variant" />
             Assigned Consultants ({consultantAssignments.length})
           </div>
         </CardTitle>
@@ -87,12 +83,12 @@ export function ConsultantAssignmentsList({
           onSuccess={onUpdate}
         />
       </CardHeader>
-      <CardContent className="p-6">
+      <CardContent className="p-5">
         {consultantAssignments.length === 0 ? (
-          <div className="text-center py-12 text-gray-500">
-            <UserCheck className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-            <p className="text-lg font-medium mb-2">No consultants assigned yet</p>
-            <p className="text-sm">Click "Assign Consultants" to add consultants to this ticket.</p>
+          <div className="text-center py-12">
+            <UserCheck className="h-12 w-12 mx-auto mb-4 text-on-surface-variant/30" />
+            <p className="text-on-surface font-medium mb-1">No consultants assigned yet</p>
+            <p className="text-sm text-on-surface-variant">Click "Assign Consultants" to add consultants to this ticket.</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -106,56 +102,57 @@ export function ConsultantAssignmentsList({
               const isCurrentUser = currentUserId === consultantId;
 
               return (
-                <div key={consultantId} className="border rounded-lg p-5 bg-white hover:shadow-md transition-all">
+                <div key={consultantId} className="rounded-[0.75rem] p-5 bg-surface-container-low hover:bg-surface-container-high transition-colors">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <h4 className="font-semibold text-lg">
+                      <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                        <h4 className="font-semibold text-on-surface">
                           {consultant
                             ? `${consultant.firstName} ${consultant.lastName}`
                             : 'Consultant'}
                         </h4>
                         {isCurrentUser && (
-                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                          <Badge className="bg-primary-fixed text-on-primary-fixed">
                             You
                           </Badge>
                         )}
                         {getStatusBadge(assignment.status)}
                       </div>
                       {consultant && (
-                        <p className="text-sm text-gray-600 mb-2">{consultant.email}</p>
+                        <p className="text-sm text-on-surface-variant mb-2">{consultant.email}</p>
                       )}
-                      <div className="flex flex-wrap gap-3 text-xs text-gray-500">
-                        <span>📅 Assigned: {new Date(assignment.assignedAt).toLocaleDateString()}</span>
+                      <div className="flex flex-wrap gap-3 text-xs text-on-surface-variant">
+                        <span>Assigned: {new Date(assignment.assignedAt).toLocaleDateString()}</span>
                         {assignment.acceptedAt && (
-                          <span>✅ Accepted: {new Date(assignment.acceptedAt).toLocaleDateString()}</span>
+                          <span>· Accepted: {new Date(assignment.acceptedAt).toLocaleDateString()}</span>
                         )}
                         {assignment.completedAt && (
-                          <span>🎯 Completed: {new Date(assignment.completedAt).toLocaleDateString()}</span>
+                          <span>· Completed: {new Date(assignment.completedAt).toLocaleDateString()}</span>
                         )}
                       </div>
                     </div>
                     <Button
-                      size="sm"
+                      size="icon-sm"
                       variant="ghost"
                       onClick={() => handleRemove(consultantId)}
                       disabled={loading}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      className="text-on-surface-variant hover:text-error"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
 
                   {assignment.notes && (
-                    <div className="mb-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                      <p className="text-sm font-semibold text-blue-900 mb-1">💬 Notes:</p>
-                      <p className="text-sm text-blue-800">{assignment.notes}</p>
+                    <div className="mb-3 p-3 bg-primary-fixed/50 rounded-[0.5rem]">
+                      <p className="label-technical text-[10px] mb-1">Notes</p>
+                      <p className="text-sm text-on-surface">{assignment.notes}</p>
                     </div>
                   )}
 
                   {isCurrentUser && assignment.status === 'pending' && (
-                    <div className="space-y-3 mt-4 pt-4 border-t">
-                      <p className="text-sm font-medium text-gray-700">Action Required:</p>
+                    <div className="space-y-3 mt-4 pt-4">
+                      <div className="h-px bg-surface-container-high -mx-5" />
+                      <p className="label-technical text-[10px]">Action Required</p>
                       <Textarea
                         placeholder="Add notes (optional)"
                         value={notes[consultantId] || ''}
@@ -172,10 +169,10 @@ export function ConsultantAssignmentsList({
                             handleStatusUpdate(consultantId, 'accepted', notes[consultantId])
                           }
                           disabled={loading}
-                          className="gap-2 bg-green-600 hover:bg-green-700"
+                          className="gap-1.5 bg-gradient-to-br from-green-500 to-green-600 text-white"
                         >
-                          <Check className="h-4 w-4" />
-                          Accept Assignment
+                          <Check className="h-3.5 w-3.5" />
+                          Accept
                         </Button>
                         <Button
                           size="sm"
@@ -184,9 +181,9 @@ export function ConsultantAssignmentsList({
                             handleStatusUpdate(consultantId, 'declined', notes[consultantId])
                           }
                           disabled={loading}
-                          className="gap-2"
+                          className="gap-1.5"
                         >
-                          <X className="h-4 w-4" />
+                          <X className="h-3.5 w-3.5" />
                           Decline
                         </Button>
                       </div>
@@ -194,8 +191,9 @@ export function ConsultantAssignmentsList({
                   )}
 
                   {isCurrentUser && assignment.status === 'accepted' && (
-                    <div className="space-y-3 mt-4 pt-4 border-t">
-                      <p className="text-sm font-medium text-gray-700">Mark as Complete:</p>
+                    <div className="space-y-3 mt-4 pt-4">
+                      <div className="h-px bg-surface-container-high -mx-5" />
+                      <p className="label-technical text-[10px]">Mark as Complete</p>
                       <Textarea
                         placeholder="Add completion notes (optional)"
                         value={notes[consultantId] || ''}
@@ -211,9 +209,9 @@ export function ConsultantAssignmentsList({
                           handleStatusUpdate(consultantId, 'completed', notes[consultantId])
                         }
                         disabled={loading}
-                        className="gap-2 bg-blue-600 hover:bg-blue-700"
+                        className="gap-1.5"
                       >
-                        <Check className="h-4 w-4" />
+                        <Check className="h-3.5 w-3.5" />
                         Mark Complete
                       </Button>
                     </div>

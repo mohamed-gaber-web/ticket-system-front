@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CustomSelect } from '@/components/ui/custom-select';
 import { Loader2, Building2, User, Mail, Phone, MapPin, Lock, Database, Plus, Users } from 'lucide-react';
 import type { CreateCustomerData, Customer, UpdateCustomerData } from '@/types/customer.types';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
@@ -216,60 +216,60 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
   };
 
   return (
-    <Card className="w-full border-none shadow-xl bg-gradient-to-br from-white via-white to-blue-50/30">
-      <CardHeader className="border-b bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-t-lg py-8">
-        <CardTitle className="text-3xl font-bold flex items-center gap-3">
+    <div className="form-card">
+      <div className="border-b bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-t-[1rem] py-8 px-8">
+        <h2 className="text-3xl font-bold flex items-center gap-3">
           <Building2 className="w-8 h-8" />
           {isEditMode ? 'Edit Customer' : 'Create New Customer'}
-        </CardTitle>
+        </h2>
         <p className="text-blue-100 mt-2 text-sm">
           {isEditMode ? 'Update customer information below' : 'Fill in the details to add a new customer'}
         </p>
-      </CardHeader>
-      <CardContent className="p-8">
+      </div>
+      <div className="p-8">
         <form onSubmit={handleSubmit} className="space-y-8">
           <div className="space-y-6">
-            <div className="flex items-center gap-3 pb-3 border-b-2 border-blue-600">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Building2 className="w-5 h-5 text-blue-600" />
+            <div className="form-section-title flex items-center gap-3">
+              <div className="p-2 bg-brand-100 rounded-lg">
+                <Building2 className="w-5 h-5 text-brand-600" />
               </div>
-              <h3 className="text-xl font-bold text-gray-800">Company Information</h3>
+              Company Information
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-                  <Building2 className="w-4 h-4 text-blue-600" />
-                  Company Name <span className="text-red-500">*</span>
+                <label className="form-label flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-brand-600" />
+                  Company Name <span className="text-error">*</span>
                 </label>
                 <Input
                   name="companyName"
                   value={formData.companyName}
                   onChange={handleChange}
                   placeholder="Enter company name"
-                  className={`h-11 border-2 transition-all ${errors.companyName ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-blue-500'}`}
+                  className={`h-11 ${errors.companyName ? 'ring-[2px] ring-error/30' : ''}`}
                 />
                 {errors.companyName && (
-                  <p className="text-red-500 text-sm font-medium flex items-center gap-1">
+                  <p className="text-error text-sm font-medium flex items-center gap-1">
                     {errors.companyName}
                   </p>
                 )}
               </div>
 
               <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-                  <User className="w-4 h-4 text-blue-600" />
-                  Contact Person <span className="text-red-500">*</span>
+                <label className="form-label flex items-center gap-2">
+                  <User className="w-4 h-4 text-brand-600" />
+                  Contact Person <span className="text-error">*</span>
                 </label>
                 <Input
                   name="contactPerson"
                   value={formData.contactPerson}
                   onChange={handleChange}
                   placeholder="Enter contact person name"
-                  className={`h-11 border-2 transition-all ${errors.contactPerson ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-blue-500'}`}
+                  className={`h-11 ${errors.contactPerson ? 'ring-[2px] ring-error/30' : ''}`}
                 />
                 {errors.contactPerson && (
-                  <p className="text-red-500 text-sm font-medium flex items-center gap-1">
+                  <p className="text-error text-sm font-medium flex items-center gap-1">
                     {errors.contactPerson}
                   </p>
                 )}
@@ -278,18 +278,18 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
           </div>
 
           <div className="space-y-6">
-            <div className="flex items-center gap-3 pb-3 border-b-2 border-indigo-600">
+            <div className="form-section-title flex items-center gap-3">
               <div className="p-2 bg-indigo-100 rounded-lg">
                 <Mail className="w-5 h-5 text-indigo-600" />
               </div>
-              <h3 className="text-xl font-bold text-gray-800">Contact Information</h3>
+              Contact Information
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                <label className="form-label flex items-center gap-2">
                   <Mail className="w-4 h-4 text-indigo-600" />
-                  Email <span className="text-red-500">*</span>
+                  Email <span className="text-error">*</span>
                 </label>
                 <Input
                   type="email"
@@ -297,19 +297,19 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
                   value={formData.email}
                   onChange={handleChange}
                   placeholder="Enter email address"
-                  className={`h-11 border-2 transition-all ${errors.email ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-indigo-500'}`}
+                  className={`h-11 ${errors.email ? 'ring-[2px] ring-error/30' : ''}`}
                 />
                 {errors.email && (
-                  <p className="text-red-500 text-sm font-medium flex items-center gap-1">
+                  <p className="text-error text-sm font-medium flex items-center gap-1">
                     {errors.email}
                   </p>
                 )}
               </div>
 
               <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                <label className="form-label flex items-center gap-2">
                   <Phone className="w-4 h-4 text-indigo-600" />
-                  Phone <span className="text-red-500">*</span>
+                  Phone <span className="text-error">*</span>
                 </label>
                 <Input
                   type="tel"
@@ -317,10 +317,10 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
                   value={formData.phone}
                   onChange={handleChange}
                   placeholder="+1234567890"
-                  className={`h-11 border-2 transition-all ${errors.phone ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-indigo-500'}`}
+                  className={`h-11 ${errors.phone ? 'ring-[2px] ring-error/30' : ''}`}
                 />
                 {errors.phone && (
-                  <p className="text-red-500 text-sm font-medium flex items-center gap-1">
+                  <p className="text-error text-sm font-medium flex items-center gap-1">
                     {errors.phone}
                   </p>
                 )}
@@ -329,9 +329,9 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
 
             {!isEditMode && (
               <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                <label className="form-label flex items-center gap-2">
                   <Lock className="w-4 h-4 text-indigo-600" />
-                  Password <span className="text-red-500">*</span>
+                  Password <span className="text-error">*</span>
                 </label>
                 <Input
                   type="password"
@@ -339,10 +339,10 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
                   value={formData.password}
                   onChange={handleChange}
                   placeholder="Enter password (min. 8 characters)"
-                  className={`h-11 border-2 transition-all ${errors.password ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-indigo-500'}`}
+                  className={`h-11 ${errors.password ? 'ring-[2px] ring-error/30' : ''}`}
                 />
                 {errors.password && (
-                  <p className="text-red-500 text-sm font-medium flex items-center gap-1">
+                  <p className="text-error text-sm font-medium flex items-center gap-1">
                     {errors.password}
                   </p>
                 )}
@@ -351,41 +351,38 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
           </div>
 
           <div className="space-y-6">
-            <div className="flex items-center gap-3 pb-3 border-b-2 border-green-600">
+            <div className="form-section-title flex items-center gap-3">
               <div className="p-2 bg-green-100 rounded-lg">
                 <Database className="w-5 h-5 text-green-600" />
               </div>
-              <h3 className="text-xl font-bold text-gray-800">System Information</h3>
-              <span className="text-sm text-gray-500 font-normal">(Optional)</span>
+              System Information
+              <span className="text-sm text-on-surface-variant font-normal">(Optional)</span>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                <label className="form-label flex items-center gap-2">
                   <Database className="w-4 h-4 text-green-600" />
                   ERP Type
                 </label>
                 <div className="flex gap-2">
-                  <select
-                    name="erpType"
+                  <CustomSelect
                     value={formData.erpType}
-                    onChange={handleChange}
-                    className="flex-1 h-11 px-4 border-2 border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
-                  >
-                    <option value="">Select ERP Type</option>
-                    {erpTypes
-                      .filter((erp) => erp.isActive)
-                      .map((erp) => (
-                        <option key={erp._id} value={erp._id}>
-                          {erp.name}
-                        </option>
-                      ))}
-                  </select>
+                    onChange={(val) => setFormData((prev) => ({ ...prev, erpType: val }))}
+                    placeholder="Select ERP Type"
+                    className="flex-1"
+                    options={[
+                      { value: '', label: 'Select ERP Type' },
+                      ...erpTypes
+                        .filter((erp) => erp.isActive)
+                        .map((erp) => ({ value: erp._id, label: erp.name })),
+                    ]}
+                  />
                   <Button
                     type="button"
                     onClick={() => setShowErpTypeDialog(true)}
                     variant="outline"
-                    className="h-11 px-4 border-2 border-green-500 text-green-600 hover:bg-green-50"
+                    className="h-11 px-4"
                   >
                     <Plus className="w-4 h-4" />
                   </Button>
@@ -393,31 +390,28 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
               </div>
 
               <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                <label className="form-label flex items-center gap-2">
                   <Database className="w-4 h-4 text-green-600" />
                   Version Number
                 </label>
                 <div className="flex gap-2">
-                  <select
-                    name="versionNumber"
+                  <CustomSelect
                     value={formData.versionNumber}
-                    onChange={handleChange}
-                    className="flex-1 h-11 px-4 border-2 border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
-                  >
-                    <option value="">Select Version Number</option>
-                    {versionNumbers
-                      .filter((version) => version.isActive)
-                      .map((version) => (
-                        <option key={version._id} value={version._id}>
-                          {version.name}
-                        </option>
-                      ))}
-                  </select>
+                    onChange={(val) => setFormData((prev) => ({ ...prev, versionNumber: val }))}
+                    placeholder="Select Version Number"
+                    className="flex-1"
+                    options={[
+                      { value: '', label: 'Select Version Number' },
+                      ...versionNumbers
+                        .filter((version) => version.isActive)
+                        .map((version) => ({ value: version._id, label: version.name })),
+                    ]}
+                  />
                   <Button
                     type="button"
                     onClick={() => setShowVersionDialog(true)}
                     variant="outline"
-                    className="h-11 px-4 border-2 border-green-500 text-green-600 hover:bg-green-50"
+                    className="h-11 px-4"
                   >
                     <Plus className="w-4 h-4" />
                   </Button>
@@ -428,23 +422,23 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
 
           {/* Consultant Assignment Section */}
           <div className="space-y-6">
-            <div className="flex items-center gap-3 pb-3 border-b-2 border-orange-600">
+            <div className="form-section-title flex items-center gap-3">
               <div className="p-2 bg-orange-100 rounded-lg">
                 <Users className="w-5 h-5 text-orange-600" />
               </div>
-              <h3 className="text-xl font-bold text-gray-800">Assign Consultants</h3>
-              <span className="text-sm text-gray-500 font-normal">(Optional)</span>
+              Assign Consultants
+              <span className="text-sm text-on-surface-variant font-normal">(Optional)</span>
             </div>
 
             <div className="space-y-3">
-              <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+              <label className="form-label flex items-center gap-2">
                 <Users className="w-4 h-4 text-orange-600" />
                 Select Consultants to work with this customer
               </label>
               <select
                 multiple
                 size={8}
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+                className="form-select min-h-[200px] h-auto py-2.5"
                 value={formData.consultants}
                 onChange={(e) => {
                   const selected = Array.from(e.target.selectedOptions, option => option.value);
@@ -457,33 +451,33 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
                     <option
                       key={consultant._id}
                       value={consultant._id}
-                      className="py-2 px-2 hover:bg-orange-100"
+                      className="py-2 px-2"
                     >
                       {consultant.fullName || `${consultant.firstName} ${consultant.lastName}`}
                     </option>
                   ))}
               </select>
-              <p className="text-xs text-gray-500 italic">Hold Ctrl (or Cmd on Mac) and click to select multiple consultants</p>
+              <p className="text-xs text-on-surface-variant italic">Hold Ctrl (or Cmd on Mac) and click to select multiple consultants</p>
               {formData.consultants.length > 0 && (
                 <p className="text-sm text-orange-600 font-semibold">
-                  ✓ {formData.consultants.length} consultant{formData.consultants.length > 1 ? 's' : ''} selected
+                  {formData.consultants.length} consultant{formData.consultants.length > 1 ? 's' : ''} selected
                 </p>
               )}
             </div>
           </div>
 
           <div className="space-y-6">
-            <div className="flex items-center gap-3 pb-3 border-b-2 border-purple-600">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <MapPin className="w-5 h-5 text-purple-600" />
+            <div className="form-section-title flex items-center gap-3">
+              <div className="p-2 bg-accent-orange-100 rounded-lg">
+                <MapPin className="w-5 h-5 text-accent-orange-600" />
               </div>
-              <h3 className="text-xl font-bold text-gray-800">Address Information</h3>
-              <span className="text-sm text-gray-500 font-normal">(Optional)</span>
+              Address Information
+              <span className="text-sm text-on-surface-variant font-normal">(Optional)</span>
             </div>
 
             <div className="space-y-2">
-              <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-                <MapPin className="w-4 h-4 text-purple-600" />
+              <label className="form-label flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-accent-orange-600" />
                 Street Address
               </label>
               <Input
@@ -491,30 +485,30 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
                 value={formData.address}
                 onChange={handleChange}
                 placeholder="Enter street address"
-                className="h-11 border-2 border-gray-200 focus:border-purple-500 transition-all"
+                className="h-11"
               />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <label className="text-sm font-semibold text-gray-700">City</label>
+                <label className="form-label">City</label>
                 <Input
                   name="city"
                   value={formData.city}
                   onChange={handleChange}
                   placeholder="Enter city"
-                  className="h-11 border-2 border-gray-200 focus:border-purple-500 transition-all"
+                  className="h-11"
                 />
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-semibold text-gray-700">Country</label>
+                <label className="form-label">Country</label>
                 <Input
                   name="country"
                   value={formData.country}
                   onChange={handleChange}
                   placeholder="Enter country"
-                  className="h-11 border-2 border-gray-200 focus:border-purple-500 transition-all"
+                  className="h-11"
                 />
               </div>
             </div>
@@ -522,34 +516,34 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
 
           {isEditMode && (
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-gray-700">Status</label>
-              <select
-                name="status"
+              <label className="form-label">Status</label>
+              <CustomSelect
                 value={formData.status}
-                onChange={handleChange}
-                className="w-full h-11 px-4 border-2 border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-              >
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-                <option value="suspended">Suspended</option>
-              </select>
+                onChange={(val) => setFormData((prev) => ({ ...prev, status: val as 'active' | 'inactive' | 'suspended' }))}
+                options={[
+                  { value: 'active', label: 'Active' },
+                  { value: 'inactive', label: 'Inactive' },
+                  { value: 'suspended', label: 'Suspended' },
+                ]}
+              />
             </div>
           )}
 
-          <div className="flex gap-4 justify-end pt-6 border-t-2">
+          <div className="flex gap-4 justify-end pt-6">
+            <div className="h-px bg-surface-container-high w-full absolute left-0" style={{ marginTop: '-1.5rem' }} />
             <Button
               type="button"
               variant="outline"
               onClick={() => navigate('/customers')}
               disabled={isLoading}
-              className="h-11 px-8 border-2 hover:bg-gray-100"
+              className="h-11 px-8"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={isLoading}
-              className="h-11 px-8 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold shadow-lg"
+              className="h-11 px-8"
             >
               {isLoading ? (
                 <>
@@ -562,7 +556,7 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
             </Button>
           </div>
         </form>
-      </CardContent>
+      </div>
 
       {/* ERP Type Dialog */}
       <Dialog open={showErpTypeDialog} onOpenChange={setShowErpTypeDialog}>
@@ -575,7 +569,7 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-gray-700">ERP Type Name</label>
+              <label className="form-label">ERP Type Name</label>
               <Input
                 value={newErpTypeName}
                 onChange={(e) => setNewErpTypeName(e.target.value)}
@@ -599,7 +593,6 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
               type="button"
               onClick={handleCreateErpType}
               disabled={isCreatingErpType || !newErpTypeName.trim()}
-              className="bg-green-600 hover:bg-green-700"
             >
               {isCreatingErpType ? (
                 <>
@@ -628,7 +621,7 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-gray-700">Version Number</label>
+              <label className="form-label">Version Number</label>
               <Input
                 value={newVersionName}
                 onChange={(e) => setNewVersionName(e.target.value)}
@@ -652,7 +645,6 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
               type="button"
               onClick={handleCreateVersionNumber}
               disabled={isCreatingVersion || !newVersionName.trim()}
-              className="bg-green-600 hover:bg-green-700"
             >
               {isCreatingVersion ? (
                 <>
@@ -669,6 +661,6 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </Card>
+    </div>
   );
 }

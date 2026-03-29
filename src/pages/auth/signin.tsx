@@ -23,19 +23,16 @@ const SigninPage = () => {
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    // Clear errors on mount
     dispatch(clearError());
   }, [dispatch]);
 
   useEffect(() => {
-    // Redirect if already authenticated
     if (isAuthenticated) {
       navigate('/dashboard');
     }
   }, [isAuthenticated, navigate]);
 
   useEffect(() => {
-    // Show error toast if there's an error
     if (error) {
       toast.error(error);
     }
@@ -48,7 +45,6 @@ const SigninPage = () => {
       [name]: value,
     }));
 
-    // Clear validation error for this field
     if (validationErrors[name]) {
       setValidationErrors((prev) => {
         const newErrors = { ...prev };
@@ -92,21 +88,18 @@ const SigninPage = () => {
       ).unwrap();
 
       toast.success('Signed in successfully!');
-
-      // Redirect to dashboard
       navigate('/dashboard');
     } catch (error) {
-      // Error is already handled by the error state and useEffect
       console.error('Signin failed:', error);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      {/* Animated Background Elements */}
+    <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-surface">
+      {/* Subtle Background Gradient */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <motion.div
-          className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-br from-blue-400/10 to-purple-400/10 rounded-full blur-3xl"
+          className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-br from-brand-100/30 to-transparent rounded-full blur-3xl"
           animate={{
             scale: [1, 1.2, 1],
             rotate: [0, 90, 0],
@@ -118,7 +111,7 @@ const SigninPage = () => {
           }}
         />
         <motion.div
-          className="absolute -bottom-1/2 -right-1/2 w-full h-full bg-gradient-to-tl from-purple-400/10 to-pink-400/10 rounded-full blur-3xl"
+          className="absolute -bottom-1/2 -right-1/2 w-full h-full bg-gradient-to-tl from-accent-orange-100/20 to-transparent rounded-full blur-3xl"
           animate={{
             scale: [1.2, 1, 1.2],
             rotate: [90, 0, 90],
@@ -145,37 +138,37 @@ const SigninPage = () => {
           transition={{ delay: 0.2 }}
           className="text-center mb-8"
         >
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 shadow-lg shadow-blue-500/50 mb-4">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-[1.25rem] bg-primary-gradient mb-4">
             <Sparkles className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <h1 className="display-sm text-on-surface">
             Welcome Back
           </h1>
-          <p className="text-gray-600 mt-2">Sign in to continue to your account</p>
+          <p className="text-on-surface-variant mt-2">Sign in to continue to your account</p>
         </motion.div>
 
-        {/* Sign In Card */}
+        {/* Sign In Card - Glassmorphism */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl shadow-gray-200/50 border border-gray-100 p-8"
+          className="glass rounded-[1.5rem] shadow-ambient p-8"
         >
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* User Type Selection */}
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                <Users className="w-4 h-4 text-blue-500" />
+              <label className="label-technical flex items-center gap-2">
+                <Users className="w-4 h-4 text-brand-500" />
                 Sign in as
               </label>
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
                   onClick={() => setFormData(prev => ({ ...prev, userType: 'customer' }))}
-                  className={`h-12 rounded-xl border-2 font-medium transition-all duration-200 ${
+                  className={`h-12 rounded-[1rem] font-semibold text-sm transition-all duration-200 ${
                     formData.userType === 'customer'
-                      ? 'border-blue-500 bg-blue-50 text-blue-700'
-                      : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                      ? 'bg-primary-fixed text-on-primary-fixed'
+                      : 'bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest'
                   }`}
                 >
                   Customer
@@ -183,22 +176,21 @@ const SigninPage = () => {
                 <button
                   type="button"
                   onClick={() => setFormData(prev => ({ ...prev, userType: 'consultant' }))}
-                  className={`h-12 rounded-xl border-2 font-medium transition-all duration-200 ${
+                  className={`h-12 rounded-[1rem] font-semibold text-sm transition-all duration-200 ${
                     formData.userType === 'consultant'
-                      ? 'border-blue-500 bg-blue-50 text-blue-700'
-                      : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                      ? 'bg-primary-fixed text-on-primary-fixed'
+                      : 'bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest'
                   }`}
                 >
                   Consultant
                 </button>
-                {/* HIDDEN: Team Member sign-in option - not currently in use */}
               </div>
             </div>
 
             {/* Email Field */}
             <div className="space-y-2">
-              <label htmlFor="email" className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                <Mail className="w-4 h-4 text-blue-500" />
+              <label htmlFor="email" className="label-technical flex items-center gap-2">
+                <Mail className="w-4 h-4 text-brand-500" />
                 Email Address
               </label>
               <div className="relative group">
@@ -210,18 +202,18 @@ const SigninPage = () => {
                   onChange={handleChange}
                   placeholder="you@example.com"
                   autoComplete="email"
-                  className={`h-12 pl-4 pr-4 rounded-xl border-2 transition-all duration-200 ${
+                  className={`h-12 ${
                     validationErrors.email
-                      ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-                      : 'border-gray-200 focus:border-blue-500 focus:ring-blue-500 group-hover:border-gray-300'
-                  } bg-white/50`}
+                      ? 'ring-[2px] ring-error/30'
+                      : ''
+                  }`}
                 />
               </div>
               {validationErrors.email && (
                 <motion.p
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="text-red-500 text-xs flex items-center gap-1"
+                  className="text-error text-xs"
                 >
                   {validationErrors.email}
                 </motion.p>
@@ -230,8 +222,8 @@ const SigninPage = () => {
 
             {/* Password Field */}
             <div className="space-y-2">
-              <label htmlFor="password" className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                <Lock className="w-4 h-4 text-blue-500" />
+              <label htmlFor="password" className="label-technical flex items-center gap-2">
+                <Lock className="w-4 h-4 text-brand-500" />
                 Password
               </label>
               <div className="relative group">
@@ -243,16 +235,16 @@ const SigninPage = () => {
                   onChange={handleChange}
                   placeholder="Enter your password"
                   autoComplete="current-password"
-                  className={`h-12 pl-4 pr-12 rounded-xl border-2 transition-all duration-200 ${
+                  className={`h-12 pr-12 ${
                     validationErrors.password
-                      ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-                      : 'border-gray-200 focus:border-blue-500 focus:ring-blue-500 group-hover:border-gray-300'
-                  } bg-white/50`}
+                      ? 'ring-[2px] ring-error/30'
+                      : ''
+                  }`}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface transition-colors"
                 >
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
@@ -261,7 +253,7 @@ const SigninPage = () => {
                 <motion.p
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="text-red-500 text-xs flex items-center gap-1"
+                  className="text-error text-xs"
                 >
                   {validationErrors.password}
                 </motion.p>
@@ -272,7 +264,7 @@ const SigninPage = () => {
             <div className="flex items-center justify-end">
               <Link
                 to="/forgot-password"
-                className="text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors"
+                className="text-sm font-medium text-brand-500 hover:text-brand-600 transition-colors"
               >
                 Forgot password?
               </Link>
@@ -283,7 +275,8 @@ const SigninPage = () => {
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="w-full h-12 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold shadow-lg shadow-blue-500/30 transition-all duration-200 flex items-center justify-center gap-2"
+                size="xl"
+                className="w-full"
               >
                 {isLoading ? (
                   <>
@@ -306,10 +299,10 @@ const SigninPage = () => {
             {/* Divider */}
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-200"></div>
+                <div className="w-full h-px bg-surface-container-high"></div>
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-4 bg-white text-gray-500">New to our platform?</span>
+                <span className="px-4 bg-surface-container-lowest text-on-surface-variant">New to our platform?</span>
               </div>
             </div>
 
@@ -317,14 +310,14 @@ const SigninPage = () => {
             <div className="text-center">
               <Link
                 to="/signup"
-                className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors"
+                className="inline-flex items-center gap-2 text-sm font-medium text-on-surface-variant hover:text-brand-500 transition-colors"
               >
                 Create a new account
                 <motion.span
                   animate={{ x: [0, 4, 0] }}
                   transition={{ duration: 1.5, repeat: Infinity }}
                 >
-                  →
+                  &rarr;
                 </motion.span>
               </Link>
             </div>
@@ -336,7 +329,7 @@ const SigninPage = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
-          className="text-center text-sm text-gray-500 mt-6"
+          className="text-center text-sm text-on-surface-variant mt-6"
         >
           By signing in, you agree to our Terms of Service and Privacy Policy
         </motion.p>

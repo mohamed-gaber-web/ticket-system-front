@@ -113,7 +113,7 @@ export function AssignConsultantsDialog({
                         </div>
                         <div className="text-sm text-gray-500">{consultant.email}</div>
                         {isAlreadyAssigned && (
-                          <div className="text-xs text-blue-600 mt-1">Already assigned</div>
+                          <div className="text-xs text-brand-600 mt-1">Already assigned</div>
                         )}
                       </Label>
                     </div>

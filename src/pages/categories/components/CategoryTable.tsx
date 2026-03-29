@@ -31,8 +31,8 @@ export default function CategoryTable({ categories, onDelete, loading }: Categor
         <div class="text-left">
           <p class="mb-2">You are about to delete:</p>
           <p class="font-semibold text-lg">${category.name}</p>
-          <p class="text-sm text-gray-600">${category.description}</p>
-          <p class="mt-3 text-red-600">This action cannot be undone!</p>
+          <p class="text-sm text-on-surface-variant">${category.description}</p>
+          <p class="mt-3 text-error">This action cannot be undone!</p>
         </div>
       `,
       icon: 'warning',
@@ -62,7 +62,7 @@ export default function CategoryTable({ categories, onDelete, loading }: Categor
   if (loading) {
     return (
       <div className="flex justify-center items-center py-12">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-600"></div>
       </div>
     );
   }
@@ -70,9 +70,9 @@ export default function CategoryTable({ categories, onDelete, loading }: Categor
   if (categories.length === 0) {
     return (
       <div className="text-center py-12">
-        <FolderOpen className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-        <p className="text-gray-600 text-lg">No categories found</p>
-        <p className="text-gray-500 text-sm mt-2">Create your first category to get started</p>
+        <FolderOpen className="mx-auto h-12 w-12 text-on-surface-variant mb-4" />
+        <p className="text-on-surface-variant text-lg">No categories found</p>
+        <p className="text-on-surface-variant text-sm mt-2">Create your first category to get started</p>
         <Button onClick={() => navigate('/categories/create')} className="mt-4">
           Create Category
         </Button>
@@ -81,10 +81,10 @@ export default function CategoryTable({ categories, onDelete, loading }: Categor
   }
 
   return (
-    <div className="rounded-lg border bg-white shadow-sm overflow-hidden">
+    <div className="rounded-lg bg-surface-container-lowest shadow-sm overflow-hidden">
       <Table>
         <TableHeader>
-          <TableRow className="bg-gray-50">
+          <TableRow className="bg-surface-container-low">
             <TableHead className="font-semibold">Category Name</TableHead>
             <TableHead className="font-semibold">Description</TableHead>
             <TableHead className="font-semibold">Created At</TableHead>
@@ -93,21 +93,21 @@ export default function CategoryTable({ categories, onDelete, loading }: Categor
         </TableHeader>
         <TableBody>
           {categories.map((category) => (
-            <TableRow key={category._id} className="hover:bg-gray-50 transition-colors">
+            <TableRow key={category._id} className="hover:bg-surface-container-low transition-colors">
               <TableCell>
                 <div className="flex items-center gap-2">
-                  <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold">
+                  <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-brand-500 to-accent-orange-500 flex items-center justify-center text-white font-semibold">
                     {category.name.charAt(0).toUpperCase()}
                   </div>
                   <div>
-                    <p className="font-semibold text-gray-900">{category.name}</p>
+                    <p className="font-semibold text-on-surface">{category.name}</p>
                   </div>
                 </div>
               </TableCell>
               <TableCell>
-                <p className="text-gray-600">{category.description}</p>
+                <p className="text-on-surface-variant">{category.description}</p>
               </TableCell>
-              <TableCell className="text-gray-600">{formatDate(category.createdAt)}</TableCell>
+              <TableCell className="text-on-surface-variant">{formatDate(category.createdAt)}</TableCell>
               <TableCell>
                 <div className="flex items-center justify-end gap-2">
                   <Button
@@ -121,7 +121,7 @@ export default function CategoryTable({ categories, onDelete, loading }: Categor
                   <Button
                     size="sm"
                     variant="outline"
-                    className="text-red-600 hover:text-red-700 hover:border-red-300"
+                    className="text-error hover:text-error hover:border-error/30"
                     onClick={() => handleDelete(category)}
                   >
                     <Trash2 className="w-4 h-4 mr-1" />

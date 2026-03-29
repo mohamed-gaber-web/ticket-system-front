@@ -42,24 +42,14 @@ const TicketComments: React.FC<TicketCommentsProps> = ({ ticketId }) => {
 
   const loadComments = async () => {
     try {
-      console.log('🔄 Loading comments for ticket:', ticketId);
-      console.log('User type:', userType);
-
       if (isCustomer) {
-        console.log('📥 Fetching public comments only');
         await dispatch(fetchPublicComments({ ticketId })).unwrap();
       } else if (showInternalOnly) {
-        console.log('📥 Fetching internal comments only');
         await dispatch(fetchTicketComments({ ticketId, params: { isInternal: true } })).unwrap();
       } else {
-        console.log('📥 Fetching all comments');
         await dispatch(fetchTicketComments({ ticketId, params: { includeInternal: true } })).unwrap();
       }
-
-      console.log('✅ Comments loaded successfully');
     } catch (error: any) {
-      console.error('❌ Error loading comments:', error);
-      console.error('Full error object:', error);
       toast.error(error?.message || 'Failed to load comments');
     }
   };
@@ -92,7 +82,6 @@ const TicketComments: React.FC<TicketCommentsProps> = ({ ticketId }) => {
   };
 
   const handleDeleteComment = async (commentId: string) => {
-    // Confirmation is handled in CommentItem component
     await dispatch(deleteComment(commentId)).unwrap();
   };
 
@@ -103,20 +92,20 @@ const TicketComments: React.FC<TicketCommentsProps> = ({ ticketId }) => {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-2">
-              <MessageSquare className="h-5 w-5" />
-              <CardTitle className="text-xl">
+              <MessageSquare className="h-5 w-5 text-on-surface-variant" />
+              <CardTitle className="text-lg text-on-surface">
                 Comments
-                <Badge variant="secondary" className="ml-2">
-                  {total}
-                </Badge>
               </CardTitle>
+              <Badge className="ml-1">
+                {total}
+              </Badge>
             </div>
 
             <div className="flex items-center gap-2">
               {isStaff && (
-                <div className="flex items-center gap-2 mr-4">
+                <div className="flex items-center gap-2 mr-2">
                   <Button
                     variant={showInternalOnly ? 'default' : 'outline'}
                     size="sm"
@@ -125,21 +114,21 @@ const TicketComments: React.FC<TicketCommentsProps> = ({ ticketId }) => {
                   >
                     {showInternalOnly ? (
                       <>
-                        <Lock className="h-4 w-4" />
-                        Internal Only ({internalCommentsCount})
+                        <Lock className="h-3.5 w-3.5" />
+                        Internal ({internalCommentsCount})
                       </>
                     ) : (
                       <>
-                        <Unlock className="h-4 w-4" />
-                        All Comments
+                        <Unlock className="h-3.5 w-3.5" />
+                        All
                       </>
                     )}
                   </Button>
                   {!showInternalOnly && (
-                    <div className="text-sm text-gray-600">
-                      <span className="text-blue-600 font-medium">{publicCommentsCount}</span> Public
-                      {' | '}
-                      <span className="text-amber-600 font-medium">{internalCommentsCount}</span> Internal
+                    <div className="text-xs text-on-surface-variant">
+                      <span className="text-brand-500 font-semibold">{publicCommentsCount}</span> Public
+                      {' · '}
+                      <span className="text-yellow-600 font-semibold">{internalCommentsCount}</span> Internal
                     </div>
                   )}
                 </div>
@@ -150,9 +139,9 @@ const TicketComments: React.FC<TicketCommentsProps> = ({ ticketId }) => {
                 size="sm"
                 onClick={loadComments}
                 disabled={loading}
-                className="gap-2"
+                className="gap-1.5 text-on-surface-variant"
               >
-                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
                 Refresh
               </Button>
             </div>
@@ -168,16 +157,16 @@ const TicketComments: React.FC<TicketCommentsProps> = ({ ticketId }) => {
             loading={loading}
           />
 
-          <div className="border-t pt-4">
-            <CommentList
-              comments={comments}
-              loading={loading}
-              currentUserType={userType as UserType}
-              currentUserId={user?._id || ''}
-              onUpdate={handleUpdateComment}
-              onDelete={handleDeleteComment}
-            />
-          </div>
+          <div className="h-px bg-surface-container-high" />
+
+          <CommentList
+            comments={comments}
+            loading={loading}
+            currentUserType={userType as UserType}
+            currentUserId={user?._id || ''}
+            onUpdate={handleUpdateComment}
+            onDelete={handleDeleteComment}
+          />
         </CardContent>
       </Card>
     </div>

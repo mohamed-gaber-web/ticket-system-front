@@ -79,7 +79,7 @@ export default function CreateConsultant() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-8 space-y-8">
       {/* Header */}
       <div className="flex items-center gap-4">
         <Button
@@ -91,8 +91,8 @@ export default function CreateConsultant() {
           Back
         </Button>
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Create New Consultant</h1>
-          <p className="text-gray-600 mt-1">Add a new consultant to the system</p>
+          <h1 className="display-sm text-on-surface">Create New Consultant</h1>
+          <p className="text-on-surface-variant mt-1">Add a new consultant to the system</p>
         </div>
       </div>
 
@@ -106,8 +106,8 @@ export default function CreateConsultant() {
             {/* Personal Information */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  First Name <span className="text-red-500">*</span>
+                <label className="form-label">
+                  First Name <span className="text-error">*</span>
                 </label>
                 <Input
                   value={formData.firstName}
@@ -116,13 +116,13 @@ export default function CreateConsultant() {
                   className={errors.firstName ? 'border-red-500' : ''}
                 />
                 {errors.firstName && (
-                  <p className="text-red-500 text-sm mt-1">{errors.firstName}</p>
+                  <p className="text-error text-sm mt-1">{errors.firstName}</p>
                 )}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Last Name <span className="text-red-500">*</span>
+                <label className="form-label">
+                  Last Name <span className="text-error">*</span>
                 </label>
                 <Input
                   value={formData.lastName}
@@ -131,7 +131,7 @@ export default function CreateConsultant() {
                   className={errors.lastName ? 'border-red-500' : ''}
                 />
                 {errors.lastName && (
-                  <p className="text-red-500 text-sm mt-1">{errors.lastName}</p>
+                  <p className="text-error text-sm mt-1">{errors.lastName}</p>
                 )}
               </div>
             </div>
@@ -139,8 +139,8 @@ export default function CreateConsultant() {
             {/* Contact Information */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email <span className="text-red-500">*</span>
+                <label className="form-label">
+                  Email <span className="text-error">*</span>
                 </label>
                 <Input
                   type="email"
@@ -150,12 +150,12 @@ export default function CreateConsultant() {
                   className={errors.email ? 'border-red-500' : ''}
                 />
                 {errors.email && (
-                  <p className="text-red-500 text-sm mt-1">{errors.email}</p>
+                  <p className="text-error text-sm mt-1">{errors.email}</p>
                 )}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="form-label">
                   Phone
                 </label>
                 <Input
@@ -166,15 +166,15 @@ export default function CreateConsultant() {
                   className={errors.phone ? 'border-red-500' : ''}
                 />
                 {errors.phone && (
-                  <p className="text-red-500 text-sm mt-1">{errors.phone}</p>
+                  <p className="text-error text-sm mt-1">{errors.phone}</p>
                 )}
               </div>
             </div>
 
             {/* Password */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Password <span className="text-red-500">*</span>
+              <label className="form-label">
+                Password <span className="text-error">*</span>
               </label>
               <Input
                 type="password"
@@ -184,12 +184,12 @@ export default function CreateConsultant() {
                 className={errors.password ? 'border-red-500' : ''}
               />
               {errors.password && (
-                <p className="text-red-500 text-sm mt-1">{errors.password}</p>
+                <p className="text-error text-sm mt-1">{errors.password}</p>
               )}
             </div>
 
             {/* Action Buttons */}
-            <div className="flex gap-3 pt-6 border-t">
+            <div className="flex gap-3 pt-6">
               <Button type="submit" disabled={loading}>
                 {loading ? (
                   <>

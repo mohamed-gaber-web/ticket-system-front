@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { Eye, Loader2 } from 'lucide-react';
 import { Button } from '../ui/button';
+import { CustomSelect } from '@/components/ui/custom-select';
 import type { Consultant } from '../../types/consultant.types';
 import { cn } from '../../lib/utils';
 
@@ -21,8 +22,8 @@ const STATUS_STYLES = {
 };
 
 const ROLE_STYLES = {
-  admin: 'bg-purple-100 text-purple-800 border-purple-200',
-  senior_consultant: 'bg-blue-100 text-blue-800 border-blue-200',
+  admin: 'bg-accent-orange-100 text-purple-800 border-accent-orange-200',
+  senior_consultant: 'bg-brand-100 text-brand-800 border-brand-200',
   consultant: 'bg-gray-100 text-gray-800 border-gray-200',
 };
 
@@ -62,7 +63,7 @@ export default function ConsultantTable({
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64 bg-white rounded-lg shadow border">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+        <Loader2 className="w-8 h-8 animate-spin text-brand-600" />
       </div>
     );
   }
@@ -165,16 +166,17 @@ export default function ConsultantTable({
       <div className="bg-gray-50 px-6 py-3 border-t flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-700">Rows per page:</span>
-          <select
-            value={rowsPerPage}
-            onChange={(e) => onRowsPerPageChange(Number(e.target.value))}
-            className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:border-blue-500"
-          >
-            <option value={10}>10</option>
-            <option value={25}>25</option>
-            <option value={50}>50</option>
-            <option value={100}>100</option>
-          </select>
+          <CustomSelect
+            variant="form"
+            value={String(rowsPerPage)}
+            onChange={(value) => onRowsPerPageChange(Number(value))}
+            options={[
+              { value: '10', label: '10' },
+              { value: '25', label: '25' },
+              { value: '50', label: '50' },
+              { value: '100', label: '100' },
+            ]}
+          />
         </div>
 
         <div className="flex items-center gap-4">

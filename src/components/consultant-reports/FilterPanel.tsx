@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Card, CardContent } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
+import { CustomSelect } from '@/components/ui/custom-select';
 import { Search, X } from 'lucide-react';
 import type { ConsultantStatus, ConsultantRole } from '../../types/consultant.types';
 
@@ -49,37 +50,31 @@ export default function FilterPanel({
     <Card>
       <CardContent className="p-4">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Status
-            </label>
-            <select
-              value={filters.status}
-              onChange={(e) => handleChange('status', e.target.value)}
-              className="w-full h-11 px-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none transition-colors"
-            >
-              <option value="">All</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-              <option value="on_leave">On Leave</option>
-            </select>
-          </div>
+          <CustomSelect
+            variant="filter"
+            value={filters.status}
+            onChange={(value) => handleChange('status', value)}
+            label="Status"
+            options={[
+              { value: '', label: 'All' },
+              { value: 'active', label: 'Active' },
+              { value: 'inactive', label: 'Inactive' },
+              { value: 'on_leave', label: 'On Leave' },
+            ]}
+          />
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Role
-            </label>
-            <select
-              value={filters.role}
-              onChange={(e) => handleChange('role', e.target.value)}
-              className="w-full h-11 px-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none transition-colors"
-            >
-              <option value="">All</option>
-              <option value="consultant">Consultant</option>
-              <option value="senior_consultant">Senior Consultant</option>
-              <option value="admin">Admin</option>
-            </select>
-          </div>
+          <CustomSelect
+            variant="filter"
+            value={filters.role}
+            onChange={(value) => handleChange('role', value)}
+            label="Role"
+            options={[
+              { value: '', label: 'All' },
+              { value: 'consultant', label: 'Consultant' },
+              { value: 'senior_consultant', label: 'Senior Consultant' },
+              { value: 'admin', label: 'Admin' },
+            ]}
+          />
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">

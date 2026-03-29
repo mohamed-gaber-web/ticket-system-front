@@ -47,12 +47,9 @@ export function SidebarDesktop({ links, isOpen, setIsOpen }: SidebarDesktopProps
         initial={{ width: 80 }}
         animate={{ width: isOpen ? 280 : 80 }}
         transition={{ type: "spring", stiffness: 200, damping: 20 }}
-        className="hidden md:flex flex-col flex-shrink-0 bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 border-r border-gray-700/50 h-screen p-4 shadow-2xl relative z-10"
+        className="hidden md:flex flex-col flex-shrink-0 bg-surface-container-low h-screen p-4 relative z-10"
         style={{ overflowY: 'auto', overflowX: 'hidden' }}
       >
-        {/* Gradient Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-600/10 via-purple-600/10 to-pink-600/10 pointer-events-none"></div>
-
         {/* Header */}
         <div className="relative flex items-center justify-between mb-8">
           <motion.div
@@ -61,14 +58,14 @@ export function SidebarDesktop({ links, isOpen, setIsOpen }: SidebarDesktopProps
             animate={{ opacity: isOpen ? 1 : 0, x: isOpen ? 0 : -10 }}
             exit={{ opacity: 0, x: -10 }}
             transition={{ duration: 0.3 }}
-            className={`flex items-center gap-2 ${!isOpen && "hidden"}`}
+            className={`flex items-center gap-3 ${!isOpen && "hidden"}`}
           >
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
+            <div className="h-10 w-10 rounded-[1rem] bg-primary-gradient flex items-center justify-center">
               <Sparkles className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-white whitespace-nowrap">TicketHub</h1>
-              <p className="text-[10px] text-gray-400 whitespace-nowrap">Support System</p>
+              <h1 className="text-lg font-bold text-on-surface whitespace-nowrap">TicketHub</h1>
+              <p className="text-[10px] text-on-surface-variant whitespace-nowrap">Support System</p>
             </div>
           </motion.div>
 
@@ -76,7 +73,7 @@ export function SidebarDesktop({ links, isOpen, setIsOpen }: SidebarDesktopProps
             variant="ghost"
             size="icon"
             onClick={() => setIsOpen(!isOpen)}
-            className="shrink-0 hover:bg-white/10 rounded-xl text-white relative z-10"
+            className="shrink-0 rounded-[1rem] text-on-surface-variant hover:text-on-surface relative z-10"
           >
             {isOpen ? (
               <ChevronLeft className="h-5 w-5 transition-transform duration-300" />
@@ -94,14 +91,14 @@ export function SidebarDesktop({ links, isOpen, setIsOpen }: SidebarDesktopProps
             transition={{ delay: 0.2 }}
             className="relative mb-3"
           >
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-3">
+            <p className="label-technical px-3">
               Main Menu
             </p>
           </motion.div>
         )}
 
         {/* Navigation */}
-        <nav className="space-y-2 relative flex-1">
+        <nav className="space-y-1 relative flex-1">
           {links.map((item, index) => {
             if (isGroup(item)) {
               const isExpanded = expandedGroups.includes(item.name);
@@ -110,7 +107,7 @@ export function SidebarDesktop({ links, isOpen, setIsOpen }: SidebarDesktopProps
                   {/* Group Header */}
                   <button
                     onClick={() => isOpen && toggleGroup(item.name)}
-                    className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium transition-all duration-300 relative group text-gray-300 hover:bg-white/10 hover:text-white cursor-pointer"
+                    className="w-full flex items-center gap-3 px-3 py-3 rounded-[1rem] text-sm font-medium transition-all duration-200 relative group text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface cursor-pointer"
                   >
                     <motion.div
                       initial={{ scale: 0.8, opacity: 0 }}
@@ -151,17 +148,17 @@ export function SidebarDesktop({ links, isOpen, setIsOpen }: SidebarDesktopProps
                         animate={{ height: "auto", opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
                         transition={{ duration: 0.3 }}
-                        className="overflow-hidden ml-4 mt-1 space-y-1"
+                        className="overflow-hidden ml-4 mt-1 space-y-0.5"
                       >
                         {item.children.map((child, childIndex) => (
                           <NavLink
                             key={child.path}
                             to={child.path}
                             className={({ isActive }) =>
-                              `flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-300 relative group ${
+                              `flex items-center gap-3 px-3 py-2 rounded-[1rem] text-sm font-medium transition-all duration-200 relative group ${
                                 isActive
-                                  ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/50"
-                                  : "text-gray-300 hover:bg-white/10 hover:text-white"
+                                  ? "bg-primary-fixed text-on-primary-fixed font-semibold"
+                                  : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
                               }`
                             }
                           >
@@ -170,7 +167,7 @@ export function SidebarDesktop({ links, isOpen, setIsOpen }: SidebarDesktopProps
                                 {isActive && (
                                   <motion.div
                                     layoutId="activeTab"
-                                    className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl"
+                                    className="absolute inset-0 bg-primary-fixed rounded-[1rem]"
                                     transition={{ type: "spring", stiffness: 300, damping: 30 }}
                                   />
                                 )}
@@ -199,7 +196,7 @@ export function SidebarDesktop({ links, isOpen, setIsOpen }: SidebarDesktopProps
                                   <motion.div
                                     initial={{ scale: 0 }}
                                     animate={{ scale: 1 }}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 h-2 w-2 rounded-full bg-white z-10"
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 h-1.5 w-1.5 rounded-full bg-brand-500 z-10"
                                   />
                                 )}
                               </>
@@ -219,10 +216,10 @@ export function SidebarDesktop({ links, isOpen, setIsOpen }: SidebarDesktopProps
                   key={path}
                   to={path}
                   className={({ isActive }) =>
-                    `flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium transition-all duration-300 relative group ${
+                    `flex items-center gap-3 px-3 py-3 rounded-[1rem] text-sm font-medium transition-all duration-200 relative group ${
                       isActive
-                        ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/50"
-                        : "text-gray-300 hover:bg-white/10 hover:text-white"
+                        ? "bg-primary-fixed text-on-primary-fixed font-semibold"
+                        : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
                     }`
                   }
                 >
@@ -231,7 +228,7 @@ export function SidebarDesktop({ links, isOpen, setIsOpen }: SidebarDesktopProps
                       {isActive && (
                         <motion.div
                           layoutId="activeTab"
-                          className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl"
+                          className="absolute inset-0 bg-primary-fixed rounded-[1rem]"
                           transition={{ type: "spring", stiffness: 300, damping: 30 }}
                         />
                       )}
@@ -262,7 +259,7 @@ export function SidebarDesktop({ links, isOpen, setIsOpen }: SidebarDesktopProps
                         <motion.div
                           initial={{ scale: 0 }}
                           animate={{ scale: 1 }}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 h-2 w-2 rounded-full bg-white z-10"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 h-1.5 w-1.5 rounded-full bg-brand-500 z-10"
                         />
                       )}
                     </>
@@ -279,7 +276,7 @@ export function SidebarDesktop({ links, isOpen, setIsOpen }: SidebarDesktopProps
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="relative mt-auto pt-4 border-t border-gray-700/50"
+            className="relative mt-auto pt-4"
           >
           </motion.div>
         )}

@@ -108,7 +108,7 @@ export function CreateSubTicketDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" className="gap-2 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white border-0">
+        <Button size="sm" className="gap-2">
           <Plus className="h-4 w-4" />
           Create Sub-Ticket
         </Button>
@@ -176,16 +176,17 @@ export function CreateSubTicketDialog({
               />
             </div>
 
-            <div className="border-t pt-4">
+            <div className="pt-4">
+              <div className="h-px bg-surface-container-high -mx-2 mb-4" />
               <div className="flex items-center gap-2 mb-3">
-                <UserCheck className="h-5 w-5 text-gray-600" />
+                <UserCheck className="h-5 w-5 text-on-surface-variant" />
                 <Label htmlFor="consultant" className="text-base font-semibold">Assign to Consultant (Optional)</Label>
               </div>
-              <p className="text-sm text-gray-600 mb-3">
+              <p className="text-sm text-on-surface-variant mb-3">
                 Select a consultant to assign to this sub-ticket. You can also assign them later.
               </p>
               {consultantsLoading ? (
-                <div className="text-sm text-gray-500 py-4">Loading consultants...</div>
+                <div className="text-sm text-on-surface-variant py-4">Loading consultants...</div>
               ) : (
                 <Select
                   value={selectedConsultant}

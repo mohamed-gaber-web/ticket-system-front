@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { CustomSelect } from '@/components/ui/custom-select';
 import { Loader2, Building2, Mail, MapPin, Database, Plus, Users } from 'lucide-react';
 import type { CreateCustomerData, Customer, UpdateCustomerData } from '@/types/customer.types';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
@@ -239,7 +240,7 @@ export default function CustomerFormDialog({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="form-dialog-content max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-2xl">
               {isEditMode ? 'Edit Customer' : 'Create New Customer'}
@@ -252,40 +253,40 @@ export default function CustomerFormDialog({
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Company Information */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                <Building2 className="w-5 h-5 text-blue-600" />
+              <h3 className="form-section-title flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-brand-600" />
                 Company Information
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Company Name <span className="text-red-500">*</span>
+                  <label className="form-label">
+                    Company Name <span className="text-error">*</span>
                   </label>
                   <Input
                     name="companyName"
                     value={formData.companyName}
                     onChange={handleChange}
                     placeholder="Enter company name"
-                    className={errors.companyName ? 'border-red-500' : ''}
+                    className={errors.companyName ? 'ring-[2px] ring-error/30' : ''}
                   />
                   {errors.companyName && (
-                    <p className="text-red-500 text-sm">{errors.companyName}</p>
+                    <p className="text-error text-sm">{errors.companyName}</p>
                   )}
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Contact Person <span className="text-red-500">*</span>
+                  <label className="form-label">
+                    Contact Person <span className="text-error">*</span>
                   </label>
                   <Input
                     name="contactPerson"
                     value={formData.contactPerson}
                     onChange={handleChange}
                     placeholder="Enter contact person name"
-                    className={errors.contactPerson ? 'border-red-500' : ''}
+                    className={errors.contactPerson ? 'ring-[2px] ring-error/30' : ''}
                   />
                   {errors.contactPerson && (
-                    <p className="text-red-500 text-sm">{errors.contactPerson}</p>
+                    <p className="text-error text-sm">{errors.contactPerson}</p>
                   )}
                 </div>
               </div>
@@ -293,14 +294,14 @@ export default function CustomerFormDialog({
 
             {/* Contact Information */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              <h3 className="form-section-title flex items-center gap-2">
                 <Mail className="w-5 h-5 text-indigo-600" />
                 Contact Information
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Email <span className="text-red-500">*</span>
+                  <label className="form-label">
+                    Email <span className="text-error">*</span>
                   </label>
                   <Input
                     type="email"
@@ -308,16 +309,16 @@ export default function CustomerFormDialog({
                     value={formData.email}
                     onChange={handleChange}
                     placeholder="Enter email address"
-                    className={errors.email ? 'border-red-500' : ''}
+                    className={errors.email ? 'ring-[2px] ring-error/30' : ''}
                   />
                   {errors.email && (
-                    <p className="text-red-500 text-sm">{errors.email}</p>
+                    <p className="text-error text-sm">{errors.email}</p>
                   )}
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Phone <span className="text-red-500">*</span>
+                  <label className="form-label">
+                    Phone <span className="text-error">*</span>
                   </label>
                   <Input
                     type="tel"
@@ -325,17 +326,17 @@ export default function CustomerFormDialog({
                     value={formData.phone}
                     onChange={handleChange}
                     placeholder="+1234567890"
-                    className={errors.phone ? 'border-red-500' : ''}
+                    className={errors.phone ? 'ring-[2px] ring-error/30' : ''}
                   />
                   {errors.phone && (
-                    <p className="text-red-500 text-sm">{errors.phone}</p>
+                    <p className="text-error text-sm">{errors.phone}</p>
                   )}
                 </div>
 
                 {!isEditMode && (
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">
-                      Password <span className="text-red-500">*</span>
+                    <label className="form-label">
+                      Password <span className="text-error">*</span>
                     </label>
                     <Input
                       type="password"
@@ -343,10 +344,10 @@ export default function CustomerFormDialog({
                       value={formData.password}
                       onChange={handleChange}
                       placeholder="Enter password (min. 8 characters)"
-                      className={errors.password ? 'border-red-500' : ''}
+                      className={errors.password ? 'ring-[2px] ring-error/30' : ''}
                     />
                     {errors.password && (
-                      <p className="text-red-500 text-sm">{errors.password}</p>
+                      <p className="text-error text-sm">{errors.password}</p>
                     )}
                   </div>
                 )}
@@ -355,29 +356,26 @@ export default function CustomerFormDialog({
 
             {/* System Information */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              <h3 className="form-section-title flex items-center gap-2">
                 <Database className="w-5 h-5 text-green-600" />
                 System Information
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">ERP Type</label>
+                  <label className="form-label">ERP Type</label>
                   <div className="flex gap-2">
-                    <select
-                      name="erpType"
+                    <CustomSelect
                       value={formData.erpType}
-                      onChange={handleChange}
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">Select ERP Type</option>
-                      {erpTypes
-                        .filter((erp) => erp.isActive)
-                        .map((erp) => (
-                          <option key={erp._id} value={erp._id}>
-                            {erp.name}
-                          </option>
-                        ))}
-                    </select>
+                      onChange={(val) => setFormData((prev) => ({ ...prev, erpType: val }))}
+                      placeholder="Select ERP Type"
+                      className="flex-1"
+                      options={[
+                        { value: '', label: 'Select ERP Type' },
+                        ...erpTypes
+                          .filter((erp) => erp.isActive)
+                          .map((erp) => ({ value: erp._id, label: erp.name })),
+                      ]}
+                    />
                     <Button
                       type="button"
                       onClick={() => setShowErpTypeDialog(true)}
@@ -390,23 +388,20 @@ export default function CustomerFormDialog({
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">Version Number</label>
+                  <label className="form-label">Version Number</label>
                   <div className="flex gap-2">
-                    <select
-                      name="versionNumber"
+                    <CustomSelect
                       value={formData.versionNumber}
-                      onChange={handleChange}
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">Select Version Number</option>
-                      {versionNumbers
-                        .filter((version) => version.isActive)
-                        .map((version) => (
-                          <option key={version._id} value={version._id}>
-                            {version.name}
-                          </option>
-                        ))}
-                    </select>
+                      onChange={(val) => setFormData((prev) => ({ ...prev, versionNumber: val }))}
+                      placeholder="Select Version Number"
+                      className="flex-1"
+                      options={[
+                        { value: '', label: 'Select Version Number' },
+                        ...versionNumbers
+                          .filter((version) => version.isActive)
+                          .map((version) => ({ value: version._id, label: version.name })),
+                      ]}
+                    />
                     <Button
                       type="button"
                       onClick={() => setShowVersionDialog(true)}
@@ -422,16 +417,16 @@ export default function CustomerFormDialog({
 
             {/* Consultant Assignment */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              <h3 className="form-section-title flex items-center gap-2">
                 <Users className="w-5 h-5 text-orange-600" />
                 Assign Consultants
               </h3>
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Select Consultants</label>
+                <label className="form-label">Select Consultants</label>
                 <select
                   multiple
                   size={6}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  className="form-select min-h-[160px] h-auto py-2.5"
                   value={formData.consultants}
                   onChange={(e) => {
                     const selected = Array.from(e.target.selectedOptions, option => option.value);
@@ -446,7 +441,7 @@ export default function CustomerFormDialog({
                       </option>
                     ))}
                 </select>
-                <p className="text-xs text-gray-500">Hold Ctrl (or Cmd) to select multiple consultants</p>
+                <p className="text-xs text-on-surface-variant">Hold Ctrl (or Cmd) to select multiple consultants</p>
                 {formData.consultants.length > 0 && (
                   <p className="text-sm text-orange-600 font-medium">
                     {formData.consultants.length} consultant{formData.consultants.length > 1 ? 's' : ''} selected
@@ -457,13 +452,13 @@ export default function CustomerFormDialog({
 
             {/* Address Information */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                <MapPin className="w-5 h-5 text-purple-600" />
+              <h3 className="form-section-title flex items-center gap-2">
+                <MapPin className="w-5 h-5 text-accent-orange-600" />
                 Address Information
               </h3>
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">Street Address</label>
+                  <label className="form-label">Street Address</label>
                   <Input
                     name="address"
                     value={formData.address}
@@ -474,7 +469,7 @@ export default function CustomerFormDialog({
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">City</label>
+                    <label className="form-label">City</label>
                     <Input
                       name="city"
                       value={formData.city}
@@ -484,7 +479,7 @@ export default function CustomerFormDialog({
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">Country</label>
+                    <label className="form-label">Country</label>
                     <Input
                       name="country"
                       value={formData.country}
@@ -499,17 +494,16 @@ export default function CustomerFormDialog({
             {/* Status (Edit Mode Only) */}
             {isEditMode && (
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Status</label>
-                <select
-                  name="status"
+                <label className="form-label">Status</label>
+                <CustomSelect
                   value={formData.status}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                  <option value="suspended">Suspended</option>
-                </select>
+                  onChange={(val) => setFormData((prev) => ({ ...prev, status: val as 'active' | 'inactive' | 'suspended' }))}
+                  options={[
+                    { value: 'active', label: 'Active' },
+                    { value: 'inactive', label: 'Inactive' },
+                    { value: 'suspended', label: 'Suspended' },
+                  ]}
+                />
               </div>
             )}
 
@@ -543,7 +537,7 @@ export default function CustomerFormDialog({
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-gray-700">ERP Type Name</label>
+              <label className="form-label">ERP Type Name</label>
               <Input
                 value={newErpTypeName}
                 onChange={(e) => setNewErpTypeName(e.target.value)}
@@ -595,7 +589,7 @@ export default function CustomerFormDialog({
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-gray-700">Version Number</label>
+              <label className="form-label">Version Number</label>
               <Input
                 value={newVersionName}
                 onChange={(e) => setNewVersionName(e.target.value)}

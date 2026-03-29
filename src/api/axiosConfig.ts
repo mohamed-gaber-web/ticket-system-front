@@ -1,7 +1,10 @@
 import axios, { type AxiosRequestHeaders } from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL_DEV || 'http://localhost:5000/api';
+// Dynamically get API URL based on environment
+const API_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_URL_DEV || 'http://localhost:5000/api';
 
+// Log the active API URL for debugging
+console.log('🔗 Active API URL:', API_URL);
 
 // Create axios instance with base configuration
 const api = axios.create({
@@ -9,7 +12,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 10000,
+  timeout: 60000, // Increased to 60 seconds for slow server responses (Railway cold starts)
   withCredentials: false, // Set to true if you need to send cookies
 });
 
@@ -87,7 +90,7 @@ api.interceptors.response.use(
       if (refreshToken && userType) {
         try {
           const { data } = await axios.post(
-            'http://localhost:5000/api/auth/refresh-token',
+            `${API_URL}/auth/refresh-token`,
             { refreshToken, userType },
             {
               headers: {

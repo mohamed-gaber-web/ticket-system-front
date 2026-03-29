@@ -34,10 +34,10 @@ export default function EditCustomer() {
 
   if (loading && !currentCustomer) {
     return (
-      <div className="p-6 flex justify-center items-center min-h-[400px]">
+      <div className="p-8 flex justify-center items-center min-h-[400px]">
         <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">Loading customer data...</p>
+          <Loader2 className="h-12 w-12 animate-spin text-brand-600 mx-auto mb-4" />
+          <p className="text-on-surface-variant">Loading customer data...</p>
         </div>
       </div>
     );
@@ -45,10 +45,10 @@ export default function EditCustomer() {
 
   if (!currentCustomer && !loading) {
     return (
-      <div className="p-6 max-w-4xl mx-auto">
+      <div className="p-8 max-w-4xl mx-auto">
         <div className="text-center py-12">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Customer Not Found</h2>
-          <p className="text-gray-600 mb-6">The customer you're looking for doesn't exist.</p>
+          <h2 className="text-2xl font-bold text-on-surface mb-2">Customer Not Found</h2>
+          <p className="text-on-surface-variant mb-6">The customer you're looking for doesn't exist.</p>
           <Button onClick={() => navigate('/customers')}>
             Back to Customers
           </Button>
@@ -58,7 +58,7 @@ export default function EditCustomer() {
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-6">
+    <div className="p-8 max-w-4xl mx-auto space-y-8">
       {/* Back Button */}
       <Button
         variant="ghost"

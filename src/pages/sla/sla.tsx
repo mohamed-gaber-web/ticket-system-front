@@ -1,14 +1,14 @@
 export default function SLA() {
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">SLA Rules</h1>
-        <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+    <div className="p-8 space-y-8">
+      <div className="flex justify-between items-center">
+        <h1 className="display-sm text-on-surface">SLA Rules</h1>
+        <button className="px-4 py-2 bg-brand-600 text-white rounded-md hover:bg-brand-700">
           Add SLA Rule
         </button>
       </div>
-      <div className="bg-white rounded-lg shadow p-6">
-        <p className="text-gray-600">SLA rules list will be displayed here</p>
+      <div className="bg-surface-container-lowest rounded-[1rem] p-6">
+        <p className="text-on-surface-variant">SLA rules list will be displayed here</p>
       </div>
     </div>
   );

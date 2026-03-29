@@ -65,7 +65,7 @@ const AddComment: React.FC<AddCommentProps> = ({
             maxLength={5000}
           />
           <div className="flex justify-between items-center mt-1">
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-on-surface-variant">
               {commentText.length} / 5000 characters
             </p>
           </div>
@@ -89,7 +89,7 @@ const AddComment: React.FC<AddCommentProps> = ({
         )}
 
         {error && (
-          <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded p-2">
+          <div className="text-sm text-error bg-error/5 rounded-[0.5rem] p-2">
             {error}
           </div>
         )}

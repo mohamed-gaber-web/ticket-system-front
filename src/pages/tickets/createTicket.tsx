@@ -44,7 +44,7 @@ export default function CreateTicket() {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-8">
       <h1 className="text-md font-bold mb-6">Create New Ticket</h1>
       <TicketForm onSubmit={handleSubmit} />
     </div>

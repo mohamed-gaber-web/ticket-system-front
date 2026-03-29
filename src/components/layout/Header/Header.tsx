@@ -30,13 +30,11 @@ export default function Header() {
   const dispatch = useAppDispatch();
   const { unreadCount, items } = useAppSelector((state) => state.notifications);
 
-  // Configure any notification types you want to hide from the dropdown/badge
   const excludedNotificationTypes: NotificationType[] = [];
   const visibleUnreadCount =
     items.filter((n) => !n.isRead && !excludedNotificationTypes.includes(n.notificationType)).length ||
     unreadCount;
 
-  // Get user display info
   const userEmail = user?.email || '';
   const userRole = userType === 'customer' ? 'Customer' : userType === 'consultant' ? 'Consultant' : 'User';
 
@@ -62,7 +60,7 @@ export default function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between px-6 py-4 bg-white/80 backdrop-blur-md border-b border-gray-200/50 shadow-sm">
+    <header className="sticky top-0 z-30 flex items-center justify-between px-6 py-3 bg-surface-container-lowest/80 backdrop-blur-xl">
       {/* Left Side - Search */}
       <div className="flex items-center gap-4 flex-1 max-w-xl">
         <motion.div
@@ -70,29 +68,29 @@ export default function Header() {
           animate={{ opacity: 1, x: 0 }}
           className="relative flex-1"
         >
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-on-surface-variant" />
           <Input
             type="search"
             placeholder="Search tickets, customers, consultants..."
-            className="pl-10 pr-4 py-2 w-full bg-gray-50 border-gray-200 focus:bg-white focus:border-blue-500 transition-all duration-200 rounded-xl"
+            className="pl-10 pr-4 py-2 w-full"
           />
         </motion.div>
       </div>
 
       {/* Right Side - Actions & User Info */}
-      <div className="flex items-center gap-3 ml-auto">
+      <div className="flex items-center gap-2 ml-auto">
         {/* Theme Toggle */}
         <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setIsDark(!isDark)}
-            className="relative rounded-xl hover:bg-gradient-to-br hover:from-blue-50 hover:to-purple-50 transition-all duration-200"
+            className="rounded-[1rem] text-on-surface-variant hover:text-on-surface"
           >
             {isDark ? (
-              <Sun className="h-5 w-5 text-orange-500" />
+              <Sun className="h-5 w-5" />
             ) : (
-              <Moon className="h-5 w-5 text-blue-600" />
+              <Moon className="h-5 w-5" />
             )}
           </Button>
         </motion.div>
@@ -103,15 +101,15 @@ export default function Header() {
             <Button
               variant="ghost"
               size="icon"
-              className="relative rounded-xl hover:bg-gradient-to-br hover:from-blue-50 hover:to-purple-50 transition-all duration-200"
+              className="relative rounded-[1rem] text-on-surface-variant hover:text-on-surface"
               onClick={() => setShowNotifications((prev) => !prev)}
             >
-              <Bell className="h-5 w-5 text-gray-600" />
+              <Bell className="h-5 w-5" />
               {visibleUnreadCount > 0 && (
                 <motion.span
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
-                  className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-red-500 to-pink-500 text-[10px] font-bold text-white shadow-lg"
+                  className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-accent-orange-500 text-[10px] font-bold text-white"
                 >
                   {visibleUnreadCount}
                 </motion.span>
@@ -127,71 +125,71 @@ export default function Header() {
           <Button
             variant="ghost"
             size="icon"
-            className="rounded-xl hover:bg-gradient-to-br hover:from-blue-50 hover:to-purple-50 transition-all duration-200"
+            className="rounded-[1rem] text-on-surface-variant hover:text-on-surface"
           >
-            <Settings className="h-5 w-5 text-gray-600" />
+            <Settings className="h-5 w-5" />
           </Button>
         </motion.div>
 
-        {/* Divider */}
-        <div className="h-8 w-px bg-gray-200"></div>
+        {/* Divider - using background shift instead of border */}
+        <div className="h-8 w-px bg-surface-container-high mx-1"></div>
 
         {/* User Profile Dropdown */}
         <div className="relative">
           <motion.div
             whileHover={{ scale: 1.02 }}
-            className="flex items-center gap-3 cursor-pointer hover:bg-gradient-to-br hover:from-blue-50 hover:to-purple-50 px-3 py-2 rounded-xl transition-all duration-200"
+            className="flex items-center gap-3 cursor-pointer hover:bg-surface-container-high px-3 py-2 rounded-[1rem] transition-all duration-200"
             onClick={() => setShowUserMenu(!showUserMenu)}
           >
             <div className="relative">
-              <Avatar className="h-9 w-9 ring-2 ring-blue-500/20">
-                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white font-semibold">
+              <Avatar className="h-9 w-9">
+                <AvatarFallback className="bg-primary-gradient text-white font-semibold text-sm">
                   {userEmail ? userEmail.substring(0, 2).toUpperCase() : 'U'}
                 </AvatarFallback>
               </Avatar>
-              <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-green-500 border-2 border-white"></span>
+              <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-green-500 ring-2 ring-surface-container-lowest"></span>
             </div>
             <div className="hidden md:block text-left">
-              <p className="text-sm font-semibold text-gray-800">{userEmail}</p>
-              <p className="text-xs text-gray-500">{userRole}</p>
+              <p className="text-sm font-semibold text-on-surface">{userEmail}</p>
+              <p className="text-xs text-on-surface-variant">{userRole}</p>
             </div>
-            <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${showUserMenu ? 'rotate-180' : ''}`} />
+            <ChevronDown className={`h-4 w-4 text-on-surface-variant transition-transform duration-200 ${showUserMenu ? 'rotate-180' : ''}`} />
           </motion.div>
 
-          {/* Dropdown Menu */}
+          {/* Dropdown Menu - Glassmorphism */}
           {showUserMenu && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="absolute right-0 mt-2 w-56 rounded-xl bg-white shadow-lg border border-gray-200 py-2 z-50"
+              className="absolute right-0 mt-2 w-56 rounded-[1rem] glass shadow-ambient py-2 z-50"
             >
-              <div className="px-4 py-3 border-b border-gray-100">
-                <p className="text-sm font-semibold text-gray-800">{userEmail}</p>
-                <p className="text-xs text-gray-500 capitalize">{userRole}</p>
+              <div className="px-4 py-3">
+                <p className="text-sm font-semibold text-on-surface">{userEmail}</p>
+                <p className="text-xs text-on-surface-variant capitalize">{userRole}</p>
               </div>
 
-              <div className="py-2">
+              <div className="py-1 mx-2">
                 <button
                   onClick={handleProfileClick}
-                  className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 transition-colors"
+                  className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-on-surface rounded-[0.5rem] hover:bg-surface-container-highest transition-colors"
                 >
-                  <User className="h-4 w-4" />
+                  <User className="h-4 w-4 text-on-surface-variant" />
                   <span>My Profile</span>
                 </button>
                 <button
                   onClick={handleChangePasswordClick}
-                  className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 transition-colors"
+                  className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-on-surface rounded-[0.5rem] hover:bg-surface-container-highest transition-colors"
                 >
-                  <Key className="h-4 w-4" />
+                  <Key className="h-4 w-4 text-on-surface-variant" />
                   <span>Change Password</span>
                 </button>
               </div>
 
-              <div className="border-t border-gray-100 py-2">
+              <div className="py-1 mx-2 mt-1">
                 <button
                   onClick={handleLogout}
-                  className="flex items-center gap-3 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                  className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-error rounded-[0.5rem] hover:bg-error/5 transition-colors"
                 >
                   <LogOut className="h-4 w-4" />
                   <span>Sign Out</span>

@@ -52,15 +52,15 @@ export default function EditTicket() {
   };
 
   if (loading) {
-    return <div className="p-6">Loading...</div>;
+    return <div className="p-8">Loading...</div>;
   }
 
   if (!currentTicket) {
-    return <div className="p-6">Ticket not found</div>;
+    return <div className="p-8">Ticket not found</div>;
   }
 
   return (
-    <div className="p-6">
+    <div className="p-8">
       <h1 className="text-md font-bold mb-6">Edit Ticket</h1>
       <TicketForm initialData={currentTicket} onSubmit={handleSubmit} isEdit={true} />
     </div>

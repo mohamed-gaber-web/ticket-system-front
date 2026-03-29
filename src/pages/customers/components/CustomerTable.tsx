@@ -115,7 +115,7 @@ export default function CustomerTable({ customers, onEdit, onDelete, isLoading }
   if (isLoading) {
     return (
       <div className="flex justify-center items-center py-12">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-600"></div>
       </div>
     );
   }
@@ -150,7 +150,7 @@ export default function CustomerTable({ customers, onEdit, onDelete, isLoading }
             <TableRow key={customer._id} className="hover:bg-gray-50 transition-colors">
               <TableCell>
                 <div className="flex items-center gap-2">
-                  <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold">
+                  <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-brand-500 to-accent-orange-500 flex items-center justify-center text-white font-semibold">
                     {customer.companyName.charAt(0).toUpperCase()}
                   </div>
                   <div>
@@ -186,7 +186,7 @@ export default function CustomerTable({ customers, onEdit, onDelete, isLoading }
               </TableCell>
               <TableCell>
                 <div className="flex items-center gap-2">
-                  <Database className="h-4 w-4 text-blue-600" />
+                  <Database className="h-4 w-4 text-brand-600" />
                   <span className="text-sm text-gray-700">{getVersionNumberName(customer.versionNumber)}</span>
                 </div>
               </TableCell>

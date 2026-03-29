@@ -11,6 +11,7 @@ import EnvironmentFormDialog from './EnvironmentFormDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Search, RefreshCw } from 'lucide-react';
+import { CustomSelect } from '@/components/ui/custom-select';
 import type { Environment, CreateEnvironmentData, UpdateEnvironmentData } from '@/types/environment.types';
 
 export default function Environments() {
@@ -78,12 +79,12 @@ export default function Environments() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-8 space-y-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Environments</h1>
-          <p className="text-gray-600 mt-1">Manage system environments</p>
+          <h1 className="display-sm text-on-surface">Environments</h1>
+          <p className="text-on-surface-variant mt-1">Manage system environments</p>
         </div>
         <Button onClick={handleCreate} className="gap-2">
           <Plus className="h-4 w-4" />
@@ -92,11 +93,11 @@ export default function Environments() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow-sm border p-4">
+      <div className="bg-surface-container-lowest rounded-[1rem] p-4">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="md:col-span-2">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-on-surface-variant" />
               <Input
                 type="search"
                 placeholder="Search environments..."
@@ -108,17 +109,17 @@ export default function Environments() {
             </div>
           </div>
 
-          <div>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">All Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
-          </div>
+          <CustomSelect
+            variant="filter"
+            value={statusFilter}
+            onChange={setStatusFilter}
+            label="Status"
+            options={[
+              { value: '', label: 'All' },
+              { value: 'active', label: 'Active' },
+              { value: 'inactive', label: 'Inactive' },
+            ]}
+          />
 
           <div className="flex gap-2">
             <Button onClick={handleSearch} className="flex-1">
@@ -132,7 +133,7 @@ export default function Environments() {
         </div>
 
         {/* Results count */}
-        <div className="mt-4 text-sm text-gray-600">
+        <div className="mt-4 text-sm text-on-surface-variant">
           Showing <span className="font-semibold">{environments.length}</span> of{' '}
           <span className="font-semibold">{total}</span> environments
         </div>

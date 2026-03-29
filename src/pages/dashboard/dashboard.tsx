@@ -19,29 +19,27 @@ import { fetchCustomers } from "@/redux/slices/customerSlice";
 interface StatCardProps {
   title: string;
   value: string | number;
-  change: number;
   icon: React.ElementType;
   gradient: string;
+  iconBg: string;
   delay?: number;
 }
 
-const StatCard = ({ title, value, icon: Icon, gradient, delay = 0 }: Omit<StatCardProps, 'change'>) => {
+const StatCard = ({ title, value, icon: Icon, iconBg, delay = 0 }: StatCardProps) => {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay }}
-      whileHover={{ y: -5, transition: { duration: 0.2 } }}
+      whileHover={{ y: -4, transition: { duration: 0.2 } }}
     >
-      <Card className="relative overflow-hidden hover:shadow-2xl transition-all duration-300 border-0 group">
-        <div className={`absolute inset-0 ${gradient} opacity-5 group-hover:opacity-10 transition-opacity duration-300`} />
-        <div className={`absolute top-0 right-0 w-32 h-32 ${gradient} opacity-5 blur-3xl group-hover:opacity-20 transition-opacity duration-300`} />
+      <Card className="relative overflow-hidden hover:shadow-ambient transition-all duration-300 group">
         <CardHeader className="flex flex-row items-center justify-between pb-2 relative z-10">
-          <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+          <CardTitle className="label-technical">
             {title}
           </CardTitle>
           <motion.div
-            className={`p-3 rounded-xl ${gradient} shadow-lg`}
+            className={`p-3 rounded-[1rem] ${iconBg}`}
             whileHover={{ rotate: 360, scale: 1.1 }}
             transition={{ duration: 0.5 }}
           >
@@ -49,7 +47,7 @@ const StatCard = ({ title, value, icon: Icon, gradient, delay = 0 }: Omit<StatCa
           </motion.div>
         </CardHeader>
         <CardContent className="relative z-10">
-          <div className="text-3xl font-bold bg-gradient-to-br from-foreground to-muted-foreground bg-clip-text text-transparent">
+          <div className="display-sm text-on-surface">
             {value}
           </div>
         </CardContent>
@@ -68,7 +66,6 @@ const Dashboard = () => {
     dispatch(fetchCustomers());
   }, [dispatch]);
 
-  // Calculate ticket statistics from real data
   const ticketStats = useMemo(() => {
     const openTickets = tickets.filter(
       (ticket) => ticket.status === "new" || ticket.status === "assigned"
@@ -100,7 +97,6 @@ const Dashboard = () => {
     };
   }, [tickets, totalTickets]);
 
-  // Calculate response time metrics
   const responseMetrics = useMemo(() => {
     const resolvedTickets = tickets.filter(
       (ticket) => ticket.resolvedAt && ticket.createdAt
@@ -114,7 +110,6 @@ const Dashboard = () => {
       };
     }
 
-    // Calculate average first response time
     const ticketsWithResponse = tickets.filter(
       (ticket) => ticket.firstResponseAt && ticket.createdAt
     );
@@ -129,7 +124,6 @@ const Dashboard = () => {
       avgResponseMs = totalResponseTime / ticketsWithResponse.length;
     }
 
-    // Calculate average resolution time
     const totalResolutionTime = resolvedTickets.reduce((sum, ticket) => {
       const created = new Date(ticket.createdAt).getTime();
       const resolved = new Date(ticket.resolvedAt!).getTime();
@@ -138,7 +132,6 @@ const Dashboard = () => {
 
     const avgResolutionMs = totalResolutionTime / resolvedTickets.length;
 
-    // Convert to hours
     const avgResponseHours = (avgResponseMs / (1000 * 60 * 60)).toFixed(1);
     const avgResolutionHours = (avgResolutionMs / (1000 * 60 * 60)).toFixed(1);
 
@@ -149,7 +142,6 @@ const Dashboard = () => {
     };
   }, [tickets]);
 
-  // Get recently closed tickets
   const recentlyClosedTickets = useMemo(() => {
     return tickets
       .filter((ticket) => ticket.status === "closed" || ticket.status === "resolved")
@@ -161,75 +153,78 @@ const Dashboard = () => {
       .slice(0, 5);
   }, [tickets]);
 
-  const stats = [
+  const stats: StatCardProps[] = [
     {
       title: "Total Tickets",
       value: ticketsLoading ? "..." : ticketStats.total,
       icon: Ticket,
-      gradient: "bg-gradient-to-br from-blue-500 to-blue-600",
+      gradient: "",
+      iconBg: "bg-primary-gradient",
     },
     {
       title: "Open Tickets",
       value: ticketsLoading ? "..." : ticketStats.open,
       icon: AlertTriangle,
-      gradient: "bg-gradient-to-br from-orange-500 to-orange-600",
+      gradient: "",
+      iconBg: "bg-gradient-to-br from-accent-orange-500 to-accent-orange-600",
     },
     {
       title: "Closed Tickets",
       value: ticketsLoading ? "..." : ticketStats.closed,
       icon: CheckCircle2,
-      gradient: "bg-gradient-to-br from-green-500 to-green-600",
+      gradient: "",
+      iconBg: "bg-gradient-to-br from-green-500 to-green-600",
     },
     {
       title: "Active Customers",
       value: customersLoading ? "..." : totalCustomers,
       icon: Users,
-      gradient: "bg-gradient-to-br from-purple-500 to-purple-600",
+      gradient: "",
+      iconBg: "bg-gradient-to-br from-purple-500 to-purple-600",
     },
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 p-6 w-full max-w-full overflow-x-hidden">
+    <div className="min-h-screen bg-surface p-8 w-full max-w-full overflow-x-hidden">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
           className="relative"
         >
-          <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-pink-500/10 blur-3xl -z-10" />
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 p-6 rounded-2xl bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm border border-gray-200/50 dark:border-gray-800/50 shadow-xl">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-10 p-8 rounded-[1rem] bg-surface-container-lowest">
             <div className="space-y-2">
               <div className="flex items-center gap-3">
                 <motion.div
                   animate={{ rotate: [0, 360] }}
                   transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                  className="p-2 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 shadow-lg"
+                  className="p-2.5 rounded-[1rem] bg-primary-gradient"
                 >
                   <Sparkles className="h-6 w-6 text-white" />
                 </motion.div>
-                <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+                <h1 className="display-md text-on-surface">
                   Dashboard
                 </h1>
               </div>
-              <p className="text-muted-foreground text-lg ml-14">
+              <p className="text-on-surface-variant text-lg ml-14">
                 Monitor your ticketing system performance in real-time
               </p>
             </div>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-green-100 dark:bg-green-900/30 border border-green-200 dark:border-green-800">
-                <Activity className="h-4 w-4 text-green-600 dark:text-green-400 animate-pulse" />
-                <span className="text-sm font-medium text-green-700 dark:text-green-300">Live Updates</span>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 px-4 py-2 rounded-[1rem] bg-green-500/10">
+                <Activity className="h-4 w-4 text-green-600 animate-pulse" />
+                <span className="text-sm font-semibold text-green-700">Live Updates</span>
               </div>
-              <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800">
-                <BarChart3 className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Analytics</span>
+              <div className="flex items-center gap-2 px-4 py-2 rounded-[1rem] bg-primary-fixed">
+                <BarChart3 className="h-4 w-4 text-brand-500" />
+                <span className="text-sm font-semibold text-on-primary-fixed">Analytics</span>
               </div>
             </div>
           </div>
         </motion.div>
 
         {/* Stats Section */}
-        <div className="space-y-6 mt-8">
+        <div className="space-y-8 mt-8">
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
             {stats.map((stat, index) => (
               <StatCard key={stat.title} {...stat} delay={index * 0.1} />
@@ -245,11 +240,10 @@ const Dashboard = () => {
             transition={{ duration: 0.5, delay: 0.3 }}
             className="flex items-center gap-3"
           >
-            <div className="h-1 w-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full" />
-            <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">
+            <div className="h-1 w-12 bg-primary-gradient rounded-full" />
+            <h2 className="text-2xl font-bold text-on-surface">
               Status Overview
             </h2>
-            <div className="h-1 flex-1 bg-gradient-to-r from-purple-500 to-transparent rounded-full" />
           </motion.div>
 
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -260,13 +254,12 @@ const Dashboard = () => {
             whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
             className="lg:col-span-2"
           >
-            <Card className="border-0 shadow-2xl bg-gradient-to-br from-blue-500 via-blue-600 to-purple-600 text-white overflow-hidden relative group">
-              <div className="absolute inset-0 bg-grid-white/10 [mask-image:linear-gradient(0deg,transparent,black)] pointer-events-none" />
-              <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl group-hover:bg-white/20 transition-all duration-500" />
+            <Card className="shadow-ambient bg-primary-gradient text-white overflow-hidden relative group">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl group-hover:bg-white/10 transition-all duration-500" />
               <CardHeader className="relative z-10">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-white text-xl font-bold">Ticket Status Breakdown</CardTitle>
-                  <div className="p-2 rounded-lg bg-white/20 backdrop-blur-sm">
+                  <div className="p-2 rounded-[0.75rem] bg-white/15 backdrop-blur-sm">
                     <Ticket className="h-5 w-5 text-white" />
                   </div>
                 </div>
@@ -274,21 +267,21 @@ const Dashboard = () => {
               <CardContent className="relative z-10">
                 <div className="grid grid-cols-3 gap-6">
                   <motion.div
-                    className="text-center p-4 rounded-xl bg-white/10 backdrop-blur-sm hover:bg-white/20 transition-all duration-300"
+                    className="text-center p-4 rounded-[1rem] bg-white/10 backdrop-blur-sm hover:bg-white/15 transition-all duration-300"
                     whileHover={{ y: -5 }}
                   >
                     <p className="text-sm opacity-90 mb-2 font-medium">In Progress</p>
                     <p className="text-3xl font-bold">{ticketsLoading ? "..." : ticketStats.inProgress}</p>
                   </motion.div>
                   <motion.div
-                    className="text-center p-4 rounded-xl bg-white/10 backdrop-blur-sm hover:bg-white/20 transition-all duration-300"
+                    className="text-center p-4 rounded-[1rem] bg-white/10 backdrop-blur-sm hover:bg-white/15 transition-all duration-300"
                     whileHover={{ y: -5 }}
                   >
                     <p className="text-sm opacity-90 mb-2 font-medium">Assigned</p>
                     <p className="text-3xl font-bold">{ticketsLoading ? "..." : ticketStats.assigned}</p>
                   </motion.div>
                   <motion.div
-                    className="text-center p-4 rounded-xl bg-white/10 backdrop-blur-sm hover:bg-white/20 transition-all duration-300"
+                    className="text-center p-4 rounded-[1rem] bg-white/10 backdrop-blur-sm hover:bg-white/15 transition-all duration-300"
                     whileHover={{ y: -5 }}
                   >
                     <p className="text-sm opacity-90 mb-2 font-medium">New</p>
@@ -305,38 +298,38 @@ const Dashboard = () => {
             transition={{ duration: 0.5, delay: 0.5 }}
             whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
           >
-            <Card className="border-0 shadow-2xl hover:shadow-3xl transition-all duration-300 bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-800">
-              <CardHeader className="border-b border-gray-200 dark:border-gray-700">
+            <Card className="shadow-ambient transition-all duration-300">
+              <CardHeader>
                 <div className="flex items-center gap-2">
-                  <Activity className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                  <CardTitle className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  <Activity className="h-5 w-5 text-brand-500" />
+                  <CardTitle className="text-xl font-bold text-on-surface">
                     Recent Activities
                   </CardTitle>
                 </div>
               </CardHeader>
-              <CardContent className="pt-6">
-                <div className="space-y-3">
+              <CardContent>
+                <div className="space-y-4">
                   {ticketsLoading ? (
-                    <div className="text-center text-muted-foreground">Loading...</div>
+                    <div className="text-center text-on-surface-variant">Loading...</div>
                   ) : tickets.length === 0 ? (
-                    <div className="text-center text-muted-foreground">No recent activities</div>
+                    <div className="text-center text-on-surface-variant">No recent activities</div>
                   ) : (
                     tickets.slice(0, 5).map((ticket, index) => {
                       const getStatusIcon = () => {
                         switch (ticket.status) {
                           case "closed":
                           case "resolved":
-                            return { icon: CheckCircle2, color: "text-green-600" };
+                            return { icon: CheckCircle2, color: "text-green-600", bg: "bg-green-500/10" };
                           case "in_progress":
-                            return { icon: Activity, color: "text-blue-600" };
+                            return { icon: Activity, color: "text-brand-500", bg: "bg-primary-fixed" };
                           case "assigned":
-                            return { icon: Ticket, color: "text-orange-600" };
+                            return { icon: Ticket, color: "text-accent-orange-500", bg: "bg-accent-orange-100" };
                           default:
-                            return { icon: AlertTriangle, color: "text-yellow-600" };
+                            return { icon: AlertTriangle, color: "text-yellow-600", bg: "bg-yellow-500/10" };
                         }
                       };
 
-                      const { icon: Icon, color } = getStatusIcon();
+                      const { icon: Icon, color, bg } = getStatusIcon();
                       const timeAgo = new Date(ticket.createdAt).toLocaleDateString();
 
                       return (
@@ -346,16 +339,16 @@ const Dashboard = () => {
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ duration: 0.3, delay: 0.6 + index * 0.1 }}
                           whileHover={{ x: 5, transition: { duration: 0.2 } }}
-                          className="flex items-start gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-md transition-all duration-300 bg-white dark:bg-gray-800"
+                          className="flex items-start gap-3 p-3 rounded-[0.75rem] hover:bg-surface-container-highest transition-all duration-300"
                         >
-                          <div className={`p-2 rounded-lg shadow-sm ${color.replace('text-', 'bg-').replace('600', '100')} dark:${color.replace('text-', 'bg-').replace('600', '900')}`}>
+                          <div className={`p-2 rounded-[0.75rem] ${bg}`}>
                             <Icon className={`h-4 w-4 ${color}`} />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold truncate">{ticket.subject}</p>
-                            <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                            <p className="text-sm font-semibold text-on-surface truncate">{ticket.subject}</p>
+                            <p className="text-xs text-on-surface-variant flex items-center gap-1 mt-1">
                               <span className="font-mono">{ticket.ticketNumber}</span>
-                              <span>•</span>
+                              <span>·</span>
                               <span>{timeAgo}</span>
                             </p>
                           </div>
@@ -379,10 +372,9 @@ const Dashboard = () => {
             className="flex items-center gap-3"
           >
             <div className="h-1 w-12 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full" />
-            <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">
+            <h2 className="text-2xl font-bold text-on-surface">
               Performance Metrics
             </h2>
-            <div className="h-1 flex-1 bg-gradient-to-r from-emerald-500 to-transparent rounded-full" />
           </motion.div>
 
           <div className="grid gap-6 md:grid-cols-2">
@@ -392,12 +384,12 @@ const Dashboard = () => {
             transition={{ duration: 0.5, delay: 0.6 }}
             whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
           >
-            <Card className="border-0 shadow-2xl bg-gradient-to-br from-green-500 via-emerald-500 to-teal-600 text-white overflow-hidden relative group">
-              <div className="absolute top-0 left-0 w-64 h-64 bg-white/10 rounded-full blur-3xl group-hover:bg-white/20 transition-all duration-500" />
+            <Card className="shadow-ambient bg-gradient-to-br from-green-500 via-emerald-500 to-teal-600 text-white overflow-hidden relative group">
+              <div className="absolute top-0 left-0 w-64 h-64 bg-white/5 rounded-full blur-3xl group-hover:bg-white/10 transition-all duration-500" />
               <CardHeader className="relative z-10">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-white text-xl font-bold">Response & Resolution Time</CardTitle>
-                  <div className="p-2 rounded-lg bg-white/20 backdrop-blur-sm">
+                  <div className="p-2 rounded-[0.75rem] bg-white/15 backdrop-blur-sm">
                     <Clock className="h-5 w-5 text-white" />
                   </div>
                 </div>
@@ -405,24 +397,24 @@ const Dashboard = () => {
               <CardContent className="relative z-10">
                 <div className="space-y-5">
                   <motion.div
-                    className="p-4 rounded-xl bg-white/10 backdrop-blur-sm"
-                    whileHover={{ scale: 1.05 }}
+                    className="p-4 rounded-[1rem] bg-white/10 backdrop-blur-sm"
+                    whileHover={{ scale: 1.03 }}
                   >
                     <p className="text-sm opacity-90 mb-2 font-medium">Average Response Time</p>
-                    <p className="text-4xl font-bold">
+                    <p className="text-4xl font-bold tracking-tight">
                       {ticketsLoading ? "..." : responseMetrics.avgResponseTime}
                     </p>
                   </motion.div>
                   <motion.div
-                    className="p-4 rounded-xl bg-white/10 backdrop-blur-sm"
-                    whileHover={{ scale: 1.05 }}
+                    className="p-4 rounded-[1rem] bg-white/10 backdrop-blur-sm"
+                    whileHover={{ scale: 1.03 }}
                   >
                     <p className="text-sm opacity-90 mb-2 font-medium">Average Resolution Time</p>
-                    <p className="text-4xl font-bold">
+                    <p className="text-4xl font-bold tracking-tight">
                       {ticketsLoading ? "..." : responseMetrics.avgResolutionTime}
                     </p>
                   </motion.div>
-                  <div className="flex items-center gap-2 pt-3 border-t border-white/30">
+                  <div className="flex items-center gap-2 pt-3">
                     <TrendingUp className="h-5 w-5" />
                     <span className="text-sm font-semibold">
                       {responseMetrics.totalResolved} tickets resolved
@@ -439,21 +431,21 @@ const Dashboard = () => {
             transition={{ duration: 0.5, delay: 0.7 }}
             whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
           >
-            <Card className="border-0 shadow-2xl hover:shadow-3xl transition-all duration-300 bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-800">
-              <CardHeader className="border-b border-gray-200 dark:border-gray-700">
+            <Card className="shadow-ambient transition-all duration-300">
+              <CardHeader>
                 <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
-                  <CardTitle className="text-xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+                  <CheckCircle2 className="h-5 w-5 text-green-600" />
+                  <CardTitle className="text-xl font-bold text-on-surface">
                     Recently Closed Tickets
                   </CardTitle>
                 </div>
               </CardHeader>
-              <CardContent className="pt-6">
-                <div className="space-y-3">
+              <CardContent>
+                <div className="space-y-4">
                   {ticketsLoading ? (
-                    <div className="text-center text-muted-foreground">Loading...</div>
+                    <div className="text-center text-on-surface-variant">Loading...</div>
                   ) : recentlyClosedTickets.length === 0 ? (
-                    <div className="text-center text-muted-foreground">No closed tickets yet</div>
+                    <div className="text-center text-on-surface-variant">No closed tickets yet</div>
                   ) : (
                     recentlyClosedTickets.map((ticket, index) => {
                       const closedDate = new Date(
@@ -467,16 +459,16 @@ const Dashboard = () => {
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ duration: 0.3, delay: 0.8 + index * 0.1 }}
                           whileHover={{ x: 5, transition: { duration: 0.2 } }}
-                          className="flex items-start gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-green-300 dark:hover:border-green-700 hover:shadow-md transition-all duration-300 bg-white dark:bg-gray-800"
+                          className="flex items-start gap-3 p-3 rounded-[0.75rem] hover:bg-surface-container-highest transition-all duration-300"
                         >
-                          <div className="p-2 rounded-lg shadow-sm bg-green-100 dark:bg-green-900/50">
-                            <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+                          <div className="p-2 rounded-[0.75rem] bg-green-500/10">
+                            <CheckCircle2 className="h-4 w-4 text-green-600" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold truncate">{ticket.subject}</p>
-                            <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                            <p className="text-sm font-semibold text-on-surface truncate">{ticket.subject}</p>
+                            <p className="text-xs text-on-surface-variant flex items-center gap-1 mt-1">
                               <span className="font-mono">{ticket.ticketNumber}</span>
-                              <span>•</span>
+                              <span>·</span>
                               <span>Closed on {closedDate}</span>
                             </p>
                           </div>

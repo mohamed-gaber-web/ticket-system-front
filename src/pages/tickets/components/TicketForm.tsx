@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import type { Ticket, CreateTicketData, UpdateTicketData } from '@/types/ticket';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { CustomSelect } from '@/components/ui/custom-select';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchCustomers } from '@/redux/slices/customerSlice';
 import { fetchCategories } from '@/redux/slices/categorySlice';
@@ -200,9 +201,9 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
   };
 
   const getFileIcon = (fileType: string) => {
-    if (fileType.startsWith('image/')) return <ImageIcon className="h-5 w-5 text-blue-500" />;
-    if (fileType.startsWith('video/')) return <Video className="h-5 w-5 text-purple-500" />;
-    return <File className="h-5 w-5 text-gray-500" />;
+    if (fileType.startsWith('image/')) return <ImageIcon className="h-5 w-5 text-brand-500" />;
+    if (fileType.startsWith('video/')) return <Video className="h-5 w-5 text-accent-orange-500" />;
+    return <File className="h-5 w-5 text-on-surface-variant" />;
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -227,47 +228,40 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 p-6 bg-white rounded-lg shadow">
+    <form onSubmit={handleSubmit} className="space-y-8 form-card">
       {/* BASIC INFORMATION SECTION */}
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-gray-700 border-b pb-2">Basic Information</h3>
+        <h3 className="form-section-title">Basic Information</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Customer Selection - Only for Consultants */}
           {isConsultant && !isEdit && (
             <div className="md:col-span-2">
               <div className="flex items-center justify-between mb-2">
-                <label className="block text-sm font-medium">Customer *</label>
+                <label className="form-label">Customer *</label>
                 <Link
                   to="/customers/create"
                   onClick={() => sessionStorage.setItem('customerCreateReferrer', 'ticket-create')}
-                  className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                  className="text-sm text-brand-600 hover:text-brand-700 flex items-center gap-1"
                 >
                   <UserPlus className="h-4 w-4" />
                   Add New Customer
                 </Link>
               </div>
-              <select
-                name="customer"
+              <CustomSelect
                 value={(formData as CreateTicketData).customer || ''}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
+                onChange={(val) => setFormData({ ...formData, customer: val } as CreateTicketData)}
+                placeholder={customersLoading ? 'Loading customers...' : 'Select a customer'}
                 disabled={customersLoading}
-              >
-                <option value="">
-                  {customersLoading ? 'Loading customers...' : 'Select a customer'}
-                </option>
-                {customers.map((customer) => (
-                  <option key={customer._id} value={customer._id}>
-                    {customer.companyName} - {customer.email}
-                  </option>
-                ))}
-              </select>
+                options={[
+                  { value: '', label: customersLoading ? 'Loading customers...' : 'Select a customer' },
+                  ...customers.map((customer) => ({ value: customer._id, label: `${customer.companyName} - ${customer.email}` })),
+                ]}
+              />
             </div>
           )}
 
           <div className="md:col-span-2">
-            <label className="block text-sm font-medium mb-2">Subject *</label>
+            <label className="form-label">Subject *</label>
             <Input
               name="subject"
               value={formData.subject || ''}
@@ -278,7 +272,7 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
           </div>
 
           <div className="md:col-span-2">
-            <label className="block text-sm font-medium mb-2">Description *</label>
+            <label className="form-label">Description *</label>
             <textarea
               name="description"
               value={formData.description || ''}
@@ -286,13 +280,13 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
               placeholder="Detailed description of the ticket"
               required
               rows={4}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="form-select min-h-[120px] h-auto py-2.5"
             />
           </div>
 
           {/* Attachments Upload */}
           <div className="md:col-span-2">
-            <label className="block text-sm font-medium mb-2">Attachments</label>
+            <label className="form-label">Attachments</label>
             <div className="space-y-3">
               {/* Upload Button */}
               <div className="flex items-center gap-3">
@@ -318,14 +312,14 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
                     </span>
                   </Button>
                 </label>
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-on-surface-variant">
                   Images (5MB), Videos (50MB), PDF (10MB)
                 </span>
               </div>
 
               {/* Error Message */}
               {attachmentError && (
-                <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-2">
+                <div className="text-sm text-error bg-error/5 rounded-md p-2">
                   {attachmentError}
                 </div>
               )}
@@ -333,21 +327,21 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
               {/* Attached Files List */}
               {attachments.length > 0 && (
                 <div className="space-y-2">
-                  <p className="text-sm font-medium text-gray-700">
+                  <p className="text-sm font-medium text-on-surface">
                     Selected Files ({attachments.length})
                   </p>
                   <div className="space-y-2">
                     {attachments.map((file, index) => (
                       <div
                         key={index}
-                        className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border"
+                        className="flex items-center gap-3 p-3 bg-surface-container-low rounded-[0.75rem]"
                       >
                         {getFileIcon(file.type)}
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">
+                          <p className="text-sm font-medium text-on-surface truncate">
                             {file.name}
                           </p>
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-on-surface-variant">
                             {formatFileSize(file.size)}
                           </p>
                         </div>
@@ -357,7 +351,7 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
                           size="sm"
                           onClick={() => removeAttachment(index)}
                         >
-                          <X className="h-4 w-4 text-red-500" />
+                          <X className="h-4 w-4 text-error" />
                         </Button>
                       </div>
                     ))}
@@ -371,163 +365,130 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
 
       {/* CATEGORIZATION SECTION */}
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-gray-700 border-b pb-2">Categorization</h3>
+        <h3 className="form-section-title">Categorization</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium mb-2">Category *</label>
-            <select
-              name="category"
+            <label className="form-label">Category *</label>
+            <CustomSelect
               value={formData.category || ''}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
+              onChange={(val) => setFormData({ ...formData, category: val })}
+              placeholder={categoriesLoading ? 'Loading categories...' : 'Select a category'}
               disabled={categoriesLoading}
-            >
-              <option value="">
-                {categoriesLoading ? 'Loading categories...' : 'Select a category'}
-              </option>
-              {categories.map((category) => (
-                <option key={category._id} value={category._id}>
-                  {category.name}
-                </option>
-              ))}
-            </select>
+              options={[
+                { value: '', label: categoriesLoading ? 'Loading categories...' : 'Select a category' },
+                ...categories.map((category) => ({ value: category._id, label: category.name })),
+              ]}
+            />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">Priority *</label>
-            <select
-              name="priority"
+            <label className="form-label">Priority *</label>
+            <CustomSelect
               value={formData.priority || 'medium'}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-              <option value="critical">Critical</option>
-            </select>
+              onChange={(val) => setFormData({ ...formData, priority: val as 'low' | 'medium' | 'high' | 'critical' })}
+              options={[
+                { value: 'low', label: 'Low' },
+                { value: 'medium', label: 'Medium' },
+                { value: 'high', label: 'High' },
+                { value: 'critical', label: 'Critical' },
+              ]}
+            />
           </div>
 
           {isEdit && (
             <div>
-              <label className="block text-sm font-medium mb-2">Status *</label>
-              <select
-                name="status"
+              <label className="form-label">Status *</label>
+              <CustomSelect
                 value={(formData as UpdateTicketData).status || 'new'}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="new">New</option>
-                <option value="assigned">Assigned</option>
-                <option value="in_progress">In Progress</option>
-                <option value="resolved">Resolved</option>
-                <option value="closed">Closed</option>
-              </select>
+                onChange={(val) => setFormData({ ...formData, status: val } as UpdateTicketData)}
+                options={[
+                  { value: 'new', label: 'New' },
+                  { value: 'assigned', label: 'Assigned' },
+                  { value: 'in_progress', label: 'In Progress' },
+                  { value: 'resolved', label: 'Resolved' },
+                  { value: 'closed', label: 'Closed' },
+                ]}
+              />
             </div>
           )}
 
           {/* NEW OPTIONAL FIELDS */}
           <div>
-            <label className="block text-sm font-medium mb-2">Environment</label>
-            <select
-              name="environment"
+            <label className="form-label">Environment</label>
+            <CustomSelect
               value={formData.environment || ''}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">-- Select Environment --</option>
-              {environments?.filter(env => env.isActive).map((env) => (
-                <option key={env._id} value={env._id}>
-                  {env.name}
-                </option>
-              ))}
-            </select>
+              onChange={(val) => setFormData({ ...formData, environment: val })}
+              placeholder="-- Select Environment --"
+              options={[
+                { value: '', label: '-- Select Environment --' },
+                ...(environments?.filter(env => env.isActive).map((env) => ({ value: env._id, label: env.name })) || []),
+              ]}
+            />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">Feature</label>
-            <select
-              name="feature"
+            <label className="form-label">Feature</label>
+            <CustomSelect
               value={formData.feature || ''}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">-- Select Feature --</option>
-              {features?.filter(f => f.isActive).map((feature) => (
-                <option key={feature._id} value={feature._id}>
-                  {feature.name}
-                </option>
-              ))}
-            </select>
+              onChange={(val) => setFormData({ ...formData, feature: val })}
+              placeholder="-- Select Feature --"
+              options={[
+                { value: '', label: '-- Select Feature --' },
+                ...(features?.filter(f => f.isActive).map((feature) => ({ value: feature._id, label: feature.name })) || []),
+              ]}
+            />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">Department</label>
-            <select
-              name="department"
+            <label className="form-label">Department</label>
+            <CustomSelect
               value={formData.department || ''}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">-- Select Department --</option>
-              {departments?.filter(d => d.isActive).map((dept) => (
-                <option key={dept._id} value={dept._id}>
-                  {dept.name}
-                </option>
-              ))}
-            </select>
+              onChange={(val) => setFormData({ ...formData, department: val })}
+              placeholder="-- Select Department --"
+              options={[
+                { value: '', label: '-- Select Department --' },
+                ...(departments?.filter(d => d.isActive).map((dept) => ({ value: dept._id, label: dept.name })) || []),
+              ]}
+            />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">Product Type</label>
-            <select
-              name="productType"
+            <label className="form-label">Product Type</label>
+            <CustomSelect
               value={formData.productType || ''}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">-- Select Product Type --</option>
-              {productTypes?.filter(pt => pt.isActive).map((type) => (
-                <option key={type._id} value={type._id}>
-                  {type.name}
-                </option>
-              ))}
-            </select>
+              onChange={(val) => setFormData({ ...formData, productType: val })}
+              placeholder="-- Select Product Type --"
+              options={[
+                { value: '', label: '-- Select Product Type --' },
+                ...(productTypes?.filter(pt => pt.isActive).map((type) => ({ value: type._id, label: type.name })) || []),
+              ]}
+            />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">Service Type</label>
-            <select
-              name="serviceType"
+            <label className="form-label">Service Type</label>
+            <CustomSelect
               value={formData.serviceType || ''}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">-- Select Service Type --</option>
-              {serviceTypes?.filter(st => st.isActive).map((type) => (
-                <option key={type._id} value={type._id}>
-                  {type.name}
-                </option>
-              ))}
-            </select>
+              onChange={(val) => setFormData({ ...formData, serviceType: val })}
+              placeholder="-- Select Service Type --"
+              options={[
+                { value: '', label: '-- Select Service Type --' },
+                ...(serviceTypes?.filter(st => st.isActive).map((type) => ({ value: type._id, label: type.name })) || []),
+              ]}
+            />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">Scope</label>
-            <select
-              name="scope"
+            <label className="form-label">Scope</label>
+            <CustomSelect
               value={formData.scope || ''}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">-- Select Scope --</option>
-              {scopes?.filter(s => s.isActive).map((scope) => (
-                <option key={scope._id} value={scope._id}>
-                  {scope.name}
-                </option>
-              ))}
-            </select>
+              onChange={(val) => setFormData({ ...formData, scope: val })}
+              placeholder="-- Select Scope --"
+              options={[
+                { value: '', label: '-- Select Scope --' },
+                ...(scopes?.filter(s => s.isActive).map((scope) => ({ value: scope._id, label: scope.name })) || []),
+              ]}
+            />
           </div>
           {/* END NEW FIELDS */}
         </div>
@@ -536,10 +497,10 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
       {/* TIMELINE & PLANNING SECTION - Only for Consultants */}
       {isConsultant && (
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-gray-700 border-b pb-2">Timeline & Planning</h3>
+          <h3 className="form-section-title">Timeline & Planning</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-2">Start Date</label>
+              <label className="form-label">Start Date</label>
               <Input
                 type="date"
                 name="startDate"
@@ -549,7 +510,7 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">End Date</label>
+              <label className="form-label">End Date</label>
               <Input
                 type="date"
                 name="endDate"
@@ -559,7 +520,7 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
             </div>
 
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium mb-2">Estimated Time (hours)</label>
+              <label className="form-label">Estimated Time (hours)</label>
               <Input
                 type="number"
                 name="estimatedTime"
@@ -574,8 +535,8 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
         </div>
       )}
 
-      <div className="flex justify-end pt-4 border-t">
-        <Button type="submit" className="bg-blue-500 text-white hover:bg-blue-600 font-semibold">
+      <div className="flex justify-end pt-4 mt-2">
+        <Button type="submit">
           {isEdit ? 'Update Ticket' : 'Create Ticket'}
         </Button>
       </div>

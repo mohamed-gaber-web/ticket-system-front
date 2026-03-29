@@ -15,7 +15,7 @@ export default function StatCard({
   value,
   subtitle,
   icon: Icon,
-  colorClass = 'text-blue-600',
+  colorClass = 'text-brand-600',
 }: StatCardProps) {
   return (
     <Card className="hover:shadow-lg transition-shadow">

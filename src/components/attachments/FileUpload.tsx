@@ -25,7 +25,6 @@ const FileUpload: React.FC<FileUploadProps> = ({ ticketId, onUploadSuccess }) =>
     const file = files[0];
     setSelectedFile(file);
 
-    // Generate preview for images
     if (file.type.startsWith('image/')) {
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -50,14 +49,11 @@ const FileUpload: React.FC<FileUploadProps> = ({ ticketId, onUploadSuccess }) =>
     );
 
     if (uploadAttachment.fulfilled.match(result)) {
-      // Reset state
       setSelectedFile(null);
       setPreview(null);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
-
-      // Callback on success
       if (onUploadSuccess) {
         onUploadSuccess();
       }
@@ -80,7 +76,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ ticketId, onUploadSuccess }) =>
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* File Input */}
       <div className="flex items-center gap-3">
         <input
@@ -96,35 +92,37 @@ const FileUpload: React.FC<FileUploadProps> = ({ ticketId, onUploadSuccess }) =>
           <Button
             type="button"
             variant="outline"
+            size="sm"
             disabled={uploading}
             className="cursor-pointer"
             onClick={() => fileInputRef.current?.click()}
             asChild
           >
             <span>
-              <Upload className="h-4 w-4 mr-2" />
+              <Upload className="h-4 w-4 mr-1.5" />
               Choose File
             </span>
           </Button>
         </label>
 
         {selectedFile && (
-          <div className="flex-1 flex items-center gap-2 p-3 bg-gray-50 rounded-lg border">
+          <div className="flex-1 flex items-center gap-2 p-2.5 bg-surface-container-high rounded-[0.5rem]">
             {getFileIcon()}
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">
+              <p className="text-sm font-medium text-on-surface truncate">
                 {selectedFile.name}
               </p>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-on-surface-variant">
                 {formatFileSize(selectedFile.size)}
               </p>
             </div>
             <Button
               type="button"
               variant="ghost"
-              size="sm"
+              size="icon-sm"
               onClick={handleCancel}
               disabled={uploading}
+              className="text-on-surface-variant hover:text-on-surface"
             >
               <X className="h-4 w-4" />
             </Button>
@@ -138,7 +136,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ ticketId, onUploadSuccess }) =>
           <img
             src={preview}
             alt="Preview"
-            className="w-full h-auto rounded-lg border shadow-sm"
+            className="w-full h-auto rounded-[0.75rem]"
           />
         </div>
       )}
@@ -148,27 +146,29 @@ const FileUpload: React.FC<FileUploadProps> = ({ ticketId, onUploadSuccess }) =>
         <div className="flex gap-2">
           <Button
             type="button"
+            size="sm"
             onClick={handleUpload}
             disabled={uploading}
-            className="bg-blue-600 hover:bg-blue-700"
           >
             {uploading ? (
               <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                <div className="animate-spin rounded-full h-3.5 w-3.5 border-2 border-white/30 border-t-white mr-1.5" />
                 Uploading...
               </>
             ) : (
               <>
-                <Upload className="h-4 w-4 mr-2" />
+                <Upload className="h-3.5 w-3.5 mr-1.5" />
                 Upload
               </>
             )}
           </Button>
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
+            size="sm"
             onClick={handleCancel}
             disabled={uploading}
+            className="text-on-surface-variant"
           >
             Cancel
           </Button>
@@ -176,10 +176,9 @@ const FileUpload: React.FC<FileUploadProps> = ({ ticketId, onUploadSuccess }) =>
       )}
 
       {/* File Type Info */}
-      <div className="text-xs text-gray-500">
-        <p>Supported formats: Images (JPG, PNG, GIF, WebP), Videos (MP4, WebM), PDF</p>
-        <p>Max size: 5MB for images, 50MB for videos, 10MB for PDFs</p>
-      </div>
+      <p className="text-xs text-on-surface-variant">
+        Images, Videos, PDF · Max 5MB (images), 50MB (videos), 10MB (PDFs)
+      </p>
     </div>
   );
 };

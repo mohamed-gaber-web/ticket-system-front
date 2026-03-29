@@ -4,8 +4,9 @@ import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { resetPassword } from '@/redux/slices/authSlice';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
+import { motion } from 'framer-motion';
+import { Lock, Sparkles } from 'lucide-react';
 
 const ResetPasswordPage = () => {
   const dispatch = useAppDispatch();
@@ -84,19 +85,55 @@ const ResetPasswordPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">Reset Password</CardTitle>
-          <CardDescription className="text-center">
-            Enter your new password below
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-surface py-12 px-4">
+      {/* Subtle Background Gradient */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <motion.div
+          className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-br from-brand-100/30 to-transparent rounded-full blur-3xl"
+          animate={{ scale: [1, 1.2, 1], rotate: [0, 90, 0] }}
+          transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
+        />
+        <motion.div
+          className="absolute -bottom-1/2 -right-1/2 w-full h-full bg-gradient-to-tl from-accent-orange-100/20 to-transparent rounded-full blur-3xl"
+          animate={{ scale: [1.2, 1, 1.2], rotate: [90, 0, 90] }}
+          transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
+        />
+      </div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="w-full max-w-md relative z-10"
+      >
+        {/* Logo/Brand Section */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.2 }}
+          className="text-center mb-8"
+        >
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-[1.25rem] bg-primary-gradient mb-4">
+            <Sparkles className="w-8 h-8 text-white" />
+          </div>
+          <h1 className="display-sm text-on-surface">
+            Reset Password
+          </h1>
+          <p className="text-on-surface-variant mt-2">Enter your new password below</p>
+        </motion.div>
+
+        {/* Reset Password Card - Glassmorphism */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="glass rounded-[1.5rem] shadow-ambient p-8"
+        >
+          <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
-              <label htmlFor="newPassword" className="text-sm font-medium">
-                New Password <span className="text-red-500">*</span>
+              <label htmlFor="newPassword" className="form-label flex items-center gap-2">
+                <Lock className="w-4 h-4 text-brand-500" />
+                New Password <span className="text-error">*</span>
               </label>
               <Input
                 id="newPassword"
@@ -105,16 +142,23 @@ const ResetPasswordPage = () => {
                 value={formData.newPassword}
                 onChange={handleChange}
                 placeholder="Enter new password"
-                className={validationErrors.newPassword ? 'border-red-500' : ''}
+                className={`h-12 ${validationErrors.newPassword ? 'ring-[2px] ring-error/30' : ''}`}
               />
               {validationErrors.newPassword && (
-                <p className="text-red-500 text-xs">{validationErrors.newPassword}</p>
+                <motion.p
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-error text-xs"
+                >
+                  {validationErrors.newPassword}
+                </motion.p>
               )}
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="confirmPassword" className="text-sm font-medium">
-                Confirm Password <span className="text-red-500">*</span>
+              <label htmlFor="confirmPassword" className="form-label flex items-center gap-2">
+                <Lock className="w-4 h-4 text-brand-500" />
+                Confirm Password <span className="text-error">*</span>
               </label>
               <Input
                 id="confirmPassword"
@@ -123,26 +167,52 @@ const ResetPasswordPage = () => {
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 placeholder="Confirm new password"
-                className={validationErrors.confirmPassword ? 'border-red-500' : ''}
+                className={`h-12 ${validationErrors.confirmPassword ? 'ring-[2px] ring-error/30' : ''}`}
               />
               {validationErrors.confirmPassword && (
-                <p className="text-red-500 text-xs">{validationErrors.confirmPassword}</p>
+                <motion.p
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-error text-xs"
+                >
+                  {validationErrors.confirmPassword}
+                </motion.p>
               )}
             </div>
 
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? 'Resetting Password...' : 'Reset Password'}
-            </Button>
+            <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
+              <Button type="submit" size="xl" className="w-full" disabled={isLoading}>
+                {isLoading ? 'Resetting Password...' : 'Reset Password'}
+              </Button>
+            </motion.div>
 
-            <div className="text-center text-sm">
-              Remember your password?{' '}
-              <Link to="/signin" className="text-blue-600 hover:text-blue-800 font-medium">
+            {/* Divider */}
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full h-px bg-surface-container-high"></div>
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-4 bg-surface-container-lowest text-on-surface-variant">Remember your password?</span>
+              </div>
+            </div>
+
+            <div className="text-center">
+              <Link
+                to="/signin"
+                className="inline-flex items-center gap-2 text-sm font-medium text-on-surface-variant hover:text-brand-500 transition-colors"
+              >
                 Sign In
+                <motion.span
+                  animate={{ x: [0, 4, 0] }}
+                  transition={{ duration: 1.5, repeat: Infinity }}
+                >
+                  &rarr;
+                </motion.span>
               </Link>
             </div>
           </form>
-        </CardContent>
-      </Card>
+        </motion.div>
+      </motion.div>
     </div>
   );
 };

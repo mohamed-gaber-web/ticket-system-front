@@ -101,7 +101,7 @@ export default function ServiceTypeTable({
   if (loading) {
     return (
       <div className="flex justify-center items-center py-12">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-500"></div>
       </div>
     );
   }
@@ -109,18 +109,18 @@ export default function ServiceTypeTable({
   if (serviceTypes.length === 0) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-600 text-lg">No service types found</p>
-        <p className="text-gray-500 text-sm mt-2">Create your first service type to get started</p>
+        <p className="text-on-surface-variant text-lg">No service types found</p>
+        <p className="text-on-surface-variant text-sm mt-2">Create your first service type to get started</p>
       </div>
     );
   }
 
   return (
-    <div className="rounded-lg border bg-white shadow-sm overflow-hidden">
+    <div className="rounded-[1rem] bg-surface-container-lowest overflow-hidden">
       <div className="overflow-x-auto">
         <Table>
           <TableHeader>
-            <TableRow className="bg-gray-50">
+            <TableRow className="bg-surface-container-low">
               <TableHead className="font-semibold">Name</TableHead>
               <TableHead className="font-semibold">Status</TableHead>
               <TableHead className="font-semibold">Created At</TableHead>
@@ -130,14 +130,14 @@ export default function ServiceTypeTable({
           </TableHeader>
           <TableBody>
             {serviceTypes.map((serviceType) => (
-              <TableRow key={serviceType._id} className="hover:bg-gray-50 transition-colors">
-                <TableCell className="font-medium text-gray-900">{serviceType.name}</TableCell>
+              <TableRow key={serviceType._id} className="hover:bg-surface-container-low transition-colors">
+                <TableCell className="font-medium text-on-surface">{serviceType.name}</TableCell>
                 <TableCell>
                   <span
                     className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${
                       serviceType.isActive
-                        ? 'bg-green-100 text-green-800 border border-green-200'
-                        : 'bg-gray-100 text-gray-800 border border-gray-200'
+                        ? 'bg-green-500/10 text-green-700'
+                        : 'bg-surface-container-high text-on-surface-variant'
                     }`}
                   >
                     {serviceType.isActive ? (
@@ -153,10 +153,10 @@ export default function ServiceTypeTable({
                     )}
                   </span>
                 </TableCell>
-                <TableCell className="text-gray-600 text-sm">
+                <TableCell className="text-on-surface-variant text-sm">
                   {formatDate(serviceType.createdAt)}
                 </TableCell>
-                <TableCell className="text-gray-600 text-sm">
+                <TableCell className="text-on-surface-variant text-sm">
                   {formatDate(serviceType.updatedAt)}
                 </TableCell>
                 <TableCell>
@@ -167,8 +167,8 @@ export default function ServiceTypeTable({
                       onClick={() => handleToggleStatus(serviceType)}
                       className={`${
                         serviceType.isActive
-                          ? 'text-orange-600 hover:text-orange-700 hover:border-orange-300'
-                          : 'text-green-600 hover:text-green-700 hover:border-green-300'
+                          ? 'text-orange-600 hover:text-orange-700'
+                          : 'text-green-600 hover:text-green-700'
                       }`}
                     >
                       {serviceType.isActive ? (
@@ -194,7 +194,7 @@ export default function ServiceTypeTable({
                     <Button
                       size="sm"
                       variant="outline"
-                      className="text-red-600 hover:text-red-700 hover:border-red-300"
+                      className="text-error hover:text-error"
                       onClick={() => handleDelete(serviceType)}
                     >
                       <Trash2 className="w-4 h-4 mr-1" />
