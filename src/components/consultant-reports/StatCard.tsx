@@ -22,12 +22,12 @@ export default function StatCard({
       <CardContent className="p-6">
         <div className="flex justify-between items-start">
           <div className="flex-1">
-            <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">
+            <p className="text-sm font-medium text-on-surface-variant uppercase tracking-wide">
               {title}
             </p>
             <h3 className={cn('text-3xl font-bold mt-2', colorClass)}>{value}</h3>
             {subtitle && (
-              <p className="text-sm text-gray-500 mt-1">{subtitle}</p>
+              <p className="text-sm text-on-surface-variant mt-1">{subtitle}</p>
             )}
           </div>
           {Icon && (

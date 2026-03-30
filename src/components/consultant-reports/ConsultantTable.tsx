@@ -24,7 +24,7 @@ const STATUS_STYLES = {
 const ROLE_STYLES = {
   admin: 'bg-accent-orange-100 text-purple-800 border-accent-orange-200',
   senior_consultant: 'bg-brand-100 text-brand-800 border-brand-200',
-  consultant: 'bg-gray-100 text-gray-800 border-gray-200',
+  consultant: 'bg-surface-container text-on-surface border-outline-variant/20',
 };
 
 export default function ConsultantTable({
@@ -62,7 +62,7 @@ export default function ConsultantTable({
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64 bg-white rounded-lg shadow border">
+      <div className="flex items-center justify-center h-64 bg-surface-container-lowest rounded-[1rem] shadow border">
         <Loader2 className="w-8 h-8 animate-spin text-brand-600" />
       </div>
     );
@@ -70,54 +70,54 @@ export default function ConsultantTable({
 
   if (!consultants || consultants.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow border p-8 text-center">
-        <p className="text-gray-500">No consultants found</p>
+      <div className="bg-surface-container-lowest rounded-[1rem] shadow border p-8 text-center">
+        <p className="text-on-surface-variant">No consultants found</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-lg shadow border overflow-hidden">
+    <div className="bg-surface-container-lowest rounded-[1rem] shadow border overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full">
-          <thead className="bg-gray-50 border-b">
+          <thead className="bg-surface-container-low border-b">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase tracking-wider">
                 Full Name
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase tracking-wider">
                 Email
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase tracking-wider">
                 Phone
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase tracking-wider">
                 Role
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase tracking-wider">
                 Status
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase tracking-wider">
                 Last Login
               </th>
-              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-center text-xs font-medium text-on-surface-variant uppercase tracking-wider">
                 Actions
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200">
+          <tbody className="divide-y divide-outline-variant/20">
             {consultants.map((consultant) => (
-              <tr key={consultant._id} className="hover:bg-gray-50 transition-colors">
+              <tr key={consultant._id} className="hover:bg-surface-container-highest transition-colors">
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900">
+                  <div className="text-sm font-medium text-on-surface">
                     {consultant.fullName}
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-600">{consultant.email}</div>
+                  <div className="text-sm text-on-surface-variant">{consultant.email}</div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-600">
+                  <div className="text-sm text-on-surface-variant">
                     {consultant.phone || 'N/A'}
                   </div>
                 </td>
@@ -142,7 +142,7 @@ export default function ConsultantTable({
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-600">
+                  <div className="text-sm text-on-surface-variant">
                     {formatDate(consultant.lastLogin)}
                   </div>
                 </td>
@@ -163,9 +163,9 @@ export default function ConsultantTable({
       </div>
 
       {/* Pagination */}
-      <div className="bg-gray-50 px-6 py-3 border-t flex items-center justify-between">
+      <div className="bg-surface-container-low px-6 py-3 border-t flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-700">Rows per page:</span>
+          <span className="text-sm text-on-surface-variant">Rows per page:</span>
           <CustomSelect
             variant="form"
             value={String(rowsPerPage)}
@@ -180,7 +180,7 @@ export default function ConsultantTable({
         </div>
 
         <div className="flex items-center gap-4">
-          <span className="text-sm text-gray-700">
+          <span className="text-sm text-on-surface-variant">
             Page {page} of {totalPages} ({totalCount} total)
           </span>
           <div className="flex gap-2">

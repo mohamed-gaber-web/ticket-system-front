@@ -73,6 +73,8 @@ export function SidebarDesktop({ links, isOpen, setIsOpen }: SidebarDesktopProps
             variant="ghost"
             size="icon"
             onClick={() => setIsOpen(!isOpen)}
+            aria-label={isOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+            aria-expanded={isOpen}
             className="shrink-0 rounded-[1rem] text-on-surface-variant hover:text-on-surface relative z-10"
           >
             {isOpen ? (
@@ -98,7 +100,7 @@ export function SidebarDesktop({ links, isOpen, setIsOpen }: SidebarDesktopProps
         )}
 
         {/* Navigation */}
-        <nav className="space-y-1 relative flex-1">
+        <nav className="space-y-1 relative flex-1" aria-label="Main navigation">
           {links.map((item, index) => {
             if (isGroup(item)) {
               const isExpanded = expandedGroups.includes(item.name);
@@ -107,6 +109,8 @@ export function SidebarDesktop({ links, isOpen, setIsOpen }: SidebarDesktopProps
                   {/* Group Header */}
                   <button
                     onClick={() => isOpen && toggleGroup(item.name)}
+                    aria-expanded={isExpanded}
+                    aria-label={`${item.name} section`}
                     className="w-full flex items-center gap-3 px-3 py-3 rounded-[1rem] text-sm font-medium transition-all duration-200 relative group text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface cursor-pointer"
                   >
                     <motion.div

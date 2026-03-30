@@ -16,12 +16,14 @@ export default function Sidebar() {
 
     return (
         <>
-            {/* 🌐 Mobile Top Bar */}
-            <div className="md:hidden flex justify-between p-4 bg-white border-b shadow-sm">
+            {/* Mobile Top Bar */}
+            <div className="md:hidden flex justify-between p-4 bg-surface-container-lowest border-b border-outline-variant/20">
                 <Button
                     variant="outline"
                     size="icon"
                     onClick={() => setIsMobileOpen(!isMobileOpen)}
+                    aria-label="Open navigation menu"
+                    aria-expanded={isMobileOpen}
                 >
                     <Menu className="h-5 w-5" />
                 </Button>

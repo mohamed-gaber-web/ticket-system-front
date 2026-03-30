@@ -1,3 +1,4 @@
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Table,
@@ -8,7 +9,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Edit, Trash2, Ticket as TicketIcon, Eye, CheckCircle, GitBranch } from 'lucide-react';
+import { Edit, Trash2, Ticket as TicketIcon, Eye, CheckCircle, GitBranch, MoreVertical } from 'lucide-react';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
 import type { Ticket, Consultant, Category } from '@/types/ticket';
@@ -50,22 +51,33 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
   const { consultants } = useAppSelector((state) => state.consultants);
   const isConsultant = userType === 'consultant';
 
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpenMenuId(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const handleDelete = (ticket: Ticket) => {
     MySwal.fire({
-      title: 'Are you sure?',
+      title: `Delete ${ticket.ticketNumber}?`,
       html: `
         <div class="text-left">
-          <p class="mb-2">You are about to delete:</p>
-          <p class="font-semibold text-lg">${ticket.ticketNumber}</p>
           <p class="text-sm" style="color: #434653">${ticket.subject}</p>
-          <p class="mt-3" style="color: #BA1A1A">This action cannot be undone!</p>
+          <p class="mt-3" style="color: #BA1A1A">This action cannot be undone.</p>
         </div>
       `,
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#BA1A1A',
       cancelButtonColor: '#434653',
-      confirmButtonText: 'Yes, delete it!',
+      confirmButtonText: 'Delete ticket',
       cancelButtonText: 'Cancel',
       reverseButtons: true,
       focusCancel: true,
@@ -78,11 +90,9 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
 
   const handleAccept = async (ticket: Ticket) => {
     MySwal.fire({
-      title: 'Accept this ticket?',
+      title: `Accept ${ticket.ticketNumber}?`,
       html: `
         <div class="text-left">
-          <p class="mb-2">You are about to accept:</p>
-          <p class="font-semibold text-lg">${ticket.ticketNumber}</p>
           <p class="text-sm" style="color: #434653">${ticket.subject}</p>
           <p class="mt-3" style="color: #003A8F">This ticket will be assigned to you.</p>
         </div>
@@ -91,7 +101,7 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
       showCancelButton: true,
       confirmButtonColor: '#003A8F',
       cancelButtonColor: '#434653',
-      confirmButtonText: 'Yes, accept it!',
+      confirmButtonText: 'Accept ticket',
       cancelButtonText: 'Cancel',
       reverseButtons: true,
       focusCancel: true,
@@ -237,9 +247,11 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
               <TableHead className="min-w-[200px]">Subject</TableHead>
               <TableHead className="min-w-[100px]">Priority</TableHead>
               <TableHead className="min-w-[120px]">Status</TableHead>
+              <TableHead className="min-w-[100px]">Source</TableHead>
               <TableHead className="min-w-[120px]">Accepted At</TableHead>
               <TableHead className="min-w-[120px]">Last Updated</TableHead>
               <TableHead className="min-w-[120px]">Closed At</TableHead>
+              <TableHead className="min-w-[140px]">Accepted By</TableHead>
               <TableHead className="text-right min-w-[120px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -285,6 +297,13 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                   <TableCell>{getPriorityDisplay(ticket.priority)}</TableCell>
                   <TableCell>{getStatusBadge(ticket.status)}</TableCell>
                   <TableCell>
+                    {ticket.source && typeof ticket.source === 'object' ? (
+                      <span className="text-sm text-on-surface">{(ticket.source as any).name}</span>
+                    ) : (
+                      <span className="text-on-surface-variant/40">&mdash;</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
                     {ticket.acceptedAt ? (
                       <span className="text-sm text-on-surface">
                         {new Date(ticket.acceptedAt).toLocaleTimeString('en-US', {
@@ -316,53 +335,70 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                     )}
                   </TableCell>
                   <TableCell>
+                    {isConsultant && !isSubTicket && ticket.status === 'new' && !ticket.acceptedBy ? (
+                      <Button
+                        size="sm"
+                        variant="tertiary"
+                        onClick={() => handleAccept(ticket)}
+                        disabled={ticketLoading}
+                        className="text-green-600 hover:text-green-700 whitespace-nowrap h-8 text-xs"
+                      >
+                        <CheckCircle className="w-3.5 h-3.5 mr-1" />
+                        Accept
+                      </Button>
+                    ) : ticket.acceptedBy ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-on-surface">
+                          {isConsultant && isAcceptedByCurrentUser(ticket) ? 'You' : getAcceptedByName(ticket.acceptedBy)}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-on-surface-variant/40">&mdash;</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
                     <div className="flex items-center justify-end gap-1">
-                      {isConsultant && !isSubTicket && ticket.status === 'new' && !ticket.acceptedBy && (
+                      <div className="relative" ref={openMenuId === ticket._id ? menuRef : undefined}>
                         <Button
-                          size="sm"
-                          variant="tertiary"
-                          onClick={() => handleAccept(ticket)}
-                          disabled={ticketLoading}
-                          className="text-green-600 hover:text-green-700 whitespace-nowrap h-8 text-xs"
+                          size="icon-sm"
+                          variant="ghost"
+                          onClick={() => setOpenMenuId(openMenuId === ticket._id ? null : ticket._id)}
+                          className="text-on-surface-variant hover:text-on-surface"
+                          aria-label={`Actions for ticket ${ticket.ticketNumber}`}
+                          aria-expanded={openMenuId === ticket._id}
+                          aria-haspopup="menu"
                         >
-                          <CheckCircle className="w-3.5 h-3.5 mr-1" />
-                          Accept
+                          <MoreVertical className="w-4 h-4" />
                         </Button>
-                      )}
-
-                      {isConsultant && !isSubTicket && ticket.acceptedBy && (
-                        <div className="px-2.5 py-0.5 rounded-[0.5rem] text-xs font-semibold bg-primary-fixed text-on-primary-fixed whitespace-nowrap">
-                          {isAcceptedByCurrentUser(ticket) ? 'You' : getAcceptedByName(ticket.acceptedBy)}
-                        </div>
-                      )}
-
-                      <Button
-                        size="icon-sm"
-                        variant="ghost"
-                        onClick={() => navigate(`/tickets/view/${ticket._id}`)}
-                        className="text-on-surface-variant hover:text-brand-500"
-                        title="View"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        size="icon-sm"
-                        variant="ghost"
-                        onClick={() => navigate(`/tickets/edit/${ticket._id}`)}
-                        className="text-on-surface-variant hover:text-on-surface"
-                        title="Edit"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        size="icon-sm"
-                        variant="ghost"
-                        className="text-on-surface-variant hover:text-error"
-                        onClick={() => handleDelete(ticket)}
-                        title="Delete"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                        {openMenuId === ticket._id && (
+                          <div className="absolute right-0 mt-1 w-40 rounded-[0.75rem] glass shadow-ambient py-1.5 z-50" role="menu">
+                            <button
+                              role="menuitem"
+                              onClick={() => { navigate(`/tickets/view/${ticket._id}`); setOpenMenuId(null); }}
+                              className="flex items-center gap-2.5 w-full px-3.5 py-2 text-sm font-medium text-on-surface hover:bg-surface-container-highest transition-colors"
+                            >
+                              <Eye className="w-4 h-4 text-on-surface-variant" />
+                              View
+                            </button>
+                            <button
+                              role="menuitem"
+                              onClick={() => { navigate(`/tickets/edit/${ticket._id}`); setOpenMenuId(null); }}
+                              className="flex items-center gap-2.5 w-full px-3.5 py-2 text-sm font-medium text-on-surface hover:bg-surface-container-highest transition-colors"
+                            >
+                              <Edit className="w-4 h-4 text-on-surface-variant" />
+                              Edit
+                            </button>
+                            <button
+                              role="menuitem"
+                              onClick={() => { handleDelete(ticket); setOpenMenuId(null); }}
+                              className="flex items-center gap-2.5 w-full px-3.5 py-2 text-sm font-medium text-error hover:bg-error/5 transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                              Delete
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </TableCell>
                 </TableRow>

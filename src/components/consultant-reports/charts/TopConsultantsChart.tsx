@@ -25,7 +25,7 @@ export default function TopConsultantsChart({ data, limit = 10 }: TopConsultants
           <CardTitle>Top Consultants by Assignments</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-center text-gray-500 py-8">No data available</p>
+          <p className="text-center text-on-surface-variant py-8">No data available</p>
         </CardContent>
       </Card>
     );

@@ -22,7 +22,7 @@ export default function AssignmentTrendChart({
           <CardTitle>{title}</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-center text-gray-500 py-8">No data available</p>
+          <p className="text-center text-on-surface-variant py-8">No data available</p>
         </CardContent>
       </Card>
     );

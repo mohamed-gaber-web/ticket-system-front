@@ -94,7 +94,7 @@ export default function ViewTicket() {
     <div className="p-8 space-y-0 w-full">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm text-on-surface-variant mb-6">
-        <button onClick={() => navigate('/tickets')} className="hover:text-brand-500 transition-colors font-medium">
+        <button onClick={() => navigate('/tickets')} className="hover:text-brand-500 transition-colors font-medium" aria-label="Back to tickets list">
           Tickets
         </button>
         <ChevronRight className="h-3.5 w-3.5" />
@@ -191,11 +191,35 @@ export default function ViewTicket() {
       </div>
 
       {/* Tab Navigation */}
-      <div className="flex items-center gap-1 mb-8 bg-surface-container-low rounded-[1rem] p-1.5 w-fit">
+      <div
+        className="flex items-center gap-1 mb-8 bg-surface-container-low rounded-[1rem] p-1.5 w-fit"
+        role="tablist"
+        aria-label="Ticket sections"
+      >
         {(['details', 'comments', 'attachments'] as const).map((tab) => (
           <button
             key={tab}
+            role="tab"
+            aria-selected={activeTab === tab}
+            aria-controls={`tabpanel-${tab}`}
+            id={`tab-${tab}`}
             onClick={() => setActiveTab(tab)}
+            onKeyDown={(e) => {
+              const tabs = ['details', 'comments', 'attachments'] as const;
+              const currentIndex = tabs.indexOf(tab);
+              if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                const next = tabs[(currentIndex + 1) % tabs.length];
+                setActiveTab(next);
+                document.getElementById(`tab-${next}`)?.focus();
+              } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                const prev = tabs[(currentIndex - 1 + tabs.length) % tabs.length];
+                setActiveTab(prev);
+                document.getElementById(`tab-${prev}`)?.focus();
+              }
+            }}
+            tabIndex={activeTab === tab ? 0 : -1}
             className={`px-5 py-2 rounded-[0.75rem] text-sm font-semibold transition-all capitalize ${
               activeTab === tab
                 ? 'bg-surface-container-lowest text-on-surface shadow-ambient'
@@ -209,7 +233,7 @@ export default function ViewTicket() {
 
       {/* Tab Content */}
       {activeTab === 'details' && (
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+        <div id="tabpanel-details" role="tabpanel" aria-labelledby="tab-details" className="grid grid-cols-1 xl:grid-cols-3 gap-8">
           {/* Main Column */}
           <div className="xl:col-span-2 space-y-8">
             {/* Description */}
@@ -292,7 +316,7 @@ export default function ViewTicket() {
                   </span>
                 </div>
                 <p className="text-sm text-on-surface font-medium">
-                  Due: {new Date(currentTicket.slaDueDate).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  SLA due {new Date(currentTicket.slaDueDate).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                 </p>
               </div>
             )}
@@ -301,13 +325,13 @@ export default function ViewTicket() {
       )}
 
       {activeTab === 'comments' && (
-        <div className="max-w-4xl">
+        <div id="tabpanel-comments" role="tabpanel" aria-labelledby="tab-comments" className="max-w-4xl">
           <TicketComments ticketId={currentTicket._id} />
         </div>
       )}
 
       {activeTab === 'attachments' && (
-        <div className="max-w-4xl space-y-6">
+        <div id="tabpanel-attachments" role="tabpanel" aria-labelledby="tab-attachments" className="max-w-4xl space-y-6">
           <div className="bg-surface-container-lowest rounded-[1rem] p-6">
             <h3 className="label-technical mb-4 flex items-center gap-2">
               <Paperclip className="h-3.5 w-3.5" />

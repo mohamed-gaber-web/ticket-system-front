@@ -150,7 +150,7 @@ export default function TeamMemberDashboard() {
       assigned: 'bg-accent-orange-100 text-purple-800',
       in_progress: 'bg-yellow-100 text-yellow-800',
       resolved: 'bg-green-100 text-green-800',
-      closed: 'bg-gray-100 text-gray-800',
+      closed: 'bg-surface-container text-on-surface',
     };
 
     const displayStatus = status.replace('_', ' ');
@@ -167,14 +167,14 @@ export default function TeamMemberDashboard() {
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-3xl font-bold mb-2">My Assignments</h1>
-        <p className="text-gray-600">View and manage your ticket assignments</p>
+        <p className="text-on-surface-variant">View and manage your ticket assignments</p>
       </div>
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600">Total Assignments</CardTitle>
+            <CardTitle className="text-sm font-medium text-on-surface-variant">Total Assignments</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{assignments.length}</div>
@@ -183,7 +183,7 @@ export default function TeamMemberDashboard() {
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600">Pending Acceptance</CardTitle>
+            <CardTitle className="text-sm font-medium text-on-surface-variant">Pending Acceptance</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-orange-600">{pendingCount}</div>
@@ -192,7 +192,7 @@ export default function TeamMemberDashboard() {
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600">Accepted</CardTitle>
+            <CardTitle className="text-sm font-medium text-on-surface-variant">Accepted</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">{acceptedCount}</div>
@@ -233,7 +233,7 @@ export default function TeamMemberDashboard() {
       )}
 
       {/* Assignments Table */}
-      <div className="rounded-lg border bg-white shadow-sm">
+      <div className="rounded-[1rem] border bg-surface-container-lowest shadow-sm">
         {loading ? (
           <div className="flex justify-center items-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-600"></div>
@@ -241,7 +241,7 @@ export default function TeamMemberDashboard() {
         ) : error ? (
           <div className="text-center py-12">
             <div className="text-red-500 text-lg mb-2">Failed to load assignments</div>
-            <p className="text-gray-500 text-sm">Please check the console for more details</p>
+            <p className="text-on-surface-variant text-sm">Please check the console for more details</p>
             <Button
               onClick={() => {
                 if (user?._id) {
@@ -260,23 +260,23 @@ export default function TeamMemberDashboard() {
           </div>
         ) : filteredAssignments.length === 0 ? (
           <div className="text-center py-12">
-            <TicketIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-            <p className="text-gray-600 text-lg">No assignments found</p>
-            <p className="text-gray-500 text-sm mt-2">
+            <TicketIcon className="mx-auto h-12 w-12 text-on-surface-variant/60 mb-4" />
+            <p className="text-on-surface-variant text-lg">No assignments found</p>
+            <p className="text-on-surface-variant text-sm mt-2">
               {filter === 'pending'
                 ? 'You have no pending assignments'
                 : filter === 'accepted'
                 ? 'You have not accepted any assignments yet'
                 : 'You have no current assignments'}
             </p>
-            <p className="text-gray-400 text-xs mt-4">
+            <p className="text-on-surface-variant/60 text-xs mt-4">
               Assignments will appear here when a consultant assigns tickets to your team
             </p>
           </div>
         ) : (
           <Table>
             <TableHeader>
-              <TableRow className="bg-gray-50">
+              <TableRow className="bg-surface-container-low">
                 <TableHead className="font-semibold">Ticket #</TableHead>
                 <TableHead className="font-semibold">Subject</TableHead>
                 <TableHead className="font-semibold">Priority</TableHead>
@@ -294,7 +294,7 @@ export default function TeamMemberDashboard() {
                   return (
                 <TableRow
                   key={assignment._id}
-                  className="hover:bg-gray-50 transition-colors cursor-pointer"
+                  className="hover:bg-surface-container-highest transition-colors cursor-pointer"
                   onClick={() => ticketId && navigate(`/tickets/${ticketId}`)}
                 >
                   <TableCell className="font-medium">
@@ -307,7 +307,7 @@ export default function TeamMemberDashboard() {
                   </TableCell>
                   <TableCell>
                     <p className="font-medium">{ticket?.subject ?? 'No subject'}</p>
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-on-surface-variant mt-1">
                       Assigned by:{' '}
                       {`${assignment.assignedByConsultant?.firstName ?? ''} ${assignment.assignedByConsultant?.lastName ?? ''}`.trim() ||
                         'Unknown'}
@@ -315,7 +315,7 @@ export default function TeamMemberDashboard() {
                   </TableCell>
                   <TableCell>{ticket ? getPriorityBadge(ticket.priority) : '-'}</TableCell>
                   <TableCell>{ticket ? getStatusBadge(ticket.status) : '-'}</TableCell>
-                  <TableCell className="text-gray-600">
+                  <TableCell className="text-on-surface-variant">
                     {new Date(assignment.assignedAt).toLocaleDateString('en-US', {
                       year: 'numeric',
                       month: 'short',
@@ -325,7 +325,7 @@ export default function TeamMemberDashboard() {
                     })}
                   </TableCell>
                   <TableCell className="max-w-xs">
-                    <p className="truncate text-sm text-gray-600">
+                    <p className="truncate text-sm text-on-surface-variant">
                       {assignment.assignmentNotes || '-'}
                     </p>
                   </TableCell>

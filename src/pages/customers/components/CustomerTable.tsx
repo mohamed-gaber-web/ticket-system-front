@@ -67,14 +67,14 @@ export default function CustomerTable({ customers, onEdit, onDelete, isLoading }
         <div class="text-left">
           <p class="mb-2">You are about to delete:</p>
           <p class="font-semibold text-lg">${customer.companyName}</p>
-          <p class="text-sm text-gray-600">${customer.email}</p>
-          <p class="mt-3 text-red-600">This action cannot be undone!</p>
+          <p class="text-sm text-on-surface-variant">${customer.email}</p>
+          <p class="mt-3 text-error">This action cannot be undone!</p>
         </div>
       `,
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonColor: '#EF4444',
-      cancelButtonColor: '#6B7280',
+      confirmButtonColor: '#BA1A1A',
+      cancelButtonColor: '#434653',
       confirmButtonText: 'Yes, delete it!',
       cancelButtonText: 'Cancel',
       reverseButtons: true,
@@ -88,18 +88,18 @@ export default function CustomerTable({ customers, onEdit, onDelete, isLoading }
 
   const getStatusBadge = (status: string) => {
     const statusStyles = {
-      active: 'bg-green-100 text-green-800 border-green-200',
-      inactive: 'bg-gray-100 text-gray-800 border-gray-200',
-      suspended: 'bg-red-100 text-red-800 border-red-200',
+      active: 'bg-green-500/10 text-green-600',
+      inactive: 'bg-surface-container-highest text-on-surface-variant',
+      suspended: 'bg-error/10 text-error',
     };
 
     return (
       <span
-        className={`px-3 py-1 rounded-full text-xs font-semibold border ${
+        className={`px-3 py-1 rounded-[0.5rem] text-xs font-bold uppercase tracking-[0.05em] ${
           statusStyles[status as keyof typeof statusStyles] || statusStyles.inactive
         }`}
       >
-        {status.charAt(0).toUpperCase() + status.slice(1)}
+        {status}
       </span>
     );
   };
@@ -123,18 +123,18 @@ export default function CustomerTable({ customers, onEdit, onDelete, isLoading }
   if (customers.length === 0) {
     return (
       <div className="text-center py-12">
-        <Building2 className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-        <p className="text-gray-600 text-lg">No customers found</p>
-        <p className="text-gray-500 text-sm mt-2">Use the filters above or click "Add Customer" to get started</p>
+        <Building2 className="mx-auto h-12 w-12 text-on-surface-variant/60 mb-4" />
+        <p className="text-on-surface-variant text-lg">No customers found</p>
+        <p className="text-on-surface-variant text-sm mt-2">Use the filters above or click "Add Customer" to get started</p>
       </div>
     );
   }
 
   return (
-    <div className="rounded-lg border bg-white shadow-sm overflow-hidden">
+    <div className="rounded-[1rem] bg-surface-container-lowest overflow-hidden">
       <Table>
         <TableHeader>
-          <TableRow className="bg-gray-50">
+          <TableRow>
             <TableHead className="font-semibold">Company</TableHead>
             <TableHead className="font-semibold">Contact Person</TableHead>
             <TableHead className="font-semibold">Contact Info</TableHead>
@@ -147,16 +147,16 @@ export default function CustomerTable({ customers, onEdit, onDelete, isLoading }
         </TableHeader>
         <TableBody>
           {customers.map((customer) => (
-            <TableRow key={customer._id} className="hover:bg-gray-50 transition-colors">
+            <TableRow key={customer._id}>
               <TableCell>
                 <div className="flex items-center gap-2">
                   <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-brand-500 to-accent-orange-500 flex items-center justify-center text-white font-semibold">
                     {customer.companyName.charAt(0).toUpperCase()}
                   </div>
                   <div>
-                    <p className="font-semibold text-gray-900">{customer.companyName}</p>
+                    <p className="font-semibold text-on-surface">{customer.companyName}</p>
                     {customer.city && customer.country && (
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-on-surface-variant">
                         {customer.city}, {customer.country}
                       </p>
                     )}
@@ -164,15 +164,15 @@ export default function CustomerTable({ customers, onEdit, onDelete, isLoading }
                 </div>
               </TableCell>
               <TableCell>
-                <p className="text-gray-900">{customer.contactPerson}</p>
+                <p className="text-on-surface">{customer.contactPerson}</p>
               </TableCell>
               <TableCell>
                 <div className="space-y-1">
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <div className="flex items-center gap-2 text-sm text-on-surface-variant">
                     <Mail className="h-3 w-3" />
                     <span>{customer.email}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <div className="flex items-center gap-2 text-sm text-on-surface-variant">
                     <Phone className="h-3 w-3" />
                     <span>{customer.phone}</span>
                   </div>
@@ -181,17 +181,17 @@ export default function CustomerTable({ customers, onEdit, onDelete, isLoading }
               <TableCell>
                 <div className="flex items-center gap-2">
                   <Database className="h-4 w-4 text-green-600" />
-                  <span className="text-sm text-gray-700">{getErpTypeName(customer.erpType)}</span>
+                  <span className="text-sm text-on-surface-variant">{getErpTypeName(customer.erpType)}</span>
                 </div>
               </TableCell>
               <TableCell>
                 <div className="flex items-center gap-2">
                   <Database className="h-4 w-4 text-brand-600" />
-                  <span className="text-sm text-gray-700">{getVersionNumberName(customer.versionNumber)}</span>
+                  <span className="text-sm text-on-surface-variant">{getVersionNumberName(customer.versionNumber)}</span>
                 </div>
               </TableCell>
               <TableCell>{getStatusBadge(customer.status)}</TableCell>
-              <TableCell className="text-gray-600">{formatDate(customer.createdAt)}</TableCell>
+              <TableCell className="text-on-surface-variant">{formatDate(customer.createdAt)}</TableCell>
               <TableCell>
                 <div className="flex items-center justify-end gap-2">
                   <Button
@@ -205,7 +205,7 @@ export default function CustomerTable({ customers, onEdit, onDelete, isLoading }
                   <Button
                     size="sm"
                     variant="outline"
-                    className="text-red-600 hover:text-red-700 hover:border-red-300"
+                    className="text-error hover:text-error/80"
                     onClick={() => handleDelete(customer)}
                   >
                     <Trash2 className="w-4 h-4 mr-1" />

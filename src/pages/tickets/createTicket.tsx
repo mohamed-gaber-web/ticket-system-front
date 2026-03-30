@@ -37,15 +37,15 @@ export default function CreateTicket() {
         }
 
         navigate('/tickets');
-      } catch (error) {
-        console.error('Failed to create ticket:', error);
+      } catch {
+        // Error is handled by Redux slice / toast
       }
     })();
   };
 
   return (
     <div className="p-8">
-      <h1 className="text-md font-bold mb-6">Create New Ticket</h1>
+      <h1 className="display-sm text-on-surface mb-6">New Ticket</h1>
       <TicketForm onSubmit={handleSubmit} />
     </div>
   );

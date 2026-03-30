@@ -1,122 +1,107 @@
+import { lazy, Suspense, type ReactNode } from "react";
 import type { RouteObject } from "react-router-dom";
 import Layout from "@/components/layout/layout";
-import Dashboard from "@/pages/dashboard/dashboard";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 
-// Auth Module
-import SigninPage from "@/pages/auth/signin";
-import SignupPage from "@/pages/auth/signup";
-import UnauthorizedPage from "@/pages/auth/unauthorized";
-import ForgotPasswordPage from "@/pages/auth/forgot-password";
-import ResetPasswordPage from "@/pages/auth/reset-password";
-import ProfilePage from "@/pages/auth/profile";
-import ChangePasswordPage from "@/pages/auth/change-password";
+// Lightweight loading fallback — no extra dependencies
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center h-[60vh]">
+      <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
+    </div>
+  );
+}
+
+function Lazy({ children }: { children: ReactNode }) {
+  return <Suspense fallback={<PageLoader />}>{children}</Suspense>;
+}
+
+// Auth Module — lazy (not needed until user navigates)
+const SigninPage = lazy(() => import("@/pages/auth/signin"));
+const SignupPage = lazy(() => import("@/pages/auth/signup"));
+const UnauthorizedPage = lazy(() => import("@/pages/auth/unauthorized"));
+const ForgotPasswordPage = lazy(() => import("@/pages/auth/forgot-password"));
+const ResetPasswordPage = lazy(() => import("@/pages/auth/reset-password"));
+const ProfilePage = lazy(() => import("@/pages/auth/profile"));
+const ChangePasswordPage = lazy(() => import("@/pages/auth/change-password"));
+
+// Dashboard — eager (landing page, should load fast)
+import Dashboard from "@/pages/dashboard/dashboard";
 
 // Customer Module
-import Customers from "@/pages/customers/customers";
-import CreateCustomer from "@/pages/customers/createCustomer";
-import EditCustomer from "@/pages/customers/editCustomer";
-import ViewCustomer from "@/pages/customers/viewCustomer";
+const Customers = lazy(() => import("@/pages/customers/customers"));
+const CreateCustomer = lazy(() => import("@/pages/customers/createCustomer"));
+const EditCustomer = lazy(() => import("@/pages/customers/editCustomer"));
+const ViewCustomer = lazy(() => import("@/pages/customers/viewCustomer"));
 
 // Ticket Module
-import Tickets from "@/pages/tickets/tickets";
-import CreateTicket from "@/pages/tickets/createTicket";
-import EditTicket from "@/pages/tickets/editTicket";
-import ViewTicket from "@/pages/tickets/viewTicket";
+const Tickets = lazy(() => import("@/pages/tickets/tickets"));
+const CreateTicket = lazy(() => import("@/pages/tickets/createTicket"));
+const EditTicket = lazy(() => import("@/pages/tickets/editTicket"));
+const ViewTicket = lazy(() => import("@/pages/tickets/viewTicket"));
 
 // Consultant Module
-import Consultants from "@/pages/consultants/consultants";
-import CreateConsultant from "@/pages/consultants/createConsultant";
-import EditConsultant from "@/pages/consultants/editConsultant";
-import ConsultantDashboard from "@/pages/consultants/consultantDashboard";
-
-// Team Module - HIDDEN: Not currently in use
-// import Teams from "@/pages/teams/teams";
-// import CreateTeam from "@/pages/teams/createTeam";
-// import EditTeam from "@/pages/teams/editTeam";
-// import ViewTeam from "@/pages/teams/viewTeam";
-
-// Team Member Module - HIDDEN: Not currently in use
-// import TeamMembers from "@/pages/team-members/teamMembers";
-// import CreateTeamMember from "@/pages/team-members/createTeamMember";
-// import EditTeamMember from "@/pages/team-members/editTeamMember";
-// import MemberDashboard from "@/pages/team-members/memberDashboard";
-// import TeamMemberDashboard from "@/pages/team-member/TeamMemberDashboard";
+const Consultants = lazy(() => import("@/pages/consultants/consultants"));
+const CreateConsultant = lazy(() => import("@/pages/consultants/createConsultant"));
+const EditConsultant = lazy(() => import("@/pages/consultants/editConsultant"));
+const ConsultantDashboard = lazy(() => import("@/pages/consultants/consultantDashboard"));
 
 // Category Module
-import Categories from "@/pages/categories/categories";
-import CreateCategory from "@/pages/categories/createCategory";
-import EditCategory from "@/pages/categories/editCategory";
+const Categories = lazy(() => import("@/pages/categories/categories"));
+const CreateCategory = lazy(() => import("@/pages/categories/createCategory"));
+const EditCategory = lazy(() => import("@/pages/categories/editCategory"));
 
 // SLA Module
-import SLA from "@/pages/sla/sla";
-import CreateSLA from "@/pages/sla/createSLA";
-import EditSLA from "@/pages/sla/editSLA";
-import SLAMonitoring from "@/pages/sla/slaMonitoring";
+const SLA = lazy(() => import("@/pages/sla/sla"));
+const CreateSLA = lazy(() => import("@/pages/sla/createSLA"));
+const EditSLA = lazy(() => import("@/pages/sla/editSLA"));
+const SLAMonitoring = lazy(() => import("@/pages/sla/slaMonitoring"));
 
 // Reports Module
-import Reports from "@/pages/reports/reports";
-import TicketReports from "@/pages/reports/ticketReports";
-import TeamPerformance from "@/pages/reports/teamPerformance";
-import CustomerReports from "@/pages/reports/customerReports";
+const Reports = lazy(() => import("@/pages/reports/reports"));
+const TicketReports = lazy(() => import("@/pages/reports/ticketReports"));
+const TeamPerformance = lazy(() => import("@/pages/reports/teamPerformance"));
+const CustomerReports = lazy(() => import("@/pages/reports/customerReports"));
 
 // Consultant Reports Module
-import ConsultantReportsDashboard from "@/pages/consultant-reports/ConsultantDashboard";
-import ConsultantListReport from "@/pages/consultant-reports/ConsultantListReport";
-import ConsultantDetailReport from "@/pages/consultant-reports/ConsultantDetailReport";
-import AssignmentAnalytics from "@/pages/consultant-reports/AssignmentAnalytics";
+const ConsultantReportsDashboard = lazy(() => import("@/pages/consultant-reports/ConsultantDashboard"));
+const ConsultantListReport = lazy(() => import("@/pages/consultant-reports/ConsultantListReport"));
+const ConsultantDetailReport = lazy(() => import("@/pages/consultant-reports/ConsultantDetailReport"));
+const AssignmentAnalytics = lazy(() => import("@/pages/consultant-reports/AssignmentAnalytics"));
 
-// Environment Module
-import Environments from "@/pages/environments/Environments";
-
-// Feature Module
-import Features from "@/pages/features/Features";
-
-// Product Type Module
-import ProductTypes from "@/pages/product-types/ProductTypes";
-
-// Scope Module
-import Scopes from "@/pages/scopes/Scopes";
-
-// Service Type Module
-import ServiceTypes from "@/pages/service-types/ServiceTypes";
-
-// ERP Type Module
-import ErpTypes from "@/pages/erp-types/ErpTypes";
-
-// Version Number Module
-import VersionNumbers from "@/pages/version-numbers/VersionNumbers";
-
-// Department Module
-import Departments from "@/pages/departments/Departments";
-
-// Source Module
-import Sources from "@/pages/sources/Sources";
-
-// Company Module
-import Companies from "@/pages/companies/Companies";
+// Config Modules
+const Environments = lazy(() => import("@/pages/environments/Environments"));
+const Features = lazy(() => import("@/pages/features/Features"));
+const ProductTypes = lazy(() => import("@/pages/product-types/ProductTypes"));
+const Scopes = lazy(() => import("@/pages/scopes/Scopes"));
+const ServiceTypes = lazy(() => import("@/pages/service-types/ServiceTypes"));
+const ErpTypes = lazy(() => import("@/pages/erp-types/ErpTypes"));
+const VersionNumbers = lazy(() => import("@/pages/version-numbers/VersionNumbers"));
+const Departments = lazy(() => import("@/pages/departments/Departments"));
+const Sources = lazy(() => import("@/pages/sources/Sources"));
+const Companies = lazy(() => import("@/pages/companies/Companies"));
 
 export const routes: RouteObject[] = [
   // Public Routes (Authentication)
   {
     path: "/signin",
-    element: <SigninPage />,
+    element: <Lazy><SigninPage /></Lazy>,
   },
   {
     path: "/signup",
-    element: <SignupPage />,
+    element: <Lazy><SignupPage /></Lazy>,
   },
   {
     path: "/forgot-password",
-    element: <ForgotPasswordPage />,
+    element: <Lazy><ForgotPasswordPage /></Lazy>,
   },
   {
     path: "/reset-password/:token",
-    element: <ResetPasswordPage />,
+    element: <Lazy><ResetPasswordPage /></Lazy>,
   },
   {
     path: "/unauthorized",
-    element: <UnauthorizedPage />,
+    element: <Lazy><UnauthorizedPage /></Lazy>,
   },
 
   // Protected Routes
@@ -128,94 +113,73 @@ export const routes: RouteObject[] = [
       </ProtectedRoute>
     ),
     children: [
-      // Dashboard
+      // Dashboard (eager — landing page)
       { path: "/", element: <Dashboard /> },
       { path: "/dashboard", element: <Dashboard /> },
 
       // Profile Routes
-      { path: "/profile", element: <ProfilePage /> },
-      { path: "/change-password", element: <ChangePasswordPage /> },
+      { path: "/profile", element: <Lazy><ProfilePage /></Lazy> },
+      { path: "/change-password", element: <Lazy><ChangePasswordPage /></Lazy> },
 
-      // Customer Routes (accessible by customers)
-      { path: "/customers", element: <Customers /> },
+      // Customer Routes
+      { path: "/customers", element: <Lazy><Customers /></Lazy> },
       {
         path: "/customers/create",
         element: (
           <ProtectedRoute allowedUserTypes={['consultant']}>
-            <CreateCustomer />
+            <Lazy><CreateCustomer /></Lazy>
           </ProtectedRoute>
         )
       },
-      { path: "/customers/edit/:id", element: <EditCustomer /> },
-      { path: "/customers/view/:id", element: <ViewCustomer /> },
+      { path: "/customers/edit/:id", element: <Lazy><EditCustomer /></Lazy> },
+      { path: "/customers/view/:id", element: <Lazy><ViewCustomer /></Lazy> },
 
-      // Ticket Routes (accessible by all authenticated users)
-      { path: "/tickets", element: <Tickets /> },
-      { path: "/tickets/create", element: <CreateTicket /> },
-      { path: "/tickets/edit/:id", element: <EditTicket /> },
-      { path: "/tickets/view/:id", element: <ViewTicket /> },
+      // Ticket Routes
+      { path: "/tickets", element: <Lazy><Tickets /></Lazy> },
+      { path: "/tickets/create", element: <Lazy><CreateTicket /></Lazy> },
+      { path: "/tickets/edit/:id", element: <Lazy><EditTicket /></Lazy> },
+      { path: "/tickets/view/:id", element: <Lazy><ViewTicket /></Lazy> },
 
       // Consultant Routes
-      { path: "/consultants", element: <Consultants /> },
-      { path: "/consultants/create", element: <CreateConsultant /> },
-      { path: "/consultants/edit/:id", element: <EditConsultant /> },
-      { path: "/consultants/dashboard", element: <ConsultantDashboard /> },
-
-      // Team Routes - HIDDEN: Commented out (not in use)
-      // Team Member Routes - HIDDEN: Commented out (not in use)
+      { path: "/consultants", element: <Lazy><Consultants /></Lazy> },
+      { path: "/consultants/create", element: <Lazy><CreateConsultant /></Lazy> },
+      { path: "/consultants/edit/:id", element: <Lazy><EditConsultant /></Lazy> },
+      { path: "/consultants/dashboard", element: <Lazy><ConsultantDashboard /></Lazy> },
 
       // Category Routes
-      { path: "/categories", element: <Categories /> },
-      { path: "/categories/create", element: <CreateCategory /> },
-      { path: "/categories/edit/:id", element: <EditCategory /> },
+      { path: "/categories", element: <Lazy><Categories /></Lazy> },
+      { path: "/categories/create", element: <Lazy><CreateCategory /></Lazy> },
+      { path: "/categories/edit/:id", element: <Lazy><EditCategory /></Lazy> },
 
       // SLA Routes
-      { path: "/sla", element: <SLA /> },
-      { path: "/sla/create", element: <CreateSLA /> },
-      { path: "/sla/edit/:id", element: <EditSLA /> },
-      { path: "/sla/monitoring", element: <SLAMonitoring /> },
+      { path: "/sla", element: <Lazy><SLA /></Lazy> },
+      { path: "/sla/create", element: <Lazy><CreateSLA /></Lazy> },
+      { path: "/sla/edit/:id", element: <Lazy><EditSLA /></Lazy> },
+      { path: "/sla/monitoring", element: <Lazy><SLAMonitoring /></Lazy> },
 
       // Report Routes
-      { path: "/reports", element: <Reports /> },
-      { path: "/reports/tickets", element: <TicketReports /> },
-      { path: "/reports/team-performance", element: <TeamPerformance /> },
-      { path: "/reports/customer-satisfaction", element: <CustomerReports /> },
+      { path: "/reports", element: <Lazy><Reports /></Lazy> },
+      { path: "/reports/tickets", element: <Lazy><TicketReports /></Lazy> },
+      { path: "/reports/team-performance", element: <Lazy><TeamPerformance /></Lazy> },
+      { path: "/reports/customer-satisfaction", element: <Lazy><CustomerReports /></Lazy> },
 
       // Consultant Report Routes
-      { path: "/consultant-reports", element: <ConsultantReportsDashboard /> },
-      { path: "/consultant-reports/list", element: <ConsultantListReport /> },
-      { path: "/consultant-reports/:id", element: <ConsultantDetailReport /> },
-      { path: "/consultant-reports/analytics", element: <AssignmentAnalytics /> },
+      { path: "/consultant-reports", element: <Lazy><ConsultantReportsDashboard /></Lazy> },
+      { path: "/consultant-reports/list", element: <Lazy><ConsultantListReport /></Lazy> },
+      { path: "/consultant-reports/:id", element: <Lazy><ConsultantDetailReport /></Lazy> },
+      { path: "/consultant-reports/analytics", element: <Lazy><AssignmentAnalytics /></Lazy> },
 
-      // Environment Routes
-      { path: "/environments", element: <Environments /> },
-
-      // Feature Routes
-      { path: "/features", element: <Features /> },
-
-      // Product Type Routes
-      { path: "/product-types", element: <ProductTypes /> },
-
-      // Scope Routes
-      { path: "/scopes", element: <Scopes /> },
-
-      // Service Type Routes
-      { path: "/service-types", element: <ServiceTypes /> },
-
-      // ERP Type Routes
-      { path: "/erp-types", element: <ErpTypes /> },
-
-      // Version Number Routes
-      { path: "/version-numbers", element: <VersionNumbers /> },
-
-      // Department Routes
-      { path: "/departments", element: <Departments /> },
-
-      // Source Routes
-      { path: "/sources", element: <Sources /> },
-
-      // Company Routes
-      { path: "/companies", element: <Companies /> },
+      // Config Routes
+      { path: "/environments", element: <Lazy><Environments /></Lazy> },
+      { path: "/features", element: <Lazy><Features /></Lazy> },
+      { path: "/product-types", element: <Lazy><ProductTypes /></Lazy> },
+      { path: "/scopes", element: <Lazy><Scopes /></Lazy> },
+      { path: "/service-types", element: <Lazy><ServiceTypes /></Lazy> },
+      { path: "/erp-types", element: <Lazy><ErpTypes /></Lazy> },
+      { path: "/version-numbers", element: <Lazy><VersionNumbers /></Lazy> },
+      { path: "/departments", element: <Lazy><Departments /></Lazy> },
+      { path: "/sources", element: <Lazy><Sources /></Lazy> },
+      { path: "/companies", element: <Lazy><Companies /></Lazy> },
     ],
   },
 ];

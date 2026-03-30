@@ -79,22 +79,24 @@ export function NotificationDropdown({ isOpen, excludeTypes = [] }: Notification
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}
-          className="absolute right-0 mt-3 w-[320px] max-w-[90vw] sm:w-96 rounded-xl bg-white shadow-xl border border-gray-200 z-50"
+          role="region"
+          aria-label="Notifications"
+          className="absolute right-0 mt-3 w-[320px] max-w-[90vw] sm:w-96 rounded-[1rem] glass shadow-ambient z-50"
         >
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-outline-variant/20">
             <div>
-              <p className="text-sm font-semibold text-gray-800">Notifications</p>
-              <p className="text-xs text-gray-500">
+              <p className="text-sm font-semibold text-on-surface">Notifications</p>
+              <p className="text-xs text-on-surface-variant">
                 {filteredUnread > 0 ? `${filteredUnread} unread` : 'You are all caught up'}
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" onClick={handleMarkAllRead} disabled={loading || filteredUnread === 0}>
-                <Check className="h-4 w-4 mr-1" />
+              <Button variant="ghost" size="sm" onClick={handleMarkAllRead} disabled={loading || filteredUnread === 0} aria-label="Mark all notifications as read">
+                <Check className="h-4 w-4 mr-1" aria-hidden="true" />
                 Mark all read
               </Button>
-              <Button variant="ghost" size="sm" onClick={handleClearRead} disabled={loading}>
-                <Trash2 className="h-4 w-4 mr-1" />
+              <Button variant="ghost" size="sm" onClick={handleClearRead} disabled={loading} aria-label="Clear read notifications">
+                <Trash2 className="h-4 w-4 mr-1" aria-hidden="true" />
                 Clear read
               </Button>
             </div>
@@ -102,17 +104,17 @@ export function NotificationDropdown({ isOpen, excludeTypes = [] }: Notification
 
           <div className="max-h-96 overflow-y-auto">
             {loading && (
-              <div className="flex items-center justify-center py-6 text-gray-500">
+              <div className="flex items-center justify-center py-6 text-on-surface-variant">
                 <Loader2 className="h-5 w-5 animate-spin mr-2" />
                 Loading notifications...
               </div>
             )}
 
             {!loading && filteredItems.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-8 text-gray-500">
+              <div className="flex flex-col items-center justify-center py-8 text-on-surface-variant">
                 <Bell className="h-6 w-6 mb-2" />
                 <p className="text-sm font-medium">No notifications yet</p>
-                <p className="text-xs text-gray-400">You’ll see updates about your tickets here</p>
+                <p className="text-xs text-on-surface-variant/60">You’ll see updates about your tickets here</p>
               </div>
             )}
 
@@ -120,26 +122,26 @@ export function NotificationDropdown({ isOpen, excludeTypes = [] }: Notification
               filteredItems.map((item) => (
                 <div
                   key={item._id}
-                  className={`px-4 py-3 border-b border-gray-100 last:border-b-0 hover:bg-gray-50 transition ${
-                    !item.isRead ? 'bg-brand-50/40' : ''
+                  className={`px-4 py-3 border-b border-outline-variant/10 last:border-b-0 hover:bg-surface-container-highest transition ${
+                    !item.isRead ? 'bg-primary-fixed/30' : ''
                   }`}
                 >
                   <div className="flex justify-between gap-2">
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-semibold text-gray-700 capitalize">
+                        <span className="text-xs font-semibold text-on-surface-variant capitalize">
                           {item.notificationType.replace(/_/g, ' ')}
                         </span>
                         {!item.isRead && <span className="h-2 w-2 rounded-full bg-brand-500 inline-block" />}
                       </div>
-                      <p className="text-sm text-gray-800 mt-1 break-words">{item.message}</p>
+                      <p className="text-sm text-on-surface mt-1 break-words">{item.message}</p>
                       {item.ticket && (
-                        <p className="text-xs text-gray-500 mt-1">
+                        <p className="text-xs text-on-surface-variant mt-1">
                           Ticket {item.ticket.ticketNumber || item.ticket._id} • {item.ticket.status || '—'} •{' '}
                           {item.ticket.priority || '—'}
                         </p>
                       )}
-                      <p className="text-xs text-gray-400 mt-1">
+                      <p className="text-xs text-on-surface-variant/60 mt-1">
                         {new Date(item.createdAt).toLocaleString()}
                       </p>
                     </div>
@@ -149,8 +151,9 @@ export function NotificationDropdown({ isOpen, excludeTypes = [] }: Notification
                         size="sm"
                         className="self-start"
                         onClick={() => handleMarkSingleRead(item._id)}
+                        aria-label="Mark this notification as read"
                       >
-                        <Info className="h-4 w-4 mr-1" />
+                        <Info className="h-4 w-4 mr-1" aria-hidden="true" />
                         Mark read
                       </Button>
                     )}

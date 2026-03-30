@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchTickets, deleteTicket } from '@/redux/slices/ticketSlice';
@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { CustomSelect } from '@/components/ui/custom-select';
 import { fetchSources } from '@/redux/slices/sourceSlice';
-import { Plus, SlidersHorizontal, Download, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, RotateCcw, FileText, FileSpreadsheet } from 'lucide-react';
+import { Plus, Search, Download, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, FileText, FileSpreadsheet, SlidersHorizontal, Calendar, X, MoreVertical } from 'lucide-react';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
@@ -311,29 +311,92 @@ export default function Tickets() {
   const startItem = (page - 1) * ITEMS_PER_PAGE + 1;
   const endItem = Math.min(page * ITEMS_PER_PAGE, total);
 
+  const [showActionsMenu, setShowActionsMenu] = useState(false);
+  const actionsMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (actionsMenuRef.current && !actionsMenuRef.current.contains(e.target as Node)) {
+        setShowActionsMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const totalActiveFilters = [
+    statusFilter, priorityFilter, sourceFilter,
+    departmentFilter, assignedByFilter, serviceTypeFilter, customerFilter,
+    startDate, endDate, createdDateFrom, createdDateTo, closedDateFrom, closedDateTo,
+  ].filter(Boolean).length;
+
   return (
-    <div className="p-8 space-y-8">
+    <div className="p-8 space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="display-sm text-on-surface">Tickets</h1>
           <p className="text-on-surface-variant mt-1">Manage your support tickets</p>
         </div>
-        <Button onClick={() => navigate('/tickets/create')} size="lg" className="gap-2">
-          <Plus className="h-4 w-4" />
-          Add Ticket
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* Actions Menu */}
+          <div className="relative" ref={actionsMenuRef}>
+            <button
+              onClick={() => setShowActionsMenu(!showActionsMenu)}
+              className="p-2.5 rounded-[0.75rem] text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors"
+              aria-label="More actions"
+              aria-expanded={showActionsMenu}
+              aria-haspopup="menu"
+            >
+              <MoreVertical className="h-5 w-5" />
+            </button>
+            {showActionsMenu && (
+              <div className="absolute right-0 mt-1.5 w-48 rounded-[0.75rem] glass shadow-ambient py-1.5 z-50" role="menu">
+                <p className="px-3.5 py-1.5 text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider">Export as</p>
+                <button
+                  role="menuitem"
+                  onClick={() => { handleExportCSV(); setShowActionsMenu(false); }}
+                  className="flex items-center gap-2.5 w-full px-3.5 py-2.5 text-sm font-medium text-on-surface hover:bg-surface-container-highest transition-colors"
+                >
+                  <Download className="h-4 w-4 text-on-surface-variant" />
+                  CSV
+                </button>
+                <button
+                  role="menuitem"
+                  onClick={() => { handleExportExcel(); setShowActionsMenu(false); }}
+                  className="flex items-center gap-2.5 w-full px-3.5 py-2.5 text-sm font-medium text-on-surface hover:bg-surface-container-highest transition-colors"
+                >
+                  <FileSpreadsheet className="h-4 w-4 text-on-surface-variant" />
+                  Excel
+                </button>
+                <button
+                  role="menuitem"
+                  onClick={() => { handleExportPDF(); setShowActionsMenu(false); }}
+                  className="flex items-center gap-2.5 w-full px-3.5 py-2.5 text-sm font-medium text-on-surface hover:bg-surface-container-highest transition-colors"
+                >
+                  <FileText className="h-4 w-4 text-on-surface-variant" />
+                  PDF
+                </button>
+              </div>
+            )}
+          </div>
+          <Button onClick={() => navigate('/tickets/create')} className="gap-2">
+            <Plus className="h-4 w-4" />
+            New Ticket
+          </Button>
+        </div>
       </div>
 
-      {/* Filter Bar */}
-      <div className="bg-surface-container-lowest rounded-[1rem] p-4 space-y-4">
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Search Input */}
-          <div className="relative flex-1 min-w-[280px]">
-            <SlidersHorizontal className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-on-surface-variant" />
+      {/* Search & Filters */}
+      <div className="bg-surface-container-lowest rounded-[1rem] overflow-hidden">
+        {/* Top Bar: Search + Quick Filters */}
+        <div className="p-4 flex flex-wrap items-center gap-3">
+          <div className="relative flex-1 min-w-[240px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-on-surface-variant" aria-hidden="true" />
             <Input
               type="search"
-              placeholder="Filter by subject, agent or status..."
+              placeholder="Search by subject, ticket number..."
+              aria-label="Search tickets"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
@@ -341,27 +404,12 @@ export default function Tickets() {
             />
           </div>
 
-          {/* Priority Filter Dropdown */}
-          <CustomSelect
-            variant="filter"
-            value={priorityFilter}
-            onChange={setPriorityFilter}
-            label="Priority"
-            options={[
-              { value: '', label: 'All' },
-              { value: 'low', label: 'Low' },
-              { value: 'medium', label: 'Medium' },
-              { value: 'high', label: 'High' },
-              { value: 'critical', label: 'Critical' },
-            ]}
-          />
-
-          {/* Status Filter Dropdown */}
           <CustomSelect
             variant="filter"
             value={statusFilter}
             onChange={setStatusFilter}
             label="Status"
+            className="min-w-[160px]"
             options={[
               { value: '', label: 'All' },
               { value: 'new', label: 'New' },
@@ -372,174 +420,186 @@ export default function Tickets() {
             ]}
           />
 
-          {/* Source Filter Dropdown */}
           <CustomSelect
             variant="filter"
-            value={sourceFilter}
-            onChange={setSourceFilter}
-            label="Source"
+            value={priorityFilter}
+            onChange={setPriorityFilter}
+            label="Priority"
+            className="min-w-[160px]"
             options={[
               { value: '', label: 'All' },
-              ...(sources?.filter(s => s.isActive).map((source) => ({ value: source._id, label: source.name })) || []),
+              { value: 'low', label: 'Low' },
+              { value: 'medium', label: 'Medium' },
+              { value: 'high', label: 'High' },
+              { value: 'critical', label: 'Critical' },
             ]}
           />
 
-          {/* Export Buttons */}
-          <Button
-            onClick={handleExportCSV}
-            variant="outline"
-            className="gap-2 font-semibold"
-          >
-            <Download className="h-4 w-4" />
-            CSV
-          </Button>
-          <Button
-            onClick={handleExportExcel}
-            variant="outline"
-            className="gap-2 font-semibold"
-          >
-            <FileSpreadsheet className="h-4 w-4" />
-            Excel
-          </Button>
-          <Button
-            onClick={handleExportPDF}
-            variant="outline"
-            className="gap-2 font-semibold"
-          >
-            <FileText className="h-4 w-4" />
-            PDF
-          </Button>
-        </div>
-
-        {/* Advanced Filters Toggle */}
-        <div>
           <button
             onClick={() => setShowAdvanced(!showAdvanced)}
-            className="flex items-center gap-2 text-sm font-semibold text-on-surface-variant hover:text-on-surface transition-colors"
+            className={`flex items-center gap-2 px-4 py-2 rounded-[0.75rem] text-sm font-semibold transition-all ${
+              showAdvanced || activeAdvancedFilterCount > 0
+                ? 'bg-brand-50 text-brand-600 ring-1 ring-brand-200'
+                : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
+            }`}
           >
-            {showAdvanced ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-            Advanced Filters
+            <SlidersHorizontal className="h-4 w-4" />
+            Filters
             {activeAdvancedFilterCount > 0 && (
-              <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-primary-gradient text-white text-xs font-bold">
+              <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-brand-500 text-white text-[10px] font-bold leading-none">
                 {activeAdvancedFilterCount}
               </span>
             )}
+            {showAdvanced ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
           </button>
+
+          {totalActiveFilters > 0 && (
+            <button
+              onClick={handleResetAdvanced}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-[0.75rem] text-xs font-medium text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors"
+            >
+              <X className="h-3.5 w-3.5" />
+              Clear all
+            </button>
+          )}
         </div>
 
         {/* Advanced Filters Panel */}
         {showAdvanced && (
-          <div className="border-t border-outline-variant pt-4 space-y-4">
-            {/* Row 1: Department, Assigned To, Service Type, Customer */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <CustomSelect
-                variant="filter"
-                value={departmentFilter}
-                onChange={setDepartmentFilter}
-                label="Department"
-                options={[
-                  { value: '', label: 'All' },
-                  ...(departments?.filter(d => d.isActive).map((dept) => ({ value: dept._id, label: dept.name })) || []),
-                ]}
-              />
+          <div className="px-4 pb-4 space-y-4">
+            <div className="bg-surface-container-low rounded-[0.75rem] p-4 space-y-4">
+              {/* Dropdowns Row */}
+              <div>
+                <p className="text-xs font-medium text-on-surface-variant mb-3">Filter by</p>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                  <CustomSelect
+                    variant="filter"
+                    value={sourceFilter}
+                    onChange={setSourceFilter}
+                    label="Source"
+                    options={[
+                      { value: '', label: 'All' },
+                      ...(sources?.filter(s => s.isActive).map((source) => ({ value: source._id, label: source.name })) || []),
+                    ]}
+                  />
+                  <CustomSelect
+                    variant="filter"
+                    value={departmentFilter}
+                    onChange={setDepartmentFilter}
+                    label="Department"
+                    options={[
+                      { value: '', label: 'All' },
+                      ...(departments?.filter(d => d.isActive).map((dept) => ({ value: dept._id, label: dept.name })) || []),
+                    ]}
+                  />
+                  <CustomSelect
+                    variant="filter"
+                    value={assignedByFilter}
+                    onChange={setAssignedByFilter}
+                    label="Assigned To"
+                    options={[
+                      { value: '', label: 'All' },
+                      ...(consultants?.map((c) => ({ value: c._id, label: `${c.firstName} ${c.lastName}` })) || []),
+                    ]}
+                  />
+                  <CustomSelect
+                    variant="filter"
+                    value={serviceTypeFilter}
+                    onChange={setServiceTypeFilter}
+                    label="Service Type"
+                    options={[
+                      { value: '', label: 'All' },
+                      ...(serviceTypes?.filter(s => s.isActive).map((st) => ({ value: st._id, label: st.name })) || []),
+                    ]}
+                  />
+                  <CustomSelect
+                    variant="filter"
+                    value={customerFilter}
+                    onChange={setCustomerFilter}
+                    label="Customer"
+                    options={[
+                      { value: '', label: 'All' },
+                      ...(customers?.map((c) => ({ value: c._id, label: c.companyName })) || []),
+                    ]}
+                  />
+                </div>
+              </div>
 
-              <CustomSelect
-                variant="filter"
-                value={assignedByFilter}
-                onChange={setAssignedByFilter}
-                label="Assigned To"
-                options={[
-                  { value: '', label: 'All' },
-                  ...(consultants?.map((c) => ({ value: c._id, label: `${c.firstName} ${c.lastName}` })) || []),
-                ]}
-              />
-
-              <CustomSelect
-                variant="filter"
-                value={serviceTypeFilter}
-                onChange={setServiceTypeFilter}
-                label="Service Type"
-                options={[
-                  { value: '', label: 'All' },
-                  ...(serviceTypes?.filter(s => s.isActive).map((st) => ({ value: st._id, label: st.name })) || []),
-                ]}
-              />
-
-              <CustomSelect
-                variant="filter"
-                value={customerFilter}
-                onChange={setCustomerFilter}
-                label="Customer"
-                options={[
-                  { value: '', label: 'All' },
-                  ...(customers?.map((c) => ({ value: c._id, label: c.companyName })) || []),
-                ]}
-              />
-            </div>
-
-            {/* Row 2: Start Date, Due Date (End Date) */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {/* Date Filters */}
               <div>
-                <label className="form-label">Start Date</label>
-                <Input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="form-label">Due Date</label>
-                <Input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="form-label">Created From</label>
-                <Input
-                  type="date"
-                  value={createdDateFrom}
-                  onChange={(e) => setCreatedDateFrom(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="form-label">Created To</label>
-                <Input
-                  type="date"
-                  value={createdDateTo}
-                  onChange={(e) => setCreatedDateTo(e.target.value)}
-                />
-              </div>
-            </div>
-
-            {/* Row 3: Closed Date Range + Action Buttons */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div>
-                <label className="form-label">Closed From</label>
-                <Input
-                  type="date"
-                  value={closedDateFrom}
-                  onChange={(e) => setClosedDateFrom(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="form-label">Closed To</label>
-                <Input
-                  type="date"
-                  value={closedDateTo}
-                  onChange={(e) => setClosedDateTo(e.target.value)}
-                />
-              </div>
-              <div className="md:col-span-2 flex items-end">
-                <Button onClick={handleResetAdvanced} variant="outline" className="gap-2">
-                  <RotateCcw className="h-4 w-4" />
-                  Reset All
-                </Button>
+                <p className="text-xs font-medium text-on-surface-variant mb-3 flex items-center gap-1.5">
+                  <Calendar className="h-3 w-3" />
+                  Date range
+                </p>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3">
+                  {/* Start / Due Date */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-on-surface-variant">Start Date</label>
+                    <Input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                    />
+                  </div>
+                  {/* Created Date Range */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-on-surface-variant">Created From</label>
+                    <Input
+                      type="date"
+                      value={createdDateFrom}
+                      onChange={(e) => setCreatedDateFrom(e.target.value)}
+                    />
+                  </div>
+                  {/* Closed Date Range */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-on-surface-variant">Closed From</label>
+                    <Input
+                      type="date"
+                      value={closedDateFrom}
+                      onChange={(e) => setClosedDateFrom(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-on-surface-variant">Due Date</label>
+                    <Input
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-on-surface-variant">Created To</label>
+                    <Input
+                      type="date"
+                      value={createdDateTo}
+                      onChange={(e) => setCreatedDateTo(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-on-surface-variant">Closed To</label>
+                    <Input
+                      type="date"
+                      value={closedDateTo}
+                      onChange={(e) => setClosedDateTo(e.target.value)}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         )}
+
+        {/* Results Summary Bar */}
+        <div className="px-4 pb-3">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-on-surface-variant">
+              <span className="font-semibold text-on-surface">{total.toLocaleString()}</span> tickets
+              {totalActiveFilters > 0 && (
+                <span> · <span className="font-medium">{totalActiveFilters} filter{totalActiveFilters > 1 ? 's' : ''}</span> active</span>
+              )}
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Ticket Table */}
@@ -557,6 +617,7 @@ export default function Tickets() {
             <button
               onClick={() => handlePageChange(page - 1)}
               disabled={page <= 1}
+              aria-label="Previous page"
               className="p-2 rounded-[0.75rem] bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-high disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -566,10 +627,12 @@ export default function Tickets() {
               <button
                 key={pageNum}
                 onClick={() => handlePageChange(pageNum)}
+                aria-label={`Page ${pageNum}`}
+                aria-current={pageNum === page ? 'page' : undefined}
                 className={`min-w-[36px] h-9 rounded-[0.75rem] text-sm font-semibold transition-colors ${
                   pageNum === page
-                    ? 'bg-primary-gradient text-white'
-                    : 'bg-surface-container-lowest text-on-surface hover:bg-surface-container-high'
+                    ? 'bg-primary-fixed text-on-primary-fixed'
+                    : 'bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
                 }`}
               >
                 {pageNum}
@@ -579,6 +642,7 @@ export default function Tickets() {
             <button
               onClick={() => handlePageChange(page + 1)}
               disabled={page >= pages}
+              aria-label="Next page"
               className="p-2 rounded-[0.75rem] bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-high disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               <ChevronRight className="h-4 w-4" />

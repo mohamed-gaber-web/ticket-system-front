@@ -24,7 +24,7 @@ const CommentList: React.FC<CommentListProps> = ({
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+        <Loader2 className="h-8 w-8 animate-spin text-on-surface-variant/60" />
       </div>
     );
   }
@@ -32,7 +32,7 @@ const CommentList: React.FC<CommentListProps> = ({
   if (comments.length === 0) {
     return (
       <div className="text-center py-8">
-        <p className="text-gray-500">No comments yet. Be the first to comment!</p>
+        <p className="text-on-surface-variant">No comments yet. Be the first to comment!</p>
       </div>
     );
   }

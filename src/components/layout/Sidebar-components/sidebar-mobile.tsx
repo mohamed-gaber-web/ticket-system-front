@@ -49,6 +49,7 @@ export function SidebarMobile({ links, isMobileOpen, setIsMobileOpen }: SidebarM
           exit={{ opacity: 0 }}
           transition={{ duration: 0.3 }}
           className="fixed inset-0 bg-on-surface/30 backdrop-blur-sm z-40 md:hidden"
+          role="presentation"
           onClick={() => setIsMobileOpen(false)}
         >
           <motion.aside
@@ -74,6 +75,7 @@ export function SidebarMobile({ links, isMobileOpen, setIsMobileOpen }: SidebarM
                 variant="ghost"
                 size="icon"
                 onClick={() => setIsMobileOpen(false)}
+                aria-label="Close navigation menu"
                 className="rounded-[1rem] text-on-surface-variant hover:text-on-surface relative z-10"
               >
                 <X className="h-5 w-5" />
@@ -88,7 +90,7 @@ export function SidebarMobile({ links, isMobileOpen, setIsMobileOpen }: SidebarM
             </div>
 
             {/* Navigation */}
-            <nav className="space-y-1 relative flex-1">
+            <nav className="space-y-1 relative flex-1" aria-label="Main navigation">
               {links.map((item, index) => {
                 if (isGroup(item)) {
                   const isExpanded = expandedGroups.includes(item.name);
@@ -97,6 +99,8 @@ export function SidebarMobile({ links, isMobileOpen, setIsMobileOpen }: SidebarM
                       {/* Group Header */}
                       <button
                         onClick={() => toggleGroup(item.name)}
+                        aria-expanded={isExpanded}
+                        aria-label={`${item.name} section`}
                         className="w-full flex items-center gap-3 px-4 py-3 rounded-[1rem] text-sm font-medium transition-all duration-200 relative group text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface cursor-pointer"
                       >
                         <motion.div
