@@ -1,14 +1,17 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchTickets, deleteTicket } from '@/redux/slices/ticketSlice';
 import { fetchConsultants } from '@/redux/slices/consultantSlice';
+import { fetchCustomers } from '@/redux/slices/customerSlice';
+import { fetchDepartments } from '@/redux/slices/departmentSlice';
+import { fetchServiceTypes } from '@/redux/slices/serviceTypeSlice';
 import TicketTable from './components/TicketTable';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { CustomSelect } from '@/components/ui/custom-select';
 import { fetchSources } from '@/redux/slices/sourceSlice';
-import { Plus, SlidersHorizontal, Download, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, SlidersHorizontal, Download, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 
 const ITEMS_PER_PAGE = 15;
@@ -19,6 +22,10 @@ export default function Tickets() {
   const { tickets, loading, total, page, pages } = useAppSelector((state) => state.tickets);
   const { user, userType } = useAppSelector((state) => state.auth);
   const { sources } = useAppSelector((state) => state.sources);
+  const { consultants } = useAppSelector((state) => state.consultants);
+  const { customers } = useAppSelector((state) => state.customers);
+  const { departments } = useAppSelector((state) => state.departments);
+  const { serviceTypes } = useAppSelector((state) => state.serviceTypes);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -26,13 +33,22 @@ export default function Tickets() {
   const [sourceFilter, setSourceFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
 
-  useEffect(() => {
-    loadTickets();
-    dispatch(fetchConsultants());
-    dispatch(fetchSources({ isActive: true }));
-  }, []);
+  // Advanced filters
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [departmentFilter, setDepartmentFilter] = useState('');
+  const [assignedByFilter, setAssignedByFilter] = useState('');
+  const [serviceTypeFilter, setServiceTypeFilter] = useState('');
+  const [customerFilter, setCustomerFilter] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [createdDateFrom, setCreatedDateFrom] = useState('');
+  const [createdDateTo, setCreatedDateTo] = useState('');
+  const [closedDateFrom, setClosedDateFrom] = useState('');
+  const [closedDateTo, setClosedDateTo] = useState('');
 
-  const loadTickets = useCallback((pageNum?: number) => {
+  const isInitialMount = useRef(true);
+
+  const buildParams = (pageNum?: number) => {
     const params: any = {
       page: pageNum || currentPage,
       limit: ITEMS_PER_PAGE,
@@ -41,18 +57,46 @@ export default function Tickets() {
     if (statusFilter) params.status = statusFilter;
     if (priorityFilter) params.priority = priorityFilter;
     if (sourceFilter) params.source = sourceFilter;
+    if (departmentFilter) params.department = departmentFilter;
+    if (assignedByFilter) params.acceptedBy = assignedByFilter;
+    if (serviceTypeFilter) params.serviceType = serviceTypeFilter;
+    if (customerFilter) params.customer = customerFilter;
+    if (startDate) params.startDate = startDate;
+    if (endDate) params.endDate = endDate;
+    if (createdDateFrom) params.createdDateFrom = createdDateFrom;
+    if (createdDateTo) params.createdDateTo = createdDateTo;
+    if (closedDateFrom) params.closedDateFrom = closedDateFrom;
+    if (closedDateTo) params.closedDateTo = closedDateTo;
 
     if (userType === 'customer' && user?._id) {
       params.customer = user._id;
     }
 
-    dispatch(fetchTickets(params));
-  }, [searchTerm, statusFilter, priorityFilter, sourceFilter, currentPage, userType, user]);
+    return params;
+  };
+
+  const loadTickets = (pageNum?: number) => {
+    dispatch(fetchTickets(buildParams(pageNum)));
+  };
 
   useEffect(() => {
+    loadTickets();
+    dispatch(fetchConsultants());
+    dispatch(fetchSources({ isActive: true }));
+    dispatch(fetchCustomers());
+    dispatch(fetchDepartments());
+    dispatch(fetchServiceTypes());
+  }, []);
+
+  // Re-fetch when any filter changes (skip initial mount)
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
     setCurrentPage(1);
-    loadTickets(1);
-  }, [statusFilter, priorityFilter, sourceFilter]);
+    dispatch(fetchTickets(buildParams(1)));
+  }, [statusFilter, priorityFilter, sourceFilter, departmentFilter, assignedByFilter, serviceTypeFilter, customerFilter, startDate, endDate, createdDateFrom, createdDateTo, closedDateFrom, closedDateTo]);
 
   const handleSearch = () => {
     setCurrentPage(1);
@@ -72,6 +116,30 @@ export default function Tickets() {
       toast.error(error.message || 'Failed to delete ticket');
     }
   };
+
+  const handleResetAdvanced = () => {
+    setDepartmentFilter('');
+    setAssignedByFilter('');
+    setServiceTypeFilter('');
+    setCustomerFilter('');
+    setStartDate('');
+    setEndDate('');
+    setCreatedDateFrom('');
+    setCreatedDateTo('');
+    setClosedDateFrom('');
+    setClosedDateTo('');
+    setSearchTerm('');
+    setStatusFilter('');
+    setPriorityFilter('');
+    setSourceFilter('');
+    setCurrentPage(1);
+    dispatch(fetchTickets({ page: 1, limit: ITEMS_PER_PAGE }));
+  };
+
+  const activeAdvancedFilterCount = [
+    departmentFilter, assignedByFilter, serviceTypeFilter, customerFilter,
+    startDate, endDate, createdDateFrom, createdDateTo, closedDateFrom, closedDateTo,
+  ].filter(Boolean).length;
 
   const handleExportCSV = () => {
     const headers = ['Ticket #', 'Subject', 'Priority', 'Status', 'Accepted At', 'Last Updated', 'Closed At'];
@@ -130,7 +198,7 @@ export default function Tickets() {
       </div>
 
       {/* Filter Bar */}
-      <div className="bg-surface-container-lowest rounded-[1rem] p-4">
+      <div className="bg-surface-container-lowest rounded-[1rem] p-4 space-y-4">
         <div className="flex flex-wrap items-center gap-3">
           {/* Search Input */}
           <div className="relative flex-1 min-w-[280px]">
@@ -198,6 +266,136 @@ export default function Tickets() {
             Export CSV
           </Button>
         </div>
+
+        {/* Advanced Filters Toggle */}
+        <div>
+          <button
+            onClick={() => setShowAdvanced(!showAdvanced)}
+            className="flex items-center gap-2 text-sm font-semibold text-on-surface-variant hover:text-on-surface transition-colors"
+          >
+            {showAdvanced ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            Advanced Filters
+            {activeAdvancedFilterCount > 0 && (
+              <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-primary-gradient text-white text-xs font-bold">
+                {activeAdvancedFilterCount}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Advanced Filters Panel */}
+        {showAdvanced && (
+          <div className="border-t border-outline-variant pt-4 space-y-4">
+            {/* Row 1: Department, Assigned To, Service Type, Customer */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <CustomSelect
+                variant="filter"
+                value={departmentFilter}
+                onChange={setDepartmentFilter}
+                label="Department"
+                options={[
+                  { value: '', label: 'All' },
+                  ...(departments?.filter(d => d.isActive).map((dept) => ({ value: dept._id, label: dept.name })) || []),
+                ]}
+              />
+
+              <CustomSelect
+                variant="filter"
+                value={assignedByFilter}
+                onChange={setAssignedByFilter}
+                label="Assigned To"
+                options={[
+                  { value: '', label: 'All' },
+                  ...(consultants?.map((c) => ({ value: c._id, label: `${c.firstName} ${c.lastName}` })) || []),
+                ]}
+              />
+
+              <CustomSelect
+                variant="filter"
+                value={serviceTypeFilter}
+                onChange={setServiceTypeFilter}
+                label="Service Type"
+                options={[
+                  { value: '', label: 'All' },
+                  ...(serviceTypes?.filter(s => s.isActive).map((st) => ({ value: st._id, label: st.name })) || []),
+                ]}
+              />
+
+              <CustomSelect
+                variant="filter"
+                value={customerFilter}
+                onChange={setCustomerFilter}
+                label="Customer"
+                options={[
+                  { value: '', label: 'All' },
+                  ...(customers?.map((c) => ({ value: c._id, label: c.companyName })) || []),
+                ]}
+              />
+            </div>
+
+            {/* Row 2: Start Date, Due Date (End Date) */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <label className="form-label">Start Date</label>
+                <Input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="form-label">Due Date</label>
+                <Input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="form-label">Created From</label>
+                <Input
+                  type="date"
+                  value={createdDateFrom}
+                  onChange={(e) => setCreatedDateFrom(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="form-label">Created To</label>
+                <Input
+                  type="date"
+                  value={createdDateTo}
+                  onChange={(e) => setCreatedDateTo(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Row 3: Closed Date Range + Action Buttons */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <label className="form-label">Closed From</label>
+                <Input
+                  type="date"
+                  value={closedDateFrom}
+                  onChange={(e) => setClosedDateFrom(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="form-label">Closed To</label>
+                <Input
+                  type="date"
+                  value={closedDateTo}
+                  onChange={(e) => setClosedDateTo(e.target.value)}
+                />
+              </div>
+              <div className="md:col-span-2 flex items-end">
+                <Button onClick={handleResetAdvanced} variant="outline" className="gap-2">
+                  <RotateCcw className="h-4 w-4" />
+                  Reset All
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Ticket Table */}

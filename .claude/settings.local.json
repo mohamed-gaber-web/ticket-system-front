@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc:*)",
+      "Bash(npx @anthropic-ai/claude-code skills add pbakaus/impeccable)",
+      "Bash(npx @anthropic-ai/claude-code --help)",
+      "Bash(npx:*)",
+      "Read(//d/Real Project/Ticketing System/front-end/my-react-ts-app/$HOME/.claude/**)",
+      "Read(//d/Real Project/Ticketing System/front-end/my-react-ts-app/$APPDATA/.claude/**)",
+      "Read(//d/Real Project/Ticketing System/front-end/my-react-ts-app/$HOME/.claude/plugins/**)"
+    ]
+  }
+}

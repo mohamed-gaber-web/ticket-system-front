@@ -93,6 +93,9 @@ import Departments from "@/pages/departments/Departments";
 // Source Module
 import Sources from "@/pages/sources/Sources";
 
+// Company Module
+import Companies from "@/pages/companies/Companies";
+
 export const routes: RouteObject[] = [
   // Public Routes (Authentication)
   {
@@ -210,6 +213,9 @@ export const routes: RouteObject[] = [
 
       // Source Routes
       { path: "/sources", element: <Sources /> },
+
+      // Company Routes
+      { path: "/companies", element: <Companies /> },
     ],
   },
 ];

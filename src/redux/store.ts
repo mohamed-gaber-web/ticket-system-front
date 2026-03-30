@@ -19,6 +19,7 @@ import erpTypeReducer from './slices/erpTypeSlice';
 import versionNumberReducer from './slices/versionNumberSlice';
 import departmentReducer from './slices/departmentSlice';
 import sourceReducer from './slices/sourceSlice';
+import companyReducer from './slices/companySlice';
 
 export const store = configureStore({
   reducer: {
@@ -42,6 +43,7 @@ export const store = configureStore({
     versionNumbers: versionNumberReducer,
     departments: departmentReducer,
     sources: sourceReducer,
+    companies: companyReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

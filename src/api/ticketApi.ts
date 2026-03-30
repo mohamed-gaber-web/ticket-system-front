@@ -12,6 +12,7 @@ import api from './axiosConfig';
 
 // Get all tickets
 export const getTickets = async (params?: TicketQueryParams): Promise<TicketsResponse> => {
+  console.log('Get tickets API params being sent:', params);
   const response = await api.get<TicketsResponse>('/tickets', {
     params,
     headers: {

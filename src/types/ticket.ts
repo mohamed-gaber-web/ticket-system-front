@@ -214,6 +214,15 @@ export interface TicketQueryParams {
   serviceType?: string;
   scope?: string;
   source?: string;
+  // Advanced search filters
+  startDate?: string;
+  endDate?: string;
+  createdDateFrom?: string;
+  createdDateTo?: string;
+  closedDateFrom?: string;
+  closedDateTo?: string;
+  acceptedBy?: string;
+  customerName?: string;
 }
 
 export interface TicketResponse {
