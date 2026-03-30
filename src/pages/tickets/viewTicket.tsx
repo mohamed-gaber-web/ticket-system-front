@@ -19,8 +19,6 @@ import {
   Clock,
   Tag,
   FileText,
-  Users,
-  Activity,
   Building2,
   Server,
   Sparkles,

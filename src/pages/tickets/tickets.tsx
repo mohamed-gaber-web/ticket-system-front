@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchTickets, deleteTicket } from '@/redux/slices/ticketSlice';
@@ -11,8 +11,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { CustomSelect } from '@/components/ui/custom-select';
 import { fetchSources } from '@/redux/slices/sourceSlice';
-import { Plus, SlidersHorizontal, Download, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, RotateCcw } from 'lucide-react';
+import { Plus, SlidersHorizontal, Download, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, RotateCcw, FileText, FileSpreadsheet } from 'lucide-react';
 import { toast } from 'sonner';
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import type { Ticket, Category, Consultant as TicketConsultant } from '@/types/ticket';
 
 const ITEMS_PER_PAGE = 15;
 
@@ -31,7 +36,7 @@ export default function Tickets() {
   const [statusFilter, setStatusFilter] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
   const [sourceFilter, setSourceFilter] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
+  const [, setCurrentPage] = useState(1);
 
   // Advanced filters
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -46,11 +51,47 @@ export default function Tickets() {
   const [closedDateFrom, setClosedDateFrom] = useState('');
   const [closedDateTo, setClosedDateTo] = useState('');
 
-  const isInitialMount = useRef(true);
+  useEffect(() => {
+    dispatch(fetchTickets({ page: 1, limit: ITEMS_PER_PAGE }));
+    dispatch(fetchConsultants());
+    dispatch(fetchSources({ isActive: true }));
+    dispatch(fetchCustomers());
+    dispatch(fetchDepartments());
+    dispatch(fetchServiceTypes());
+  }, []);
 
-  const buildParams = (pageNum?: number) => {
+  // Re-fetch when any filter changes
+  useEffect(() => {
     const params: any = {
-      page: pageNum || currentPage,
+      page: 1,
+      limit: ITEMS_PER_PAGE,
+    };
+    if (searchTerm) params.search = searchTerm;
+    if (statusFilter) params.status = statusFilter;
+    if (priorityFilter) params.priority = priorityFilter;
+    if (sourceFilter) params.source = sourceFilter;
+    if (departmentFilter) params.department = departmentFilter;
+    if (assignedByFilter) params.acceptedBy = assignedByFilter;
+    if (serviceTypeFilter) params.serviceType = serviceTypeFilter;
+    if (customerFilter) params.customer = customerFilter;
+    if (startDate) params.startDate = startDate;
+    if (endDate) params.endDate = endDate;
+    if (createdDateFrom) params.createdDateFrom = createdDateFrom;
+    if (createdDateTo) params.createdDateTo = createdDateTo;
+    if (closedDateFrom) params.closedDateFrom = closedDateFrom;
+    if (closedDateTo) params.closedDateTo = closedDateTo;
+
+    if (userType === 'customer' && user?._id) {
+      params.customer = user._id;
+    }
+
+    setCurrentPage(1);
+    dispatch(fetchTickets(params));
+  }, [statusFilter, priorityFilter, sourceFilter, departmentFilter, assignedByFilter, serviceTypeFilter, customerFilter, startDate, endDate, createdDateFrom, createdDateTo, closedDateFrom, closedDateTo]);
+
+  const getFilterParams = (pageNum: number) => {
+    const params: any = {
+      page: pageNum,
       limit: ITEMS_PER_PAGE,
     };
     if (searchTerm) params.search = searchTerm;
@@ -75,37 +116,14 @@ export default function Tickets() {
     return params;
   };
 
-  const loadTickets = (pageNum?: number) => {
-    dispatch(fetchTickets(buildParams(pageNum)));
-  };
-
-  useEffect(() => {
-    loadTickets();
-    dispatch(fetchConsultants());
-    dispatch(fetchSources({ isActive: true }));
-    dispatch(fetchCustomers());
-    dispatch(fetchDepartments());
-    dispatch(fetchServiceTypes());
-  }, []);
-
-  // Re-fetch when any filter changes (skip initial mount)
-  useEffect(() => {
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      return;
-    }
-    setCurrentPage(1);
-    dispatch(fetchTickets(buildParams(1)));
-  }, [statusFilter, priorityFilter, sourceFilter, departmentFilter, assignedByFilter, serviceTypeFilter, customerFilter, startDate, endDate, createdDateFrom, createdDateTo, closedDateFrom, closedDateTo]);
-
   const handleSearch = () => {
     setCurrentPage(1);
-    loadTickets(1);
+    dispatch(fetchTickets(getFilterParams(1)));
   };
 
   const handlePageChange = (newPage: number) => {
     setCurrentPage(newPage);
-    loadTickets(newPage);
+    dispatch(fetchTickets(getFilterParams(newPage)));
   };
 
   const handleDelete = async (id: string) => {
@@ -165,6 +183,116 @@ export default function Tickets() {
     a.download = `tickets-export-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const getTicketRowData = (ticket: Ticket) => {
+    const customerName = typeof ticket.customer === 'object' && ticket.customer
+      ? (ticket.customer as any).companyName
+      : '';
+    const categoryName = typeof ticket.category === 'object' && ticket.category
+      ? (ticket.category as Category).name
+      : '';
+    const acceptedByName = typeof ticket.acceptedBy === 'object' && ticket.acceptedBy
+      ? `${(ticket.acceptedBy as TicketConsultant).firstName} ${(ticket.acceptedBy as TicketConsultant).lastName}`
+      : '';
+    const departmentName = typeof ticket.department === 'object' && ticket.department
+      ? (ticket.department as any).name
+      : '';
+    const serviceTypeName = typeof ticket.serviceType === 'object' && ticket.serviceType
+      ? (ticket.serviceType as any).name
+      : '';
+
+    return {
+      ticketNumber: ticket.ticketNumber,
+      subject: ticket.subject,
+      customerName,
+      categoryName,
+      priority: ticket.priority,
+      status: ticket.status.replace('_', ' '),
+      acceptedByName,
+      departmentName,
+      serviceTypeName,
+      startDate: ticket.startDate ? new Date(ticket.startDate).toLocaleDateString() : '',
+      endDate: ticket.endDate ? new Date(ticket.endDate).toLocaleDateString() : '',
+      createdAt: new Date(ticket.createdAt).toLocaleString(),
+      closedAt: ticket.closedAt ? new Date(ticket.closedAt).toLocaleString() : '',
+    };
+  };
+
+  const handleExportExcel = () => {
+    const excelData = tickets.map((ticket) => {
+      const row = getTicketRowData(ticket);
+      return {
+        'Ticket #': row.ticketNumber,
+        'Subject': row.subject,
+        'Customer': row.customerName,
+        'Category': row.categoryName,
+        'Priority': row.priority,
+        'Status': row.status,
+        'Accepted By': row.acceptedByName,
+        'Department': row.departmentName,
+        'Service Type': row.serviceTypeName,
+        'Start Date': row.startDate,
+        'Due Date': row.endDate,
+        'Created At': row.createdAt,
+        'Closed At': row.closedAt,
+      };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(excelData);
+
+    // Auto-size columns
+    const colWidths = Object.keys(excelData[0] || {}).map((key) => ({
+      wch: Math.max(key.length, ...excelData.map((row) => String((row as any)[key] || '').length)),
+    }));
+    worksheet['!cols'] = colWidths;
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Tickets');
+
+    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([excelBuffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+    saveAs(blob, `tickets-export-${new Date().toISOString().split('T')[0]}.xlsx`);
+  };
+
+  const handleExportPDF = () => {
+    const doc = new jsPDF('landscape');
+
+    doc.setFontSize(18);
+    doc.text('Tickets Report', 14, 22);
+    doc.setFontSize(10);
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 29);
+    doc.text(`Total tickets: ${tickets.length}`, 14, 35);
+
+    const tableData = tickets.map((ticket) => {
+      const row = getTicketRowData(ticket);
+      return [
+        row.ticketNumber,
+        row.subject.length > 30 ? row.subject.substring(0, 30) + '...' : row.subject,
+        row.customerName,
+        row.priority,
+        row.status,
+        row.acceptedByName,
+        row.departmentName,
+        row.startDate,
+        row.endDate,
+        row.createdAt,
+        row.closedAt,
+      ];
+    });
+
+    autoTable(doc, {
+      head: [['Ticket #', 'Subject', 'Customer', 'Priority', 'Status', 'Accepted By', 'Department', 'Start Date', 'Due Date', 'Created At', 'Closed At']],
+      body: tableData,
+      startY: 40,
+      styles: { fontSize: 7, cellPadding: 2 },
+      headStyles: { fillColor: [0, 58, 143], fontSize: 7 },
+      alternateRowStyles: { fillColor: [245, 247, 250] },
+    });
+
+    doc.save(`tickets-report-${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
   const getPageNumbers = () => {
@@ -256,14 +384,30 @@ export default function Tickets() {
             ]}
           />
 
-          {/* Export CSV Button */}
+          {/* Export Buttons */}
           <Button
             onClick={handleExportCSV}
             variant="outline"
             className="gap-2 font-semibold"
           >
             <Download className="h-4 w-4" />
-            Export CSV
+            CSV
+          </Button>
+          <Button
+            onClick={handleExportExcel}
+            variant="outline"
+            className="gap-2 font-semibold"
+          >
+            <FileSpreadsheet className="h-4 w-4" />
+            Excel
+          </Button>
+          <Button
+            onClick={handleExportPDF}
+            variant="outline"
+            className="gap-2 font-semibold"
+          >
+            <FileText className="h-4 w-4" />
+            PDF
           </Button>
         </div>
 

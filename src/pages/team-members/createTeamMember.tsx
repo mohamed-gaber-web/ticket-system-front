@@ -235,7 +235,7 @@ export default function CreateTeamMember() {
                 Status <span className="text-error">*</span>
               </label>
               <CustomSelect
-                value={formData.status}
+                value={formData.status || 'active'}
                 onChange={(val) => handleChange('status', val as TeamMemberStatus)}
                 options={[
                   { value: 'active', label: 'Active' },
