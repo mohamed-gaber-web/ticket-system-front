@@ -160,9 +160,8 @@ const customerSlice = createSlice({
         state.loading = true;
         state.error = null;
       })
-      .addCase(createCustomer.fulfilled, (state, action) => {
+      .addCase(createCustomer.fulfilled, (state) => {
         state.loading = false;
-        state.customers.unshift(action.payload);
       })
       .addCase(createCustomer.rejected, (state, action) => {
         state.loading = false;

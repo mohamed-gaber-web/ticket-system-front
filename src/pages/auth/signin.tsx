@@ -11,7 +11,7 @@ import { Mail, Lock, Eye, EyeOff, LogIn, Sparkles, Users } from 'lucide-react';
 const SigninPage = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { isLoading, error, isAuthenticated } = useAppSelector((state) => state.auth);
+  const { isLoading, error, isAuthenticated, userType } = useAppSelector((state) => state.auth);
 
   const [formData, setFormData] = useState({
     email: '',
@@ -28,9 +28,9 @@ const SigninPage = () => {
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/dashboard');
+      navigate(userType === 'customer' ? '/tickets' : '/dashboard');
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, userType, navigate]);
 
   useEffect(() => {
     if (error) {
@@ -88,7 +88,7 @@ const SigninPage = () => {
       ).unwrap();
 
       toast.success('Signed in successfully!');
-      navigate('/dashboard');
+      navigate(formData.userType === 'customer' ? '/tickets' : '/dashboard');
     } catch (error) {
       console.error('Signin failed:', error);
     }

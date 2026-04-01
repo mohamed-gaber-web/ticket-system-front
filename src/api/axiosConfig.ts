@@ -3,8 +3,6 @@ import axios, { type AxiosRequestHeaders } from 'axios';
 // Dynamically get API URL based on environment
 const API_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_URL_DEV || 'http://localhost:5000/api';
 
-// Log the active API URL for debugging
-console.log('🔗 Active API URL:', API_URL);
 
 // Create axios instance with base configuration
 const api = axios.create({
@@ -70,13 +68,14 @@ api.interceptors.response.use(
     return response;
   },
   async (error) => {
-    // Log error response
-    console.error('API Error:', {
-      status: error.response?.status,
-      url: error.config?.url,
-      message: error.response?.data?.message || error.message,
-      data: error.response?.data,
-    });
+    // Skip logging expected "not found" responses — these are handled gracefully by the callers
+    if (error.response?.status !== 404) {
+      console.error('API Error:', {
+        status: error.response?.status,
+        url: error.config?.url,
+        message: error.response?.data?.message || error.message,
+      });
+    }
 
     const originalRequest = error.config;
 

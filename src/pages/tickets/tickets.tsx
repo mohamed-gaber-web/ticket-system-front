@@ -52,7 +52,9 @@ export default function Tickets() {
   const [closedDateTo, setClosedDateTo] = useState('');
 
   useEffect(() => {
-    dispatch(fetchTickets({ page: 1, limit: ITEMS_PER_PAGE }));
+    const initialParams: any = { page: 1, limit: ITEMS_PER_PAGE };
+    if (userType === 'customer' && user?._id) initialParams.customer = user._id;
+    dispatch(fetchTickets(initialParams));
     dispatch(fetchConsultants());
     dispatch(fetchSources({ isActive: true }));
     dispatch(fetchCustomers());

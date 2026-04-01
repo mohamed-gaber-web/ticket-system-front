@@ -7,6 +7,7 @@ export interface Consultant {
   lastName: string;
   email: string;
   phone?: string;
+  position?: string;
   role: ConsultantRole;
   status: ConsultantStatus;
   fullName: string;
@@ -62,6 +63,7 @@ export interface CreateConsultantData {
   email: string;
   password: string;
   phone?: string;
+  position?: string;
   role: ConsultantRole;
   status: ConsultantStatus;
 }
@@ -71,6 +73,7 @@ export interface UpdateConsultantData {
   lastName?: string;
   email?: string;
   phone?: string;
+  position?: string;
   role?: ConsultantRole;
   status?: ConsultantStatus;
 }

@@ -15,6 +15,7 @@ import {
   deleteComment,
   clearComments,
 } from '@/redux/slices/commentSlice';
+import { sendCommentEmail } from '@/api/emailApi';
 import type { AppDispatch, RootState } from '@/redux/store';
 import type { UserType } from '@/types/auth.types';
 
@@ -28,6 +29,7 @@ const TicketComments: React.FC<TicketCommentsProps> = ({ ticketId }) => {
 
   const { user, userType } = useSelector((state: RootState) => state.auth);
   const { comments, loading, total } = useSelector((state: RootState) => state.comments);
+  const { currentTicket } = useSelector((state: RootState) => state.tickets);
 
   const isStaff = userType === 'consultant' || userType === 'team_member';
   const isCustomer = userType === 'customer';
@@ -54,7 +56,7 @@ const TicketComments: React.FC<TicketCommentsProps> = ({ ticketId }) => {
     }
   };
 
-  const handleAddComment = async (commentText: string, isInternal: boolean) => {
+  const handleAddComment = async (commentText: string, isInternal: boolean, emails: string[]) => {
     if (!user?._id || !userType) return;
 
     await dispatch(
@@ -66,6 +68,26 @@ const TicketComments: React.FC<TicketCommentsProps> = ({ ticketId }) => {
         isInternal,
       })
     ).unwrap();
+
+    if (emails.length > 0) {
+      const senderName =
+        (user as any).firstName
+          ? `${(user as any).firstName} ${(user as any).lastName ?? ''}`.trim()
+          : (user as any).companyName ?? (user as any).contactPerson ?? 'Support Team';
+
+      try {
+        await sendCommentEmail({
+          ticketId,
+          ticketNumber: currentTicket?.ticketNumber ?? ticketId,
+          commentText,
+          recipients: emails,
+          senderName,
+        });
+        toast.success(`Comment emailed to ${emails.length} recipient${emails.length > 1 ? 's' : ''}`);
+      } catch {
+        toast.error('Comment posted but failed to send emails');
+      }
+    }
   };
 
   const handleUpdateComment = async (

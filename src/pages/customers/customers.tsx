@@ -22,10 +22,20 @@ export default function Customers() {
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
 
   useEffect(() => {
-    loadCustomers();
     dispatch(fetchErpTypes({}));
     dispatch(fetchVersionNumbers({}));
   }, []);
+
+  // Auto-search with debounce when searchTerm or statusFilter changes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const params: any = {};
+      if (searchTerm) params.search = searchTerm;
+      if (statusFilter) params.status = statusFilter;
+      dispatch(fetchCustomers(params));
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchTerm, statusFilter]);
 
   const loadCustomers = () => {
     const params: any = {};
@@ -120,7 +130,6 @@ export default function Customers() {
                 placeholder="Search by company name, email, or contact person..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
                 className="pl-10"
               />
             </div>

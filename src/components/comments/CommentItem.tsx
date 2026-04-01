@@ -5,8 +5,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Pencil, Trash2, X, Check } from 'lucide-react';
+import Swal from 'sweetalert2';
+import withReactContent from 'sweetalert2-react-content';
 import type { TicketComment } from '@/types/comment.types';
 import type { UserType } from '@/types/auth.types';
+
+const MySwal = withReactContent(Swal);
 
 interface CommentItemProps {
   comment: TicketComment;
@@ -62,8 +66,26 @@ const CommentItem: React.FC<CommentItemProps> = ({
     setIsEditing(false);
   };
 
-  const handleDelete = () => {
-    if (window.confirm('Are you sure you want to delete this comment? This action cannot be undone.')) {
+  const handleDelete = async () => {
+    const result = await MySwal.fire({
+      title: 'Delete Comment?',
+      html: `
+        <div class="text-left">
+          <p class="mb-2">Are you sure you want to delete this comment?</p>
+          <p style="color: #BA1A1A">This action cannot be undone!</p>
+        </div>
+      `,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#BA1A1A',
+      cancelButtonColor: '#434653',
+      confirmButtonText: 'Yes, delete it!',
+      cancelButtonText: 'Cancel',
+      reverseButtons: true,
+      focusCancel: true,
+    });
+
+    if (result.isConfirmed) {
       onDelete?.(comment._id);
     }
   };

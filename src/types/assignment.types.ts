@@ -103,7 +103,7 @@ export interface AssignmentResponse {
 
 export interface CreateAssignmentData {
   ticket: string;
-  assignedToTeam: string;
+  assignedToTeam?: string;
   assignedByConsultant: string;
   assignmentNotes?: string;
 }

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { CustomSelect } from '@/components/ui/custom-select';
 import { Loader2, Building2, User, Mail, Phone, MapPin, Lock, Database, Plus, Users } from 'lucide-react';
+import { ConsultantSelect } from '@/components/ui/consultant-select';
 import type { CreateCustomerData, Customer, UpdateCustomerData } from '@/types/customer.types';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchErpTypes, createErpType } from '@/redux/slices/erpTypeSlice';
@@ -430,39 +431,18 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
               <span className="text-sm text-on-surface-variant font-normal">(Optional)</span>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-2">
               <label className="form-label flex items-center gap-2">
                 <Users className="w-4 h-4 text-orange-600" />
                 Select Consultants to work with this customer
               </label>
-              <select
+              <ConsultantSelect
                 multiple
-                size={8}
-                className="form-select min-h-[200px] h-auto py-2.5"
                 value={formData.consultants}
-                onChange={(e) => {
-                  const selected = Array.from(e.target.selectedOptions, option => option.value);
-                  setFormData(prev => ({ ...prev, consultants: selected }));
-                }}
-              >
-                {consultants
-                  .filter(c => c.status === 'active')
-                  .map((consultant) => (
-                    <option
-                      key={consultant._id}
-                      value={consultant._id}
-                      className="py-2 px-2"
-                    >
-                      {consultant.fullName || `${consultant.firstName} ${consultant.lastName}`}
-                    </option>
-                  ))}
-              </select>
-              <p className="text-xs text-on-surface-variant italic">Hold Ctrl (or Cmd on Mac) and click to select multiple consultants</p>
-              {formData.consultants.length > 0 && (
-                <p className="text-sm text-orange-600 font-semibold">
-                  {formData.consultants.length} consultant{formData.consultants.length > 1 ? 's' : ''} selected
-                </p>
-              )}
+                onChange={(vals) => setFormData((prev) => ({ ...prev, consultants: vals }))}
+                consultants={consultants.filter((c) => c.status === 'active')}
+                placeholder="Search and select consultants…"
+              />
             </div>
           </div>
 

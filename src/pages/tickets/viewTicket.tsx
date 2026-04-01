@@ -37,6 +37,7 @@ import {
   CheckCircle2,
   FileSpreadsheet,
   FileText as FileCsv,
+  XCircle,
 } from 'lucide-react';
 
 export default function ViewTicket() {
@@ -47,8 +48,10 @@ export default function ViewTicket() {
   const { currentAssignment } = useAppSelector((state) => state.assignments);
   const { user, userType } = useAppSelector((state) => state.auth);
 
+  const isCustomer = userType === 'customer';
   const [activeTab, setActiveTab] = useState<'details' | 'comments' | 'attachments'>('details');
   const [resolving, setResolving] = useState(false);
+  const [closing, setClosing] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -69,6 +72,17 @@ export default function ViewTicket() {
       if (id) dispatch(fetchTicketById(id));
     } finally {
       setResolving(false);
+    }
+  };
+
+  const handleClose = async () => {
+    if (!currentTicket) return;
+    setClosing(true);
+    try {
+      await dispatch(updateTicket({ id: currentTicket._id, data: { status: 'closed' } })).unwrap();
+      if (id) dispatch(fetchTicketById(id));
+    } finally {
+      setClosing(false);
     }
   };
 
@@ -251,7 +265,7 @@ export default function ViewTicket() {
 
           {/* Right: Actions */}
           <div className="flex items-center gap-2 shrink-0 flex-wrap">
-            {currentAssignment && (
+            {!isCustomer && currentAssignment && (
               <AssignConsultantsDialog
                 assignmentId={currentAssignment._id}
                 currentConsultants={currentAssignment.assignedToConsultants?.map(
@@ -260,7 +274,7 @@ export default function ViewTicket() {
                 onSuccess={handleRefreshAssignment}
               />
             )}
-            {currentTicket.status !== 'resolved' && currentTicket.status !== 'closed' && (
+            {!isCustomer && currentTicket.status !== 'resolved' && currentTicket.status !== 'closed' && (
               <Button
                 variant="outline"
                 size="sm"
@@ -270,6 +284,18 @@ export default function ViewTicket() {
               >
                 <CheckCircle2 className="h-3.5 w-3.5" />
                 {resolving ? 'Resolving...' : 'Resolve'}
+              </Button>
+            )}
+            {isCustomer && currentTicket.status === 'resolved' && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleClose}
+                disabled={closing}
+                className="gap-1.5 text-on-surface-variant border-border hover:bg-surface-container-highest"
+              >
+                <XCircle className="h-3.5 w-3.5" />
+                {closing ? 'Closing...' : 'Close Ticket'}
               </Button>
             )}
             <div className="flex items-center rounded-[0.5rem] border border-border overflow-hidden">
@@ -286,15 +312,17 @@ export default function ViewTicket() {
                 PDF
               </Button>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate(`/tickets/edit/${currentTicket._id}`)}
-              className="gap-1.5"
-            >
-              <Edit className="h-3.5 w-3.5" />
-              Edit
-            </Button>
+            {!isCustomer && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate(`/tickets/edit/${currentTicket._id}`)}
+                className="gap-1.5"
+              >
+                <Edit className="h-3.5 w-3.5" />
+                Edit
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="sm"

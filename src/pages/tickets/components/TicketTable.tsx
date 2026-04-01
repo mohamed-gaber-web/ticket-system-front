@@ -50,6 +50,7 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
   const { loading: ticketLoading } = useAppSelector((state) => state.tickets);
   const { consultants } = useAppSelector((state) => state.consultants);
   const isConsultant = userType === 'consultant';
+  const isCustomer = userType === 'customer';
 
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -245,13 +246,14 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
             <TableRow>
               <TableHead className="min-w-[100px]">Ticket #</TableHead>
               <TableHead className="min-w-[200px]">Subject</TableHead>
+              <TableHead className="min-w-[150px]">Customer</TableHead>
               <TableHead className="min-w-[100px]">Priority</TableHead>
               <TableHead className="min-w-[120px]">Status</TableHead>
               <TableHead className="min-w-[100px]">Source</TableHead>
-              <TableHead className="min-w-[120px]">Accepted At</TableHead>
+              <TableHead className="min-w-[120px]">{isCustomer ? 'Customer' : 'Accepted At'}</TableHead>
               <TableHead className="min-w-[120px]">Last Updated</TableHead>
               <TableHead className="min-w-[120px]">Closed At</TableHead>
-              <TableHead className="min-w-[140px]">Accepted By</TableHead>
+              <TableHead className="min-w-[140px]">Assign To</TableHead>
               <TableHead className="text-right min-w-[120px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -294,6 +296,18 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                       )}
                     </div>
                   </TableCell>
+                  <TableCell>
+                    {ticket.customer && typeof ticket.customer === 'object' ? (
+                      <div>
+                        <p className="text-sm font-medium text-on-surface">{ticket.customer.companyName}</p>
+                        {ticket.customer.contactPerson && (
+                          <p className="text-xs text-on-surface-variant mt-0.5">{ticket.customer.contactPerson}</p>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-on-surface-variant/40">&mdash;</span>
+                    )}
+                  </TableCell>
                   <TableCell>{getPriorityDisplay(ticket.priority)}</TableCell>
                   <TableCell>{getStatusBadge(ticket.status)}</TableCell>
                   <TableCell>
@@ -304,7 +318,13 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                     )}
                   </TableCell>
                   <TableCell>
-                    {ticket.acceptedAt ? (
+                    {isCustomer ? (
+                      ticket.customer && typeof ticket.customer === 'object' ? (
+                        <span className="text-sm text-on-surface">{ticket.customer.companyName}</span>
+                      ) : (
+                        <span className="text-on-surface-variant/40">&mdash;</span>
+                      )
+                    ) : ticket.acceptedAt ? (
                       <span className="text-sm text-on-surface">
                         {new Date(ticket.acceptedAt).toLocaleTimeString('en-US', {
                           hour: '2-digit',
@@ -380,22 +400,26 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                               <Eye className="w-4 h-4 text-on-surface-variant" />
                               View
                             </button>
-                            <button
-                              role="menuitem"
-                              onClick={() => { navigate(`/tickets/edit/${ticket._id}`); setOpenMenuId(null); }}
-                              className="flex items-center gap-2.5 w-full px-3.5 py-2 text-sm font-medium text-on-surface hover:bg-surface-container-highest transition-colors"
-                            >
-                              <Edit className="w-4 h-4 text-on-surface-variant" />
-                              Edit
-                            </button>
-                            <button
-                              role="menuitem"
-                              onClick={() => { handleDelete(ticket); setOpenMenuId(null); }}
-                              className="flex items-center gap-2.5 w-full px-3.5 py-2 text-sm font-medium text-error hover:bg-error/5 transition-colors"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                              Delete
-                            </button>
+                            {!isCustomer && (
+                              <button
+                                role="menuitem"
+                                onClick={() => { navigate(`/tickets/edit/${ticket._id}`); setOpenMenuId(null); }}
+                                className="flex items-center gap-2.5 w-full px-3.5 py-2 text-sm font-medium text-on-surface hover:bg-surface-container-highest transition-colors"
+                              >
+                                <Edit className="w-4 h-4 text-on-surface-variant" />
+                                Edit
+                              </button>
+                            )}
+                            {!isCustomer && (
+                              <button
+                                role="menuitem"
+                                onClick={() => { handleDelete(ticket); setOpenMenuId(null); }}
+                                className="flex items-center gap-2.5 w-full px-3.5 py-2 text-sm font-medium text-error hover:bg-error/5 transition-colors"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                                Delete
+                              </button>
+                            )}
                           </div>
                         )}
                       </div>

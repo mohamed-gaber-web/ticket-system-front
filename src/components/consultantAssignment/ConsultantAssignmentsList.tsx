@@ -118,6 +118,9 @@ export function ConsultantAssignmentsList({
                         )}
                         {getStatusBadge(assignment.status)}
                       </div>
+                      {consultant?.position && (
+                        <p className="text-xs text-brand-500 font-medium mb-0.5">{consultant.position}</p>
+                      )}
                       {consultant && (
                         <p className="text-sm text-on-surface-variant mb-2">{consultant.email}</p>
                       )}

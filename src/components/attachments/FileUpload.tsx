@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Upload, X, File, Image as ImageIcon, Video } from 'lucide-react';
+import { Upload, X, File, Image as ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { uploadAttachment } from '@/redux/slices/attachmentSlice';
@@ -71,7 +71,6 @@ const FileUpload: React.FC<FileUploadProps> = ({ ticketId, onUploadSuccess }) =>
   const getFileIcon = () => {
     if (!selectedFile) return <Upload className="h-5 w-5" />;
     if (selectedFile.type.startsWith('image/')) return <ImageIcon className="h-5 w-5" />;
-    if (selectedFile.type.startsWith('video/')) return <Video className="h-5 w-5" />;
     return <File className="h-5 w-5" />;
   };
 
@@ -82,7 +81,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ ticketId, onUploadSuccess }) =>
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*,video/*,application/pdf"
+          accept="image/*,application/pdf"
           onChange={handleFileSelect}
           disabled={uploading}
           className="hidden"
@@ -177,7 +176,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ ticketId, onUploadSuccess }) =>
 
       {/* File Type Info */}
       <p className="text-xs text-on-surface-variant">
-        Images, Videos, PDF · Max 5MB (images), 50MB (videos), 10MB (PDFs)
+        Images, PDF · Max 10MB
       </p>
     </div>
   );

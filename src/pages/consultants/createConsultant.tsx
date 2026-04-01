@@ -19,6 +19,7 @@ export default function CreateConsultant() {
     email: '',
     password: '',
     phone: '',
+    position: '',
     role: 'consultant',
     status: 'active',
   });
@@ -169,6 +170,16 @@ export default function CreateConsultant() {
                   <p className="text-error text-sm mt-1">{errors.phone}</p>
                 )}
               </div>
+            </div>
+
+            {/* Position */}
+            <div>
+              <label className="form-label">Position</label>
+              <Input
+                value={formData.position}
+                onChange={(e) => handleChange('position', e.target.value)}
+                placeholder="e.g. Senior Support Engineer"
+              />
             </div>
 
             {/* Password */}

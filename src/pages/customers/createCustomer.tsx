@@ -14,7 +14,6 @@ export default function CreateCustomer() {
   const handleSubmit = async (data: CreateCustomerData | UpdateCustomerData): Promise<void> => {
     const result = await dispatch(createCustomer(data as CreateCustomerData));
     if (createCustomer.fulfilled.match(result)) {
-      // Check if came from ticket creation (referrer check)
       const referrer = sessionStorage.getItem('customerCreateReferrer');
       if (referrer === 'ticket-create') {
         sessionStorage.removeItem('customerCreateReferrer');

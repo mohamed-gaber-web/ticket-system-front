@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { CustomSelect } from '@/components/ui/custom-select';
 import { Loader2, Building2, Mail, MapPin, Database, Plus, Users } from 'lucide-react';
+import { ConsultantSelect } from '@/components/ui/consultant-select';
 import type { CreateCustomerData, Customer, UpdateCustomerData } from '@/types/customer.types';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchErpTypes, createErpType } from '@/redux/slices/erpTypeSlice';
@@ -423,30 +424,13 @@ export default function CustomerFormDialog({
               </h3>
               <div className="space-y-2">
                 <label className="form-label">Select Consultants</label>
-                <select
+                <ConsultantSelect
                   multiple
-                  size={6}
-                  className="form-select min-h-[160px] h-auto py-2.5"
                   value={formData.consultants}
-                  onChange={(e) => {
-                    const selected = Array.from(e.target.selectedOptions, option => option.value);
-                    setFormData(prev => ({ ...prev, consultants: selected }));
-                  }}
-                >
-                  {consultants
-                    .filter(c => c.status === 'active')
-                    .map((consultant) => (
-                      <option key={consultant._id} value={consultant._id}>
-                        {consultant.fullName || `${consultant.firstName} ${consultant.lastName}`}
-                      </option>
-                    ))}
-                </select>
-                <p className="text-xs text-on-surface-variant">Hold Ctrl (or Cmd) to select multiple consultants</p>
-                {formData.consultants.length > 0 && (
-                  <p className="text-sm text-orange-600 font-medium">
-                    {formData.consultants.length} consultant{formData.consultants.length > 1 ? 's' : ''} selected
-                  </p>
-                )}
+                  onChange={(vals) => setFormData((prev) => ({ ...prev, consultants: vals }))}
+                  consultants={consultants.filter((c) => c.status === 'active')}
+                  placeholder="Search and select consultants…"
+                />
               </div>
             </div>
 

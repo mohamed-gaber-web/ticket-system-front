@@ -163,6 +163,9 @@ export default function Consultants() {
                       Email
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase tracking-wider">
+                      Position
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase tracking-wider">
                       Phone
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase tracking-wider">
@@ -186,6 +189,11 @@ export default function Consultants() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-on-surface-variant">{consultant.email}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-on-surface-variant">
+                          {consultant.position || <span className="text-on-surface-variant/40">&mdash;</span>}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-on-surface-variant">

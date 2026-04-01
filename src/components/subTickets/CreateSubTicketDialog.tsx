@@ -16,14 +16,9 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Plus, UserCheck } from 'lucide-react';
+import { ConsultantSelect } from '@/components/ui/consultant-select';
+import { CustomSelect } from '@/components/ui/custom-select';
 import type { CreateSubTicketData } from '@/types/ticket';
 
 interface CreateSubTicketDialogProps {
@@ -44,7 +39,7 @@ export function CreateSubTicketDialog({
     priority: 'medium',
     estimatedTime: undefined,
   });
-  const [selectedConsultant, setSelectedConsultant] = useState<string>('');
+  const [selectedConsultants, setSelectedConsultants] = useState<string[]>([]);
 
   const dispatch = useAppDispatch();
   const { loading } = useAppSelector((state) => state.tickets);
@@ -73,22 +68,18 @@ export function CreateSubTicketDialog({
     if (createSubTicket.fulfilled.match(result)) {
       const subTicket = result.payload;
 
-      // If a consultant is selected (and not "none"), create assignment and assign them
-      if (selectedConsultant && selectedConsultant !== 'none' && subTicket && user) {
-        // First create the assignment
+      if (selectedConsultants.length > 0 && subTicket && user) {
         const assignmentResult = await dispatch(createAssignment({
           ticket: subTicket._id,
-          assignedToTeam: '', // Empty team for now
           assignedByConsultant: user._id,
           assignmentNotes: `Sub-ticket created from ${parentTicketNumber}`,
         }));
 
-        // Then assign consultant if assignment was successful
         if (createAssignment.fulfilled.match(assignmentResult)) {
           const assignment = assignmentResult.payload;
           await dispatch(assignConsultants({
             assignmentId: assignment._id,
-            consultants: [selectedConsultant]
+            consultants: selectedConsultants,
           }));
         }
       }
@@ -100,7 +91,7 @@ export function CreateSubTicketDialog({
         priority: 'medium',
         estimatedTime: undefined,
       });
-      setSelectedConsultant('');
+      setSelectedConsultants([]);
       onSuccess?.();
     }
   };
@@ -147,20 +138,16 @@ export function CreateSubTicketDialog({
 
             <div className="grid gap-2">
               <Label htmlFor="priority">Priority</Label>
-              <Select
-                value={formData.priority}
-                onValueChange={(value) => setFormData({ ...formData, priority: value as any })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select priority" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="low">Low</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="high">High</SelectItem>
-                  <SelectItem value="critical">Critical</SelectItem>
-                </SelectContent>
-              </Select>
+              <CustomSelect
+                value={formData.priority || 'medium'}
+                onChange={(value) => setFormData({ ...formData, priority: value as any })}
+                options={[
+                  { value: 'low', label: 'Low' },
+                  { value: 'medium', label: 'Medium' },
+                  { value: 'high', label: 'High' },
+                  { value: 'critical', label: 'Critical' },
+                ]}
+              />
             </div>
 
             <div className="grid gap-2">
@@ -185,26 +172,14 @@ export function CreateSubTicketDialog({
               <p className="text-sm text-on-surface-variant mb-3">
                 Select a consultant to assign to this sub-ticket. You can also assign them later.
               </p>
-              {consultantsLoading ? (
-                <div className="text-sm text-on-surface-variant py-4">Loading consultants...</div>
-              ) : (
-                <Select
-                  value={selectedConsultant}
-                  onValueChange={setSelectedConsultant}
-                >
-                  <SelectTrigger id="consultant">
-                    <SelectValue placeholder="Select a consultant (optional)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">-- No consultant --</SelectItem>
-                    {consultants.map((consultant) => (
-                      <SelectItem key={consultant._id} value={consultant._id}>
-                        {consultant.firstName} {consultant.lastName} - {consultant.email}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
+              <ConsultantSelect
+                multiple
+                value={selectedConsultants}
+                onChange={setSelectedConsultants}
+                consultants={consultants}
+                loading={consultantsLoading}
+                placeholder="Search and select consultants…"
+              />
             </div>
           </div>
           <DialogFooter>

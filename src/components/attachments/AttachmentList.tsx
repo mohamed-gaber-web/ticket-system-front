@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Download, Trash2, File, Image as ImageIcon, Video, FileText } from 'lucide-react';
+import { Download, Trash2, File, Image as ImageIcon, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchTicketAttachments, removeAttachment } from '@/redux/slices/attachmentSlice';
@@ -51,7 +51,6 @@ const AttachmentList: React.FC<AttachmentListProps> = ({ ticketId }) => {
 
   const getFileIcon = (fileType: string) => {
     if (fileType.startsWith('image/')) return <ImageIcon className="h-5 w-5 text-brand-500" />;
-    if (fileType.startsWith('video/')) return <Video className="h-5 w-5 text-accent-orange-500" />;
     if (fileType === 'application/pdf') return <FileText className="h-5 w-5 text-error" />;
     return <File className="h-5 w-5 text-on-surface-variant" />;
   };
@@ -162,6 +161,17 @@ const AttachmentList: React.FC<AttachmentListProps> = ({ ticketId }) => {
                     })}
                   </p>
                 )}
+                {attachment.fileType.startsWith('image/') && (
+                  <p className="text-xs text-on-surface-variant mt-0.5">
+                    {new Date(attachment.uploadedAt).toLocaleDateString('en-US', {
+                      month: 'short', day: 'numeric', year: 'numeric',
+                    })}
+                    {' · '}
+                    {new Date(attachment.uploadedAt).toLocaleTimeString('en-US', {
+                      hour: '2-digit', minute: '2-digit', hour12: true,
+                    })}
+                  </p>
+                )}
               </div>
 
               {/* Actions */}
@@ -208,27 +218,6 @@ const AttachmentList: React.FC<AttachmentListProps> = ({ ticketId }) => {
         </div>
       )}
 
-      {/* Video Preview */}
-      <div className="space-y-4">
-        {attachments
-          .filter((a) => a.fileType.startsWith('video/'))
-          .map((attachment) => (
-            <div key={`preview-${attachment._id}`} className="rounded-[1rem] overflow-hidden bg-surface-container-high">
-              <div className="px-4 py-2">
-                <p className="text-sm font-medium text-on-surface">{attachment.fileName}</p>
-              </div>
-              <div className="p-4 bg-on-surface">
-                <video
-                  src={getDownloadUrl(attachment.filePath)}
-                  controls
-                  className="w-full max-h-96 rounded-[0.5rem]"
-                >
-                  Your browser does not support the video tag.
-                </video>
-              </div>
-            </div>
-          ))}
-      </div>
     </div>
   );
 };
