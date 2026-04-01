@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
-import { fetchTicketById, clearCurrentTicket } from '@/redux/slices/ticketSlice';
+import { fetchTicketById, clearCurrentTicket, updateTicket } from '@/redux/slices/ticketSlice';
 import { fetchCurrentAssignment } from '@/redux/slices/assignmentSlice';
+import { AssignConsultantsDialog } from '@/components/consultantAssignment/AssignConsultantsDialog';
 import { fetchTicketAttachments } from '@/redux/slices/attachmentSlice';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +12,10 @@ import { ConsultantAssignmentsList } from '@/components/consultantAssignment/Con
 import FileUpload from '@/components/attachments/FileUpload';
 import AttachmentList from '@/components/attachments/AttachmentList';
 import { TicketComments } from '@/components/comments';
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import {
   ArrowLeft,
   Loader2,
@@ -29,6 +34,9 @@ import {
   Edit,
   ChevronRight,
   Globe,
+  CheckCircle2,
+  FileSpreadsheet,
+  FileText as FileCsv,
 } from 'lucide-react';
 
 export default function ViewTicket() {
@@ -40,6 +48,7 @@ export default function ViewTicket() {
   const { user, userType } = useAppSelector((state) => state.auth);
 
   const [activeTab, setActiveTab] = useState<'details' | 'comments' | 'attachments'>('details');
+  const [resolving, setResolving] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -51,6 +60,17 @@ export default function ViewTicket() {
 
   const handleRefreshAssignment = () => { if (id) dispatch(fetchCurrentAssignment(id)); };
   const handleUploadSuccess = () => { if (id) dispatch(fetchTicketAttachments({ ticketId: id })); };
+
+  const handleResolve = async () => {
+    if (!currentTicket) return;
+    setResolving(true);
+    try {
+      await dispatch(updateTicket({ id: currentTicket._id, data: { status: 'resolved' } })).unwrap();
+      if (id) dispatch(fetchTicketById(id));
+    } finally {
+      setResolving(false);
+    }
+  };
 
   if (loading || !currentTicket) {
     return (
@@ -89,6 +109,69 @@ export default function ViewTicket() {
   const source = currentTicket.source && typeof currentTicket.source !== 'string' ? currentTicket.source : null;
 
   const displayStatus = currentTicket.status.replace('_', ' ');
+
+  const firstConsultant = (() => {
+    const list = currentAssignment?.assignedToConsultants ?? [];
+    return list.length > 0 && typeof list[0].consultant !== 'string' ? list[0].consultant : null;
+  })();
+
+  const fmtDate = (date?: string) =>
+    date ? new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+
+  // Columns in exact order — aoa_to_sheet guarantees this order in the file
+  const exportHeaders = [
+    'Ticket Number', 'Subject', 'Customer', 'Assignee', 'Company',
+    'Priority', 'Status', 'Created Date', 'End Date',
+    'Category', 'Source', 'Customer Email',
+  ];
+  const exportValues = [
+    currentTicket.ticketNumber,
+    currentTicket.subject,
+    customer?.companyName ?? '',
+    firstConsultant ? `${firstConsultant.firstName} ${firstConsultant.lastName}` : '',
+    customer?.companyName ?? '',
+    currentTicket.priority,
+    displayStatus,
+    fmtDate(currentTicket.createdAt),
+    fmtDate(currentTicket.endDate),
+    category?.name ?? '',
+    source?.name ?? '',
+    customer?.email ?? '',
+  ];
+
+  const handleExportExcel = () => {
+    const worksheet = XLSX.utils.aoa_to_sheet([exportHeaders, exportValues]);
+    worksheet['!cols'] = exportHeaders.map((h, i) => ({
+      wch: Math.max(h.length, String(exportValues[i] ?? '').length) + 2,
+    }));
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Ticket');
+    const buffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+    saveAs(new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), `ticket-${currentTicket.ticketNumber}.xlsx`);
+  };
+
+  const handleExportCSV = () => {
+    const escape = (v: string) => `"${v.replace(/"/g, '""')}"`;
+    const csv = [
+      exportHeaders.map(escape).join(','),
+      exportValues.map((v) => escape(String(v ?? ''))).join(','),
+    ].join('\n');
+    saveAs(new Blob([csv], { type: 'text/csv;charset=utf-8;' }), `ticket-${currentTicket.ticketNumber}.csv`);
+  };
+
+  const handleExportPDF = () => {
+    const doc = new jsPDF({ orientation: 'landscape' });
+    doc.setFontSize(13);
+    doc.text(`Ticket ${currentTicket.ticketNumber}`, 14, 15);
+    autoTable(doc, {
+      head: [exportHeaders],
+      body: [exportValues.map((v) => String(v ?? ''))],
+      startY: 22,
+      styles: { fontSize: 8, cellPadding: 3 },
+      headStyles: { fillColor: [0, 58, 143] },
+    });
+    doc.save(`ticket-${currentTicket.ticketNumber}.pdf`);
+  };
 
   return (
     <div className="p-8 space-y-0 w-full">
@@ -167,7 +250,42 @@ export default function ViewTicket() {
           </div>
 
           {/* Right: Actions */}
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+            {currentAssignment && (
+              <AssignConsultantsDialog
+                assignmentId={currentAssignment._id}
+                currentConsultants={currentAssignment.assignedToConsultants?.map(
+                  (ca) => typeof ca.consultant === 'string' ? ca.consultant : ca.consultant._id
+                )}
+                onSuccess={handleRefreshAssignment}
+              />
+            )}
+            {currentTicket.status !== 'resolved' && currentTicket.status !== 'closed' && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleResolve}
+                disabled={resolving}
+                className="gap-1.5 text-green-600 border-green-200 hover:bg-green-50 hover:text-green-700"
+              >
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                {resolving ? 'Resolving...' : 'Resolve'}
+              </Button>
+            )}
+            <div className="flex items-center rounded-[0.5rem] border border-border overflow-hidden">
+              <Button variant="ghost" size="sm" onClick={handleExportExcel} className="gap-1.5 rounded-none border-0 border-r border-border h-8 px-3 text-xs">
+                <FileSpreadsheet className="h-3.5 w-3.5" />
+                XLS
+              </Button>
+              <Button variant="ghost" size="sm" onClick={handleExportCSV} className="gap-1.5 rounded-none border-0 border-r border-border h-8 px-3 text-xs">
+                <FileCsv className="h-3.5 w-3.5" />
+                CSV
+              </Button>
+              <Button variant="ghost" size="sm" onClick={handleExportPDF} className="gap-1.5 rounded-none border-0 h-8 px-3 text-xs">
+                <FileText className="h-3.5 w-3.5" />
+                PDF
+              </Button>
+            </div>
             <Button
               variant="outline"
               size="sm"
