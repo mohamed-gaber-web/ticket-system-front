@@ -159,139 +159,71 @@ export default function Tickets() {
     startDate, endDate, createdDateFrom, createdDateTo, closedDateFrom, closedDateTo,
   ].filter(Boolean).length;
 
-  const handleExportCSV = () => {
-    const headers = ['Ticket #', 'Subject', 'Priority', 'Status', 'Accepted At', 'Last Updated', 'Closed At'];
-    const csvRows = [headers.join(',')];
+  const EXPORT_HEADERS = [
+    'Ticket Number', 'Subject', 'Customer', 'Assignee', 'Company',
+    'Priority', 'Status', 'Created Date', 'End Date',
+    'Category', 'Source', 'Customer Email',
+  ];
 
-    tickets.forEach((ticket) => {
-      const row = [
-        ticket.ticketNumber,
-        `"${ticket.subject.replace(/"/g, '""')}"`,
-        ticket.priority,
-        ticket.status.replace('_', ' '),
-        ticket.acceptedAt ? new Date(ticket.acceptedAt).toLocaleString() : '',
-        new Date(ticket.updatedAt).toLocaleString(),
-        ticket.closedAt ? new Date(ticket.closedAt).toLocaleString() : '',
-      ];
-      csvRows.push(row.join(','));
-    });
+  const fmtDate = (date?: string) =>
+    date ? new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
 
-    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `tickets-export-${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+  const getExportValues = (ticket: Ticket): string[] => {
+    const customerObj = typeof ticket.customer === 'object' && ticket.customer ? ticket.customer as any : null;
+    const categoryObj = typeof ticket.category === 'object' && ticket.category ? (ticket.category as Category) : null;
+    const sourceObj = typeof ticket.source === 'object' && ticket.source ? ticket.source as any : null;
+    const assigneeObj = typeof ticket.acceptedBy === 'object' && ticket.acceptedBy ? (ticket.acceptedBy as TicketConsultant) : null;
+    return [
+      ticket.ticketNumber,
+      ticket.subject,
+      customerObj?.companyName ?? '',
+      assigneeObj ? `${assigneeObj.firstName} ${assigneeObj.lastName}` : '',
+      customerObj?.companyName ?? '',
+      ticket.priority,
+      ticket.status.replace('_', ' '),
+      fmtDate(ticket.createdAt),
+      fmtDate(ticket.endDate),
+      categoryObj?.name ?? '',
+      sourceObj?.name ?? '',
+      customerObj?.email ?? '',
+    ];
   };
 
-  const getTicketRowData = (ticket: Ticket) => {
-    const customerName = typeof ticket.customer === 'object' && ticket.customer
-      ? (ticket.customer as any).companyName
-      : '';
-    const categoryName = typeof ticket.category === 'object' && ticket.category
-      ? (ticket.category as Category).name
-      : '';
-    const acceptedByName = typeof ticket.acceptedBy === 'object' && ticket.acceptedBy
-      ? `${(ticket.acceptedBy as TicketConsultant).firstName} ${(ticket.acceptedBy as TicketConsultant).lastName}`
-      : '';
-    const departmentName = typeof ticket.department === 'object' && ticket.department
-      ? (ticket.department as any).name
-      : '';
-    const serviceTypeName = typeof ticket.serviceType === 'object' && ticket.serviceType
-      ? (ticket.serviceType as any).name
-      : '';
-
-    return {
-      ticketNumber: ticket.ticketNumber,
-      subject: ticket.subject,
-      customerName,
-      categoryName,
-      priority: ticket.priority,
-      status: ticket.status.replace('_', ' '),
-      acceptedByName,
-      departmentName,
-      serviceTypeName,
-      startDate: ticket.startDate ? new Date(ticket.startDate).toLocaleDateString() : '',
-      endDate: ticket.endDate ? new Date(ticket.endDate).toLocaleDateString() : '',
-      createdAt: new Date(ticket.createdAt).toLocaleString(),
-      closedAt: ticket.closedAt ? new Date(ticket.closedAt).toLocaleString() : '',
-    };
+  const handleExportCSV = () => {
+    const escape = (v: string) => `"${v.replace(/"/g, '""')}"`;
+    const rows = [
+      EXPORT_HEADERS.map(escape).join(','),
+      ...tickets.map((t) => getExportValues(t).map(escape).join(',')),
+    ];
+    saveAs(new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8;' }), `tickets-export-${new Date().toISOString().split('T')[0]}.csv`);
   };
 
   const handleExportExcel = () => {
-    const excelData = tickets.map((ticket) => {
-      const row = getTicketRowData(ticket);
-      return {
-        'Ticket #': row.ticketNumber,
-        'Subject': row.subject,
-        'Customer': row.customerName,
-        'Category': row.categoryName,
-        'Priority': row.priority,
-        'Status': row.status,
-        'Accepted By': row.acceptedByName,
-        'Department': row.departmentName,
-        'Service Type': row.serviceTypeName,
-        'Start Date': row.startDate,
-        'Due Date': row.endDate,
-        'Created At': row.createdAt,
-        'Closed At': row.closedAt,
-      };
-    });
-
-    const worksheet = XLSX.utils.json_to_sheet(excelData);
-
-    // Auto-size columns
-    const colWidths = Object.keys(excelData[0] || {}).map((key) => ({
-      wch: Math.max(key.length, ...excelData.map((row) => String((row as any)[key] || '').length)),
+    const rows = tickets.map((t) => getExportValues(t));
+    const worksheet = XLSX.utils.aoa_to_sheet([EXPORT_HEADERS, ...rows]);
+    worksheet['!cols'] = EXPORT_HEADERS.map((h, i) => ({
+      wch: Math.max(h.length, ...rows.map((r) => String(r[i] ?? '').length)) + 2,
     }));
-    worksheet['!cols'] = colWidths;
-
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Tickets');
-
-    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-    const blob = new Blob([excelBuffer], {
-      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    });
-    saveAs(blob, `tickets-export-${new Date().toISOString().split('T')[0]}.xlsx`);
+    const buffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+    saveAs(new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), `tickets-export-${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
   const handleExportPDF = () => {
     const doc = new jsPDF('landscape');
-
-    doc.setFontSize(18);
-    doc.text('Tickets Report', 14, 22);
-    doc.setFontSize(10);
-    doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 29);
-    doc.text(`Total tickets: ${tickets.length}`, 14, 35);
-
-    const tableData = tickets.map((ticket) => {
-      const row = getTicketRowData(ticket);
-      return [
-        row.ticketNumber,
-        row.subject.length > 30 ? row.subject.substring(0, 30) + '...' : row.subject,
-        row.customerName,
-        row.priority,
-        row.status,
-        row.acceptedByName,
-        row.departmentName,
-        row.startDate,
-        row.endDate,
-        row.createdAt,
-        row.closedAt,
-      ];
-    });
-
+    doc.setFontSize(16);
+    doc.text('Tickets Report', 14, 18);
+    doc.setFontSize(9);
+    doc.text(`Generated: ${new Date().toLocaleString()}  |  Total: ${tickets.length}`, 14, 25);
     autoTable(doc, {
-      head: [['Ticket #', 'Subject', 'Customer', 'Priority', 'Status', 'Accepted By', 'Department', 'Start Date', 'Due Date', 'Created At', 'Closed At']],
-      body: tableData,
-      startY: 40,
+      head: [EXPORT_HEADERS],
+      body: tickets.map((t) => getExportValues(t)),
+      startY: 30,
       styles: { fontSize: 7, cellPadding: 2 },
       headStyles: { fillColor: [0, 58, 143], fontSize: 7 },
       alternateRowStyles: { fillColor: [245, 247, 250] },
     });
-
     doc.save(`tickets-report-${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
