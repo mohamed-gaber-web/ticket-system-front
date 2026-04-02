@@ -250,10 +250,8 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
               <TableHead className="min-w-[100px]">Priority</TableHead>
               <TableHead className="min-w-[120px]">Status</TableHead>
               <TableHead className="min-w-[100px]">Source</TableHead>
-              <TableHead className="min-w-[120px]">{isCustomer ? 'Customer' : 'Accepted At'}</TableHead>
-              <TableHead className="min-w-[120px]">Last Updated</TableHead>
               <TableHead className="min-w-[120px]">Closed At</TableHead>
-              <TableHead className="min-w-[140px]">Assign To</TableHead>
+              <TableHead className="min-w-[140px]">Accepted By</TableHead>
               <TableHead className="text-right min-w-[120px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -316,30 +314,6 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                     ) : (
                       <span className="text-on-surface-variant/40">&mdash;</span>
                     )}
-                  </TableCell>
-                  <TableCell>
-                    {isCustomer ? (
-                      ticket.customer && typeof ticket.customer === 'object' ? (
-                        <span className="text-sm text-on-surface">{ticket.customer.companyName}</span>
-                      ) : (
-                        <span className="text-on-surface-variant/40">&mdash;</span>
-                      )
-                    ) : ticket.acceptedAt ? (
-                      <span className="text-sm text-on-surface">
-                        {new Date(ticket.acceptedAt).toLocaleTimeString('en-US', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                          hour12: true,
-                        })}
-                      </span>
-                    ) : (
-                      <span className="text-on-surface-variant/40">&mdash;</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <span className="text-sm text-on-surface-variant">
-                      {getRelativeTime(ticket.updatedAt)}
-                    </span>
                   </TableCell>
                   <TableCell>
                     {ticket.closedAt ? (
