@@ -11,6 +11,7 @@ export interface Customer {
   _id: string;
   companyName: string;
   email: string;
+  contactPerson?: string;
 }
 
 export interface Category {
