@@ -129,3 +129,12 @@ export const closeTicket = async (ticketId: string): Promise<TicketResponse> => 
   console.log('Close ticket API response:', response.data);
   return response.data;
 };
+
+// Submit customer feedback/rating
+export const submitFeedback = async (
+  ticketId: string,
+  payload: { customerRating: number; customerFeedback?: string }
+): Promise<TicketResponse> => {
+  const response = await api.patch<TicketResponse>(`/tickets/${ticketId}/feedback`, payload);
+  return response.data;
+};

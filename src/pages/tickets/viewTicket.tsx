@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchTicketById, clearCurrentTicket, updateTicket } from '@/redux/slices/ticketSlice';
+import { submitFeedback } from '@/api/ticketApi';
 import { fetchCurrentAssignment } from '@/redux/slices/assignmentSlice';
 import { AssignConsultantsDialog } from '@/components/consultantAssignment/AssignConsultantsDialog';
 import { fetchTicketAttachments } from '@/redux/slices/attachmentSlice';
@@ -38,6 +39,8 @@ import {
   FileSpreadsheet,
   FileText as FileCsv,
   XCircle,
+  Star,
+  MessageSquare,
 } from 'lucide-react';
 
 export default function ViewTicket() {
@@ -52,6 +55,26 @@ export default function ViewTicket() {
   const [activeTab, setActiveTab] = useState<'details' | 'comments' | 'attachments'>('details');
   const [resolving, setResolving] = useState(false);
   const [closing, setClosing] = useState(false);
+  const [feedbackRating, setFeedbackRating] = useState(0);
+  const [feedbackHover, setFeedbackHover] = useState(0);
+  const [feedbackText, setFeedbackText] = useState('');
+  const [submittingFeedback, setSubmittingFeedback] = useState(false);
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+
+  const handleSubmitFeedback = async () => {
+    if (!currentTicket || feedbackRating === 0) return;
+    setSubmittingFeedback(true);
+    try {
+      await submitFeedback(currentTicket._id, {
+        customerRating: feedbackRating,
+        customerFeedback: feedbackText.trim() || undefined,
+      });
+      setFeedbackSubmitted(true);
+      if (id) dispatch(fetchTicketById(id));
+    } finally {
+      setSubmittingFeedback(false);
+    }
+  };
 
   useEffect(() => {
     if (id) {
@@ -395,6 +418,24 @@ export default function ViewTicket() {
               </div>
             </section>
 
+            {/* Feedback */}
+            {['resolved', 'closed'].includes(currentTicket.status) && (
+              <FeedbackSection
+                existingRating={currentTicket.customerRating}
+                existingFeedback={currentTicket.customerFeedback}
+                isCustomer={isCustomer}
+                alreadySubmitted={feedbackSubmitted}
+                rating={feedbackRating}
+                hover={feedbackHover}
+                text={feedbackText}
+                submitting={submittingFeedback}
+                onRating={setFeedbackRating}
+                onHover={setFeedbackHover}
+                onText={setFeedbackText}
+                onSubmit={handleSubmitFeedback}
+              />
+            )}
+
             {/* Assignments */}
             {currentAssignment && currentAssignment.assignedToConsultants && (
               <ConsultantAssignmentsList
@@ -526,5 +567,132 @@ function PropertyRow({ icon: Icon, label, value }: { icon: React.ElementType; la
       </div>
       <span className="text-sm font-semibold text-on-surface truncate text-right">{value}</span>
     </div>
+  );
+}
+
+interface FeedbackSectionProps {
+  existingRating?: number;
+  existingFeedback?: string;
+  isCustomer: boolean;
+  alreadySubmitted: boolean;
+  rating: number;
+  hover: number;
+  text: string;
+  submitting: boolean;
+  onRating: (v: number) => void;
+  onHover: (v: number) => void;
+  onText: (v: string) => void;
+  onSubmit: () => void;
+}
+
+function FeedbackSection({
+  existingRating, existingFeedback, isCustomer, alreadySubmitted,
+  rating, hover, text, submitting, onRating, onHover, onText, onSubmit,
+}: FeedbackSectionProps) {
+  const hasExisting = existingRating !== undefined && existingRating !== null;
+  const showForm = isCustomer && !hasExisting && !alreadySubmitted;
+  const displayRating = hasExisting ? existingRating : (alreadySubmitted ? rating : null);
+
+  const starLabel = ['', 'Poor', 'Fair', 'Good', 'Very Good', 'Excellent'];
+
+  return (
+    <section>
+      <div className="flex items-center gap-2 mb-4">
+        <Star className="h-4 w-4 text-on-surface-variant" />
+        <h3 className="label-technical">Customer Feedback</h3>
+      </div>
+
+      <div className="bg-surface-container-lowest rounded-[1rem] p-6 space-y-4">
+        {/* Already submitted or has existing rating — read-only display */}
+        {(hasExisting || alreadySubmitted) && displayRating !== null && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1">
+                {[1, 2, 3, 4, 5].map((s) => (
+                  <Star
+                    key={s}
+                    className={`h-5 w-5 ${s <= displayRating ? 'fill-accent-orange-400 text-accent-orange-400' : 'text-on-surface-variant/30'}`}
+                  />
+                ))}
+              </div>
+              <span className="text-sm font-semibold text-on-surface">{starLabel[displayRating]}</span>
+              <span className="text-xs text-on-surface-variant">({displayRating}/5)</span>
+            </div>
+            {(existingFeedback || (alreadySubmitted && text)) && (
+              <div className="flex items-start gap-2 text-sm text-on-surface-variant bg-surface-container-low rounded-[0.75rem] px-4 py-3">
+                <MessageSquare className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                <p className="leading-relaxed">{existingFeedback || text}</p>
+              </div>
+            )}
+            {alreadySubmitted && !hasExisting && (
+              <p className="text-xs text-green-600 font-medium flex items-center gap-1.5">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                Thank you for your feedback!
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* No feedback yet — non-customer */}
+        {!hasExisting && !alreadySubmitted && !isCustomer && (
+          <p className="text-sm text-on-surface-variant italic">No feedback submitted yet.</p>
+        )}
+
+        {/* Interactive form for customer */}
+        {showForm && (
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm text-on-surface-variant mb-3">How satisfied are you with the resolution?</p>
+              <div className="flex items-center gap-1">
+                {[1, 2, 3, 4, 5].map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => onRating(s)}
+                    onMouseEnter={() => onHover(s)}
+                    onMouseLeave={() => onHover(0)}
+                    className="p-0.5 transition-transform hover:scale-110 focus:outline-none"
+                    aria-label={`Rate ${s} out of 5`}
+                  >
+                    <Star
+                      className={`h-7 w-7 transition-colors ${
+                        s <= (hover || rating)
+                          ? 'fill-accent-orange-400 text-accent-orange-400'
+                          : 'text-on-surface-variant/30'
+                      }`}
+                    />
+                  </button>
+                ))}
+                {(hover || rating) > 0 && (
+                  <span className="ml-2 text-sm font-semibold text-accent-orange-600">
+                    {starLabel[hover || rating]}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <textarea
+                value={text}
+                onChange={(e) => onText(e.target.value)}
+                placeholder="Share more details about your experience (optional)"
+                rows={3}
+                className="w-full text-sm bg-surface-container-low border border-border rounded-[0.75rem] px-4 py-3 text-on-surface placeholder:text-on-surface-variant/50 resize-none focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400 transition"
+              />
+            </div>
+
+            <Button
+              size="sm"
+              onClick={onSubmit}
+              disabled={rating === 0 || submitting}
+              className="gap-1.5"
+            >
+              <Star className="h-3.5 w-3.5" />
+              {submitting ? 'Submitting...' : 'Submit Feedback'}
+            </Button>
+          </div>
+        )}
+      </div>
+    </section>
   );
 }
