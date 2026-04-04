@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { AnimatePresence, motion } from "framer-motion";
-import { X, Sparkles, ChevronDown } from "lucide-react";
+import { X, ChevronDown } from "lucide-react";
+import logo from "@/assets/logo_extracted.png";
 import { NavLink } from "react-router-dom";
 import { useState } from "react";
 
@@ -63,13 +64,7 @@ export function SidebarMobile({ links, isMobileOpen, setIsMobileOpen }: SidebarM
             {/* Header */}
             <div className="relative flex justify-between items-center mb-8">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-[1rem] bg-primary-gradient flex items-center justify-center">
-                  <Sparkles className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-lg font-bold text-on-surface">TicketHub</h1>
-                  <p className="text-xs text-on-surface-variant">Support System</p>
-                </div>
+                <img src={logo} alt="Logo" className="h-10 w-auto object-contain" />
               </div>
               <Button
                 variant="ghost"

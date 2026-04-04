@@ -51,16 +51,21 @@ export default function Tickets() {
   const [closedDateFrom, setClosedDateFrom] = useState('');
   const [closedDateTo, setClosedDateTo] = useState('');
 
+  // Supporting data — fetch once on mount
   useEffect(() => {
-    const initialParams: any = { page: 1, limit: ITEMS_PER_PAGE };
-    if (userType === 'customer' && user?._id) initialParams.customer = user._id;
-    dispatch(fetchTickets(initialParams));
     dispatch(fetchConsultants());
     dispatch(fetchSources({ isActive: true }));
     dispatch(fetchCustomers());
     dispatch(fetchDepartments());
     dispatch(fetchServiceTypes());
   }, []);
+
+  // Ticket fetch — depends on user._id so it re-runs if getProfile() updates the customer ID
+  useEffect(() => {
+    const initialParams: any = { page: 1, limit: ITEMS_PER_PAGE };
+    if (userType === 'customer' && user?._id) initialParams.customer = user._id;
+    dispatch(fetchTickets(initialParams));
+  }, [user?._id]);
 
   // Re-fetch when any filter changes
   useEffect(() => {
@@ -89,7 +94,7 @@ export default function Tickets() {
 
     setCurrentPage(1);
     dispatch(fetchTickets(params));
-  }, [statusFilter, priorityFilter, sourceFilter, departmentFilter, assignedByFilter, serviceTypeFilter, customerFilter, startDate, endDate, createdDateFrom, createdDateTo, closedDateFrom, closedDateTo]);
+  }, [statusFilter, priorityFilter, sourceFilter, departmentFilter, assignedByFilter, serviceTypeFilter, customerFilter, startDate, endDate, createdDateFrom, createdDateTo, closedDateFrom, closedDateTo, user?._id]);
 
   const getFilterParams = (pageNum: number) => {
     const params: any = {

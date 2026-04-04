@@ -44,6 +44,7 @@ const ViewTicket = lazy(() => import("@/pages/tickets/viewTicket"));
 const Consultants = lazy(() => import("@/pages/consultants/consultants"));
 const CreateConsultant = lazy(() => import("@/pages/consultants/createConsultant"));
 const EditConsultant = lazy(() => import("@/pages/consultants/editConsultant"));
+const ViewConsultant = lazy(() => import("@/pages/consultants/viewConsultant"));
 const ConsultantDashboard = lazy(() => import("@/pages/consultants/consultantDashboard"));
 
 // Category Module
@@ -144,6 +145,7 @@ export const routes: RouteObject[] = [
       { path: "/consultants", element: <Lazy><Consultants /></Lazy> },
       { path: "/consultants/create", element: <Lazy><CreateConsultant /></Lazy> },
       { path: "/consultants/edit/:id", element: <Lazy><EditConsultant /></Lazy> },
+      { path: "/consultants/view/:id", element: <Lazy><ViewConsultant /></Lazy> },
       { path: "/consultants/dashboard", element: <Lazy><ConsultantDashboard /></Lazy> },
 
       // Category Routes

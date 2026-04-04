@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
-import { Menu, ChevronLeft, Sparkles, ChevronDown } from "lucide-react";
+import { Menu, ChevronLeft, ChevronDown } from "lucide-react";
+import logo from "@/assets/logo_extracted.png";
 import { NavLink } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
@@ -60,13 +61,7 @@ export function SidebarDesktop({ links, isOpen, setIsOpen }: SidebarDesktopProps
             transition={{ duration: 0.3 }}
             className={`flex items-center gap-3 ${!isOpen && "hidden"}`}
           >
-            <div className="h-10 w-10 rounded-[1rem] bg-primary-gradient flex items-center justify-center">
-              <Sparkles className="h-5 w-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-lg font-bold text-on-surface whitespace-nowrap">TicketHub</h1>
-              <p className="text-[10px] text-on-surface-variant whitespace-nowrap">Support System</p>
-            </div>
+            <img src={logo} alt="Logo" className="h-10 w-auto object-contain" />
           </motion.div>
 
           <Button

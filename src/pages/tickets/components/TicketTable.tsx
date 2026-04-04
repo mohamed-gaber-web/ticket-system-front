@@ -228,13 +228,15 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
             <TableRow>
               <TableHead className="min-w-[100px]">Ticket #</TableHead>
               <TableHead className="min-w-[200px]">Subject</TableHead>
-              <TableHead className="min-w-[150px]">Customer</TableHead>
+              <TableHead className="min-w-[140px]">Customer</TableHead>
+              <TableHead className="min-w-[140px]">Assignee</TableHead>
+              <TableHead className="min-w-[140px]">Company</TableHead>
               <TableHead className="min-w-[100px]">Priority</TableHead>
               <TableHead className="min-w-[120px]">Status</TableHead>
-              <TableHead className="min-w-[100px]">Source</TableHead>
-              <TableHead className="min-w-[120px]">Closed At</TableHead>
-              <TableHead className="min-w-[140px]">Accepted By</TableHead>
-              <TableHead className="text-right min-w-[120px]">Actions</TableHead>
+              <TableHead className="min-w-[120px]">Created Date</TableHead>
+              <TableHead className="min-w-[120px]">Delivery Date</TableHead>
+              <TableHead className="min-w-[160px]">Customer Email</TableHead>
+              {!isCustomer && <TableHead className="text-right min-w-[80px]">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -255,9 +257,18 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                           <GitBranch className="h-3 w-3 text-brand-400 flex-shrink-0" />
                         </div>
                       )}
-                      <span className="font-semibold text-on-surface text-sm whitespace-nowrap">
-                        #{ticket.ticketNumber}
-                      </span>
+                      {isCustomer ? (
+                        <button
+                          onClick={() => navigate(`/tickets/view/${ticket._id}`)}
+                          className="font-semibold text-brand-600 text-sm whitespace-nowrap hover:underline"
+                        >
+                          #{ticket.ticketNumber}
+                        </button>
+                      ) : (
+                        <span className="font-semibold text-on-surface text-sm whitespace-nowrap">
+                          #{ticket.ticketNumber}
+                        </span>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -276,40 +287,17 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                       )}
                     </div>
                   </TableCell>
+                  {/* Customer (contact person) */}
                   <TableCell>
                     {ticket.customer && typeof ticket.customer === 'object' ? (
-                      <div>
-                        <p className="text-sm font-medium text-on-surface">{ticket.customer.companyName}</p>
-                        {ticket.customer.contactPerson && (
-                          <p className="text-xs text-on-surface-variant mt-0.5">{ticket.customer.contactPerson}</p>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="text-on-surface-variant/40">&mdash;</span>
-                    )}
-                  </TableCell>
-                  <TableCell>{getPriorityDisplay(ticket.priority)}</TableCell>
-                  <TableCell>{getStatusBadge(ticket.status)}</TableCell>
-                  <TableCell>
-                    {ticket.source && typeof ticket.source === 'object' ? (
-                      <span className="text-sm text-on-surface">{(ticket.source as any).name}</span>
-                    ) : (
-                      <span className="text-on-surface-variant/40">&mdash;</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {ticket.closedAt ? (
-                      <span className="text-sm text-on-surface">
-                        {new Date(ticket.closedAt).toLocaleTimeString('en-US', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                          hour12: true,
-                        })}
+                      <span className="text-sm font-medium text-on-surface">
+                        {ticket.customer.contactPerson || <span className="text-on-surface-variant/40">&mdash;</span>}
                       </span>
                     ) : (
                       <span className="text-on-surface-variant/40">&mdash;</span>
                     )}
                   </TableCell>
+                  {/* Assignee */}
                   <TableCell>
                     {isConsultant && !isSubTicket && ticket.status === 'new' && !ticket.acceptedBy ? (
                       <Button
@@ -323,16 +311,52 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                         Accept
                       </Button>
                     ) : ticket.acceptedBy ? (
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-on-surface">
-                          {isConsultant && isAcceptedByCurrentUser(ticket) ? 'You' : getAcceptedByName(ticket.acceptedBy)}
-                        </span>
-                      </div>
+                      <span className="text-sm font-medium text-on-surface">
+                        {isConsultant && isAcceptedByCurrentUser(ticket) ? 'You' : getAcceptedByName(ticket.acceptedBy)}
+                      </span>
                     ) : (
                       <span className="text-on-surface-variant/40">&mdash;</span>
                     )}
                   </TableCell>
+                  {/* Company */}
                   <TableCell>
+                    {ticket.customer && typeof ticket.customer === 'object' ? (
+                      <span className="text-sm text-on-surface">{ticket.customer.companyName}</span>
+                    ) : (
+                      <span className="text-on-surface-variant/40">&mdash;</span>
+                    )}
+                  </TableCell>
+                  <TableCell>{getPriorityDisplay(ticket.priority)}</TableCell>
+                  <TableCell>{getStatusBadge(ticket.status)}</TableCell>
+                  {/* Created Date */}
+                  <TableCell>
+                    {ticket.createdAt ? (
+                      <span className="text-sm text-on-surface">
+                        {new Date(ticket.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </span>
+                    ) : (
+                      <span className="text-on-surface-variant/40">&mdash;</span>
+                    )}
+                  </TableCell>
+                  {/* Delivery Date (endDate) */}
+                  <TableCell>
+                    {ticket.endDate ? (
+                      <span className="text-sm text-on-surface">
+                        {new Date(ticket.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </span>
+                    ) : (
+                      <span className="text-on-surface-variant/40">&mdash;</span>
+                    )}
+                  </TableCell>
+                  {/* Customer Email */}
+                  <TableCell>
+                    {ticket.customer && typeof ticket.customer === 'object' && ticket.customer.email ? (
+                      <span className="text-sm text-on-surface">{ticket.customer.email}</span>
+                    ) : (
+                      <span className="text-on-surface-variant/40">&mdash;</span>
+                    )}
+                  </TableCell>
+                  {!isCustomer && <TableCell>
                     <div className="flex items-center justify-end gap-1">
                       <div className="relative" ref={openMenuId === ticket._id ? menuRef : undefined}>
                         <Button
@@ -380,7 +404,7 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                         )}
                       </div>
                     </div>
-                  </TableCell>
+                  </TableCell>}
                 </TableRow>
               );
             })}
