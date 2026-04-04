@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { AnimatePresence, motion } from "framer-motion";
-import { X, ChevronDown } from "lucide-react";
+import { X, ChevronDown, Sparkles } from "lucide-react";
 import logo from "@/assets/logo_extracted.png";
 import { NavLink } from "react-router-dom";
 import { useState } from "react";
