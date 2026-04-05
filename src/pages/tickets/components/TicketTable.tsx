@@ -151,11 +151,12 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
       new: 'bg-accent-orange-400 text-white',
       assigned: 'bg-brand-400 text-white',
       in_progress: 'bg-yellow-500 text-white',
+      customer_pending: 'bg-purple-500 text-white',
       resolved: 'bg-green-500 text-white',
       closed: 'bg-surface-container-highest text-on-surface-variant',
     };
 
-    const displayStatus = status.replace('_', ' ');
+    const displayStatus = status.replace(/_/g, ' ');
 
     return (
       <span

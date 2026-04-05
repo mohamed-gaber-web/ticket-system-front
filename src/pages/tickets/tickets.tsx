@@ -358,6 +358,7 @@ export default function Tickets() {
               { value: 'new', label: 'New' },
               { value: 'assigned', label: 'Assigned' },
               { value: 'in_progress', label: 'In Progress' },
+              { value: 'customer_pending', label: 'Customer Pending' },
               { value: 'resolved', label: 'Resolved' },
               { value: 'closed', label: 'Closed' },
             ]}

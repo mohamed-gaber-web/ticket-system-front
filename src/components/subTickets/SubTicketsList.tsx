@@ -42,6 +42,7 @@ export function SubTicketsList({ parentTicketId, parentTicketNumber, isSubTicket
     new: { bg: 'bg-accent-orange-400', text: 'text-accent-orange-600', label: 'New' },
     assigned: { bg: 'bg-brand-400', text: 'text-brand-500', label: 'Assigned' },
     in_progress: { bg: 'bg-yellow-500', text: 'text-yellow-600', label: 'In Progress' },
+    customer_pending: { bg: 'bg-purple-500', text: 'text-purple-600', label: 'Customer Pending' },
     resolved: { bg: 'bg-green-500', text: 'text-green-600', label: 'Resolved' },
     closed: { bg: 'bg-surface-container-highest', text: 'text-on-surface-variant', label: 'Closed' },
   };
