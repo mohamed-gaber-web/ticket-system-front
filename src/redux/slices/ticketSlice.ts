@@ -333,6 +333,8 @@ const ticketSlice = createSlice({
       .addCase(deleteTicket.fulfilled, (state, action) => {
         state.loading = false;
         state.tickets = state.tickets.filter((t) => t._id !== action.payload);
+        state.total = Math.max(0, state.total - 1);
+        state.pages = Math.max(1, Math.ceil(state.total / 15));
       })
       .addCase(deleteTicket.rejected, (state, action) => {
         state.loading = false;

@@ -3,11 +3,11 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import {
   ChevronDown,
-  Bell,
+  // Bell,       // notifications hidden
   Search,
-  Settings,
-  Moon,
-  Sun,
+  // Settings,   // settings hidden
+  // Moon,       // dark mode hidden
+  // Sun,        // dark mode hidden
   LogOut,
   User,
   Key
@@ -15,33 +15,34 @@ import {
 import { useEffect, useState } from "react";
 import { useAuth } from "@/redux/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
-import { NotificationDropdown } from "@/components/notifications/NotificationDropdown";
-import { useAppDispatch, useAppSelector } from "@/redux/hooks/hooks";
-import { fetchUnreadCount } from "@/redux/slices/notificationSlice";
-import type { NotificationType } from "@/types/notification.types";
+// import { NotificationDropdown } from "@/components/notifications/NotificationDropdown"; // notifications hidden
+// import { useAppDispatch, useAppSelector } from "@/redux/hooks/hooks";                   // notifications hidden
+// import { fetchUnreadCount } from "@/redux/slices/notificationSlice";                    // notifications hidden
+// import type { NotificationType } from "@/types/notification.types";                     // notifications hidden
 
 export default function Header() {
-  const [isDark, setIsDark] = useState(false);
+  // const [isDark, setIsDark] = useState(false);           // dark mode hidden
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
+  // const [showNotifications, setShowNotifications] = useState(false); // notifications hidden
   const { user, userType, logout } = useAuth();
   const navigate = useNavigate();
-  const dispatch = useAppDispatch();
-  const { unreadCount, items } = useAppSelector((state) => state.notifications);
+  // const dispatch = useAppDispatch();                                                     // notifications hidden
+  // const { unreadCount, items } = useAppSelector((state) => state.notifications);        // notifications hidden
 
-  const excludedNotificationTypes: NotificationType[] = [];
-  const visibleUnreadCount =
-    items.filter((n) => !n.isRead && !excludedNotificationTypes.includes(n.notificationType)).length ||
-    unreadCount;
+  // const excludedNotificationTypes: NotificationType[] = [];                             // notifications hidden
+  // const visibleUnreadCount =                                                             // notifications hidden
+  //   items.filter((n) => !n.isRead && !excludedNotificationTypes.includes(n.notificationType)).length ||
+  //   unreadCount;
 
   const userEmail = user?.email || '';
   const userRole = userType === 'customer' ? 'Customer' : userType === 'consultant' ? 'Consultant' : 'User';
 
-  useEffect(() => {
-    if (user?._id && userType) {
-      dispatch(fetchUnreadCount({ userId: user._id, userType }));
-    }
-  }, [dispatch, user?._id, userType]);
+  // Notification fetch — disabled while notifications UI is hidden
+  // useEffect(() => {
+  //   if (user?._id && userType) {
+  //     dispatch(fetchUnreadCount({ userId: user._id, userType }));
+  //   }
+  // }, [dispatch, user?._id, userType]);
 
   const handleLogout = async () => {
     await logout();
@@ -63,7 +64,7 @@ export default function Header() {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setShowUserMenu(false);
-        setShowNotifications(false);
+        // setShowNotifications(false); // notifications hidden
       }
     };
     const handleClick = (e: MouseEvent) => {
@@ -71,9 +72,9 @@ export default function Header() {
       if (showUserMenu && !target.closest('[aria-label="User menu"]') && !target.closest('[role="menu"]')) {
         setShowUserMenu(false);
       }
-      if (showNotifications && !target.closest('[aria-expanded]') && !target.closest('[role="region"]')) {
-        setShowNotifications(false);
-      }
+      // if (showNotifications && !target.closest('[aria-expanded]') && !target.closest('[role="region"]')) {
+      //   setShowNotifications(false);
+      // }
     };
     document.addEventListener('keydown', handleKey);
     document.addEventListener('mousedown', handleClick);
@@ -81,7 +82,7 @@ export default function Header() {
       document.removeEventListener('keydown', handleKey);
       document.removeEventListener('mousedown', handleClick);
     };
-  }, [showUserMenu, showNotifications]);
+  }, [showUserMenu]);
 
   return (
     <header className="sticky top-0 z-50 flex items-center justify-between px-6 py-3 bg-surface-container-lowest/80 backdrop-blur-xl">
@@ -100,7 +101,7 @@ export default function Header() {
 
       {/* Right Side - Actions & User Info */}
       <div className="flex items-center gap-2 ml-auto">
-        {/* Theme Toggle */}
+        {/* Theme Toggle — hidden, re-enable with dark mode setup
         <Button
           variant="ghost"
           size="icon"
@@ -108,14 +109,10 @@ export default function Header() {
           aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
           className="rounded-[1rem] text-on-surface-variant hover:text-on-surface"
         >
-          {isDark ? (
-            <Sun className="h-5 w-5" />
-          ) : (
-            <Moon className="h-5 w-5" />
-          )}
-        </Button>
+          {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+        </Button> */}
 
-        {/* Notifications */}
+        {/* Notifications — hidden, re-enable with notification system
         <div className="relative">
           <Button
             variant="ghost"
@@ -136,11 +133,10 @@ export default function Header() {
               </span>
             )}
           </Button>
-
           <NotificationDropdown isOpen={showNotifications} excludeTypes={excludedNotificationTypes} />
-        </div>
+        </div> */}
 
-        {/* Settings */}
+        {/* Settings — hidden, re-enable when settings page is ready
         <Button
           variant="ghost"
           size="icon"
@@ -148,7 +144,7 @@ export default function Header() {
           className="rounded-[1rem] text-on-surface-variant hover:text-on-surface"
         >
           <Settings className="h-5 w-5" />
-        </Button>
+        </Button> */}
 
         {/* Divider */}
         <div className="h-8 w-px bg-surface-container-high mx-1" role="separator"></div>

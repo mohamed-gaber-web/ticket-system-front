@@ -10,6 +10,7 @@ import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchErpTypes, createErpType } from '@/redux/slices/erpTypeSlice';
 import { fetchVersionNumbers, createVersionNumber } from '@/redux/slices/versionNumberSlice';
 import { fetchConsultants } from '@/redux/slices/consultantSlice';
+import { fetchCompanies } from '@/redux/slices/companySlice';
 import {
   Dialog,
   DialogContent,
@@ -33,9 +34,10 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
   const { erpTypes } = useAppSelector((state) => state.erpTypes);
   const { versionNumbers } = useAppSelector((state) => state.versionNumbers);
   const { consultants } = useAppSelector((state) => state.consultants);
+  const { companies } = useAppSelector((state) => state.companies);
 
   const [formData, setFormData] = useState({
-    companyName: '',
+    company: '',
     contactPerson: '',
     email: '',
     password: '',
@@ -61,6 +63,7 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
     dispatch(fetchErpTypes({ isActive: true }));
     dispatch(fetchVersionNumbers({ isActive: true }));
     dispatch(fetchConsultants({ status: 'active' }));
+    dispatch(fetchCompanies({ isActive: true }));
   }, [dispatch]);
 
   useEffect(() => {
@@ -70,7 +73,7 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
         : [];
 
       setFormData({
-        companyName: customer.companyName || '',
+        company: (typeof customer.company === 'string' ? customer.company : customer.company?._id) || '',
         contactPerson: customer.contactPerson || '',
         email: customer.email || '',
         password: '',
@@ -89,10 +92,8 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.companyName.trim()) {
-      newErrors.companyName = 'Company name is required';
-    } else if (formData.companyName.length < 2) {
-      newErrors.companyName = 'Company name must be at least 2 characters';
+    if (!formData.company) {
+      newErrors.company = 'Company is required';
     }
 
     if (!formData.contactPerson.trim()) {
@@ -179,9 +180,13 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
       return;
     }
 
+    const selectedCompany = companies.find((c) => c._id === formData.company);
+    const companyName = selectedCompany?.name || '';
+
     if (isEditMode) {
       const submitData: UpdateCustomerData = {
-        companyName: formData.companyName,
+        company: formData.company,
+        companyName,
         contactPerson: formData.contactPerson,
         email: formData.email,
         phone: formData.phone,
@@ -198,7 +203,8 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
       await onSubmit(submitData);
     } else {
       const submitData: CreateCustomerData = {
-        companyName: formData.companyName,
+        company: formData.company,
+        companyName,
         contactPerson: formData.contactPerson,
         email: formData.email,
         password: formData.password,
@@ -241,18 +247,26 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
               <div className="space-y-2">
                 <label className="form-label flex items-center gap-2">
                   <Building2 className="w-4 h-4 text-brand-600" />
-                  Company Name <span className="text-error">*</span>
+                  Company <span className="text-error">*</span>
                 </label>
-                <Input
-                  name="companyName"
-                  value={formData.companyName}
-                  onChange={handleChange}
-                  placeholder="Enter company name"
-                  className={`h-11 ${errors.companyName ? 'ring-[2px] ring-error/30' : ''}`}
+                <CustomSelect
+                  value={formData.company}
+                  onChange={(val) => {
+                    setFormData((prev) => ({ ...prev, company: val }));
+                    if (errors.company) setErrors((prev) => ({ ...prev, company: '' }));
+                  }}
+                  placeholder="Select a company"
+                  className={errors.company ? 'ring-[2px] ring-error/30' : ''}
+                  options={[
+                    { value: '', label: 'Select a company' },
+                    ...companies
+                      .filter((c) => c.isActive)
+                      .map((c) => ({ value: c._id, label: c.name })),
+                  ]}
                 />
-                {errors.companyName && (
+                {errors.company && (
                   <p className="text-error text-sm font-medium flex items-center gap-1">
-                    {errors.companyName}
+                    {errors.company}
                   </p>
                 )}
               </div>

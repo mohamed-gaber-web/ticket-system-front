@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import type { Ticket, CreateTicketData, UpdateTicketData } from '@/types/ticket';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,7 @@ import { fetchProductTypes } from '@/redux/slices/productTypeSlice';
 import { fetchServiceTypes } from '@/redux/slices/serviceTypeSlice';
 import { fetchScopes } from '@/redux/slices/scopeSlice';
 import { fetchSources } from '@/redux/slices/sourceSlice';
-import { UserPlus, Upload, X, File, Image as ImageIcon, Video } from 'lucide-react';
+import { UserPlus, Upload, X, File, Image as ImageIcon } from 'lucide-react';
 import { validateFile, formatFileSize } from '@/api/attachmentApi';
 
 interface Props {
@@ -89,6 +89,53 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
 
   const [attachments, setAttachments] = useState<File[]>([]);
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
+  const [estimationAutoCalc, setEstimationAutoCalc] = useState<{ days: number; hours: number } | null>(null);
+
+  // Memoize dropdown options — avoids recreating arrays on every render
+  const customerOptions = useMemo(() => [
+    { value: '', label: customersLoading ? 'Loading customers...' : 'Select a customer' },
+    ...customers.map((c) => ({ value: c._id, label: `${c.companyName} - ${c.email}` })),
+  ], [customers, customersLoading]);
+
+  const categoryOptions = useMemo(() => [
+    { value: '', label: categoriesLoading ? 'Loading categories...' : 'Select a category' },
+    ...categories.map((c) => ({ value: c._id, label: c.name })),
+  ], [categories, categoriesLoading]);
+
+  const environmentOptions = useMemo(() => [
+    { value: '', label: '-- Select Environment --' },
+    ...(environments?.filter(e => e.isActive).map(e => ({ value: e._id, label: e.name })) ?? []),
+  ], [environments]);
+
+  const featureOptions = useMemo(() => [
+    { value: '', label: '-- Select Feature --' },
+    ...(features?.filter(f => f.isActive).map(f => ({ value: f._id, label: f.name })) ?? []),
+  ], [features]);
+
+  const departmentOptions = useMemo(() => [
+    { value: '', label: '-- Select Department --' },
+    ...(departments?.filter(d => d.isActive).map(d => ({ value: d._id, label: d.name })) ?? []),
+  ], [departments]);
+
+  const productTypeOptions = useMemo(() => [
+    { value: '', label: '-- Select Product Type --' },
+    ...(productTypes?.filter(pt => pt.isActive).map(pt => ({ value: pt._id, label: pt.name })) ?? []),
+  ], [productTypes]);
+
+  const serviceTypeOptions = useMemo(() => [
+    { value: '', label: '-- Select Service Type --' },
+    ...(serviceTypes?.filter(st => st.isActive).map(st => ({ value: st._id, label: st.name })) ?? []),
+  ], [serviceTypes]);
+
+  const scopeOptions = useMemo(() => [
+    { value: '', label: '-- Select Scope --' },
+    ...(scopes?.filter(s => s.isActive).map(s => ({ value: s._id, label: s.name })) ?? []),
+  ], [scopes]);
+
+  const sourceOptions = useMemo(() => [
+    { value: '', label: '-- Select Source --' },
+    ...(sources?.filter(s => s.isActive).map(s => ({ value: s._id, label: s.name })) ?? []),
+  ], [sources]);
 
   useEffect(() => {
     // Fetch categories
@@ -170,8 +217,36 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
     }
   }, [initialData, isEdit, customerId]);
 
+  // Auto-calculate estimated time from start/end dates (business days × 8h)
+  useEffect(() => {
+    const { startDate, endDate } = formData;
+    if (!startDate || !endDate) {
+      setEstimationAutoCalc(null);
+      return;
+    }
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    if (end < start) {
+      setEstimationAutoCalc(null);
+      return;
+    }
+    let businessDays = 0;
+    const cursor = new Date(start);
+    while (cursor <= end) {
+      const day = cursor.getDay();
+      if (day !== 5 && day !== 6) businessDays++; // Fri=5, Sat=6 are holidays
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    const hours = businessDays * 8;
+    setEstimationAutoCalc({ days: businessDays, hours });
+    setFormData((prev) => ({ ...prev, estimatedTime: hours }));
+  }, [formData.startDate, formData.endDate]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    // If user manually edits estimatedTime, clear the auto-calc indicator
+    if (name === 'estimatedTime') setEstimationAutoCalc(null);
+    setFormData({ ...formData, [name]: value });
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -209,7 +284,6 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
 
   const getFileIcon = (fileType: string) => {
     if (fileType.startsWith('image/')) return <ImageIcon className="h-5 w-5 text-brand-500" />;
-    if (fileType.startsWith('video/')) return <Video className="h-5 w-5 text-accent-orange-500" />;
     return <File className="h-5 w-5 text-on-surface-variant" />;
   };
 
@@ -223,7 +297,6 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
         alert('Customer information is missing. Please refresh the page and try again.');
         return;
       }
-      console.log('Submitting ticket with data:', createData);
     }
 
     // Clean up empty optional fields before submitting
@@ -259,10 +332,7 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
                 onChange={(val) => setFormData({ ...formData, customer: val } as CreateTicketData)}
                 placeholder={customersLoading ? 'Loading customers...' : 'Select a customer'}
                 disabled={customersLoading}
-                options={[
-                  { value: '', label: customersLoading ? 'Loading customers...' : 'Select a customer' },
-                  ...customers.map((customer) => ({ value: customer._id, label: `${customer.companyName} - ${customer.email}` })),
-                ]}
+                options={customerOptions}
               />
             </div>
           )}
@@ -299,7 +369,7 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
               <div className="flex items-center gap-3">
                 <input
                   type="file"
-                  accept="image/*,video/*,application/pdf"
+                  accept="image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,text/plain"
                   onChange={handleFileChange}
                   multiple
                   className="hidden"
@@ -320,7 +390,7 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
                   </Button>
                 </label>
                 <span className="text-xs text-on-surface-variant">
-                  Images (5MB), Videos (50MB), PDF (10MB)
+                  Images & Documents (PDF, Word, Excel, PowerPoint, TXT) · Max 10MB
                 </span>
               </div>
 
@@ -381,10 +451,7 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
               onChange={(val) => setFormData({ ...formData, category: val })}
               placeholder={categoriesLoading ? 'Loading categories...' : 'Select a category'}
               disabled={categoriesLoading}
-              options={[
-                { value: '', label: categoriesLoading ? 'Loading categories...' : 'Select a category' },
-                ...categories.map((category) => ({ value: category._id, label: category.name })),
-              ]}
+              options={categoryOptions}
             />
           </div>
 
@@ -426,10 +493,7 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
               value={formData.environment || ''}
               onChange={(val) => setFormData({ ...formData, environment: val })}
               placeholder="-- Select Environment --"
-              options={[
-                { value: '', label: '-- Select Environment --' },
-                ...(environments?.filter(env => env.isActive).map((env) => ({ value: env._id, label: env.name })) || []),
-              ]}
+              options={environmentOptions}
             />
           </div>
 
@@ -439,10 +503,7 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
               value={formData.feature || ''}
               onChange={(val) => setFormData({ ...formData, feature: val })}
               placeholder="-- Select Feature --"
-              options={[
-                { value: '', label: '-- Select Feature --' },
-                ...(features?.filter(f => f.isActive).map((feature) => ({ value: feature._id, label: feature.name })) || []),
-              ]}
+              options={featureOptions}
             />
           </div>
 
@@ -452,10 +513,7 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
               value={formData.department || ''}
               onChange={(val) => setFormData({ ...formData, department: val })}
               placeholder="-- Select Department --"
-              options={[
-                { value: '', label: '-- Select Department --' },
-                ...(departments?.filter(d => d.isActive).map((dept) => ({ value: dept._id, label: dept.name })) || []),
-              ]}
+              options={departmentOptions}
             />
           </div>
 
@@ -465,10 +523,7 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
               value={formData.productType || ''}
               onChange={(val) => setFormData({ ...formData, productType: val })}
               placeholder="-- Select Product Type --"
-              options={[
-                { value: '', label: '-- Select Product Type --' },
-                ...(productTypes?.filter(pt => pt.isActive).map((type) => ({ value: type._id, label: type.name })) || []),
-              ]}
+              options={productTypeOptions}
             />
           </div>
 
@@ -478,10 +533,7 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
               value={formData.serviceType || ''}
               onChange={(val) => setFormData({ ...formData, serviceType: val })}
               placeholder="-- Select Service Type --"
-              options={[
-                { value: '', label: '-- Select Service Type --' },
-                ...(serviceTypes?.filter(st => st.isActive).map((type) => ({ value: type._id, label: type.name })) || []),
-              ]}
+              options={serviceTypeOptions}
             />
           </div>
 
@@ -491,10 +543,7 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
               value={formData.scope || ''}
               onChange={(val) => setFormData({ ...formData, scope: val })}
               placeholder="-- Select Scope --"
-              options={[
-                { value: '', label: '-- Select Scope --' },
-                ...(scopes?.filter(s => s.isActive).map((scope) => ({ value: scope._id, label: scope.name })) || []),
-              ]}
+              options={scopeOptions}
             />
           </div>
           <div>
@@ -503,10 +552,7 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
               value={formData.source || ''}
               onChange={(val) => setFormData({ ...formData, source: val })}
               placeholder="-- Select Source --"
-              options={[
-                { value: '', label: '-- Select Source --' },
-                ...(sources?.filter(s => s.isActive).map((source) => ({ value: source._id, label: source.name })) || []),
-              ]}
+              options={sourceOptions}
             />
           </div>
           {/* END NEW FIELDS */}
@@ -539,16 +585,28 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
             </div>
 
             <div className="md:col-span-2">
-              <label className="form-label">Estimated Time (hours)</label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="form-label mb-0">Estimated Time (hours)</label>
+                {estimationAutoCalc && (
+                  <span className="text-xs text-brand-500 font-medium">
+                    Auto: {estimationAutoCalc.days} business day{estimationAutoCalc.days !== 1 ? 's' : ''} × 8h = {estimationAutoCalc.hours}h
+                  </span>
+                )}
+              </div>
               <Input
                 type="number"
                 name="estimatedTime"
                 value={formData.estimatedTime || ''}
                 onChange={handleChange}
-                placeholder="Enter estimated time in hours"
+                placeholder={formData.startDate && formData.endDate ? 'Calculated from dates' : 'Enter estimated time in hours'}
                 min="0"
                 step="0.5"
               />
+              {!formData.startDate || !formData.endDate ? (
+                <p className="text-xs text-on-surface-variant mt-1">Set start & end date to auto-calculate</p>
+              ) : estimationAutoCalc && new Date(formData.endDate) < new Date(formData.startDate) ? (
+                <p className="text-xs text-error mt-1">End date must be after start date</p>
+              ) : null}
             </div>
           </div>
         </div>

@@ -137,6 +137,10 @@ export default function Tickets() {
     try {
       await dispatch(deleteTicket(id)).unwrap();
       toast.success('Ticket deleted successfully!');
+      // tickets.length is pre-delete value; subtract 1 to get post-delete count
+      const remainingOnPage = tickets.length - 1;
+      const targetPage = remainingOnPage === 0 && page > 1 ? page - 1 : page;
+      dispatch(fetchTickets(getFilterParams(targetPage)));
     } catch (error: any) {
       toast.error(error.message || 'Failed to delete ticket');
     }

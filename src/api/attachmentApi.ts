@@ -131,32 +131,30 @@ export const validateFile = (file: File): { valid: boolean; error?: string } => 
     'image/gif',
     'image/webp',
     'image/svg+xml',
-    'video/mp4',
-    'video/webm',
-    'video/quicktime',
-    'video/x-msvideo',
     'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-powerpoint',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'text/plain',
   ];
 
   if (!allowedTypes.includes(file.type)) {
     return {
       valid: false,
-      error: 'Invalid file type. Please upload an image, video, or PDF.',
+      error: 'Invalid file type. Please upload an image or document (PDF, Word, Excel, PowerPoint, TXT).',
     };
   }
 
-  // Validate file size (5MB for images, 50MB for videos)
-  const maxSize = file.type.startsWith('image/')
-    ? 5 * 1024 * 1024 // 5MB
-    : file.type.startsWith('video/')
-    ? 50 * 1024 * 1024 // 50MB
-    : 10 * 1024 * 1024; // 10MB for PDFs
+  // Validate file size (10MB max for all files)
+  const maxSize = 10 * 1024 * 1024; // 10MB
 
   if (file.size > maxSize) {
-    const maxSizeMB = file.type.startsWith('image/') ? '5MB' : file.type.startsWith('video/') ? '50MB' : '10MB';
     return {
       valid: false,
-      error: `File too large. Maximum size: ${maxSizeMB}`,
+      error: 'File too large. Maximum size: 10MB',
     };
   }
 

@@ -231,10 +231,17 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
               <TableHead className="min-w-[140px]">Customer</TableHead>
               <TableHead className="min-w-[140px]">Assignee</TableHead>
               <TableHead className="min-w-[140px]">Company</TableHead>
+              {isConsultant && <TableHead className="min-w-[120px]">Category</TableHead>}
+              {isConsultant && <TableHead className="min-w-[120px]">Module</TableHead>}
               <TableHead className="min-w-[100px]">Priority</TableHead>
               <TableHead className="min-w-[120px]">Status</TableHead>
               <TableHead className="min-w-[120px]">Created Date</TableHead>
+              <TableHead className="min-w-[120px]">Assigned Date</TableHead>
               <TableHead className="min-w-[120px]">Delivery Date</TableHead>
+              <TableHead className="min-w-[120px]">Last Updated</TableHead>
+              <TableHead className="min-w-[120px]">Resolved Date</TableHead>
+              <TableHead className="min-w-[120px]">Closed Date</TableHead>
+              <TableHead className="min-w-[100px]">Sub Tickets</TableHead>
               <TableHead className="min-w-[160px]">Customer Email</TableHead>
               {!isCustomer && <TableHead className="text-right min-w-[80px]">Actions</TableHead>}
             </TableRow>
@@ -326,6 +333,26 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                       <span className="text-on-surface-variant/40">&mdash;</span>
                     )}
                   </TableCell>
+                  {/* Category */}
+                  {isConsultant && (
+                    <TableCell>
+                      {ticket.category && typeof ticket.category === 'object' ? (
+                        <span className="text-sm text-on-surface">{ticket.category.name}</span>
+                      ) : (
+                        <span className="text-on-surface-variant/40">&mdash;</span>
+                      )}
+                    </TableCell>
+                  )}
+                  {/* Environment */}
+                  {isConsultant && (
+                    <TableCell>
+                      {ticket.environment && typeof ticket.environment === 'object' ? (
+                        <span className="text-sm text-on-surface">{ticket.environment.name}</span>
+                      ) : (
+                        <span className="text-on-surface-variant/40">&mdash;</span>
+                      )}
+                    </TableCell>
+                  )}
                   <TableCell>{getPriorityDisplay(ticket.priority)}</TableCell>
                   <TableCell>{getStatusBadge(ticket.status)}</TableCell>
                   {/* Created Date */}
@@ -338,12 +365,60 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                       <span className="text-on-surface-variant/40">&mdash;</span>
                     )}
                   </TableCell>
+                  {/* Assigned Date */}
+                  <TableCell>
+                    {ticket.acceptedAt ? (
+                      <span className="text-sm text-on-surface">
+                        {new Date(ticket.acceptedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </span>
+                    ) : (
+                      <span className="text-on-surface-variant/40">&mdash;</span>
+                    )}
+                  </TableCell>
                   {/* Delivery Date (endDate) */}
                   <TableCell>
                     {ticket.endDate ? (
                       <span className="text-sm text-on-surface">
                         {new Date(ticket.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                       </span>
+                    ) : (
+                      <span className="text-on-surface-variant/40">&mdash;</span>
+                    )}
+                  </TableCell>
+                  {/* Last Updated */}
+                  <TableCell>
+                    {ticket.updatedAt ? (
+                      <span className="text-sm text-on-surface">
+                        {new Date(ticket.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </span>
+                    ) : (
+                      <span className="text-on-surface-variant/40">&mdash;</span>
+                    )}
+                  </TableCell>
+                  {/* Resolved Date */}
+                  <TableCell>
+                    {ticket.resolvedAt ? (
+                      <span className="text-sm text-on-surface">
+                        {new Date(ticket.resolvedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </span>
+                    ) : (
+                      <span className="text-on-surface-variant/40">&mdash;</span>
+                    )}
+                  </TableCell>
+                  {/* Closed Date */}
+                  <TableCell>
+                    {ticket.closedAt ? (
+                      <span className="text-sm text-on-surface">
+                        {new Date(ticket.closedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </span>
+                    ) : (
+                      <span className="text-on-surface-variant/40">&mdash;</span>
+                    )}
+                  </TableCell>
+                  {/* Sub Tickets */}
+                  <TableCell>
+                    {ticket.subTickets && ticket.subTickets.length > 0 ? (
+                      <span className="text-sm font-medium text-on-surface">{ticket.subTickets.length}</span>
                     ) : (
                       <span className="text-on-surface-variant/40">&mdash;</span>
                     )}

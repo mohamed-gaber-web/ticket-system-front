@@ -43,6 +43,20 @@ import {
   MessageSquare,
 } from 'lucide-react';
 
+const PRIORITY_DOT: Record<string, string> = {
+  critical: 'bg-error', high: 'bg-accent-orange-500', medium: 'bg-yellow-500', low: 'bg-green-500',
+};
+const PRIORITY_TEXT: Record<string, string> = {
+  critical: 'text-error', high: 'text-accent-orange-600', medium: 'text-yellow-600', low: 'text-green-600',
+};
+const STATUS_STYLE: Record<string, string> = {
+  new: 'bg-accent-orange-400 text-white',
+  assigned: 'bg-brand-400 text-white',
+  in_progress: 'bg-yellow-500 text-white',
+  resolved: 'bg-green-500 text-white',
+  closed: 'bg-surface-container-highest text-on-surface-variant',
+};
+
 export default function ViewTicket() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -91,8 +105,8 @@ export default function ViewTicket() {
     if (!currentTicket) return;
     setResolving(true);
     try {
+      // updateTicket.fulfilled already sets currentTicket in Redux — no re-fetch needed
       await dispatch(updateTicket({ id: currentTicket._id, data: { status: 'resolved' } })).unwrap();
-      if (id) dispatch(fetchTicketById(id));
     } finally {
       setResolving(false);
     }
@@ -102,8 +116,8 @@ export default function ViewTicket() {
     if (!currentTicket) return;
     setClosing(true);
     try {
+      // updateTicket.fulfilled already sets currentTicket in Redux — no re-fetch needed
       await dispatch(updateTicket({ id: currentTicket._id, data: { status: 'closed' } })).unwrap();
-      if (id) dispatch(fetchTicketById(id));
     } finally {
       setClosing(false);
     }
@@ -120,19 +134,7 @@ export default function ViewTicket() {
     );
   }
 
-  const priorityDot: Record<string, string> = {
-    critical: 'bg-error', high: 'bg-accent-orange-500', medium: 'bg-yellow-500', low: 'bg-green-500',
-  };
-  const priorityText: Record<string, string> = {
-    critical: 'text-error', high: 'text-accent-orange-600', medium: 'text-yellow-600', low: 'text-green-600',
-  };
-  const statusStyle: Record<string, string> = {
-    new: 'bg-accent-orange-400 text-white',
-    assigned: 'bg-brand-400 text-white',
-    in_progress: 'bg-yellow-500 text-white',
-    resolved: 'bg-green-500 text-white',
-    closed: 'bg-surface-container-highest text-on-surface-variant',
-  };
+  // priorityDot, priorityText, statusStyle moved to module-level constants above
 
   const customer = typeof currentTicket.customer === 'string' ? null : currentTicket.customer;
   const category = typeof currentTicket.category === 'string' ? null : currentTicket.category;
@@ -241,12 +243,12 @@ export default function ViewTicket() {
               <span className="text-on-surface-variant font-mono text-sm font-semibold">
                 #{currentTicket.ticketNumber}
               </span>
-              <span className={`px-3 py-1 rounded-[0.5rem] text-xs font-bold uppercase tracking-[0.05em] ${statusStyle[currentTicket.status] || statusStyle.new}`}>
+              <span className={`px-3 py-1 rounded-[0.5rem] text-xs font-bold uppercase tracking-[0.05em] ${STATUS_STYLE[currentTicket.status] || STATUS_STYLE.new}`}>
                 {displayStatus}
               </span>
               <div className="flex items-center gap-1.5">
-                <span className={`w-2 h-2 rounded-full ${priorityDot[currentTicket.priority] || priorityDot.medium}`} />
-                <span className={`text-xs font-bold uppercase tracking-[0.05em] ${priorityText[currentTicket.priority] || priorityText.medium}`}>
+                <span className={`w-2 h-2 rounded-full ${PRIORITY_DOT[currentTicket.priority] || PRIORITY_DOT.medium}`} />
+                <span className={`text-xs font-bold uppercase tracking-[0.05em] ${PRIORITY_TEXT[currentTicket.priority] || PRIORITY_TEXT.medium}`}>
                   {currentTicket.priority}
                 </span>
               </div>

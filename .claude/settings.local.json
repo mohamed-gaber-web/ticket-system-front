@@ -9,7 +9,9 @@
       "Read(//d/Real Project/Ticketing System/front-end/my-react-ts-app/$APPDATA/.claude/**)",
       "Read(//d/Real Project/Ticketing System/front-end/my-react-ts-app/$HOME/.claude/plugins/**)",
       "Bash(npm install:*)",
-      "Read(//d/Real Project/Ticketing System/back-en-and-api/**)"
+      "Read(//d/Real Project/Ticketing System/back-en-and-api/**)",
+      "Bash(xargs grep:*)",
+      "Bash(xargs wc:*)"
     ]
   }
 }

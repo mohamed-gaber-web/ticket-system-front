@@ -18,9 +18,15 @@ export interface ConsultantRef {
   email: string;
 }
 
+export interface CompanyRef {
+  _id: string;
+  name: string;
+}
+
 export interface Customer {
   _id: string;
   companyName: string;
+  company?: CompanyRef | string;
   contactPerson: string;
   email: string;
   phone: string;
@@ -36,7 +42,8 @@ export interface Customer {
 }
 
 export interface CreateCustomerData {
-  companyName: string;
+  companyName?: string;
+  company?: string;
   contactPerson: string;
   email: string;
   password: string;
@@ -51,6 +58,7 @@ export interface CreateCustomerData {
 
 export interface UpdateCustomerData {
   companyName?: string;
+  company?: string;
   contactPerson?: string;
   email?: string;
   phone?: string;

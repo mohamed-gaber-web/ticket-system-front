@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
-import { Mail, Lock, Eye, EyeOff, LogIn, Sparkles, Users } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, LogIn, Users } from 'lucide-react';
+import logoSvg from '@/assets/logo.svg';
 
 const SigninPage = () => {
   const dispatch = useAppDispatch();
@@ -138,8 +139,8 @@ const SigninPage = () => {
           transition={{ delay: 0.2 }}
           className="text-center mb-8"
         >
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-[1.25rem] bg-primary-gradient mb-4">
-            <Sparkles className="w-8 h-8 text-white" />
+          <div className="inline-flex items-center justify-center mb-4">
+            <img src={logoSvg} alt="Logo" className="h-16 w-auto" />
           </div>
           <h1 className="display-sm text-on-surface">
             Welcome Back

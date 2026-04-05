@@ -41,12 +41,9 @@ api.interceptors.request.use(
       config.headers['Authorization'] = `Bearer ${token}`;
     }
 
-    // Log request for debugging (remove in production)
-    console.log('API Request:', {
-      method: config.method?.toUpperCase(),
-      url: config.url,
-      headers: config.headers,
-    });
+    if (import.meta.env.DEV) {
+      console.log('API Request:', { method: config.method?.toUpperCase(), url: config.url });
+    }
 
     return config;
   },
@@ -59,12 +56,9 @@ api.interceptors.request.use(
 // Response interceptor - Handle 401 errors and refresh token
 api.interceptors.response.use(
   (response) => {
-    // Log successful response (remove in production)
-    console.log('API Response:', {
-      status: response.status,
-      url: response.config.url,
-      data: response.data,
-    });
+    if (import.meta.env.DEV) {
+      console.log('API Response:', { status: response.status, url: response.config.url });
+    }
     return response;
   },
   async (error) => {
