@@ -171,9 +171,11 @@ export default function Tickets() {
   ].filter(Boolean).length;
 
   const EXPORT_HEADERS = [
-    'Ticket Number', 'Subject', 'Customer', 'Assignee', 'Company',
-    'Priority', 'Status', 'Created Date', 'End Date',
-    'Category', 'Source', 'Customer Email',
+    'Ticket #', 'Subject', 'Customer', 'Assignee', 'Company',
+    'Category', 'Module', 'Priority', 'Status',
+    'Created Date', 'Assigned Date', 'Delivery Date',
+    'Last Updated', 'Resolved Date', 'Closed Date',
+    'Sub Tickets', 'Customer Email',
   ];
 
   const fmtDate = (date?: string) =>
@@ -182,20 +184,25 @@ export default function Tickets() {
   const getExportValues = (ticket: Ticket): string[] => {
     const customerObj = typeof ticket.customer === 'object' && ticket.customer ? ticket.customer as any : null;
     const categoryObj = typeof ticket.category === 'object' && ticket.category ? (ticket.category as Category) : null;
-    const sourceObj = typeof ticket.source === 'object' && ticket.source ? ticket.source as any : null;
+    const environmentObj = typeof ticket.environment === 'object' && ticket.environment ? ticket.environment as any : null;
     const assigneeObj = typeof ticket.acceptedBy === 'object' && ticket.acceptedBy ? (ticket.acceptedBy as TicketConsultant) : null;
     return [
       ticket.ticketNumber,
       ticket.subject,
-      customerObj?.companyName ?? '',
+      customerObj?.contactPerson ?? '',
       assigneeObj ? `${assigneeObj.firstName} ${assigneeObj.lastName}` : '',
       customerObj?.companyName ?? '',
-      ticket.priority,
-      ticket.status.replace('_', ' '),
-      fmtDate(ticket.createdAt),
-      fmtDate(ticket.endDate),
       categoryObj?.name ?? '',
-      sourceObj?.name ?? '',
+      environmentObj?.name ?? '',
+      ticket.priority,
+      ticket.status.replace(/_/g, ' '),
+      fmtDate(ticket.createdAt),
+      fmtDate(ticket.acceptedAt),
+      fmtDate(ticket.endDate),
+      fmtDate(ticket.updatedAt),
+      fmtDate(ticket.resolvedAt),
+      fmtDate(ticket.closedAt),
+      String(ticket.subTickets?.length ?? 0),
       customerObj?.email ?? '',
     ];
   };
@@ -226,7 +233,7 @@ export default function Tickets() {
     doc.setFontSize(16);
     doc.text('Tickets Report', 14, 18);
     doc.setFontSize(9);
-    doc.text(`Generated: ${new Date().toLocaleString()}  |  Total: ${tickets.length}`, 14, 25);
+    doc.text(`Generated: ${new Date().toLocaleString()}  |  Total: ${total}`, 14, 25);
     autoTable(doc, {
       head: [EXPORT_HEADERS],
       body: tickets.map((t) => getExportValues(t)),
