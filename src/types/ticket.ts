@@ -85,6 +85,7 @@ export interface Ticket {
   category: string | Category;
   priority: 'low' | 'medium' | 'high' | 'critical';
   status: 'new' | 'assigned' | 'in_progress' | 'resolved' | 'closed' | 'customer_pending';
+  notifyEmails?: string[];
   sla?: string | SLA;
   assignedTeam?: string | Team;
   assignedBy?: string | Consultant;
@@ -133,6 +134,7 @@ export interface CreateTicketData {
   category: string;
   priority: 'low' | 'medium' | 'high' | 'critical';
   startDate?: string;
+  notifyEmails?: string[];
   // New optional properties
   environment?: string;
   feature?: string;
@@ -150,6 +152,7 @@ export interface CreateSubTicketData {
   category?: string;
   assignedTeam?: string;
   assignedBy?: string;
+  notifyEmails?: string[];
 }
 
 export interface SubTicketsQueryParams {

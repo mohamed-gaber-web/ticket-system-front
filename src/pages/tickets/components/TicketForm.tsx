@@ -14,7 +14,7 @@ import { fetchProductTypes } from '@/redux/slices/productTypeSlice';
 import { fetchServiceTypes } from '@/redux/slices/serviceTypeSlice';
 import { fetchScopes } from '@/redux/slices/scopeSlice';
 import { fetchSources } from '@/redux/slices/sourceSlice';
-import { UserPlus, Upload, X, File, Image as ImageIcon } from 'lucide-react';
+import { UserPlus, Upload, X, File, Image as ImageIcon, Mail, Plus } from 'lucide-react';
 import { validateFile, formatFileSize } from '@/api/attachmentApi';
 
 interface Props {
@@ -85,6 +85,9 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
 
   const [attachments, setAttachments] = useState<File[]>([]);
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
+  const [notifyEmails, setNotifyEmails] = useState<string[]>([]);
+  const [notifyEmailInput, setNotifyEmailInput] = useState('');
+  const [notifyEmailError, setNotifyEmailError] = useState<string | null>(null);
 
   // Memoize dropdown options — avoids recreating arrays on every render
   const customerOptions = useMemo(() => [
@@ -251,6 +254,34 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
     return <File className="h-5 w-5 text-on-surface-variant" />;
   };
 
+  const addNotifyEmail = () => {
+    const email = notifyEmailInput.trim().toLowerCase();
+    const emailRegex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
+    if (!email) return;
+    if (!emailRegex.test(email)) {
+      setNotifyEmailError('Invalid email address');
+      return;
+    }
+    if (notifyEmails.includes(email)) {
+      setNotifyEmailError('Email already added');
+      return;
+    }
+    setNotifyEmails([...notifyEmails, email]);
+    setNotifyEmailInput('');
+    setNotifyEmailError(null);
+  };
+
+  const removeNotifyEmail = (email: string) => {
+    setNotifyEmails(notifyEmails.filter((e) => e !== email));
+  };
+
+  const handleNotifyEmailKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addNotifyEmail();
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -268,7 +299,11 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
       Object.entries(formData).filter(([_, value]) => value !== '' && value !== undefined)
     );
 
-    onSubmit(cleanedData as CreateTicketData | UpdateTicketData, attachments);
+    const finalData = isEdit
+      ? cleanedData
+      : { ...cleanedData, notifyEmails };
+
+    onSubmit(finalData as CreateTicketData | UpdateTicketData, attachments);
   };
 
   return (
@@ -462,6 +497,60 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
                 onChange={handleChange}
               />
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* NOTIFICATION EMAILS SECTION - Create mode only */}
+      {!isEdit && (
+        <div className="space-y-4">
+          <h3 className="form-section-title">Notification Emails</h3>
+          <p className="text-sm text-on-surface-variant -mt-2">
+            Add extra email addresses to be notified when this ticket is created.
+          </p>
+          <div className="space-y-3">
+            <div className="flex gap-2">
+              <div className="flex-1 relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-on-surface-variant pointer-events-none" />
+                <Input
+                  type="email"
+                  value={notifyEmailInput}
+                  onChange={(e) => { setNotifyEmailInput(e.target.value); setNotifyEmailError(null); }}
+                  onKeyDown={handleNotifyEmailKeyDown}
+                  placeholder="email@example.com"
+                  className="pl-9"
+                />
+              </div>
+              <Button type="button" variant="outline" onClick={addNotifyEmail} className="shrink-0">
+                <Plus className="h-4 w-4 mr-1" />
+                Add
+              </Button>
+            </div>
+
+            {notifyEmailError && (
+              <p className="text-sm text-error">{notifyEmailError}</p>
+            )}
+
+            {notifyEmails.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {notifyEmails.map((email) => (
+                  <span
+                    key={email}
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm bg-surface-container border border-outline-variant"
+                  >
+                    <Mail className="h-3.5 w-3.5 text-on-surface-variant" />
+                    {email}
+                    <button
+                      type="button"
+                      onClick={() => removeNotifyEmail(email)}
+                      className="ml-0.5 text-on-surface-variant hover:text-error transition-colors"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

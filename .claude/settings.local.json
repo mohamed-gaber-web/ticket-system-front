@@ -11,7 +11,8 @@
       "Bash(npm install:*)",
       "Read(//d/Real Project/Ticketing System/back-en-and-api/**)",
       "Bash(xargs grep:*)",
-      "Bash(xargs wc:*)"
+      "Bash(xargs wc:*)",
+      "Bash(grep -E \"\\\\.\\(ts|tsx|js\\)$\")"
     ]
   }
 }

@@ -16,7 +16,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, UserCheck } from 'lucide-react';
+import { Plus, UserCheck, Mail, X } from 'lucide-react';
 import { ConsultantSelect } from '@/components/ui/consultant-select';
 import { CustomSelect } from '@/components/ui/custom-select';
 import type { CreateSubTicketData } from '@/types/ticket';
@@ -39,6 +39,9 @@ export function CreateSubTicketDialog({
     priority: 'medium',
   });
   const [selectedConsultants, setSelectedConsultants] = useState<string[]>([]);
+  const [notifyEmails, setNotifyEmails] = useState<string[]>([]);
+  const [notifyEmailInput, setNotifyEmailInput] = useState('');
+  const [notifyEmailError, setNotifyEmailError] = useState<string | null>(null);
 
   const dispatch = useAppDispatch();
   const { loading } = useAppSelector((state) => state.tickets);
@@ -51,12 +54,24 @@ export function CreateSubTicketDialog({
     }
   }, [dispatch, open]);
 
+  const addNotifyEmail = () => {
+    const email = notifyEmailInput.trim().toLowerCase();
+    const emailRegex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
+    if (!email) return;
+    if (!emailRegex.test(email)) { setNotifyEmailError('Invalid email address'); return; }
+    if (notifyEmails.includes(email)) { setNotifyEmailError('Email already added'); return; }
+    setNotifyEmails([...notifyEmails, email]);
+    setNotifyEmailInput('');
+    setNotifyEmailError(null);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const dataToSend: CreateSubTicketData = {
       ...formData,
       assignedBy: user?._id,
+      notifyEmails,
     };
 
     const result = await dispatch(createSubTicket({
@@ -90,6 +105,8 @@ export function CreateSubTicketDialog({
         priority: 'medium',
       });
       setSelectedConsultants([]);
+      setNotifyEmails([]);
+      setNotifyEmailInput('');
       onSuccess?.();
     }
   };
@@ -148,6 +165,59 @@ export function CreateSubTicketDialog({
               />
             </div>
 
+
+            <div className="pt-2">
+              <div className="h-px bg-surface-container-high -mx-2 mb-4" />
+              <div className="flex items-center gap-2 mb-1">
+                <Mail className="h-5 w-5 text-on-surface-variant" />
+                <Label className="text-base font-semibold">Notification Emails</Label>
+              </div>
+              <p className="text-sm text-on-surface-variant mb-3">
+                Add extra email addresses to notify when this sub-ticket is created.
+              </p>
+              <div className="flex gap-2 mb-2">
+                <div className="flex-1 relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-on-surface-variant pointer-events-none" />
+                  <Input
+                    type="email"
+                    value={notifyEmailInput}
+                    onChange={(e) => { setNotifyEmailInput(e.target.value); setNotifyEmailError(null); }}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addNotifyEmail(); } }}
+                    placeholder="email@example.com"
+                    className="pl-9"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={addNotifyEmail}
+                  className="shrink-0 inline-flex items-center gap-1 px-3 py-2 rounded-md border border-outline text-sm hover:bg-surface-container transition-colors"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add
+                </button>
+              </div>
+              {notifyEmailError && <p className="text-sm text-error mb-2">{notifyEmailError}</p>}
+              {notifyEmails.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {notifyEmails.map((email) => (
+                    <span
+                      key={email}
+                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm bg-surface-container border border-outline-variant"
+                    >
+                      <Mail className="h-3.5 w-3.5 text-on-surface-variant" />
+                      {email}
+                      <button
+                        type="button"
+                        onClick={() => setNotifyEmails(notifyEmails.filter((e) => e !== email))}
+                        className="ml-0.5 text-on-surface-variant hover:text-error transition-colors"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
 
             <div className="pt-4">
               <div className="h-px bg-surface-container-high -mx-2 mb-4" />

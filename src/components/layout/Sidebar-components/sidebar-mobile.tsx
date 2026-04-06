@@ -5,7 +5,7 @@ import logo from "@/assets/logo_extracted.png";
 import { NavLink } from "react-router-dom";
 import { useState } from "react";
 
-interface NavLink {
+interface NavLinkItem {
   name: string;
   path: string;
   icon: React.ElementType;
@@ -15,10 +15,10 @@ interface NavGroup {
   name: string;
   icon: React.ElementType;
   isGroup: true;
-  children: NavLink[];
+  children: NavLinkItem[];
 }
 
-type NavigationItem = NavLink | NavGroup;
+type NavigationItem = NavLinkItem | NavGroup;
 
 interface SidebarMobileProps {
   links: NavigationItem[];
@@ -26,20 +26,19 @@ interface SidebarMobileProps {
   setIsMobileOpen: (isOpen: boolean) => void;
 }
 
+function isGroup(item: NavigationItem): item is NavGroup {
+  return "isGroup" in item && item.isGroup === true;
+}
+
 export function SidebarMobile({ links, isMobileOpen, setIsMobileOpen }: SidebarMobileProps) {
   const [expandedGroups, setExpandedGroups] = useState<string[]>(["Modules"]);
 
-  const toggleGroup = (groupName: string) => {
+  const toggleGroup = (name: string) =>
     setExpandedGroups((prev) =>
-      prev.includes(groupName)
-        ? prev.filter((name) => name !== groupName)
-        : [...prev, groupName]
+      prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name]
     );
-  };
 
-  const isGroup = (item: NavigationItem): item is NavGroup => {
-    return 'isGroup' in item && item.isGroup === true;
-  };
+  const close = () => setIsMobileOpen(false);
 
   return (
     <AnimatePresence>
@@ -48,199 +47,193 @@ export function SidebarMobile({ links, isMobileOpen, setIsMobileOpen }: SidebarM
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.3 }}
-          className="fixed inset-0 bg-on-surface/30 backdrop-blur-sm z-40 md:hidden"
+          transition={{ duration: 0.25 }}
+          className="fixed inset-0 bg-on-surface/40 backdrop-blur-sm z-40 md:hidden"
           role="presentation"
-          onClick={() => setIsMobileOpen(false)}
+          onClick={close}
         >
           <motion.aside
             initial={{ x: "-100%" }}
             animate={{ x: 0 }}
             exit={{ x: "-100%" }}
-            transition={{ type: "spring", stiffness: 80, damping: 15 }}
-            className="absolute left-0 top-0 w-80 h-full bg-surface-container-low p-6 shadow-ambient z-50 flex flex-col relative overflow-y-auto"
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            className="absolute left-0 top-0 w-72 h-full bg-surface-container-low border-r border-outline-variant/20 z-50 flex flex-col overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header */}
-            <div className="relative flex justify-between items-center mb-8">
-              <div className="flex items-center gap-3">
-                <img src={logo} alt="Logo" className="h-10 w-auto object-contain" />
-              </div>
+            {/* ── Header ── */}
+            <div className="flex items-center justify-between px-4 py-4 border-b border-outline-variant/15">
+              <img src={logo} alt="Logo" className="h-8 w-auto object-contain" />
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => setIsMobileOpen(false)}
+                onClick={close}
                 aria-label="Close navigation menu"
-                className="rounded-[1rem] text-on-surface-variant hover:text-on-surface relative z-10"
+                className="rounded-xl text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high"
               >
                 <X className="h-5 w-5" />
               </Button>
             </div>
 
-            {/* Navigation Label */}
-            <div className="relative mb-3">
-              <p className="label-technical px-3">
-                Main Menu
-              </p>
+            {/* ── Nav label ── */}
+            <div className="px-4 pt-5 pb-2">
+              <div className="flex items-center gap-2">
+                <span className="label-technical text-on-surface-variant/50 shrink-0">
+                  Main Menu
+                </span>
+                <div className="flex-1 h-px bg-outline-variant/25" />
+              </div>
             </div>
 
-            {/* Navigation */}
-            <nav className="space-y-1 relative flex-1" aria-label="Main navigation">
+            {/* ── Navigation ── */}
+            <nav className="flex-1 px-2 space-y-0.5 pb-4" aria-label="Main navigation">
               {links.map((item, index) => {
                 if (isGroup(item)) {
-                  const isExpanded = expandedGroups.includes(item.name);
+                  const expanded = expandedGroups.includes(item.name);
                   return (
                     <div key={item.name}>
-                      {/* Group Header */}
+                      {/* Group header */}
                       <button
                         onClick={() => toggleGroup(item.name)}
-                        aria-expanded={isExpanded}
-                        aria-label={`${item.name} section`}
-                        className="w-full flex items-center gap-3 px-4 py-3 rounded-[1rem] text-sm font-medium transition-all duration-200 relative group text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface cursor-pointer"
+                        aria-expanded={expanded}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors duration-150 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
                       >
                         <motion.div
                           initial={{ scale: 0.8, opacity: 0 }}
                           animate={{ scale: 1, opacity: 1 }}
-                          transition={{ duration: 0.3, delay: index * 0.05 }}
-                          className="relative z-10"
+                          transition={{ delay: index * 0.04 }}
+                          className="shrink-0"
                         >
-                          <item.icon className="h-5 w-5 shrink-0" />
+                          <item.icon className="h-5 w-5" />
                         </motion.div>
-
-                        <span className="relative z-10 flex-1 text-left">
-                          {item.name}
-                        </span>
+                        <span className="flex-1 text-left">{item.name}</span>
                         <motion.div
-                          animate={{ rotate: isExpanded ? 0 : -90 }}
+                          animate={{ rotate: expanded ? 0 : -90 }}
                           transition={{ duration: 0.2 }}
-                          className="relative z-10"
+                          className="shrink-0"
                         >
                           <ChevronDown className="h-4 w-4" />
                         </motion.div>
                       </button>
 
-                      {/* Group Children */}
+                      {/* Group children */}
                       <AnimatePresence>
-                        {isExpanded && (
+                        {expanded && (
                           <motion.div
                             initial={{ height: 0, opacity: 0 }}
                             animate={{ height: "auto", opacity: 1 }}
                             exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.3 }}
-                            className="overflow-hidden ml-6 mt-1 space-y-0.5"
+                            transition={{ duration: 0.25 }}
+                            className="overflow-hidden"
                           >
-                            {item.children.map((child, childIndex) => (
-                              <NavLink
-                                key={child.path}
-                                to={child.path}
-                                onClick={() => setIsMobileOpen(false)}
-                                className={({ isActive }) =>
-                                  `flex items-center gap-3 px-4 py-2 rounded-[1rem] text-sm font-medium transition-all duration-200 relative group ${
-                                    isActive
-                                      ? "bg-primary-fixed text-on-primary-fixed font-semibold"
-                                      : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
-                                  }`
-                                }
-                              >
-                                {({ isActive }) => (
-                                  <>
-                                    {isActive && (
+                            <div className="ml-3 pl-3 border-l border-outline-variant/25 mt-0.5 space-y-0.5 pb-1">
+                              {item.children.map((child, ci) => (
+                                <NavLink
+                                  key={child.path}
+                                  to={child.path}
+                                  onClick={close}
+                                  className={({ isActive }) =>
+                                    `relative flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-colors duration-150 overflow-hidden ${
+                                      isActive
+                                        ? "text-brand-500 font-semibold"
+                                        : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
+                                    }`
+                                  }
+                                >
+                                  {({ isActive }) => (
+                                    <>
+                                      {isActive && (
+                                        <motion.div
+                                          layoutId="activeMobileChildBg"
+                                          className="absolute inset-0 bg-brand-500/[0.08] rounded-xl"
+                                          transition={{ type: "spring", stiffness: 320, damping: 30 }}
+                                        />
+                                      )}
+                                      {isActive && (
+                                        <div className="absolute left-0 inset-y-1.5 w-[3px] bg-brand-500 rounded-r-full z-20" />
+                                      )}
                                       <motion.div
-                                        layoutId="activeMobileTab"
-                                        className="absolute inset-0 bg-primary-fixed rounded-[1rem]"
-                                        transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                                      />
-                                    )}
-
-                                    <motion.div
-                                      initial={{ scale: 0.8, opacity: 0 }}
-                                      animate={{ scale: 1, opacity: 1 }}
-                                      transition={{ duration: 0.3, delay: childIndex * 0.05 }}
-                                      className="relative z-10"
-                                    >
-                                      <child.icon className="h-4 w-4 shrink-0" />
-                                    </motion.div>
-
-                                    <span className="relative z-10 text-xs">{child.name}</span>
-
-                                    {isActive && (
-                                      <motion.div
-                                        initial={{ scale: 0 }}
-                                        animate={{ scale: 1 }}
-                                        className="absolute right-4 top-1/2 -translate-y-1/2 h-1.5 w-1.5 rounded-full bg-brand-500 z-10"
-                                      />
-                                    )}
-                                  </>
-                                )}
-                              </NavLink>
-                            ))}
+                                        initial={{ scale: 0.8, opacity: 0 }}
+                                        animate={{ scale: 1, opacity: 1 }}
+                                        transition={{ delay: ci * 0.04 }}
+                                        className="relative z-10 shrink-0"
+                                      >
+                                        <child.icon className="h-4 w-4" />
+                                      </motion.div>
+                                      <span className="relative z-10 whitespace-nowrap">
+                                        {child.name}
+                                      </span>
+                                    </>
+                                  )}
+                                </NavLink>
+                              ))}
+                            </div>
                           </motion.div>
                         )}
                       </AnimatePresence>
                     </div>
                   );
-                } else {
-                  // Regular nav link
-                  const { name, path, icon: Icon } = item;
-                  return (
-                    <NavLink
-                      key={path}
-                      to={path}
-                      onClick={() => setIsMobileOpen(false)}
-                      className={({ isActive }) =>
-                        `flex items-center gap-3 px-4 py-3 rounded-[1rem] text-sm font-medium transition-all duration-200 relative group ${
-                          isActive
-                            ? "bg-primary-fixed text-on-primary-fixed font-semibold"
-                            : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
-                        }`
-                      }
-                    >
-                      {({ isActive }) => (
-                        <>
-                          {isActive && (
-                            <motion.div
-                              layoutId="activeMobileTab"
-                              className="absolute inset-0 bg-primary-fixed rounded-[1rem]"
-                              transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                            />
-                          )}
-
-                          <motion.div
-                            initial={{ scale: 0.8, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            transition={{ duration: 0.3, delay: index * 0.05 }}
-                            className="relative z-10"
-                          >
-                            <Icon className="h-5 w-5 shrink-0" />
-                          </motion.div>
-
-                          <span className="relative z-10">{name}</span>
-
-                          {isActive && (
-                            <motion.div
-                              initial={{ scale: 0 }}
-                              animate={{ scale: 1 }}
-                              className="absolute right-4 top-1/2 -translate-y-1/2 h-1.5 w-1.5 rounded-full bg-brand-500 z-10"
-                            />
-                          )}
-                        </>
-                      )}
-                    </NavLink>
-                  );
                 }
+
+                /* ── Regular nav item ── */
+                const { name, path, icon: Icon } = item;
+                return (
+                  <NavLink
+                    key={path}
+                    to={path}
+                    onClick={close}
+                    className={({ isActive }) =>
+                      `relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors duration-150 overflow-hidden ${
+                        isActive
+                          ? "text-brand-500 font-semibold"
+                          : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
+                      }`
+                    }
+                  >
+                    {({ isActive }) => (
+                      <>
+                        {isActive && (
+                          <motion.div
+                            layoutId="activeMobileTopBg"
+                            className="absolute inset-0 bg-brand-500/[0.08] rounded-xl"
+                            transition={{ type: "spring", stiffness: 320, damping: 30 }}
+                          />
+                        )}
+                        {isActive && (
+                          <div className="absolute left-0 inset-y-1.5 w-[3px] bg-brand-500 rounded-r-full z-20" />
+                        )}
+
+                        <motion.div
+                          initial={{ scale: 0.8, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          transition={{ delay: index * 0.04 }}
+                          className="relative z-10 shrink-0"
+                        >
+                          <Icon className="h-5 w-5" />
+                        </motion.div>
+
+                        <span className="relative z-10">{name}</span>
+                      </>
+                    )}
+                  </NavLink>
+                );
               })}
             </nav>
 
-            {/* Bottom Section */}
-            <div className="relative mt-auto pt-6">
-              <div className="p-4 rounded-[1rem] bg-primary-fixed">
+            {/* ── Bottom "Need Help?" ── */}
+            <div className="px-3 pb-5 pt-3 border-t border-outline-variant/15">
+              <div
+                className="p-4 rounded-2xl overflow-hidden relative"
+                style={{
+                  background: "linear-gradient(135deg, #003A8F 0%, #001F4D 100%)",
+                }}
+              >
                 <div className="flex items-start gap-3">
-                  <div className="h-10 w-10 rounded-[1rem] bg-primary-gradient flex items-center justify-center shrink-0">
-                    <Sparkles className="h-5 w-5 text-white" />
+                  <div className="h-9 w-9 rounded-xl bg-white/15 flex items-center justify-center shrink-0">
+                    <Sparkles className="h-4 w-4 text-white" />
                   </div>
-                  <div className="flex-1">
-                    <p className="text-xs font-semibold text-on-primary-fixed mb-1">Need Help?</p>
-                    <p className="text-xs text-on-surface-variant leading-tight">
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-white mb-0.5">Need Help?</p>
+                    <p className="text-xs text-white/60 leading-snug">
                       Contact support for assistance
                     </p>
                   </div>
