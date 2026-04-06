@@ -180,24 +180,19 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
     );
   };
 
+  const subTicketsMap = new Map<string, Ticket[]>();
+  tickets.forEach((ticket) => {
+    if (ticket.isSubTicket && ticket.parentTicket) {
+      const parentId = typeof ticket.parentTicket === 'string'
+        ? ticket.parentTicket
+        : (ticket.parentTicket as Ticket)._id;
+      if (!subTicketsMap.has(parentId)) subTicketsMap.set(parentId, []);
+      subTicketsMap.get(parentId)!.push(ticket);
+    }
+  });
+
   const organizeTickets = () => {
-    const mainTickets: Ticket[] = [];
-    const subTicketsMap = new Map<string, Ticket[]>();
-
-    tickets.forEach((ticket) => {
-      if (ticket.isSubTicket && ticket.parentTicket) {
-        const parentId = typeof ticket.parentTicket === 'string'
-          ? ticket.parentTicket
-          : ticket.parentTicket._id;
-
-        if (!subTicketsMap.has(parentId)) {
-          subTicketsMap.set(parentId, []);
-        }
-        subTicketsMap.get(parentId)?.push(ticket);
-      } else {
-        mainTickets.push(ticket);
-      }
-    });
+    const mainTickets = tickets.filter((t) => !t.isSubTicket);
 
     const organized: Ticket[] = [];
     mainTickets.forEach((mainTicket) => {
@@ -427,10 +422,20 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                       <span className="text-on-surface-variant/40">&mdash;</span>
                     )}
                   </TableCell>
-                  {/* Sub Tickets */}
+                  {/* Sub Tickets — only shown on main tickets */}
                   <TableCell>
-                    {ticket.subTickets && ticket.subTickets.length > 0 ? (
-                      <span className="text-sm font-medium text-on-surface">{ticket.subTickets.length}</span>
+                    {!isSubTicket ? (
+                      (() => {
+                        const count = subTicketsMap.get(ticket._id)?.length ?? 0;
+                        return count > 0 ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-brand-100 text-brand-700 text-xs font-semibold">
+                            <GitBranch className="w-3 h-3" />
+                            {count}
+                          </span>
+                        ) : (
+                          <span className="text-on-surface-variant/40">&mdash;</span>
+                        );
+                      })()
                     ) : (
                       <span className="text-on-surface-variant/40">&mdash;</span>
                     )}
