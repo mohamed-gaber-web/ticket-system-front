@@ -149,7 +149,6 @@ export default function Tickets() {
     setServiceTypeFilter('');
     setCustomerFilter('');
     setStartDate('');
-    setEndDate('');
     setCreatedDateFrom('');
     setCreatedDateTo('');
     setClosedDateFrom('');
