@@ -376,11 +376,11 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                       <span className="text-on-surface-variant/40">&mdash;</span>
                     )}
                   </TableCell>
-                  {/* Delivery Date (endDate) */}
+                  {/* Delivery Date (deliveryEstimationDate) */}
                   <TableCell>
-                    {ticket.endDate ? (
+                    {ticket.deliveryEstimationDate ? (
                       <span className="text-sm text-on-surface">
-                        {new Date(ticket.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        {new Date(ticket.deliveryEstimationDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                       </span>
                     ) : (
                       <span className="text-on-surface-variant/40">&mdash;</span>

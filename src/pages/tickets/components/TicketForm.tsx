@@ -57,8 +57,6 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
           priority: 'medium',
           status: 'new',
           startDate: '',
-          endDate: '',
-          estimatedTime: undefined,
           environment: '',
           feature: '',
           department: '',
@@ -75,8 +73,6 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
           category: '',
           priority: 'medium',
           startDate: '',
-          endDate: '',
-          estimatedTime: undefined,
           environment: '',
           feature: '',
           department: '',
@@ -89,7 +85,6 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
 
   const [attachments, setAttachments] = useState<File[]>([]);
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
-  const [estimationAutoCalc, setEstimationAutoCalc] = useState<{ days: number; hours: number } | null>(null);
 
   // Memoize dropdown options — avoids recreating arrays on every render
   const customerOptions = useMemo(() => [
@@ -184,8 +179,6 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
           priority: initialData.priority,
           status: initialData.status,
           startDate: initialData.startDate || '',
-          endDate: initialData.endDate || '',
-          estimatedTime: initialData.estimatedTime,
           environment: extractId(initialData.environment),
           feature: extractId(initialData.feature),
           department: extractId(initialData.department),
@@ -203,8 +196,6 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
           category: categoryId,
           priority: initialData.priority,
           startDate: initialData.startDate || '',
-          endDate: initialData.endDate || '',
-          estimatedTime: initialData.estimatedTime,
           environment: extractId(initialData.environment),
           feature: extractId(initialData.feature),
           department: extractId(initialData.department),
@@ -217,35 +208,8 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
     }
   }, [initialData, isEdit, customerId]);
 
-  // Auto-calculate estimated time from start/end dates (business days × 8h)
-  useEffect(() => {
-    const { startDate, endDate } = formData;
-    if (!startDate || !endDate) {
-      setEstimationAutoCalc(null);
-      return;
-    }
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    if (end < start) {
-      setEstimationAutoCalc(null);
-      return;
-    }
-    let businessDays = 0;
-    const cursor = new Date(start);
-    while (cursor <= end) {
-      const day = cursor.getDay();
-      if (day !== 5 && day !== 6) businessDays++; // Fri=5, Sat=6 are holidays
-      cursor.setDate(cursor.getDate() + 1);
-    }
-    const hours = businessDays * 8;
-    setEstimationAutoCalc({ days: businessDays, hours });
-    setFormData((prev) => ({ ...prev, estimatedTime: hours }));
-  }, [formData.startDate, formData.endDate]);
-
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    // If user manually edits estimatedTime, clear the auto-calc indicator
-    if (name === 'estimatedTime') setEstimationAutoCalc(null);
     setFormData({ ...formData, [name]: value });
   };
 
@@ -361,82 +325,6 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
             />
           </div>
 
-          {/* Attachments Upload */}
-          <div className="md:col-span-2">
-            <label className="form-label">Attachments</label>
-            <div className="space-y-3">
-              {/* Upload Button */}
-              <div className="flex items-center gap-3">
-                <input
-                  type="file"
-                  accept="image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,text/plain"
-                  onChange={handleFileChange}
-                  multiple
-                  className="hidden"
-                  id="attachment-upload"
-                />
-                <label htmlFor="attachment-upload">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="cursor-pointer"
-                    onClick={() => document.getElementById('attachment-upload')?.click()}
-                    asChild
-                  >
-                    <span>
-                      <Upload className="h-4 w-4 mr-2" />
-                      Choose Files
-                    </span>
-                  </Button>
-                </label>
-                <span className="text-xs text-on-surface-variant">
-                  Images & Documents (PDF, Word, Excel, PowerPoint, TXT) · Max 10MB
-                </span>
-              </div>
-
-              {/* Error Message */}
-              {attachmentError && (
-                <div className="text-sm text-error bg-error/5 rounded-md p-2">
-                  {attachmentError}
-                </div>
-              )}
-
-              {/* Attached Files List */}
-              {attachments.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-on-surface">
-                    Selected Files ({attachments.length})
-                  </p>
-                  <div className="space-y-2">
-                    {attachments.map((file, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center gap-3 p-3 bg-surface-container-low rounded-[0.75rem]"
-                      >
-                        {getFileIcon(file.type)}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-on-surface truncate">
-                            {file.name}
-                          </p>
-                          <p className="text-xs text-on-surface-variant">
-                            {formatFileSize(file.size)}
-                          </p>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeAttachment(index)}
-                        >
-                          <X className="h-4 w-4 text-error" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
         </div>
       </div>
 
@@ -574,44 +462,79 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
                 onChange={handleChange}
               />
             </div>
-
-            <div>
-              <label className="form-label">End Date</label>
-              <Input
-                type="date"
-                name="endDate"
-                value={formData.endDate || ''}
-                onChange={handleChange}
-              />
-            </div>
-
-            <div className="md:col-span-2">
-              <div className="flex items-center justify-between mb-2">
-                <label className="form-label mb-0">Estimated Time (hours)</label>
-                {estimationAutoCalc && (
-                  <span className="text-xs text-brand-500 font-medium">
-                    Auto: {estimationAutoCalc.days} business day{estimationAutoCalc.days !== 1 ? 's' : ''} × 8h = {estimationAutoCalc.hours}h
-                  </span>
-                )}
-              </div>
-              <Input
-                type="number"
-                name="estimatedTime"
-                value={formData.estimatedTime || ''}
-                onChange={handleChange}
-                placeholder={formData.startDate && formData.endDate ? 'Calculated from dates' : 'Enter estimated time in hours'}
-                min="0"
-                step="0.5"
-              />
-              {!formData.startDate || !formData.endDate ? (
-                <p className="text-xs text-on-surface-variant mt-1">Set start & end date to auto-calculate</p>
-              ) : estimationAutoCalc && new Date(formData.endDate) < new Date(formData.startDate) ? (
-                <p className="text-xs text-error mt-1">End date must be after start date</p>
-              ) : null}
-            </div>
           </div>
         </div>
       )}
+
+      {/* ATTACHMENTS SECTION */}
+      <div className="space-y-4">
+        <h3 className="form-section-title">Attachments</h3>
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            <input
+              type="file"
+              accept="image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,text/plain"
+              onChange={handleFileChange}
+              multiple
+              className="hidden"
+              id="attachment-upload"
+            />
+            <label htmlFor="attachment-upload">
+              <Button
+                type="button"
+                variant="outline"
+                className="cursor-pointer"
+                onClick={() => document.getElementById('attachment-upload')?.click()}
+                asChild
+              >
+                <span>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Choose Files
+                </span>
+              </Button>
+            </label>
+            <span className="text-xs text-on-surface-variant">
+              Images & Documents (PDF, Word, Excel, PowerPoint, TXT) · Max 10MB
+            </span>
+          </div>
+
+          {attachmentError && (
+            <div className="text-sm text-error bg-error/5 rounded-md p-2">
+              {attachmentError}
+            </div>
+          )}
+
+          {attachments.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-on-surface">
+                Selected Files ({attachments.length})
+              </p>
+              <div className="space-y-2">
+                {attachments.map((file, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center gap-3 p-3 bg-surface-container-low rounded-[0.75rem]"
+                  >
+                    {getFileIcon(file.type)}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-on-surface truncate">{file.name}</p>
+                      <p className="text-xs text-on-surface-variant">{formatFileSize(file.size)}</p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeAttachment(index)}
+                    >
+                      <X className="h-4 w-4 text-error" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
 
       <div className="flex justify-end pt-4 mt-2">
         <Button type="submit">

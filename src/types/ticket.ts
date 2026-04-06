@@ -110,8 +110,9 @@ export interface Ticket {
   customerFeedback?: string;
   // Time tracking fields
   startDate?: string;
-  endDate?: string;
-  estimatedTime?: number; // in hours
+  estimationStartDate?: string;
+  deliveryEstimationDate?: string;
+  estimationDays?: number;
   // Sub-ticket fields
   parentTicket?: string | Ticket;
   isSubTicket: boolean;
@@ -132,8 +133,6 @@ export interface CreateTicketData {
   category: string;
   priority: 'low' | 'medium' | 'high' | 'critical';
   startDate?: string;
-  endDate?: string;
-  estimatedTime?: number;
   // New optional properties
   environment?: string;
   feature?: string;
@@ -151,7 +150,6 @@ export interface CreateSubTicketData {
   category?: string;
   assignedTeam?: string;
   assignedBy?: string;
-  estimatedTime?: number;
 }
 
 export interface SubTicketsQueryParams {
@@ -187,8 +185,6 @@ export interface UpdateTicketData {
   customerRating?: number;
   customerFeedback?: string;
   startDate?: string;
-  endDate?: string;
-  estimatedTime?: number;
   // New optional properties
   environment?: string;
   feature?: string;
@@ -217,7 +213,6 @@ export interface TicketQueryParams {
   source?: string;
   // Advanced search filters
   startDate?: string;
-  endDate?: string;
   createdDateFrom?: string;
   createdDateTo?: string;
   closedDateFrom?: string;

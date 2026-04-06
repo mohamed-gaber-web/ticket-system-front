@@ -37,7 +37,6 @@ export function CreateSubTicketDialog({
     subject: '',
     description: '',
     priority: 'medium',
-    estimatedTime: undefined,
   });
   const [selectedConsultants, setSelectedConsultants] = useState<string[]>([]);
 
@@ -89,7 +88,6 @@ export function CreateSubTicketDialog({
         subject: '',
         description: '',
         priority: 'medium',
-        estimatedTime: undefined,
       });
       setSelectedConsultants([]);
       onSuccess?.();
@@ -150,18 +148,6 @@ export function CreateSubTicketDialog({
               />
             </div>
 
-            <div className="grid gap-2">
-              <Label htmlFor="estimatedTime">Estimated Time (hours)</Label>
-              <Input
-                id="estimatedTime"
-                type="number"
-                value={formData.estimatedTime || ''}
-                onChange={(e) => setFormData({ ...formData, estimatedTime: e.target.value ? Number(e.target.value) : undefined })}
-                placeholder="Enter estimated time in hours"
-                min="0"
-                step="0.5"
-              />
-            </div>
 
             <div className="pt-4">
               <div className="h-px bg-surface-container-high -mx-2 mb-4" />

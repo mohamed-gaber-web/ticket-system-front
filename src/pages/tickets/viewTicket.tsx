@@ -173,7 +173,6 @@ export default function ViewTicket() {
     currentTicket.priority,
     displayStatus,
     fmtDate(currentTicket.createdAt),
-    fmtDate(currentTicket.endDate),
     category?.name ?? '',
     source?.name ?? '',
     customer?.email ?? '',
@@ -278,12 +277,6 @@ export default function ViewTicket() {
                 <div className="flex items-center gap-1.5">
                   <Tag className="h-3.5 w-3.5" />
                   <span>{category.name}</span>
-                </div>
-              )}
-              {currentTicket.estimatedTime !== undefined && (
-                <div className="flex items-center gap-1.5">
-                  <Clock className="h-3.5 w-3.5" />
-                  <span>{currentTicket.estimatedTime}h estimated</span>
                 </div>
               )}
             </div>
@@ -471,7 +464,8 @@ export default function ViewTicket() {
                 <TimelineEntry label="Last Updated" date={currentTicket.updatedAt} color="green" />
                 {currentTicket.acceptedAt && <TimelineEntry label="Accepted" date={currentTicket.acceptedAt} color="blue" />}
                 {currentTicket.startDate && <TimelineEntry label="Start Date" date={currentTicket.startDate} color="orange" />}
-                {currentTicket.endDate && <TimelineEntry label="Due Date" date={currentTicket.endDate} color="red" />}
+                {currentTicket.estimationStartDate && <TimelineEntry label="Estimation Start" date={currentTicket.estimationStartDate} color="blue" />}
+                {currentTicket.deliveryEstimationDate && <TimelineEntry label="Delivery Date" date={currentTicket.deliveryEstimationDate} color="red" />}
                 {currentTicket.resolvedAt && <TimelineEntry label="Resolved" date={currentTicket.resolvedAt} color="green" />}
                 {currentTicket.closedAt && <TimelineEntry label="Closed" date={currentTicket.closedAt} color="gray" />}
               </div>

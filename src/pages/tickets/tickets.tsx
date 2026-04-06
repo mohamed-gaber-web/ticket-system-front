@@ -45,7 +45,6 @@ export default function Tickets() {
   const [serviceTypeFilter, setServiceTypeFilter] = useState('');
   const [customerFilter, setCustomerFilter] = useState('');
   const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
   const [createdDateFrom, setCreatedDateFrom] = useState('');
   const [createdDateTo, setCreatedDateTo] = useState('');
   const [closedDateFrom, setClosedDateFrom] = useState('');
@@ -82,7 +81,6 @@ export default function Tickets() {
     if (serviceTypeFilter) params.serviceType = serviceTypeFilter;
     if (customerFilter) params.customer = customerFilter;
     if (startDate) params.startDate = startDate;
-    if (endDate) params.endDate = endDate;
     if (createdDateFrom) params.createdDateFrom = createdDateFrom;
     if (createdDateTo) params.createdDateTo = createdDateTo;
     if (closedDateFrom) params.closedDateFrom = closedDateFrom;
@@ -94,7 +92,7 @@ export default function Tickets() {
 
     setCurrentPage(1);
     dispatch(fetchTickets(params));
-  }, [statusFilter, priorityFilter, sourceFilter, departmentFilter, assignedByFilter, serviceTypeFilter, customerFilter, startDate, endDate, createdDateFrom, createdDateTo, closedDateFrom, closedDateTo, user?._id]);
+  }, [statusFilter, priorityFilter, sourceFilter, departmentFilter, assignedByFilter, serviceTypeFilter, customerFilter, startDate, createdDateFrom, createdDateTo, closedDateFrom, closedDateTo, user?._id]);
 
   const getFilterParams = (pageNum: number) => {
     const params: any = {
@@ -110,7 +108,6 @@ export default function Tickets() {
     if (serviceTypeFilter) params.serviceType = serviceTypeFilter;
     if (customerFilter) params.customer = customerFilter;
     if (startDate) params.startDate = startDate;
-    if (endDate) params.endDate = endDate;
     if (createdDateFrom) params.createdDateFrom = createdDateFrom;
     if (createdDateTo) params.createdDateTo = createdDateTo;
     if (closedDateFrom) params.closedDateFrom = closedDateFrom;
@@ -167,7 +164,7 @@ export default function Tickets() {
 
   const activeAdvancedFilterCount = [
     departmentFilter, assignedByFilter, serviceTypeFilter, customerFilter,
-    startDate, endDate, createdDateFrom, createdDateTo, closedDateFrom, closedDateTo,
+    startDate, createdDateFrom, createdDateTo, closedDateFrom, closedDateTo,
   ].filter(Boolean).length;
 
   const EXPORT_HEADERS = [
@@ -198,7 +195,7 @@ export default function Tickets() {
       ticket.status.replace(/_/g, ' '),
       fmtDate(ticket.createdAt),
       fmtDate(ticket.acceptedAt),
-      fmtDate(ticket.endDate),
+      fmtDate(ticket.deliveryEstimationDate),
       fmtDate(ticket.updatedAt),
       fmtDate(ticket.resolvedAt),
       fmtDate(ticket.closedAt),
@@ -277,7 +274,7 @@ export default function Tickets() {
   const totalActiveFilters = [
     statusFilter, priorityFilter, sourceFilter,
     departmentFilter, assignedByFilter, serviceTypeFilter, customerFilter,
-    startDate, endDate, createdDateFrom, createdDateTo, closedDateFrom, closedDateTo,
+    startDate, createdDateFrom, createdDateTo, closedDateFrom, closedDateTo,
   ].filter(Boolean).length;
 
   return (
@@ -508,14 +505,6 @@ export default function Tickets() {
                       type="date"
                       value={closedDateFrom}
                       onChange={(e) => setClosedDateFrom(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-on-surface-variant">Due Date</label>
-                    <Input
-                      type="date"
-                      value={endDate}
-                      onChange={(e) => setEndDate(e.target.value)}
                     />
                   </div>
                   <div className="space-y-1.5">
