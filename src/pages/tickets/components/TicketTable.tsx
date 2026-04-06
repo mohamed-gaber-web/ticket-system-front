@@ -222,7 +222,7 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
   }
 
   return (
-    <div className="rounded-[1rem] bg-surface-container-lowest overflow-hidden w-full">
+    <div className="rounded-[1rem] bg-surface-container-lowest overflow-hidden w-full [&_td]:py-5">
       <div className="w-full overflow-x-auto">
         <Table className="w-full">
           <TableHeader>
