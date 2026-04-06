@@ -170,7 +170,7 @@ export default function WorkingHoursPage() {
         <div className="space-y-2">
           <label className="form-label">Weekend Days</label>
           <p className="text-xs text-on-surface-variant mb-2">
-            Select days that are off — hold Ctrl to select multiple
+            Click to toggle — selected days are treated as non-working days
           </p>
           <div className="flex flex-wrap gap-2">
             {DAY_OPTIONS.map((day) => {
