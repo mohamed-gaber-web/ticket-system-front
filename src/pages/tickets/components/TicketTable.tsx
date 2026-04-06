@@ -35,6 +35,7 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
   const isCustomer = userType === 'customer';
 
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number }>({ top: 0, right: 0 });
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -46,6 +47,16 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const handleMenuToggle = (ticketId: string, btn: HTMLElement) => {
+    if (openMenuId === ticketId) {
+      setOpenMenuId(null);
+    } else {
+      const rect = btn.getBoundingClientRect();
+      setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+      setOpenMenuId(ticketId);
+    }
+  };
 
   const handleDelete = (ticket: Ticket) => {
     MySwal.fire({
@@ -434,11 +445,11 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                   </TableCell>
                   {!isCustomer && <TableCell>
                     <div className="flex items-center justify-end gap-1">
-                      <div className="relative" ref={openMenuId === ticket._id ? menuRef : undefined}>
+                      <div ref={openMenuId === ticket._id ? menuRef : undefined}>
                         <Button
                           size="icon-sm"
                           variant="ghost"
-                          onClick={() => setOpenMenuId(openMenuId === ticket._id ? null : ticket._id)}
+                          onClick={(e) => handleMenuToggle(ticket._id, e.currentTarget)}
                           className="text-on-surface-variant hover:text-on-surface"
                           aria-label={`Actions for ticket ${ticket.ticketNumber}`}
                           aria-expanded={openMenuId === ticket._id}
@@ -446,38 +457,6 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                         >
                           <MoreVertical className="w-4 h-4" />
                         </Button>
-                        {openMenuId === ticket._id && (
-                          <div className="absolute right-0 mt-1 w-40 rounded-[0.75rem] glass shadow-ambient py-1.5 z-50" role="menu">
-                            <button
-                              role="menuitem"
-                              onClick={() => { navigate(`/tickets/view/${ticket._id}`); setOpenMenuId(null); }}
-                              className="flex items-center gap-2.5 w-full px-3.5 py-2 text-sm font-medium text-on-surface hover:bg-surface-container-highest transition-colors"
-                            >
-                              <Eye className="w-4 h-4 text-on-surface-variant" />
-                              View
-                            </button>
-                            {!isCustomer && (
-                              <button
-                                role="menuitem"
-                                onClick={() => { navigate(`/tickets/edit/${ticket._id}`); setOpenMenuId(null); }}
-                                className="flex items-center gap-2.5 w-full px-3.5 py-2 text-sm font-medium text-on-surface hover:bg-surface-container-highest transition-colors"
-                              >
-                                <Edit className="w-4 h-4 text-on-surface-variant" />
-                                Edit
-                              </button>
-                            )}
-                            {!isCustomer && (
-                              <button
-                                role="menuitem"
-                                onClick={() => { handleDelete(ticket); setOpenMenuId(null); }}
-                                className="flex items-center gap-2.5 w-full px-3.5 py-2 text-sm font-medium text-error hover:bg-error/5 transition-colors"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                                Delete
-                              </button>
-                            )}
-                          </div>
-                        )}
                       </div>
                     </div>
                   </TableCell>}
@@ -487,6 +466,45 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
           </TableBody>
         </Table>
       </div>
+
+      {/* Fixed-position action menu — not clipped by overflow containers */}
+      {openMenuId && (
+        <div
+          ref={menuRef}
+          role="menu"
+          className="fixed w-40 rounded-[0.75rem] glass shadow-ambient py-1.5 z-[9999]"
+          style={{ top: menuPos.top, right: menuPos.right }}
+        >
+          <button
+            role="menuitem"
+            onClick={() => { navigate(`/tickets/view/${openMenuId}`); setOpenMenuId(null); }}
+            className="flex items-center gap-2.5 w-full px-3.5 py-2 text-sm font-medium text-on-surface hover:bg-surface-container-highest transition-colors"
+          >
+            <Eye className="w-4 h-4 text-on-surface-variant" />
+            View
+          </button>
+          <button
+            role="menuitem"
+            onClick={() => { navigate(`/tickets/edit/${openMenuId}`); setOpenMenuId(null); }}
+            className="flex items-center gap-2.5 w-full px-3.5 py-2 text-sm font-medium text-on-surface hover:bg-surface-container-highest transition-colors"
+          >
+            <Edit className="w-4 h-4 text-on-surface-variant" />
+            Edit
+          </button>
+          <button
+            role="menuitem"
+            onClick={() => {
+              const ticket = tickets.find((t) => t._id === openMenuId);
+              if (ticket) handleDelete(ticket);
+              setOpenMenuId(null);
+            }}
+            className="flex items-center gap-2.5 w-full px-3.5 py-2 text-sm font-medium text-error hover:bg-error/5 transition-colors"
+          >
+            <Trash2 className="w-4 h-4" />
+            Delete
+          </button>
+        </div>
+      )}
     </div>
   );
 }
