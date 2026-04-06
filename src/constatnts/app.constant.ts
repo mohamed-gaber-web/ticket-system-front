@@ -20,7 +20,8 @@ import {
   Building2,
   Layers,
   Globe,
-  Building
+  Building,
+  CalendarClock,
 } from "lucide-react";
 
 export const ROUTERLINKS = [
@@ -51,6 +52,7 @@ export const ROUTERLINKS = [
   // { name: "Teams", path: "/teams", icon: UsersRound },
   // { name: "Team Members", path: "/team-members", icon: UserCheck },
   { name: "SLA", path: "/sla", icon: Clock },
+  { name: "Working Hours", path: "/working-hours", icon: CalendarClock },
   { name: "Reports", path: "/reports", icon: BarChart3 },
   { name: "Consultant Reports", path: "/consultant-reports", icon: FileBarChart },
 ];
@@ -88,6 +90,7 @@ const CONSULTANT_LINKS = [
   // HIDDEN: Teams and Team Members are not currently in use
   // { name: "Teams", path: "/teams", icon: UsersRound },
   // { name: "Team Members", path: "/team-members", icon: UserCheck },
+  { name: "Working Hours", path: "/working-hours", icon: CalendarClock },
 ];
 
 // Team Member can only see My Assignments

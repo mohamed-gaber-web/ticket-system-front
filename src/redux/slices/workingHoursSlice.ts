@@ -1,0 +1,142 @@
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import * as workingHoursApi from '@/api/workingHoursApi';
+import type {
+  WorkingHours,
+  Holiday,
+  UpdateWorkingHoursData,
+  CreateHolidayData,
+} from '@/types/workingHours.types';
+import { toast } from 'sonner';
+
+interface WorkingHoursState {
+  config: WorkingHours | null;
+  holidays: Holiday[];
+  loading: boolean;
+  holidaysLoading: boolean;
+  error: string | null;
+}
+
+const initialState: WorkingHoursState = {
+  config: null,
+  holidays: [],
+  loading: false,
+  holidaysLoading: false,
+  error: null,
+};
+
+export const fetchWorkingHours = createAsyncThunk(
+  'workingHours/fetchConfig',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await workingHoursApi.getWorkingHours();
+      return response.data;
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Failed to fetch working hours';
+      toast.error(message);
+      return rejectWithValue(message);
+    }
+  }
+);
+
+export const saveWorkingHours = createAsyncThunk(
+  'workingHours/saveConfig',
+  async (data: UpdateWorkingHoursData, { rejectWithValue }) => {
+    try {
+      const response = await workingHoursApi.updateWorkingHours(data);
+      toast.success('Working hours saved successfully!');
+      return response.data;
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Failed to save working hours';
+      toast.error(message);
+      return rejectWithValue(message);
+    }
+  }
+);
+
+export const fetchHolidays = createAsyncThunk(
+  'workingHours/fetchHolidays',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await workingHoursApi.getHolidays();
+      return response.data;
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Failed to fetch holidays';
+      toast.error(message);
+      return rejectWithValue(message);
+    }
+  }
+);
+
+export const addHoliday = createAsyncThunk(
+  'workingHours/addHoliday',
+  async (data: CreateHolidayData, { rejectWithValue }) => {
+    try {
+      const response = await workingHoursApi.addHoliday(data);
+      toast.success('Holiday added successfully!');
+      return response.data;
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Failed to add holiday';
+      toast.error(message);
+      return rejectWithValue(message);
+    }
+  }
+);
+
+export const removeHoliday = createAsyncThunk(
+  'workingHours/removeHoliday',
+  async (id: string, { rejectWithValue }) => {
+    try {
+      await workingHoursApi.deleteHoliday(id);
+      toast.success('Holiday deleted');
+      return id;
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Failed to delete holiday';
+      toast.error(message);
+      return rejectWithValue(message);
+    }
+  }
+);
+
+const workingHoursSlice = createSlice({
+  name: 'workingHours',
+  initialState,
+  reducers: {},
+  extraReducers: (builder) => {
+    // Fetch config
+    builder
+      .addCase(fetchWorkingHours.pending, (state) => { state.loading = true; state.error = null; })
+      .addCase(fetchWorkingHours.fulfilled, (state, action) => { state.loading = false; state.config = action.payload; })
+      .addCase(fetchWorkingHours.rejected, (state, action) => { state.loading = false; state.error = action.payload as string; });
+
+    // Save config
+    builder
+      .addCase(saveWorkingHours.pending, (state) => { state.loading = true; })
+      .addCase(saveWorkingHours.fulfilled, (state, action) => { state.loading = false; state.config = action.payload; })
+      .addCase(saveWorkingHours.rejected, (state) => { state.loading = false; });
+
+    // Fetch holidays
+    builder
+      .addCase(fetchHolidays.pending, (state) => { state.holidaysLoading = true; })
+      .addCase(fetchHolidays.fulfilled, (state, action) => { state.holidaysLoading = false; state.holidays = action.payload; })
+      .addCase(fetchHolidays.rejected, (state) => { state.holidaysLoading = false; });
+
+    // Add holiday
+    builder
+      .addCase(addHoliday.pending, (state) => { state.holidaysLoading = true; })
+      .addCase(addHoliday.fulfilled, (state, action) => {
+        state.holidaysLoading = false;
+        state.holidays = [...state.holidays, action.payload].sort(
+          (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+        );
+      })
+      .addCase(addHoliday.rejected, (state) => { state.holidaysLoading = false; });
+
+    // Remove holiday
+    builder
+      .addCase(removeHoliday.fulfilled, (state, action) => {
+        state.holidays = state.holidays.filter((h) => h._id !== action.payload);
+      });
+  },
+});
+
+export default workingHoursSlice.reducer;

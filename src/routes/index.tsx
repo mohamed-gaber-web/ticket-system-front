@@ -81,6 +81,7 @@ const VersionNumbers = lazy(() => import("@/pages/version-numbers/VersionNumbers
 const Departments = lazy(() => import("@/pages/departments/Departments"));
 const Sources = lazy(() => import("@/pages/sources/Sources"));
 const Companies = lazy(() => import("@/pages/companies/Companies"));
+const WorkingHoursPage = lazy(() => import("@/pages/working-hours/WorkingHoursPage"));
 
 export const routes: RouteObject[] = [
   // Public Routes (Authentication)
@@ -182,6 +183,7 @@ export const routes: RouteObject[] = [
       { path: "/departments", element: <Lazy><Departments /></Lazy> },
       { path: "/sources", element: <Lazy><Sources /></Lazy> },
       { path: "/companies", element: <Lazy><Companies /></Lazy> },
+      { path: "/working-hours", element: <Lazy><WorkingHoursPage /></Lazy> },
     ],
   },
 ];
