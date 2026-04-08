@@ -12,6 +12,7 @@ const ResetPasswordPage = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { token, userType } = useParams<{ token: string; userType: string }>();
+  const resolvedUserType = (userType as import('@/types/auth.types').UserType) ?? 'customer';
   const { isLoading } = useAppSelector((state) => state.auth);
 
   const [formData, setFormData] = useState({
@@ -69,7 +70,7 @@ const ResetPasswordPage = () => {
           resetToken: token,
           data: {
             newPassword: formData.newPassword,
-            userType,
+            userType: resolvedUserType,
           },
         })
       ).unwrap();

@@ -181,7 +181,7 @@ export interface UpdateTicketData {
   description?: string;
   category?: string;
   priority?: 'low' | 'medium' | 'high' | 'critical';
-  status?: 'new' | 'assigned' | 'in_progress' | 'resolved' | 'closed' | 'customer_pending' | 'reopened';
+  status?: 'new' | 'assigned' | 'in_progress' | 'resolved' | 'closed' | 'customer_pending' | 'reopened' | 'delivered';
   sla?: string;
   assignedTeam?: string;
   assignedBy?: string;
