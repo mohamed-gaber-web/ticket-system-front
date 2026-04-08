@@ -297,31 +297,6 @@ const SigninPage = () => {
               </Button>
             </motion.div>
 
-            {/* Divider */}
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full h-px bg-surface-container-high"></div>
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-4 bg-surface-container-lowest text-on-surface-variant">New to our platform?</span>
-              </div>
-            </div>
-
-            {/* Sign Up Link */}
-            <div className="text-center">
-              <Link
-                to="/signup"
-                className="inline-flex items-center gap-2 text-sm font-medium text-on-surface-variant hover:text-brand-500 transition-colors"
-              >
-                Create a new account
-                <motion.span
-                  animate={{ x: [0, 4, 0] }}
-                  transition={{ duration: 1.5, repeat: Infinity }}
-                >
-                  &rarr;
-                </motion.span>
-              </Link>
-            </div>
           </form>
         </motion.div>
 
