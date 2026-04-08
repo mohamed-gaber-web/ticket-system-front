@@ -41,6 +41,7 @@ import {
   XCircle,
   Star,
   MessageSquare,
+  Truck,
 } from 'lucide-react';
 
 const PRIORITY_DOT: Record<string, string> = {
@@ -56,6 +57,7 @@ const STATUS_STYLE: Record<string, string> = {
   customer_pending: 'bg-purple-500 text-white',
   resolved: 'bg-green-500 text-white',
   closed: 'bg-surface-container-highest text-on-surface-variant',
+  delivered: 'bg-teal-500 text-white',
 };
 
 export default function ViewTicket() {
@@ -70,6 +72,7 @@ export default function ViewTicket() {
   const [activeTab, setActiveTab] = useState<'details' | 'comments' | 'attachments'>('details');
   const [resolving, setResolving] = useState(false);
   const [closing, setClosing] = useState(false);
+  const [delivering, setDelivering] = useState(false);
   const [feedbackRating, setFeedbackRating] = useState(0);
   const [feedbackHover, setFeedbackHover] = useState(0);
   const [feedbackText, setFeedbackText] = useState('');
@@ -117,10 +120,19 @@ export default function ViewTicket() {
     if (!currentTicket) return;
     setClosing(true);
     try {
-      // updateTicket.fulfilled already sets currentTicket in Redux — no re-fetch needed
       await dispatch(updateTicket({ id: currentTicket._id, data: { status: 'closed' } })).unwrap();
     } finally {
       setClosing(false);
+    }
+  };
+
+  const handleDeliver = async () => {
+    if (!currentTicket) return;
+    setDelivering(true);
+    try {
+      await dispatch(updateTicket({ id: currentTicket._id, data: { status: 'delivered' } })).unwrap();
+    } finally {
+      setDelivering(false);
     }
   };
 
@@ -293,7 +305,7 @@ export default function ViewTicket() {
                 onSuccess={handleRefreshAssignment}
               />
             )}
-            {!isCustomer && currentTicket.status !== 'resolved' && currentTicket.status !== 'closed' && (
+            {!isCustomer && currentTicket.status !== 'resolved' && currentTicket.status !== 'closed' && currentTicket.status !== 'delivered' && (
               <Button
                 variant="outline"
                 size="sm"
@@ -305,7 +317,19 @@ export default function ViewTicket() {
                 {resolving ? 'Resolving...' : 'Resolve'}
               </Button>
             )}
-            {isCustomer && currentTicket.status === 'resolved' && (
+            {!isCustomer && currentTicket.status === 'resolved' && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDeliver}
+                disabled={delivering}
+                className="gap-1.5 text-teal-600 border-teal-200 hover:bg-teal-50 hover:text-teal-700"
+              >
+                <Truck className="h-3.5 w-3.5" />
+                {delivering ? 'Delivering...' : 'Mark as Delivered'}
+              </Button>
+            )}
+            {isCustomer && currentTicket.status === 'delivered' && (
               <Button
                 variant="outline"
                 size="sm"
@@ -415,7 +439,7 @@ export default function ViewTicket() {
             </section>
 
             {/* Feedback */}
-            {['resolved', 'closed'].includes(currentTicket.status) && (
+            {['resolved', 'closed', 'delivered'].includes(currentTicket.status) && (
               <FeedbackSection
                 existingRating={currentTicket.customerRating}
                 existingFeedback={currentTicket.customerFeedback}

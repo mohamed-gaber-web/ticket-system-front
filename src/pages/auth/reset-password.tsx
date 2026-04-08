@@ -11,7 +11,7 @@ import { Lock, Sparkles } from 'lucide-react';
 const ResetPasswordPage = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { token } = useParams<{ token: string }>();
+  const { token, userType } = useParams<{ token: string; userType: string }>();
   const { isLoading } = useAppSelector((state) => state.auth);
 
   const [formData, setFormData] = useState({
@@ -23,16 +23,13 @@ const ResetPasswordPage = () => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
 
     if (validationErrors[name]) {
       setValidationErrors((prev) => {
-        const newErrors = { ...prev };
-        delete newErrors[name];
-        return newErrors;
+        const next = { ...prev };
+        delete next[name];
+        return next;
       });
     }
   };
@@ -42,8 +39,8 @@ const ResetPasswordPage = () => {
 
     if (!formData.newPassword) {
       errors.newPassword = 'Password is required';
-    } else if (formData.newPassword.length < 6) {
-      errors.newPassword = 'Password must be at least 6 characters';
+    } else if (formData.newPassword.length < 8) {
+      errors.newPassword = 'Password must be at least 8 characters';
     }
 
     if (!formData.confirmPassword) {
@@ -59,9 +56,9 @@ const ResetPasswordPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!validateForm() || !token) {
-      if (!token) {
-        toast.error('Invalid reset token');
+    if (!validateForm() || !token || !userType) {
+      if (!token || !userType) {
+        toast.error('Invalid or malformed reset link');
       }
       return;
     }
@@ -72,7 +69,7 @@ const ResetPasswordPage = () => {
           resetToken: token,
           data: {
             newPassword: formData.newPassword,
-            userType: 'customer',
+            userType,
           },
         })
       ).unwrap();
@@ -86,7 +83,6 @@ const ResetPasswordPage = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-surface py-12 px-4">
-      {/* Subtle Background Gradient */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <motion.div
           className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-br from-brand-100/30 to-transparent rounded-full blur-3xl"
@@ -106,7 +102,7 @@ const ResetPasswordPage = () => {
         transition={{ duration: 0.5 }}
         className="w-full max-w-md relative z-10"
       >
-        {/* Logo/Brand Section */}
+        {/* Brand Section */}
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -116,13 +112,10 @@ const ResetPasswordPage = () => {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-[1.25rem] bg-primary-gradient mb-4">
             <Sparkles className="w-8 h-8 text-white" />
           </div>
-          <h1 className="display-sm text-on-surface">
-            Reset Password
-          </h1>
+          <h1 className="display-sm text-on-surface">Reset Password</h1>
           <p className="text-on-surface-variant mt-2">Enter your new password below</p>
         </motion.div>
 
-        {/* Reset Password Card - Glassmorphism */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -141,7 +134,7 @@ const ResetPasswordPage = () => {
                 type="password"
                 value={formData.newPassword}
                 onChange={handleChange}
-                placeholder="Enter new password"
+                placeholder="At least 8 characters"
                 className={`h-12 ${validationErrors.newPassword ? 'ring-[2px] ring-error/30' : ''}`}
               />
               {validationErrors.newPassword && (
@@ -186,7 +179,6 @@ const ResetPasswordPage = () => {
               </Button>
             </motion.div>
 
-            {/* Divider */}
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full h-px bg-surface-container-high"></div>

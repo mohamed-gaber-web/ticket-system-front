@@ -6,13 +6,21 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
-import { Mail, Sparkles, CheckCircle } from 'lucide-react';
+import { Mail, Sparkles, CheckCircle, Users } from 'lucide-react';
+
+type UserTypeOption = 'customer' | 'consultant';
+
+const USER_TYPE_OPTIONS: { value: UserTypeOption; label: string }[] = [
+  { value: 'customer', label: 'Customer' },
+  { value: 'consultant', label: 'Consultant' },
+];
 
 const ForgotPasswordPage = () => {
   const dispatch = useAppDispatch();
   const { isLoading } = useAppSelector((state) => state.auth);
 
   const [email, setEmail] = useState('');
+  const [userType, setUserType] = useState<UserTypeOption>('customer');
   const [emailSent, setEmailSent] = useState(false);
   const [validationError, setValidationError] = useState('');
 
@@ -40,7 +48,7 @@ const ForgotPasswordPage = () => {
       await dispatch(
         forgotPassword({
           email,
-          userType: 'customer',
+          userType,
         })
       ).unwrap();
 
@@ -54,7 +62,6 @@ const ForgotPasswordPage = () => {
   if (emailSent) {
     return (
       <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-surface py-12 px-4">
-        {/* Subtle Background Gradient */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <motion.div
             className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-br from-brand-100/30 to-transparent rounded-full blur-3xl"
@@ -78,9 +85,7 @@ const ForgotPasswordPage = () => {
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-[1.25rem] bg-green-500 mb-4">
               <CheckCircle className="w-8 h-8 text-white" />
             </div>
-            <h1 className="display-sm text-on-surface">
-              Email Sent!
-            </h1>
+            <h1 className="display-sm text-on-surface">Email Sent!</h1>
             <p className="text-on-surface-variant mt-2">Check your inbox for password reset instructions</p>
           </motion.div>
 
@@ -92,8 +97,12 @@ const ForgotPasswordPage = () => {
           >
             <div className="space-y-6">
               <p className="text-center text-sm text-on-surface-variant">
-                We've sent password reset instructions to <strong className="text-on-surface">{email}</strong>. Please check your
-                email and follow the instructions to reset your password.
+                We've sent password reset instructions to{' '}
+                <strong className="text-on-surface">{email}</strong>. Please check your email and follow the
+                instructions to reset your password.
+              </p>
+              <p className="text-center text-xs text-on-surface-variant">
+                The link will expire in <strong>10 minutes</strong>.
               </p>
               <div className="text-center">
                 <Link to="/signin" className="text-sm font-medium text-brand-500 hover:text-brand-600 transition-colors">
@@ -109,7 +118,6 @@ const ForgotPasswordPage = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-surface py-12 px-4">
-      {/* Subtle Background Gradient */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <motion.div
           className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-br from-brand-100/30 to-transparent rounded-full blur-3xl"
@@ -129,7 +137,7 @@ const ForgotPasswordPage = () => {
         transition={{ duration: 0.5 }}
         className="w-full max-w-md relative z-10"
       >
-        {/* Logo/Brand Section */}
+        {/* Brand Section */}
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -139,13 +147,10 @@ const ForgotPasswordPage = () => {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-[1.25rem] bg-primary-gradient mb-4">
             <Sparkles className="w-8 h-8 text-white" />
           </div>
-          <h1 className="display-sm text-on-surface">
-            Forgot Password
-          </h1>
+          <h1 className="display-sm text-on-surface">Forgot Password</h1>
           <p className="text-on-surface-variant mt-2">Enter your email to receive password reset instructions</p>
         </motion.div>
 
-        {/* Forgot Password Card - Glassmorphism */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -153,6 +158,31 @@ const ForgotPasswordPage = () => {
           className="glass rounded-[1.5rem] shadow-ambient p-8"
         >
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* User Type Selector */}
+            <div className="space-y-2">
+              <label className="label-technical flex items-center gap-2">
+                <Users className="w-4 h-4 text-brand-500" />
+                I am a
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                {USER_TYPE_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setUserType(opt.value)}
+                    className={`h-11 rounded-[1rem] font-semibold text-sm transition-all duration-200 ${
+                      userType === opt.value
+                        ? 'bg-primary-fixed text-on-primary-fixed'
+                        : 'bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Email Field */}
             <div className="space-y-2">
               <label htmlFor="email" className="form-label flex items-center gap-2">
                 <Mail className="w-4 h-4 text-brand-500" />
@@ -188,7 +218,6 @@ const ForgotPasswordPage = () => {
               </Button>
             </motion.div>
 
-            {/* Divider */}
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full h-px bg-surface-container-high"></div>

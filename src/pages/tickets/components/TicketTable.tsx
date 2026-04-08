@@ -165,6 +165,7 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
       customer_pending: 'bg-purple-500 text-white',
       resolved: 'bg-green-500 text-white',
       closed: 'bg-surface-container-highest text-on-surface-variant',
+      delivered: 'bg-teal-500 text-white',
     };
 
     const displayStatus = status.replace(/_/g, ' ');

@@ -98,7 +98,7 @@ export const routes: RouteObject[] = [
     element: <Lazy><ForgotPasswordPage /></Lazy>,
   },
   {
-    path: "/reset-password/:token",
+    path: "/reset-password/:userType/:token",
     element: <Lazy><ResetPasswordPage /></Lazy>,
   },
   {
