@@ -170,6 +170,24 @@ export const reassignTicket = createAsyncThunk(
   }
 );
 
+export const reassignConsultants = createAsyncThunk(
+  'assignment/reassignConsultants',
+  async (
+    { assignmentId, consultants, notes }: { assignmentId: string; consultants: string[]; notes?: string },
+    { rejectWithValue }
+  ) => {
+    try {
+      const response = await assignmentApi.reassignConsultants(assignmentId, { consultants, notes });
+      toast.success('Consultants reassigned — emails sent to new assignees!');
+      return response.data;
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Failed to reassign consultants';
+      toast.error(message);
+      return rejectWithValue(message);
+    }
+  }
+);
+
 export const assignConsultants = createAsyncThunk(
   'assignment/assignConsultants',
   async ({ assignmentId, consultants }: { assignmentId: string; consultants: string[] }, { rejectWithValue }) => {
@@ -330,7 +348,7 @@ const assignmentSlice = createSlice({
       .addCase(fetchCurrentAssignment.pending, (state) => {
         state.loading = true;
         state.error = null;
-        state.currentAssignment = null;
+        // Keep stale currentAssignment until new data arrives to avoid unmounting open dialogs
       })
       .addCase(fetchCurrentAssignment.fulfilled, (state, action) => {
         state.loading = false;
@@ -389,6 +407,16 @@ const assignmentSlice = createSlice({
         state.loading = false;
         state.error = action.payload as string;
       })
+
+      // Reassign Consultants
+      .addCase(reassignConsultants.pending, (state) => { state.loading = true; state.error = null; })
+      .addCase(reassignConsultants.fulfilled, (state, action) => {
+        state.loading = false;
+        const index = state.assignments.findIndex(a => a._id === action.payload._id);
+        if (index !== -1) state.assignments[index] = action.payload;
+        if (state.currentAssignment?._id === action.payload._id) state.currentAssignment = action.payload;
+      })
+      .addCase(reassignConsultants.rejected, (state, action) => { state.loading = false; state.error = action.payload as string; })
 
       // Assign Consultants
       .addCase(assignConsultants.pending, (state) => {

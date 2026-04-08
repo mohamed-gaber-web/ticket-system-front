@@ -6,10 +6,18 @@ import {
   fetchHolidays,
   addHoliday,
   removeHoliday,
+  importPublicHolidays,
 } from '@/redux/slices/workingHoursSlice';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Save, Trash2, Plus, CalendarDays } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Save, Trash2, Plus, CalendarDays, Download } from 'lucide-react';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
 import type { UpdateWorkingHoursData } from '@/types/workingHours.types';
@@ -28,9 +36,10 @@ const DAY_OPTIONS = [
 
 export default function WorkingHoursPage() {
   const dispatch = useAppDispatch();
-  const { config, holidays, loading, holidaysLoading } = useAppSelector(
+  const { config, holidays, loading, holidaysLoading, importingHolidays } = useAppSelector(
     (state) => state.workingHours
   );
+
 
   // Settings form state
   const [form, setForm] = useState<UpdateWorkingHoursData>({
@@ -46,6 +55,14 @@ export default function WorkingHoursPage() {
 
   // New holiday form state
   const [newHoliday, setNewHoliday] = useState({ date: '', description: '' });
+
+  // Import public holidays dialog state
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [importYear, setImportYear] = useState(new Date().getFullYear());
+  const [importCountry, setImportCountry] = useState('EG');
+  const [calendarificKey, setCalendarificKey] = useState(
+    () => localStorage.getItem('calendarific_api_key') ?? ''
+  );
 
   useEffect(() => {
     dispatch(fetchWorkingHours());
@@ -89,6 +106,22 @@ export default function WorkingHoursPage() {
         }
       }
     );
+  };
+
+  const handleImportPublicHolidays = () => {
+    if (calendarificKey) localStorage.setItem('calendarific_api_key', calendarificKey);
+    dispatch(
+      importPublicHolidays({
+        year: importYear,
+        countryCode: importCountry,
+        apiKey: calendarificKey.trim() || undefined,
+      })
+    ).then((result) => {
+      if (result.meta.requestStatus === 'fulfilled' && (result.payload as number) > 0) {
+        dispatch(fetchHolidays());
+        setImportDialogOpen(false);
+      }
+    });
   };
 
   const handleDeleteHoliday = (id: string, description: string) => {
@@ -242,9 +275,80 @@ export default function WorkingHoursPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <CalendarDays className="h-5 w-5 text-on-surface-variant" />
-            <h2 className="text-lg font-semibold text-on-surface">Manual Holidays</h2>
+            <h2 className="text-lg font-semibold text-on-surface">Public Holidays</h2>
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={() => setImportDialogOpen(true)}
+            disabled={holidaysLoading || importingHolidays}
+          >
+            <Download className="h-4 w-4" />
+            Import Public Holidays
+          </Button>
         </div>
+
+        {/* Import Public Holidays Dialog */}
+        <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
+          <DialogContent className="sm:max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Import Public Holidays</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 pt-1">
+              <div className="space-y-1.5">
+                <label className="form-label">Calendarific API Key</label>
+                <Input
+                  type="password"
+                  value={calendarificKey}
+                  onChange={(e) => setCalendarificKey(e.target.value)}
+                  placeholder="Paste your free API key here"
+                />
+                <p className="text-xs text-on-surface-variant">
+                  Includes Islamic holidays (Eid Al-Adha, Eid Al-Fitr, Sham El-Nessim…).{' '}
+                  Get a free key at{' '}
+                  <span className="font-medium text-primary">calendarific.com</span>.
+                  Leave blank to use Nager.Date (civil holidays only).
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="form-label">Country Code</label>
+                  <Input
+                    value={importCountry}
+                    onChange={(e) => setImportCountry(e.target.value.toUpperCase())}
+                    placeholder="EG"
+                    maxLength={2}
+                    className="uppercase"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="form-label">Year</label>
+                  <Input
+                    type="number"
+                    value={importYear}
+                    onChange={(e) => setImportYear(Number(e.target.value))}
+                    min={2020}
+                    max={2035}
+                  />
+                </div>
+              </div>
+            </div>
+            <DialogFooter className="gap-2 pt-2">
+              <Button variant="outline" onClick={() => setImportDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={handleImportPublicHolidays}
+                disabled={!importCountry.trim() || importingHolidays}
+                className="gap-2"
+              >
+                <Download className="h-4 w-4" />
+                {importingHolidays ? 'Importing…' : 'Import'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Holiday Table */}
         {holidaysLoading ? (

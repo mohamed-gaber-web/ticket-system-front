@@ -9,7 +9,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Edit, Trash2, Ticket as TicketIcon, Eye, CheckCircle, GitBranch, MoreVertical } from 'lucide-react';
+import { Edit, Trash2, Ticket as TicketIcon, Eye, CheckCircle, GitBranch, MoreVertical, ChevronRight, ChevronDown } from 'lucide-react';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
 import type { Ticket, Consultant, Category } from '@/types/ticket';
@@ -34,6 +34,7 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
   const isConsultant = userType === 'consultant';
   const isCustomer = userType === 'customer';
 
+  const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set());
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [menuPos, setMenuPos] = useState<{ top: number; right: number }>({ top: 0, right: 0 });
   const menuRef = useRef<HTMLDivElement>(null);
@@ -47,6 +48,15 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const toggleParent = (parentId: string) => {
+    setExpandedParents((prev) => {
+      const next = new Set(prev);
+      if (next.has(parentId)) next.delete(parentId);
+      else next.add(parentId);
+      return next;
+    });
+  };
 
   const handleMenuToggle = (ticketId: string, btn: HTMLElement) => {
     if (openMenuId === ticketId) {
@@ -198,8 +208,10 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
     const organized: Ticket[] = [];
     mainTickets.forEach((mainTicket) => {
       organized.push(mainTicket);
-      const subTickets = subTicketsMap.get(mainTicket._id) || [];
-      organized.push(...subTickets);
+      if (expandedParents.has(mainTicket._id)) {
+        const subTickets = subTicketsMap.get(mainTicket._id) || [];
+        organized.push(...subTickets);
+      }
     });
 
     return organized;
@@ -251,7 +263,11 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
               <TableHead className="min-w-[120px]">Closed Date</TableHead>
               <TableHead className="min-w-[100px]">Sub Tickets</TableHead>
               <TableHead className="min-w-[160px]">Customer Email</TableHead>
-              {!isCustomer && <TableHead className="text-right min-w-[80px]">Actions</TableHead>}
+              {!isCustomer && (
+                <TableHead className="text-right min-w-[60px] sticky right-0 z-20 bg-surface-container-lowest shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.08)]">
+                  Actions
+                </TableHead>
+              )}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -265,11 +281,26 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                   className={isSubTicket ? 'bg-primary-fixed/20' : ''}
                 >
                   <TableCell>
-                    <div className="flex items-center gap-2">
-                      {isSubTicket && (
-                        <div className="flex items-center gap-1 ml-2">
-                          <div className="w-4 border-t-2 border-l-2 border-outline-variant h-3 rounded-tl-md"></div>
-                          <GitBranch className="h-3 w-3 text-brand-400 flex-shrink-0" />
+                    <div className="flex items-center gap-1.5">
+                      {/* Expand/collapse toggle for parent tickets with sub-tickets */}
+                      {!isSubTicket && (subTicketsMap.get(ticket._id)?.length ?? 0) > 0 ? (
+                        <button
+                          type="button"
+                          onClick={() => toggleParent(ticket._id)}
+                          className="p-0.5 rounded hover:bg-surface-container-high transition-colors flex-shrink-0"
+                          aria-label={expandedParents.has(ticket._id) ? 'Collapse sub-tickets' : 'Expand sub-tickets'}
+                        >
+                          {expandedParents.has(ticket._id)
+                            ? <ChevronDown className="h-4 w-4 text-primary" />
+                            : <ChevronRight className="h-4 w-4 text-on-surface-variant" />
+                          }
+                        </button>
+                      ) : !isSubTicket ? (
+                        <span className="w-5 flex-shrink-0" />
+                      ) : (
+                        <div className="flex items-center gap-1 ml-4 flex-shrink-0">
+                          <div className="w-3 border-t-2 border-l-2 border-outline-variant h-3 rounded-tl-sm" />
+                          <GitBranch className="h-3 w-3 text-brand-400" />
                         </div>
                       )}
                       {isCustomer ? (
@@ -423,16 +454,25 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                       <span className="text-on-surface-variant/40">&mdash;</span>
                     )}
                   </TableCell>
-                  {/* Sub Tickets — only shown on main tickets */}
+                  {/* Sub Tickets — clickable badge on main tickets */}
                   <TableCell>
                     {!isSubTicket ? (
                       (() => {
                         const count = subTicketsMap.get(ticket._id)?.length ?? 0;
+                        const isExpanded = expandedParents.has(ticket._id);
                         return count > 0 ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-brand-100 text-brand-700 text-xs font-semibold">
+                          <button
+                            type="button"
+                            onClick={() => toggleParent(ticket._id)}
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold transition-colors ${
+                              isExpanded
+                                ? 'bg-primary text-white'
+                                : 'bg-brand-100 text-brand-700 hover:bg-primary hover:text-white'
+                            }`}
+                          >
                             <GitBranch className="w-3 h-3" />
                             {count}
-                          </span>
+                          </button>
                         ) : (
                           <span className="text-on-surface-variant/40">&mdash;</span>
                         );
@@ -449,23 +489,25 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                       <span className="text-on-surface-variant/40">&mdash;</span>
                     )}
                   </TableCell>
-                  {!isCustomer && <TableCell>
-                    <div className="flex items-center justify-end gap-1">
-                      <div ref={openMenuId === ticket._id ? menuRef : undefined}>
-                        <Button
-                          size="icon-sm"
-                          variant="ghost"
-                          onClick={(e) => handleMenuToggle(ticket._id, e.currentTarget)}
-                          className="text-on-surface-variant hover:text-on-surface"
-                          aria-label={`Actions for ticket ${ticket.ticketNumber}`}
-                          aria-expanded={openMenuId === ticket._id}
-                          aria-haspopup="menu"
-                        >
-                          <MoreVertical className="w-4 h-4" />
-                        </Button>
+                  {!isCustomer && (
+                    <TableCell className={`sticky right-0 z-10 shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.08)] ${isSubTicket ? 'bg-primary-fixed/20' : 'bg-surface-container-lowest'}`}>
+                      <div className="flex items-center justify-end gap-1">
+                        <div ref={openMenuId === ticket._id ? menuRef : undefined}>
+                          <Button
+                            size="icon-sm"
+                            variant="ghost"
+                            onClick={(e) => handleMenuToggle(ticket._id, e.currentTarget)}
+                            className="text-on-surface-variant hover:text-on-surface"
+                            aria-label={`Actions for ticket ${ticket.ticketNumber}`}
+                            aria-expanded={openMenuId === ticket._id}
+                            aria-haspopup="menu"
+                          >
+                            <MoreVertical className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                  </TableCell>}
+                    </TableCell>
+                  )}
                 </TableRow>
               );
             })}

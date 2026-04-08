@@ -13,6 +13,7 @@ interface WorkingHoursState {
   holidays: Holiday[];
   loading: boolean;
   holidaysLoading: boolean;
+  importingHolidays: boolean;
   error: string | null;
 }
 
@@ -21,6 +22,7 @@ const initialState: WorkingHoursState = {
   holidays: [],
   loading: false,
   holidaysLoading: false,
+  importingHolidays: false,
   error: null,
 };
 
@@ -82,6 +84,62 @@ export const addHoliday = createAsyncThunk(
   }
 );
 
+export const importPublicHolidays = createAsyncThunk(
+  'workingHours/importPublicHolidays',
+  async (
+    { year, countryCode, apiKey }: { year: number; countryCode: string; apiKey?: string },
+    { getState, rejectWithValue }
+  ) => {
+    try {
+      let rawHolidays: { date: string; description: string }[] = [];
+
+      if (apiKey) {
+        // ── Calendarific (full Islamic + national coverage) ──────────────────
+        const res = await fetch(
+          `https://calendarific.com/api/v2/holidays?api_key=${apiKey}&country=${countryCode.toUpperCase()}&year=${year}`
+        );
+        if (!res.ok) throw new Error('Calendarific request failed — check your API key');
+        const json = await res.json();
+        if (json.meta?.code !== 200) throw new Error(json.meta?.error_detail || 'Calendarific error');
+        rawHolidays = (json.response?.holidays ?? []).map((h: any) => ({
+          date: h.date.iso.slice(0, 10),
+          description: h.name,
+        }));
+      } else {
+        // ── Nager.Date fallback (civil holidays only) ─────────────────────────
+        const res = await fetch(
+          `https://date.nager.at/api/v3/PublicHolidays/${year}/${countryCode.toUpperCase()}`
+        );
+        if (!res.ok) throw new Error('Invalid country code or network error');
+        const list: { date: string; name: string; localName: string }[] = await res.json();
+        rawHolidays = list.map((h) => ({ date: h.date, description: h.localName || h.name }));
+      }
+
+      const state = getState() as { workingHours: WorkingHoursState };
+      const existingDates = new Set(
+        state.workingHours.holidays.map((h) => h.date.slice(0, 10))
+      );
+
+      const newHolidays: CreateHolidayData[] = rawHolidays.filter(
+        (h) => !existingDates.has(h.date)
+      );
+
+      if (newHolidays.length === 0) {
+        toast.info('All public holidays for this year are already imported.');
+        return 0;
+      }
+
+      await workingHoursApi.addHolidaysBulk(newHolidays);
+      toast.success(`${newHolidays.length} public holidays imported successfully!`);
+      return newHolidays.length;
+    } catch (error: any) {
+      const message = error.message || 'Failed to import public holidays';
+      toast.error(message);
+      return rejectWithValue(message);
+    }
+  }
+);
+
 export const removeHoliday = createAsyncThunk(
   'workingHours/removeHoliday',
   async (id: string, { rejectWithValue }) => {
@@ -136,6 +194,12 @@ const workingHoursSlice = createSlice({
       .addCase(removeHoliday.fulfilled, (state, action) => {
         state.holidays = state.holidays.filter((h) => h._id !== action.payload);
       });
+
+    // Import public holidays
+    builder
+      .addCase(importPublicHolidays.pending, (state) => { state.importingHolidays = true; })
+      .addCase(importPublicHolidays.fulfilled, (state) => { state.importingHolidays = false; })
+      .addCase(importPublicHolidays.rejected, (state) => { state.importingHolidays = false; });
   },
 });
 

@@ -31,6 +31,7 @@ export interface Consultant extends User {
   userType: 'consultant';
   expertise?: string[];
   availabilityStatus?: string;
+  role?: 'consultant' | 'senior_consultant' | 'admin';
 }
 
 // Team Member specific fields

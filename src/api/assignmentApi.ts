@@ -83,6 +83,17 @@ export const assignmentApi = {
   },
 
   // Multi-consultant assignment APIs
+  reassignConsultants: async (
+    assignmentId: string,
+    data: AssignConsultantsData & { notes?: string }
+  ): Promise<AssignmentResponse> => {
+    const response = await api.post<AssignmentResponse>(
+      `/ticket-assignments/${assignmentId}/reassign-consultants`,
+      data
+    );
+    return response.data;
+  },
+
   assignConsultants: async (assignmentId: string, data: AssignConsultantsData): Promise<AssignmentResponse> => {
     const response = await api.post<AssignmentResponse>(
       `/ticket-assignments/${assignmentId}/assign-consultants`,

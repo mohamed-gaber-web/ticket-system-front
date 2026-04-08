@@ -296,15 +296,13 @@ export default function ViewTicket() {
 
           {/* Right: Actions */}
           <div className="flex items-center gap-2 shrink-0 flex-wrap">
-            {!isCustomer && currentAssignment && (
-              <AssignConsultantsDialog
-                assignmentId={currentAssignment._id}
-                currentConsultants={currentAssignment.assignedToConsultants?.map(
-                  (ca) => typeof ca.consultant === 'string' ? ca.consultant : ca.consultant._id
-                )}
-                onSuccess={handleRefreshAssignment}
-              />
-            )}
+            {!isCustomer && <TicketAssignButton
+              currentAssignment={currentAssignment}
+              acceptedBy={currentTicket.acceptedBy}
+              ticketId={currentTicket._id}
+              userId={user?._id}
+              onSuccess={handleRefreshAssignment}
+            />}
             {!isCustomer && currentTicket.status !== 'resolved' && currentTicket.status !== 'closed' && currentTicket.status !== 'delivered' && (
               <Button
                 variant="outline"
@@ -553,6 +551,41 @@ export default function ViewTicket() {
         </div>
       )}
     </div>
+  );
+}
+
+// Stable component — never conditionally rendered, so no mount/unmount during assignment updates
+function TicketAssignButton({
+  currentAssignment,
+  acceptedBy,
+  ticketId,
+  userId,
+  onSuccess,
+}: {
+  currentAssignment: any;
+  acceptedBy: any;
+  ticketId: string;
+  userId?: string;
+  onSuccess: () => void;
+}) {
+  const formalIds: string[] = (currentAssignment?.assignedToConsultants ?? []).map(
+    (ca: any) => typeof ca.consultant === 'string' ? ca.consultant : ca.consultant._id
+  );
+  const acceptedById = acceptedBy
+    ? typeof acceptedBy === 'string' ? acceptedBy : acceptedBy._id
+    : null;
+  const assignedIds = [...new Set([...formalIds, ...(acceptedById ? [acceptedById] : [])])];
+  const hasConsultants = assignedIds.length > 0;
+
+  return (
+    <AssignConsultantsDialog
+      assignmentId={currentAssignment?._id}
+      ticketId={ticketId}
+      assignedByConsultantId={userId}
+      currentConsultants={assignedIds}
+      mode={hasConsultants ? 'reassign' : 'assign'}
+      onSuccess={onSuccess}
+    />
   );
 }
 
