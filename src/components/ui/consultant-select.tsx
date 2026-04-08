@@ -137,14 +137,14 @@ export function ConsultantSelect({
                   {getInitials(c)}
                 </span>
                 {c.firstName} {c.lastName}
-                <button
-                  type="button"
+                <span
+                  role="button"
                   tabIndex={-1}
                   onClick={(e) => remove(e, c._id)}
-                  className="ml-0.5 rounded-full hover:text-red-600 transition-colors"
+                  className="ml-0.5 rounded-full hover:text-red-600 transition-colors cursor-pointer"
                 >
                   <X className="w-3 h-3" />
-                </button>
+                </span>
               </span>
             ))
           )}
