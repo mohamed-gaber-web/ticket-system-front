@@ -1,7 +1,9 @@
 // User Types
 export type UserType = 'customer' | 'consultant' | 'team_member';
 
-export type UserStatus = 'active' | 'inactive' | 'suspended';
+export type { CustomerRole } from './customer.types';
+
+export type UserStatus = 'active' | 'inactive' | 'suspended' | 'pending';
 
 // Base User Interface
 export interface User {
@@ -24,6 +26,7 @@ export interface User {
 export interface Customer extends User {
   userType: 'customer';
   slaMapping?: string;
+  role?: import('./customer.types').CustomerRole;
 }
 
 // Consultant specific fields
@@ -112,6 +115,7 @@ export interface AuthState {
   token: string | null;
   refreshToken: string | null;
   userType: UserType | null;
+  customerRole: import('./customer.types').CustomerRole | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;

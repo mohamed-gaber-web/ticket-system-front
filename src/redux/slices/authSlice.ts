@@ -30,6 +30,7 @@ const initialState: AuthState = {
   token: localStorage.getItem('token'),
   refreshToken: localStorage.getItem('refreshToken'),
   userType: (localStorage.getItem('userType') as AuthState['userType']) || null,
+  customerRole: (getUserFromLocalStorage()?.role as AuthState['customerRole']) ?? null,
   isAuthenticated: !!localStorage.getItem('token'),
   isLoading: false,
   error: null,
@@ -227,6 +228,7 @@ const authSlice = createSlice({
       state.token = null;
       state.refreshToken = null;
       state.userType = null;
+      state.customerRole = null;
       state.isAuthenticated = false;
       state.error = null;
       localStorage.removeItem('token');
@@ -248,6 +250,7 @@ const authSlice = createSlice({
         state.token = action.payload.token;
         state.refreshToken = action.payload.refreshToken || null;
         state.userType = action.payload.userType;
+        state.customerRole = (action.payload.data as any)?.role ?? null;
         state.isAuthenticated = true;
         state.error = null;
       })
@@ -268,6 +271,7 @@ const authSlice = createSlice({
         state.token = action.payload.token;
         state.refreshToken = action.payload.refreshToken || null;
         state.userType = action.payload.userType;
+        state.customerRole = (action.payload.data as any)?.role ?? null;
         state.isAuthenticated = true;
         state.error = null;
       })
@@ -287,6 +291,7 @@ const authSlice = createSlice({
         state.token = null;
         state.refreshToken = null;
         state.userType = null;
+        state.customerRole = null;
         state.isAuthenticated = false;
         state.error = null;
       })
@@ -296,6 +301,7 @@ const authSlice = createSlice({
         state.token = null;
         state.refreshToken = null;
         state.userType = null;
+        state.customerRole = null;
         state.isAuthenticated = false;
         state.error = action.payload as string;
       });
@@ -310,6 +316,7 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.user = action.payload.data;
         state.userType = action.payload.userType;
+        state.customerRole = (action.payload.data as any)?.role ?? null;
         state.error = null;
 
         // Update user data in localStorage when profile is fetched
@@ -330,6 +337,7 @@ const authSlice = createSlice({
       .addCase(updateProfile.fulfilled, (state, action) => {
         state.isLoading = false;
         state.user = action.payload.data;
+        state.customerRole = (action.payload.data as any)?.role ?? null;
         state.error = null;
 
         // Update user data in localStorage when profile is updated

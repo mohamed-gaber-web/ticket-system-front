@@ -1,9 +1,13 @@
 import { lazy, Suspense, type ReactNode } from "react";
+import { useAppSelector } from "@/redux/hooks/hooks";
 import type { RouteObject } from "react-router-dom";
 import Layout from "@/components/layout/layout";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 
-// Lightweight loading fallback — no extra dependencies
+// Dashboard — eager (landing page, should load fast)
+import Dashboard from "@/pages/dashboard/dashboard";
+
+// Lightweight loading fallback
 function PageLoader() {
   return (
     <div className="flex items-center justify-center h-[60vh]">
@@ -16,7 +20,16 @@ function Lazy({ children }: { children: ReactNode }) {
   return <Suspense fallback={<PageLoader />}>{children}</Suspense>;
 }
 
-// Auth Module — lazy (not needed until user navigates)
+// Routes to correct dashboard based on userType
+function DashboardRouter() {
+  const { userType } = useAppSelector((state) => state.auth);
+  if (userType === "customer") {
+    return <Lazy><CustomerDashboard /></Lazy>;
+  }
+  return <Dashboard />;
+}
+
+// Auth Module
 const SigninPage = lazy(() => import("@/pages/auth/signin"));
 const SignupPage = lazy(() => import("@/pages/auth/signup"));
 const UnauthorizedPage = lazy(() => import("@/pages/auth/unauthorized"));
@@ -25,8 +38,8 @@ const ResetPasswordPage = lazy(() => import("@/pages/auth/reset-password"));
 const ProfilePage = lazy(() => import("@/pages/auth/profile"));
 const ChangePasswordPage = lazy(() => import("@/pages/auth/change-password"));
 
-// Dashboard — eager (landing page, should load fast)
-import Dashboard from "@/pages/dashboard/dashboard";
+// Customer Dashboard (lazy)
+const CustomerDashboard = lazy(() => import("@/pages/dashboard/CustomerDashboard"));
 
 // Customer Module
 const Customers = lazy(() => import("@/pages/customers/customers"));
@@ -83,28 +96,16 @@ const Sources = lazy(() => import("@/pages/sources/Sources"));
 const Companies = lazy(() => import("@/pages/companies/Companies"));
 const WorkingHoursPage = lazy(() => import("@/pages/working-hours/WorkingHoursPage"));
 
+// Company Users Module
+const CompanyUsers = lazy(() => import("@/pages/company-users/companyUsers"));
+
 export const routes: RouteObject[] = [
   // Public Routes (Authentication)
-  {
-    path: "/signin",
-    element: <Lazy><SigninPage /></Lazy>,
-  },
-  {
-    path: "/signup",
-    element: <Lazy><SignupPage /></Lazy>,
-  },
-  {
-    path: "/forgot-password",
-    element: <Lazy><ForgotPasswordPage /></Lazy>,
-  },
-  {
-    path: "/reset-password/:userType/:token",
-    element: <Lazy><ResetPasswordPage /></Lazy>,
-  },
-  {
-    path: "/unauthorized",
-    element: <Lazy><UnauthorizedPage /></Lazy>,
-  },
+  { path: "/signin", element: <Lazy><SigninPage /></Lazy> },
+  { path: "/signup", element: <Lazy><SignupPage /></Lazy> },
+  { path: "/forgot-password", element: <Lazy><ForgotPasswordPage /></Lazy> },
+  { path: "/reset-password/:userType/:token", element: <Lazy><ResetPasswordPage /></Lazy> },
+  { path: "/unauthorized", element: <Lazy><UnauthorizedPage /></Lazy> },
 
   // Protected Routes
   {
@@ -115,11 +116,11 @@ export const routes: RouteObject[] = [
       </ProtectedRoute>
     ),
     children: [
-      // Dashboard (eager — landing page)
-      { path: "/", element: <Dashboard /> },
-      { path: "/dashboard", element: <Dashboard /> },
+      // Dashboard — CustomerDashboard for customers, consultant Dashboard for everyone else
+      { path: "/", element: <DashboardRouter /> },
+      { path: "/dashboard", element: <DashboardRouter /> },
 
-      // Profile Routes
+      // Profile
       { path: "/profile", element: <Lazy><ProfilePage /></Lazy> },
       { path: "/change-password", element: <Lazy><ChangePasswordPage /></Lazy> },
 
@@ -128,10 +129,10 @@ export const routes: RouteObject[] = [
       {
         path: "/customers/create",
         element: (
-          <ProtectedRoute allowedUserTypes={['consultant']}>
+          <ProtectedRoute allowedUserTypes={["consultant"]}>
             <Lazy><CreateCustomer /></Lazy>
           </ProtectedRoute>
-        )
+        ),
       },
       { path: "/customers/edit/:id", element: <Lazy><EditCustomer /></Lazy> },
       { path: "/customers/view/:id", element: <Lazy><ViewCustomer /></Lazy> },
@@ -184,6 +185,16 @@ export const routes: RouteObject[] = [
       { path: "/sources", element: <Lazy><Sources /></Lazy> },
       { path: "/companies", element: <Lazy><Companies /></Lazy> },
       { path: "/working-hours", element: <Lazy><WorkingHoursPage /></Lazy> },
+
+      // Company Users — company_admin customers only
+      {
+        path: "/company-users",
+        element: (
+          <ProtectedRoute allowedUserTypes={["customer"]} requiredCustomerRole="company_admin">
+            <Lazy><CompanyUsers /></Lazy>
+          </ProtectedRoute>
+        ),
+      },
     ],
   },
 ];

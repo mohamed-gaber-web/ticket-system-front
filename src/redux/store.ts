@@ -20,6 +20,7 @@ import versionNumberReducer from './slices/versionNumberSlice';
 import departmentReducer from './slices/departmentSlice';
 import sourceReducer from './slices/sourceSlice';
 import companyReducer from './slices/companySlice';
+import companyUserReducer from './slices/companyUserSlice';
 import workingHoursReducer from './slices/workingHoursSlice';
 
 export const store = configureStore({
@@ -45,6 +46,7 @@ export const store = configureStore({
     departments: departmentReducer,
     sources: sourceReducer,
     companies: companyReducer,
+    companyUsers: companyUserReducer,
     workingHours: workingHoursReducer,
   },
   middleware: (getDefaultMiddleware) =>

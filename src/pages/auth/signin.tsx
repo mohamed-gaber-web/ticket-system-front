@@ -29,7 +29,7 @@ const SigninPage = () => {
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate(userType === 'customer' ? '/tickets' : '/dashboard');
+      navigate('/');
     }
   }, [isAuthenticated, userType, navigate]);
 
@@ -89,7 +89,7 @@ const SigninPage = () => {
       ).unwrap();
 
       toast.success('Signed in successfully!');
-      navigate(formData.userType === 'customer' ? '/tickets' : '/dashboard');
+      navigate('/');
     } catch (error) {
       console.error('Signin failed:', error);
     }

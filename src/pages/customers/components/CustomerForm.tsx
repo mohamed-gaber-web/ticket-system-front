@@ -45,7 +45,7 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
     address: '',
     city: '',
     country: '',
-    status: 'active' as 'active' | 'inactive' | 'suspended',
+    status: 'active' as 'active' | 'inactive' | 'suspended' | 'pending',
     erpType: '',
     versionNumber: '',
     consultants: [] as string[],
@@ -513,7 +513,7 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
               <label className="form-label">Status</label>
               <CustomSelect
                 value={formData.status}
-                onChange={(val) => setFormData((prev) => ({ ...prev, status: val as 'active' | 'inactive' | 'suspended' }))}
+                onChange={(val) => setFormData((prev) => ({ ...prev, status: val as 'active' | 'inactive' | 'suspended' | 'pending' }))}
                 options={[
                   { value: 'active', label: 'Active' },
                   { value: 'inactive', label: 'Inactive' },

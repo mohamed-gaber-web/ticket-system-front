@@ -1,3 +1,5 @@
+export type CustomerRole = "company_admin" | "company_user";
+
 export interface ERPTypeRef {
   _id: string;
   name: string;
@@ -33,7 +35,8 @@ export interface Customer {
   address?: string;
   city?: string;
   country?: string;
-  status: 'active' | 'inactive' | 'suspended';
+  status: 'active' | 'inactive' | 'suspended' | 'pending';
+  role?: CustomerRole;
   erpType?: ERPTypeRef | string;
   versionNumber?: VersionNumberRef | string;
   consultants?: ConsultantRef[] | string[];
@@ -54,6 +57,7 @@ export interface CreateCustomerData {
   erpType?: string;
   versionNumber?: string;
   consultants?: string[];
+  role?: CustomerRole;
 }
 
 export interface UpdateCustomerData {
@@ -65,10 +69,34 @@ export interface UpdateCustomerData {
   address?: string;
   city?: string;
   country?: string;
-  status?: 'active' | 'inactive' | 'suspended';
+  status?: 'active' | 'inactive' | 'suspended' | 'pending';
   erpType?: string;
   versionNumber?: string;
   consultants?: string[];
+  role?: CustomerRole;
+}
+
+export interface CreateCompanyUserData {
+  contactPerson: string;
+  email: string;
+  password: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  country?: string;
+}
+
+export interface UpdateCompanyUserData {
+  contactPerson?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  country?: string;
+  status?: 'active' | 'inactive' | 'suspended';
+}
+
+export interface SetCustomerRoleData {
+  role: CustomerRole;
 }
 
 export interface CustomerResponse {

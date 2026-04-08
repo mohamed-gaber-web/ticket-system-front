@@ -57,10 +57,17 @@ export const ROUTERLINKS = [
   { name: "Consultant Reports", path: "/consultant-reports", icon: FileBarChart },
 ];
 
-// Customer can only see Tickets
-const CUSTOMER_LINKS = [
-  { name: "Tickets", path: "/tickets", icon: Ticket },
-];
+// Customer links — built dynamically based on role
+const buildCustomerLinks = (customerRole?: string | null) => {
+  const links = [
+    { name: "Dashboard", path: "/", icon: LayoutDashboard },
+    { name: "Tickets", path: "/tickets", icon: Ticket },
+  ];
+  if (customerRole === "company_admin") {
+    links.push({ name: "Manage Users", path: "/company-users", icon: Users });
+  }
+  return links;
+};
 
 // Consultant can see specific modules
 const CONSULTANT_LINKS = [
@@ -99,9 +106,9 @@ const TEAM_MEMBER_LINKS = [
 ];
 
 // Filter links based on user type
-export const getRouterLinksByUserType = (userType: string | null) => {
+export const getRouterLinksByUserType = (userType: string | null, customerRole?: string | null) => {
   if (userType === 'customer') {
-    return CUSTOMER_LINKS;
+    return buildCustomerLinks(customerRole);
   }
   if (userType === 'consultant') {
     return CONSULTANT_LINKS;

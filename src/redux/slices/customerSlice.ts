@@ -2,7 +2,7 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 
 import * as customerApi from '@/api/customerApi';
 import { toast } from 'sonner';
-import type { CreateCustomerData, Customer, CustomerQueryParams, UpdateCustomerData } from '@/types/customer.types';
+import type { CreateCustomerData, Customer, CustomerQueryParams, UpdateCustomerData, SetCustomerRoleData } from '@/types/customer.types';
 
 interface CustomerState {
   customers: Customer[];
@@ -108,6 +108,21 @@ export const deleteCustomer = createAsyncThunk(
   }
 );
 
+export const setCustomerRole = createAsyncThunk(
+  'customers/setCustomerRole',
+  async ({ id, data }: { id: string; data: SetCustomerRoleData }, { rejectWithValue }) => {
+    try {
+      const response = await customerApi.setCustomerRole(id, data);
+      toast.success('Customer role updated successfully!');
+      return response.data;
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Failed to update customer role';
+      toast.error(message);
+      return rejectWithValue(message);
+    }
+  }
+);
+
 // Slice
 const customerSlice = createSlice({
   name: 'customers',
@@ -198,6 +213,27 @@ const customerSlice = createSlice({
         state.customers = state.customers.filter((c) => c._id !== action.payload);
       })
       .addCase(deleteCustomer.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      });
+
+    // Set customer role
+    builder
+      .addCase(setCustomerRole.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(setCustomerRole.fulfilled, (state, action) => {
+        state.loading = false;
+        const index = state.customers.findIndex((c) => c._id === action.payload._id);
+        if (index !== -1) {
+          state.customers[index] = action.payload;
+        }
+        if (state.currentCustomer?._id === action.payload._id) {
+          state.currentCustomer = action.payload;
+        }
+      })
+      .addCase(setCustomerRole.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       });

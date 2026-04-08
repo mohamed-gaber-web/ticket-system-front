@@ -1,4 +1,4 @@
-import type { CreateCustomerData, CustomerQueryParams, CustomerResponse, CustomersListResponse, UpdateCustomerData } from '@/types/customer.types';
+import type { CreateCustomerData, CustomerQueryParams, CustomerResponse, CustomersListResponse, UpdateCustomerData, SetCustomerRoleData } from '@/types/customer.types';
 import api from './axiosConfig';
 
 
@@ -34,3 +34,34 @@ export const deleteCustomer = async (id: string): Promise<{ success: boolean; me
   const response = await api.delete<{ success: boolean; message: string }>(`/customers/${id}`);
   return response.data;
 };
+
+// Set customer role (system admin only)
+export const setCustomerRole = async (id: string, data: SetCustomerRoleData): Promise<CustomerResponse> => {
+  const response = await api.put<CustomerResponse>(`/customers/${id}/role`, data);
+  return response.data;
+};
+
+// Get dashboard stats for the logged-in customer
+export const getMyStats = async (): Promise<{ success: boolean; data: CustomerDashboardStats }> => {
+  const response = await api.get<{ success: boolean; data: CustomerDashboardStats }>('/customers/my-stats');
+  return response.data;
+};
+
+export interface CustomerDashboardStats {
+  totalTickets: number;
+  openTickets: number;
+  resolvedTickets: number;
+  closedTickets: number;
+  slaBreached: number;
+  ticketsByStatus: Record<string, number>;
+  ticketsByPriority: Record<string, number>;
+  recentTickets: Array<{
+    _id: string;
+    ticketNumber: string;
+    subject: string;
+    status: string;
+    priority: string;
+    createdAt: string;
+  }>;
+  companyUsers: { total: number; active: number } | null;
+}

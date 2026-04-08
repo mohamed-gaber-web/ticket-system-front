@@ -9,10 +9,10 @@ import { useAppSelector } from "@/redux/hooks/hooks";
 export default function Sidebar() {
     const [isOpen, setIsOpen] = useState(true);
     const [isMobileOpen, setIsMobileOpen] = useState(false);
-    const { userType } = useAppSelector((state) => state.auth);
+    const { userType, customerRole } = useAppSelector((state) => state.auth);
 
-    // Filter links based on user type
-    const links = getRouterLinksByUserType(userType);
+    // Filter links based on user type (and customer role for company_admin)
+    const links = getRouterLinksByUserType(userType, customerRole);
 
     return (
         <>
