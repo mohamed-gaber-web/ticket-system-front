@@ -7,7 +7,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Edit, Trash2, Mail, Phone, Building2, Database, Eye } from 'lucide-react';
+import { Edit, Trash2, Mail, Phone, Building2, Database, Eye, ShieldCheck, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
@@ -142,6 +142,7 @@ export default function CustomerTable({ customers, onEdit, onDelete, isLoading }
             <TableHead className="font-semibold">Contact Info</TableHead>
             <TableHead className="font-semibold">ERP Type</TableHead>
             <TableHead className="font-semibold">Version</TableHead>
+            <TableHead className="font-semibold">Role</TableHead>
             <TableHead className="font-semibold">Status</TableHead>
             <TableHead className="font-semibold">Created At</TableHead>
             <TableHead className="text-right font-semibold">Actions</TableHead>
@@ -191,6 +192,19 @@ export default function CustomerTable({ customers, onEdit, onDelete, isLoading }
                   <Database className="h-4 w-4 text-brand-600" />
                   <span className="text-sm text-on-surface-variant">{getVersionNumberName(customer.versionNumber)}</span>
                 </div>
+              </TableCell>
+              <TableCell>
+                {customer.role === 'company_admin' ? (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[0.5rem] text-xs font-bold uppercase tracking-[0.05em] bg-brand-100 text-brand-700">
+                    <ShieldCheck className="h-3 w-3" />
+                    Admin
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[0.5rem] text-xs font-bold uppercase tracking-[0.05em] bg-surface-container text-on-surface-variant">
+                    <User className="h-3 w-3" />
+                    User
+                  </span>
+                )}
               </TableCell>
               <TableCell>{getStatusBadge(customer.status)}</TableCell>
               <TableCell className="text-on-surface-variant">{formatDate(customer.createdAt)}</TableCell>
