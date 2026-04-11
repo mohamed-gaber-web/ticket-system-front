@@ -29,7 +29,7 @@ export default function ViewCustomer() {
   const dispatch = useAppDispatch();
 
   const { currentCustomer, loading } = useAppSelector((state) => state.customers);
-  const { user: authUser, userType } = useAppSelector((state) => state.auth);
+  const { userType } = useAppSelector((state) => state.auth);
   const isSystemAdmin = userType === 'consultant';
 
   useEffect(() => {
