@@ -233,27 +233,26 @@ export default function Dashboard() {
   const dispatch = useAppDispatch();
   const {
     tickets,
-    total: totalTickets,
     loading: ticketsLoading,
   } = useAppSelector((s) => s.tickets);
   const { total: totalCustomers, loading: customersLoading } =
     useAppSelector((s) => s.customers);
 
   useEffect(() => {
-    dispatch(fetchTickets());
+    dispatch(fetchTickets({ limit: 10000 }));
     dispatch(fetchCustomers());
   }, [dispatch]);
 
   /* ── Derived data ── */
   const stats = useMemo(() => {
-    const closed = tickets.filter(
-      (t) => t.status === "closed" || t.status === "resolved"
-    ).length;
+    const closed = tickets.filter((t) => t.status === "closed").length;
+    const resolved = tickets.filter((t) => t.status === "resolved").length;
     const inProgress = tickets.filter((t) => t.status === "in_progress").length;
     const newT = tickets.filter((t) => t.status === "new").length;
     const assigned = tickets.filter((t) => t.status === "assigned").length;
-    return { total: totalTickets, closed, inProgress, new: newT, assigned };
-  }, [tickets, totalTickets]);
+    const total = tickets.length;
+    return { total, closed, resolved, inProgress, new: newT, assigned };
+  }, [tickets]);
 
   const metrics = useMemo(() => {
     const resolved = tickets.filter((t) => t.resolvedAt && t.createdAt);
@@ -301,7 +300,9 @@ export default function Dashboard() {
   );
 
   const resolutionRate =
-    stats.total > 0 ? Math.round((stats.closed / stats.total) * 100) : 0;
+    stats.total > 0
+      ? Math.round(((stats.closed + stats.resolved) / stats.total) * 100)
+      : 0;
 
   const today = new Date().toLocaleDateString("en-US", {
     weekday: "long",
@@ -345,7 +346,7 @@ export default function Dashboard() {
         <StatCard label="Customers"       value={totalCustomers}       icon={Users}         numberColor="text-brand-700"        iconBg="bg-brand-100"               iconColor="text-brand-700"           bar="bg-brand-700"          loading={customersLoading} idx={3} />
         <StatCard label="Assigned"        value={stats.assigned}       icon={Ticket}        numberColor="text-accent-orange-500" iconBg="bg-accent-orange-100"      iconColor="text-accent-orange-500"   bar="bg-accent-orange-500"  loading={ticketsLoading}   idx={4} />
         <StatCard label="Closed"          value={stats.closed}         icon={CheckCircle2}  numberColor="text-emerald-600"      iconBg="bg-emerald-100"             iconColor="text-emerald-600"         bar="bg-emerald-500"        loading={ticketsLoading}   idx={5} />
-        <StatCard label="Resolved"        value={metrics.totalResolved} icon={TrendingUp}   numberColor="text-emerald-700"      iconBg="bg-green-100"               iconColor="text-emerald-700"         bar="bg-emerald-400"        loading={ticketsLoading}   idx={6} />
+        <StatCard label="Resolved"        value={stats.resolved}        icon={TrendingUp}   numberColor="text-emerald-700"      iconBg="bg-green-100"               iconColor="text-emerald-700"         bar="bg-emerald-400"        loading={ticketsLoading}   idx={6} />
 
         {/* Resolution rate — inline highlight card */}
         <motion.div
@@ -428,7 +429,8 @@ export default function Dashboard() {
                         { v: stats.new, color: "bg-yellow-400" },
                         { v: stats.assigned, color: "bg-accent-orange-500" },
                         { v: stats.inProgress, color: "bg-brand-400" },
-                        { v: stats.closed, color: "bg-emerald-500" },
+                        { v: stats.resolved, color: "bg-emerald-400" },
+                        { v: stats.closed, color: "bg-emerald-600" },
                       ]
                         .filter((s) => s.v > 0)
                         .map((seg, i) => (
@@ -437,7 +439,7 @@ export default function Dashboard() {
                             className={`${seg.color} first:rounded-l-full last:rounded-r-full`}
                             initial={{ width: 0 }}
                             animate={{
-                              width: `${(seg.v / stats.total) * 100}%`,
+                              width: `${stats.total > 0 ? (seg.v / stats.total) * 100 : 0}%`,
                             }}
                             transition={{ duration: 1, ease: [0.23, 1, 0.32, 1], delay: 0.4 + i * 0.07 }}
                           />
@@ -450,7 +452,8 @@ export default function Dashboard() {
                         { label: "New",         v: stats.new,        dot: "bg-yellow-400",       text: "text-yellow-700" },
                         { label: "Assigned",    v: stats.assigned,   dot: "bg-accent-orange-500", text: "text-accent-orange-600" },
                         { label: "In Progress", v: stats.inProgress, dot: "bg-brand-400",         text: "text-brand-600" },
-                        { label: "Closed",      v: stats.closed,     dot: "bg-emerald-500",       text: "text-emerald-700" },
+                        { label: "Resolved",    v: stats.resolved,   dot: "bg-emerald-400",       text: "text-emerald-600" },
+                        { label: "Closed",      v: stats.closed,     dot: "bg-emerald-600",       text: "text-emerald-700" },
                       ].map((item) => (
                         <div key={item.label} className="flex items-center gap-2">
                           <div className={`h-2.5 w-2.5 rounded-full shrink-0 ${item.dot}`} />

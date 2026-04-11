@@ -7,7 +7,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Edit, Trash2, Mail, Phone, Building2, Database } from 'lucide-react';
+import { Edit, Trash2, Mail, Phone, Building2, Database, Eye } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
 import type { Customer } from '@/types/customer.types';
@@ -23,6 +24,7 @@ interface CustomerTableProps {
 }
 
 export default function CustomerTable({ customers, onEdit, onDelete, isLoading }: CustomerTableProps) {
+  const navigate = useNavigate();
   const { erpTypes } = useAppSelector((state) => state.erpTypes);
   const { versionNumbers } = useAppSelector((state) => state.versionNumbers);
 
@@ -194,6 +196,14 @@ export default function CustomerTable({ customers, onEdit, onDelete, isLoading }
               <TableCell className="text-on-surface-variant">{formatDate(customer.createdAt)}</TableCell>
               <TableCell>
                 <div className="flex items-center justify-end gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => navigate(`/customers/view/${customer._id}`)}
+                  >
+                    <Eye className="w-4 h-4 mr-1" />
+                    View
+                  </Button>
                   <Button
                     size="sm"
                     variant="outline"
