@@ -26,6 +26,9 @@ function DashboardRouter() {
   if (userType === "customer") {
     return <Lazy><CustomerDashboard /></Lazy>;
   }
+  if (userType === "tele_sales") {
+    return <Lazy><TeleSalesDashboard /></Lazy>;
+  }
   return <Dashboard />;
 }
 
@@ -99,13 +102,23 @@ const WorkingHoursPage = lazy(() => import("@/pages/working-hours/WorkingHoursPa
 // Company Users Module
 const CompanyUsers = lazy(() => import("@/pages/company-users/companyUsers"));
 
+// TeleSales Module
+const TeleSalesSignin = lazy(() => import("@/pages/tele-sales/auth/TeleSalesSignin"));
+const TeleSalesDashboard = lazy(() => import("@/pages/tele-sales/TeleSalesDashboard"));
+const Leads = lazy(() => import("@/pages/tele-sales/leads/Leads"));
+const LeadDetail = lazy(() => import("@/pages/tele-sales/leads/LeadDetail"));
+const TeleSalesAgents = lazy(() => import("@/pages/tele-sales/agents/Agents"));
+
 export const routes: RouteObject[] = [
-  // Public Routes (Authentication)
+  // Public Routes (Authentication — Ticket System)
   { path: "/signin", element: <Lazy><SigninPage /></Lazy> },
   { path: "/signup", element: <Lazy><SignupPage /></Lazy> },
   { path: "/forgot-password", element: <Lazy><ForgotPasswordPage /></Lazy> },
   { path: "/reset-password/:userType/:token", element: <Lazy><ResetPasswordPage /></Lazy> },
   { path: "/unauthorized", element: <Lazy><UnauthorizedPage /></Lazy> },
+
+  // Public Routes (Authentication — TeleSales Portal)
+  { path: "/tele-sales/login", element: <Lazy><TeleSalesSignin /></Lazy> },
 
   // Protected Routes
   {
@@ -192,6 +205,40 @@ export const routes: RouteObject[] = [
         element: (
           <ProtectedRoute allowedUserTypes={["customer"]} requiredCustomerRole="company_admin">
             <Lazy><CompanyUsers /></Lazy>
+          </ProtectedRoute>
+        ),
+      },
+
+      // TeleSales Routes — tele_sales users only (redirect to /tele-sales/login if not authenticated)
+      {
+        path: "/tele-sales",
+        element: (
+          <ProtectedRoute allowedUserTypes={["tele_sales"]} loginPath="/tele-sales/login">
+            <Lazy><TeleSalesDashboard /></Lazy>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "/tele-sales/leads",
+        element: (
+          <ProtectedRoute allowedUserTypes={["tele_sales"]} loginPath="/tele-sales/login">
+            <Lazy><Leads /></Lazy>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "/tele-sales/leads/:id",
+        element: (
+          <ProtectedRoute allowedUserTypes={["tele_sales"]} loginPath="/tele-sales/login">
+            <Lazy><LeadDetail /></Lazy>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "/tele-sales/agents",
+        element: (
+          <ProtectedRoute allowedUserTypes={["tele_sales"]} loginPath="/tele-sales/login">
+            <Lazy><TeleSalesAgents /></Lazy>
           </ProtectedRoute>
         ),
       },

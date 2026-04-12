@@ -1,4 +1,4 @@
-export type NotificationUserType = 'customer' | 'consultant' | 'team_member';
+export type NotificationUserType = 'customer' | 'consultant' | 'team_member' | 'tele_sales';
 
 export type NotificationType =
   | 'new_ticket'

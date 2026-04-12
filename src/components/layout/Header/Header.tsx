@@ -34,7 +34,12 @@ export default function Header() {
   //   unreadCount;
 
   const userEmail = user?.email || '';
-  const userRole = userType === 'customer' ? 'Customer' : userType === 'consultant' ? 'Consultant' : 'User';
+  const u = user as any;
+  const userRole = userType === 'tele_sales'
+    ? (u?.role === 'admin' ? 'Admin' : 'User')
+    : userType === 'customer' ? 'Customer'
+    : userType === 'consultant' ? 'Consultant'
+    : 'User';
 
   // Notification fetch — disabled while notifications UI is hidden
   // useEffect(() => {

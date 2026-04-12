@@ -22,6 +22,8 @@ import sourceReducer from './slices/sourceSlice';
 import companyReducer from './slices/companySlice';
 import companyUserReducer from './slices/companyUserSlice';
 import workingHoursReducer from './slices/workingHoursSlice';
+import teleSalesLeadsReducer from './slices/teleSalesLeadsSlice';
+import teleSalesAgentsReducer from './slices/teleSalesAgentsSlice';
 
 export const store = configureStore({
   reducer: {
@@ -48,6 +50,8 @@ export const store = configureStore({
     companies: companyReducer,
     companyUsers: companyUserReducer,
     workingHours: workingHoursReducer,
+    teleSalesLeads: teleSalesLeadsReducer,
+    teleSalesAgents: teleSalesAgentsReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

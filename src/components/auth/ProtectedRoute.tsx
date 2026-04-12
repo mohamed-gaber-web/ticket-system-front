@@ -7,15 +7,16 @@ interface ProtectedRouteProps {
   children: React.ReactNode;
   allowedUserTypes?: UserType[];
   requiredCustomerRole?: CustomerRole;
+  loginPath?: string;
 }
 
-const ProtectedRoute = ({ children, allowedUserTypes, requiredCustomerRole }: ProtectedRouteProps) => {
+const ProtectedRoute = ({ children, allowedUserTypes, requiredCustomerRole, loginPath = '/signin' }: ProtectedRouteProps) => {
   const { isAuthenticated, userType, customerRole } = useAppSelector((state) => state.auth);
   const location = useLocation();
 
-  // If not authenticated, redirect to signin
+  // If not authenticated, redirect to the appropriate login page
   if (!isAuthenticated) {
-    return <Navigate to="/signin" state={{ from: location }} replace />;
+    return <Navigate to={loginPath} state={{ from: location }} replace />;
   }
 
   // If allowedUserTypes is specified, check if current user type is allowed

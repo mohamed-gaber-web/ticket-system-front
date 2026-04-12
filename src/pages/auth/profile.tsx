@@ -49,7 +49,8 @@ const STATUS_TICKET: Record<string, string> = {
   closed: 'bg-surface-container-highest text-on-surface-variant',
 };
 const ROLE_BADGE: Record<string, string> = {
-  admin: 'bg-accent-orange-100 text-purple-800',
+  admin: 'bg-emerald-100 text-emerald-800',
+  user: 'bg-surface-container-high text-on-surface',
   senior_consultant: 'bg-brand-100 text-brand-800',
   consultant: 'bg-surface-container-high text-on-surface',
 };
@@ -66,11 +67,11 @@ const ProfilePage = () => {
   const navigate = useNavigate();
   const { user, userType, isLoading } = useAppSelector((state) => state.auth);
 
-  // Cast to any for role-specific fields (firstName, lastName, position, role, status)
   const u = user as any;
   const isConsultant = userType === 'consultant';
+  const isTeleSales = userType === 'tele_sales';
 
-  // ── Consultant form state ──
+  // ── Consultant / TeleSales form state ──
   const [consultantForm, setConsultantForm] = useState({
     firstName: '',
     lastName: '',
@@ -90,7 +91,7 @@ const ProfilePage = () => {
     country: '',
   });
 
-  // ── Tickets (consultant: assigned to them / customer: submitted by them) ──
+  // ── Tickets (consultant: assigned / customer: submitted) — NOT used for tele_sales ──
   const [assignedTickets, setAssignedTickets] = useState<Ticket[]>([]);
   const [ticketsLoading, setTicketsLoading] = useState(false);
   const [ticketPage, setTicketPage] = useState(1);
@@ -103,7 +104,7 @@ const ProfilePage = () => {
 
   useEffect(() => {
     if (!user) return;
-    if (isConsultant) {
+    if (isConsultant || isTeleSales) {
       setConsultantForm({
         firstName: u.firstName || '',
         lastName: u.lastName || '',
@@ -121,7 +122,10 @@ const ProfilePage = () => {
         country: u.country || '',
       });
     }
-    loadTickets(1, userType ?? undefined);
+    // Only load tickets for ticket-system users
+    if (!isTeleSales) {
+      loadTickets(1, userType ?? undefined);
+    }
   }, [user, userType]);
 
   const loadTickets = async (page: number, role = userType) => {
@@ -143,7 +147,7 @@ const ProfilePage = () => {
     }
   };
 
-  // ── Consultant form handlers ──
+  // ── Consultant / TeleSales form handlers ──
   const handleConsultantChange = (field: string, value: string) => {
     setConsultantForm((prev) => ({ ...prev, [field]: value }));
     if (consultantErrors[field]) setConsultantErrors((prev) => ({ ...prev, [field]: '' }));
@@ -168,6 +172,21 @@ const ProfilePage = () => {
     );
     if (updateConsultant.fulfilled.match(result)) {
       toast.success('Profile updated successfully');
+    }
+  };
+
+  const handleTeleSalesSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateConsultant()) return;
+    try {
+      await dispatch(updateProfile({
+        firstName: consultantForm.firstName,
+        lastName: consultantForm.lastName,
+        phone: consultantForm.phone,
+      } as any)).unwrap();
+      toast.success('Profile updated successfully');
+    } catch (error: any) {
+      toast.error(error || 'Failed to update profile');
     }
   };
 
@@ -196,17 +215,16 @@ const ProfilePage = () => {
   }
 
   // ── Display name ──
-  const displayName = isConsultant
+  const displayName = (isConsultant || isTeleSales)
     ? `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim() || u.email
     : u.contactPerson || u.companyName || u.email;
 
   // ─────────────────────────────────────────────────────────────────────────
-  // CONSULTANT PROFILE
+  // TELE SALES PROFILE — no ticket anything
   // ─────────────────────────────────────────────────────────────────────────
-  if (isConsultant) {
+  if (isTeleSales) {
     return (
       <div className="p-8 space-y-6">
-        {/* Page title */}
         <div>
           <h1 className="display-sm text-on-surface">My Profile</h1>
           <p className="text-on-surface-variant mt-1">View and manage your account information</p>
@@ -214,12 +232,155 @@ const ProfilePage = () => {
 
         {/* Profile Summary Card */}
         <div className="bg-surface-container-lowest rounded-[1rem] p-6 flex flex-col sm:flex-row items-start sm:items-center gap-5">
-          {/* Avatar */}
+          <div className="w-20 h-20 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
+            <span className="text-2xl font-bold text-emerald-700">{getInitials(displayName)}</span>
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <h2 className="text-xl font-bold text-on-surface">{displayName}</h2>
+            <p className="text-sm text-on-surface-variant mt-0.5">TeleSales Agent</p>
+            <div className="flex flex-wrap items-center gap-2 mt-2">
+              {u.role && (
+                <span className={cn('px-2.5 py-0.5 rounded-md text-xs font-semibold', ROLE_BADGE[u.role] ?? ROLE_BADGE.user)}>
+                  {formatLabel(u.role)}
+                </span>
+              )}
+              {u.status && (
+                <span className={cn('px-2.5 py-0.5 rounded-md text-xs font-semibold', STATUS_BADGE[u.status] ?? STATUS_BADGE.active)}>
+                  {formatLabel(u.status)}
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2 text-sm text-on-surface-variant">
+            <div className="flex items-center gap-2">
+              <Mail className="w-3.5 h-3.5 flex-shrink-0" />
+              <span>{u.email}</span>
+            </div>
+            {u.phone && (
+              <div className="flex items-center gap-2">
+                <Phone className="w-3.5 h-3.5 flex-shrink-0" />
+                <span>{u.phone}</span>
+              </div>
+            )}
+            <div className="flex items-center gap-2">
+              <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
+              <span>Joined {fmtDate(u.createdAt)}</span>
+            </div>
+            {u.lastLogin && (
+              <div className="flex items-center gap-2">
+                <Clock className="w-3.5 h-3.5 flex-shrink-0" />
+                <span>Last login {fmtDate(u.lastLogin)}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Edit Form — full width, no ticket column */}
+        <div className="max-w-xl bg-surface-container-lowest rounded-[1rem] p-6">
+          <h3 className="text-base font-semibold text-on-surface mb-5">Edit Profile</h3>
+          <form onSubmit={handleTeleSalesSubmit} className="space-y-4">
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="form-label">First Name</label>
+                <Input
+                  value={consultantForm.firstName}
+                  onChange={(e) => handleConsultantChange('firstName', e.target.value)}
+                  className={consultantErrors.firstName ? 'border-error' : ''}
+                />
+                {consultantErrors.firstName && (
+                  <p className="text-error text-xs mt-1">{consultantErrors.firstName}</p>
+                )}
+              </div>
+              <div>
+                <label className="form-label">Last Name</label>
+                <Input
+                  value={consultantForm.lastName}
+                  onChange={(e) => handleConsultantChange('lastName', e.target.value)}
+                  className={consultantErrors.lastName ? 'border-error' : ''}
+                />
+                {consultantErrors.lastName && (
+                  <p className="text-error text-xs mt-1">{consultantErrors.lastName}</p>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <label className="form-label">Email</label>
+              <Input value={consultantForm.email} disabled className="opacity-60" />
+              <p className="text-xs text-on-surface-variant mt-1">Email cannot be changed</p>
+            </div>
+
+            <div>
+              <label className="form-label">Phone</label>
+              <Input
+                type="tel"
+                value={consultantForm.phone}
+                onChange={(e) => handleConsultantChange('phone', e.target.value)}
+                placeholder="e.g. 01012345678"
+                className={consultantErrors.phone ? 'border-error' : ''}
+              />
+              {consultantErrors.phone && (
+                <p className="text-error text-xs mt-1">{consultantErrors.phone}</p>
+              )}
+            </div>
+
+            {/* Role & Status — read-only */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="form-label">Role</label>
+                <div className="mt-1 px-3 py-2 rounded-[0.75rem] bg-surface-container-low text-sm text-on-surface-variant border border-surface-container-high">
+                  {u.role ? formatLabel(u.role) : '—'}
+                </div>
+              </div>
+              <div>
+                <label className="form-label">Status</label>
+                <div className="mt-1 px-3 py-2 rounded-[0.75rem] bg-surface-container-low text-sm text-on-surface-variant border border-surface-container-high">
+                  {u.status ? formatLabel(u.status) : '—'}
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-2">
+              <Button type="submit" disabled={isLoading} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white">
+                {isLoading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                    Updating...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4 mr-2" />
+                    Save Changes
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // CONSULTANT PROFILE
+  // ─────────────────────────────────────────────────────────────────────────
+  if (isConsultant) {
+    return (
+      <div className="p-8 space-y-6">
+        <div>
+          <h1 className="display-sm text-on-surface">My Profile</h1>
+          <p className="text-on-surface-variant mt-1">View and manage your account information</p>
+        </div>
+
+        {/* Profile Summary Card */}
+        <div className="bg-surface-container-lowest rounded-[1rem] p-6 flex flex-col sm:flex-row items-start sm:items-center gap-5">
           <div className="w-20 h-20 rounded-full bg-brand-100 flex items-center justify-center flex-shrink-0">
             <span className="text-2xl font-bold text-brand-700">{getInitials(displayName)}</span>
           </div>
 
-          {/* Name + meta */}
           <div className="flex-1 min-w-0">
             <h2 className="text-xl font-bold text-on-surface">{displayName}</h2>
             <p className="text-sm text-on-surface-variant mt-0.5">
@@ -239,7 +400,6 @@ const ProfilePage = () => {
             </div>
           </div>
 
-          {/* Contact info */}
           <div className="flex flex-col gap-2 text-sm text-on-surface-variant">
             <div className="flex items-center gap-2">
               <Mail className="w-3.5 h-3.5 flex-shrink-0" />
@@ -478,7 +638,6 @@ const ProfilePage = () => {
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <div className="p-8 space-y-6">
-      {/* Page title */}
       <div>
         <h1 className="display-sm text-on-surface">My Profile</h1>
         <p className="text-on-surface-variant mt-1">View and manage your account information</p>

@@ -22,6 +22,8 @@ import {
   Globe,
   Building,
   CalendarClock,
+  PhoneCall,
+  UserPlus,
 } from "lucide-react";
 
 export const ROUTERLINKS = [
@@ -105,8 +107,21 @@ const TEAM_MEMBER_LINKS = [
   { name: "My Assignments", path: "/my-assignments", icon: ClipboardList },
 ];
 
+// TeleSales admin links
+const TELE_SALES_ADMIN_LINKS = [
+  { name: "Dashboard", path: "/tele-sales", icon: LayoutDashboard },
+  { name: "Leads", path: "/tele-sales/leads", icon: PhoneCall },
+  { name: "Agents", path: "/tele-sales/agents", icon: UserPlus },
+];
+
+// TeleSales user links
+const TELE_SALES_USER_LINKS = [
+  { name: "Dashboard", path: "/tele-sales", icon: LayoutDashboard },
+  { name: "Leads", path: "/tele-sales/leads", icon: PhoneCall },
+];
+
 // Filter links based on user type
-export const getRouterLinksByUserType = (userType: string | null, customerRole?: string | null) => {
+export const getRouterLinksByUserType = (userType: string | null, customerRole?: string | null, userRole?: string | null) => {
   if (userType === 'customer') {
     return buildCustomerLinks(customerRole);
   }
@@ -115,6 +130,9 @@ export const getRouterLinksByUserType = (userType: string | null, customerRole?:
   }
   if (userType === 'team_member') {
     return TEAM_MEMBER_LINKS;
+  }
+  if (userType === 'tele_sales') {
+    return userRole === 'admin' ? TELE_SALES_ADMIN_LINKS : TELE_SALES_USER_LINKS;
   }
   // For admins, show all links
   return ROUTERLINKS;

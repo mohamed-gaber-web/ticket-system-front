@@ -12,8 +12,9 @@ export const useAuth = () => {
   const auth = useAppSelector((state) => state.auth);
 
   const logout = async () => {
+    const isTeleSales = auth.userType === 'tele_sales';
     await dispatch(signout());
-    navigate('/signin');
+    navigate(isTeleSales ? '/tele-sales/login' : '/signin');
   };
 
   const isCustomer = auth.userType === 'customer';

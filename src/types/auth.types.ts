@@ -1,5 +1,5 @@
 // User Types
-export type UserType = 'customer' | 'consultant' | 'team_member';
+export type UserType = 'customer' | 'consultant' | 'team_member' | 'tele_sales';
 
 export type { CustomerRole } from './customer.types';
 
