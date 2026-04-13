@@ -120,7 +120,23 @@ export const routes: RouteObject[] = [
   // Public Routes (Authentication — TeleSales Portal)
   { path: "/tele-sales/login", element: <Lazy><TeleSalesSignin /></Lazy> },
 
-  // Protected Routes
+  // TeleSales Protected Routes — outside the main ProtectedRoute so loginPath is correct
+  {
+    path: "/tele-sales",
+    element: (
+      <ProtectedRoute allowedUserTypes={["tele_sales"]} loginPath="/tele-sales/login">
+        <Layout />
+      </ProtectedRoute>
+    ),
+    children: [
+      { index: true, element: <Lazy><TeleSalesDashboard /></Lazy> },
+      { path: "leads", element: <Lazy><Leads /></Lazy> },
+      { path: "leads/:id", element: <Lazy><LeadDetail /></Lazy> },
+      { path: "agents", element: <Lazy><TeleSalesAgents /></Lazy> },
+    ],
+  },
+
+  // Protected Routes (Ticket System)
   {
     path: "/",
     element: (
@@ -209,39 +225,6 @@ export const routes: RouteObject[] = [
         ),
       },
 
-      // TeleSales Routes — tele_sales users only (redirect to /tele-sales/login if not authenticated)
-      {
-        path: "/tele-sales",
-        element: (
-          <ProtectedRoute allowedUserTypes={["tele_sales"]} loginPath="/tele-sales/login">
-            <Lazy><TeleSalesDashboard /></Lazy>
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: "/tele-sales/leads",
-        element: (
-          <ProtectedRoute allowedUserTypes={["tele_sales"]} loginPath="/tele-sales/login">
-            <Lazy><Leads /></Lazy>
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: "/tele-sales/leads/:id",
-        element: (
-          <ProtectedRoute allowedUserTypes={["tele_sales"]} loginPath="/tele-sales/login">
-            <Lazy><LeadDetail /></Lazy>
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: "/tele-sales/agents",
-        element: (
-          <ProtectedRoute allowedUserTypes={["tele_sales"]} loginPath="/tele-sales/login">
-            <Lazy><TeleSalesAgents /></Lazy>
-          </ProtectedRoute>
-        ),
-      },
     ],
   },
 ];

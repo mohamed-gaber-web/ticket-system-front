@@ -74,7 +74,11 @@ api.interceptors.response.use(
     const originalRequest = error.config;
 
     // Handle 401 errors (Unauthorized)
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // Skip 401 handling for public auth endpoints — let their errors propagate to the caller
+    const publicAuthEndpoints = ['/auth/signin', '/auth/signup', '/auth/forgot-password', '/auth/reset-password'];
+    const isPublicAuthRequest = publicAuthEndpoints.some((endpoint) => error.config?.url?.includes(endpoint));
+
+    if (error.response?.status === 401 && !originalRequest._retry && !isPublicAuthRequest) {
       originalRequest._retry = true;
 
       const refreshToken = localStorage.getItem('refreshToken');
