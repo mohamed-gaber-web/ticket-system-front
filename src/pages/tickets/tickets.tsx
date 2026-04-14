@@ -37,7 +37,7 @@ export default function Tickets() {
   const [priorityFilter, setPriorityFilter] = useState('');
   const [sourceFilter, setSourceFilter] = useState('');
   const [, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(PAGE_SIZE_OPTIONS[0]);
+  const itemsPerPage = PAGE_SIZE_OPTIONS[0];
 
   // Advanced filters
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -93,7 +93,7 @@ export default function Tickets() {
 
     setCurrentPage(1);
     dispatch(fetchTickets(params));
-  }, [statusFilter, priorityFilter, sourceFilter, departmentFilter, assignedByFilter, serviceTypeFilter, customerFilter, startDate, createdDateFrom, createdDateTo, closedDateFrom, closedDateTo, user?._id, itemsPerPage]);
+  }, [statusFilter, priorityFilter, sourceFilter, departmentFilter, assignedByFilter, serviceTypeFilter, customerFilter, startDate, createdDateFrom, createdDateTo, closedDateFrom, closedDateTo, user?._id]);
 
   const getFilterParams = (pageNum: number) => {
     const params: any = {
