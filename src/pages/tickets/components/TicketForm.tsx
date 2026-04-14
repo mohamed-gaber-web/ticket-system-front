@@ -8,11 +8,10 @@ import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchCustomers } from '@/redux/slices/customerSlice';
 import { fetchCategories } from '@/redux/slices/categorySlice';
 import { fetchEnvironments } from '@/redux/slices/environmentSlice';
-import { fetchFeatures } from '@/redux/slices/featureSlice';
+import { fetchCustomizedSolutions } from '@/redux/slices/customizedSolutionSlice';
 import { fetchDepartments } from '@/redux/slices/departmentSlice';
-import { fetchProductTypes } from '@/redux/slices/productTypeSlice';
 import { fetchServiceTypes } from '@/redux/slices/serviceTypeSlice';
-import { fetchScopes } from '@/redux/slices/scopeSlice';
+import { fetchModules } from '@/redux/slices/moduleSlice';
 import { fetchSources } from '@/redux/slices/sourceSlice';
 import { UserPlus, Upload, X, File, Image as ImageIcon, Mail, Plus } from 'lucide-react';
 import { validateFile, formatFileSize } from '@/api/attachmentApi';
@@ -36,11 +35,10 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
   const { categories, loading: categoriesLoading } = useAppSelector((state) => state.categories);
   const { customers, loading: customersLoading } = useAppSelector((state) => state.customers);
   const { environments } = useAppSelector((state) => state.environments);
-  const { features } = useAppSelector((state) => state.features);
+  const { customizedSolutions } = useAppSelector((state) => state.customizedSolutions);
   const { departments } = useAppSelector((state) => state.departments);
-  const { productTypes } = useAppSelector((state) => state.productTypes);
   const { serviceTypes } = useAppSelector((state) => state.serviceTypes);
-  const { scopes } = useAppSelector((state) => state.scopes);
+  const { modules } = useAppSelector((state) => state.modules);
   const { sources } = useAppSelector((state) => state.sources);
   const { user, userType } = useAppSelector((state) => state.auth);
 
@@ -60,7 +58,6 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
           environment: '',
           feature: '',
           department: '',
-          productType: '',
           serviceType: '',
           scope: '',
           source: '',
@@ -76,7 +73,6 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
           environment: '',
           feature: '',
           department: '',
-          productType: '',
           serviceType: '',
           scope: '',
           source: '',
@@ -105,30 +101,25 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
     ...(environments?.filter(e => e.isActive).map(e => ({ value: e._id, label: e.name })) ?? []),
   ], [environments]);
 
-  const featureOptions = useMemo(() => [
-    { value: '', label: '-- Select Feature --' },
-    ...(features?.filter(f => f.isActive).map(f => ({ value: f._id, label: f.name })) ?? []),
-  ], [features]);
+  const customizedSolutionOptions = useMemo(() => [
+    { value: '', label: '-- Select Customized Solution --' },
+    ...(customizedSolutions?.filter(f => f.isActive).map(f => ({ value: f._id, label: f.name })) ?? []),
+  ], [customizedSolutions]);
 
   const departmentOptions = useMemo(() => [
     { value: '', label: '-- Select Department --' },
     ...(departments?.filter(d => d.isActive).map(d => ({ value: d._id, label: d.name })) ?? []),
   ], [departments]);
 
-  const productTypeOptions = useMemo(() => [
-    { value: '', label: '-- Select Product Type --' },
-    ...(productTypes?.filter(pt => pt.isActive).map(pt => ({ value: pt._id, label: pt.name })) ?? []),
-  ], [productTypes]);
-
   const serviceTypeOptions = useMemo(() => [
     { value: '', label: '-- Select Service Type --' },
     ...(serviceTypes?.filter(st => st.isActive).map(st => ({ value: st._id, label: st.name })) ?? []),
   ], [serviceTypes]);
 
-  const scopeOptions = useMemo(() => [
-    { value: '', label: '-- Select Scope --' },
-    ...(scopes?.filter(s => s.isActive).map(s => ({ value: s._id, label: s.name })) ?? []),
-  ], [scopes]);
+  const moduleOptions = useMemo(() => [
+    { value: '', label: '-- Select Module --' },
+    ...(modules?.filter(m => m.isActive).map(m => ({ value: m._id, label: m.name })) ?? []),
+  ], [modules]);
 
   const sourceOptions = useMemo(() => [
     { value: '', label: '-- Select Source --' },
@@ -144,11 +135,10 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
     }
     // Fetch all reference data for the new properties
     dispatch(fetchEnvironments({ isActive: true }));
-    dispatch(fetchFeatures({ isActive: true }));
+    dispatch(fetchCustomizedSolutions({ isActive: true }));
     dispatch(fetchDepartments({ isActive: true }));
-    dispatch(fetchProductTypes({ isActive: true }));
     dispatch(fetchServiceTypes({ isActive: true }));
-    dispatch(fetchScopes({ isActive: true }));
+    dispatch(fetchModules({ isActive: true }));
     dispatch(fetchSources({ isActive: true }));
   }, [dispatch, isConsultant]);
 
@@ -185,7 +175,6 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
           environment: extractId(initialData.environment),
           feature: extractId(initialData.feature),
           department: extractId(initialData.department),
-          productType: extractId(initialData.productType),
           serviceType: extractId(initialData.serviceType),
           scope: extractId(initialData.scope),
           source: extractId(initialData.source),
@@ -202,7 +191,6 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
           environment: extractId(initialData.environment),
           feature: extractId(initialData.feature),
           department: extractId(initialData.department),
-          productType: extractId(initialData.productType),
           serviceType: extractId(initialData.serviceType),
           scope: extractId(initialData.scope),
           source: extractId(initialData.source),
@@ -368,6 +356,16 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
         <h3 className="form-section-title">Categorization</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
+            <label className="form-label">Service Type</label>
+            <CustomSelect
+              value={formData.serviceType || ''}
+              onChange={(val) => setFormData({ ...formData, serviceType: val })}
+              placeholder="-- Select Service Type --"
+              options={serviceTypeOptions}
+            />
+          </div>
+
+          <div>
             <label className="form-label">Category *</label>
             <CustomSelect
               value={formData.category || ''}
@@ -375,6 +373,26 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
               placeholder={categoriesLoading ? 'Loading categories...' : 'Select a category'}
               disabled={categoriesLoading}
               options={categoryOptions}
+            />
+          </div>
+
+          <div>
+            <label className="form-label">Module</label>
+            <CustomSelect
+              value={formData.scope || ''}
+              onChange={(val) => setFormData({ ...formData, scope: val })}
+              placeholder="-- Select Module --"
+              options={moduleOptions}
+            />
+          </div>
+
+          <div>
+            <label className="form-label">Customized Solution</label>
+            <CustomSelect
+              value={formData.feature || ''}
+              onChange={(val) => setFormData({ ...formData, feature: val })}
+              placeholder="-- Select Customized Solution --"
+              options={customizedSolutionOptions}
             />
           </div>
 
@@ -411,7 +429,6 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
             </div>
           )}
 
-          {/* NEW OPTIONAL FIELDS */}
           <div>
             <label className="form-label">Environment</label>
             <CustomSelect
@@ -419,16 +436,6 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
               onChange={(val) => setFormData({ ...formData, environment: val })}
               placeholder="-- Select Environment --"
               options={environmentOptions}
-            />
-          </div>
-
-          <div>
-            <label className="form-label">Feature</label>
-            <CustomSelect
-              value={formData.feature || ''}
-              onChange={(val) => setFormData({ ...formData, feature: val })}
-              placeholder="-- Select Feature --"
-              options={featureOptions}
             />
           </div>
 
@@ -443,35 +450,6 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
           </div>
 
           <div>
-            <label className="form-label">Product Type</label>
-            <CustomSelect
-              value={formData.productType || ''}
-              onChange={(val) => setFormData({ ...formData, productType: val })}
-              placeholder="-- Select Product Type --"
-              options={productTypeOptions}
-            />
-          </div>
-
-          <div>
-            <label className="form-label">Service Type</label>
-            <CustomSelect
-              value={formData.serviceType || ''}
-              onChange={(val) => setFormData({ ...formData, serviceType: val })}
-              placeholder="-- Select Service Type --"
-              options={serviceTypeOptions}
-            />
-          </div>
-
-          <div>
-            <label className="form-label">Scope</label>
-            <CustomSelect
-              value={formData.scope || ''}
-              onChange={(val) => setFormData({ ...formData, scope: val })}
-              placeholder="-- Select Scope --"
-              options={scopeOptions}
-            />
-          </div>
-          <div>
             <label className="form-label">Source</label>
             <CustomSelect
               value={formData.source || ''}
@@ -480,7 +458,6 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
               options={sourceOptions}
             />
           </div>
-          {/* END NEW FIELDS */}
         </div>
       </div>
 

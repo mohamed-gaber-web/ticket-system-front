@@ -10,34 +10,34 @@ import {
 import { Edit, Trash2, Power, PowerOff } from 'lucide-react';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
-import type { Scope } from '@/types/scope.types';
+import type { Module } from '@/types/module.types';
 import { useAppDispatch } from '@/redux/hooks/hooks';
-import { toggleScopeStatus } from '@/redux/slices/scopeSlice';
+import { toggleModuleStatus } from '@/redux/slices/moduleSlice';
 
 const MySwal = withReactContent(Swal);
 
-interface ScopeTableProps {
-  scopes: Scope[];
-  onEdit: (scope: Scope) => void;
+interface ModuleTableProps {
+  modules: Module[];
+  onEdit: (module: Module) => void;
   onDelete: (id: string) => void;
   loading: boolean;
 }
 
-export default function ScopeTable({
-  scopes,
+export default function ModuleTable({
+  modules,
   onEdit,
   onDelete,
   loading,
-}: ScopeTableProps) {
+}: ModuleTableProps) {
   const dispatch = useAppDispatch();
 
-  const handleDelete = (scope: Scope) => {
+  const handleDelete = (module: Module) => {
     MySwal.fire({
       title: 'Are you sure?',
       html: `
         <div class="text-left">
           <p class="mb-2">You are about to delete:</p>
-          <p class="font-semibold text-lg">${scope.name}</p>
+          <p class="font-semibold text-lg">${module.name}</p>
           <p class="mt-3 text-red-600">This action cannot be undone!</p>
         </div>
       `,
@@ -51,31 +51,31 @@ export default function ScopeTable({
       focusCancel: true,
     }).then((result) => {
       if (result.isConfirmed) {
-        onDelete(scope._id);
+        onDelete(module._id);
       }
     });
   };
 
-  const handleToggleStatus = (scope: Scope) => {
-    const newStatus = scope.isActive ? 'deactivate' : 'activate';
+  const handleToggleStatus = (module: Module) => {
+    const newStatus = module.isActive ? 'deactivate' : 'activate';
     MySwal.fire({
-      title: `${newStatus.charAt(0).toUpperCase() + newStatus.slice(1)} scope?`,
+      title: `${newStatus.charAt(0).toUpperCase() + newStatus.slice(1)} module?`,
       html: `
         <div class="text-left">
           <p class="mb-2">You are about to ${newStatus}:</p>
-          <p class="font-semibold text-lg">${scope.name}</p>
+          <p class="font-semibold text-lg">${module.name}</p>
           <p class="text-sm text-gray-600 mt-2">
             ${
-              scope.isActive
-                ? 'This scope will be disabled.'
-                : 'This scope will be enabled.'
+              module.isActive
+                ? 'This module will be disabled.'
+                : 'This module will be enabled.'
             }
           </p>
         </div>
       `,
       icon: 'question',
       showCancelButton: true,
-      confirmButtonColor: scope.isActive ? '#EF4444' : '#10B981',
+      confirmButtonColor: module.isActive ? '#EF4444' : '#10B981',
       cancelButtonColor: '#6B7280',
       confirmButtonText: `Yes, ${newStatus} it!`,
       cancelButtonText: 'Cancel',
@@ -83,7 +83,7 @@ export default function ScopeTable({
       focusCancel: true,
     }).then((result) => {
       if (result.isConfirmed) {
-        dispatch(toggleScopeStatus(scope._id));
+        dispatch(toggleModuleStatus(module._id));
       }
     });
   };
@@ -106,11 +106,11 @@ export default function ScopeTable({
     );
   }
 
-  if (scopes.length === 0) {
+  if (modules.length === 0) {
     return (
       <div className="text-center py-12">
-        <p className="text-on-surface-variant text-lg">No scopes found</p>
-        <p className="text-on-surface-variant text-sm mt-2">Create your first scope to get started</p>
+        <p className="text-on-surface-variant text-lg">No modules found</p>
+        <p className="text-on-surface-variant text-sm mt-2">Create your first module to get started</p>
       </div>
     );
   }
@@ -129,18 +129,18 @@ export default function ScopeTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {scopes.map((scope) => (
-              <TableRow key={scope._id} className="hover:bg-surface-container-low transition-colors">
-                <TableCell className="font-medium text-on-surface">{scope.name}</TableCell>
+            {modules.map((module) => (
+              <TableRow key={module._id} className="hover:bg-surface-container-low transition-colors">
+                <TableCell className="font-medium text-on-surface">{module.name}</TableCell>
                 <TableCell>
                   <span
                     className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${
-                      scope.isActive
+                      module.isActive
                         ? 'bg-green-500/10 text-green-700'
                         : 'bg-surface-container-high text-on-surface-variant'
                     }`}
                   >
-                    {scope.isActive ? (
+                    {module.isActive ? (
                       <>
                         <Power className="w-3 h-3" />
                         Active
@@ -154,24 +154,24 @@ export default function ScopeTable({
                   </span>
                 </TableCell>
                 <TableCell className="text-on-surface-variant text-sm">
-                  {formatDate(scope.createdAt)}
+                  {formatDate(module.createdAt)}
                 </TableCell>
                 <TableCell className="text-on-surface-variant text-sm">
-                  {formatDate(scope.updatedAt)}
+                  {formatDate(module.updatedAt)}
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center justify-end gap-2">
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => handleToggleStatus(scope)}
+                      onClick={() => handleToggleStatus(module)}
                       className={`${
-                        scope.isActive
+                        module.isActive
                           ? 'text-orange-600 hover:text-orange-700'
                           : 'text-green-600 hover:text-green-700'
                       }`}
                     >
-                      {scope.isActive ? (
+                      {module.isActive ? (
                         <>
                           <PowerOff className="w-4 h-4 mr-1" />
                           Deactivate
@@ -186,7 +186,7 @@ export default function ScopeTable({
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => onEdit(scope)}
+                      onClick={() => onEdit(module)}
                     >
                       <Edit className="w-4 h-4 mr-1" />
                       Edit
@@ -195,7 +195,7 @@ export default function ScopeTable({
                       size="sm"
                       variant="outline"
                       className="text-error hover:text-error"
-                      onClick={() => handleDelete(scope)}
+                      onClick={() => handleDelete(module)}
                     >
                       <Trash2 className="w-4 h-4 mr-1" />
                       Delete

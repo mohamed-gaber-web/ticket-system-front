@@ -1,73 +1,73 @@
 import { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import {
-  fetchScopes,
-  createScope,
-  updateScope,
-  deleteScope,
-} from '@/redux/slices/scopeSlice';
-import ScopeTable from './ScopeTable';
-import ScopeFormDialog from './ScopeFormDialog';
+  fetchModules,
+  createModule,
+  updateModule,
+  deleteModule,
+} from '@/redux/slices/moduleSlice';
+import ModuleTable from './ModuleTable';
+import ModuleFormDialog from './ModuleFormDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Search, RefreshCw } from 'lucide-react';
 import { CustomSelect } from '@/components/ui/custom-select';
-import type { Scope, CreateScopeData, UpdateScopeData } from '@/types/scope.types';
+import type { Module, CreateModuleData, UpdateModuleData } from '@/types/module.types';
 
-export default function Scopes() {
+export default function Modules() {
   const dispatch = useAppDispatch();
-  const { scopes, loading, total } = useAppSelector((state) => state.scopes);
+  const { modules, loading, total } = useAppSelector((state) => state.modules);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingScope, setEditingScope] = useState<Scope | null>(null);
+  const [editingModule, setEditingModule] = useState<Module | null>(null);
 
   useEffect(() => {
-    loadScopes();
+    loadModules();
   }, []);
 
-  const loadScopes = () => {
+  const loadModules = () => {
     const params: any = {};
     if (searchTerm) params.search = searchTerm;
     if (statusFilter !== '') params.isActive = statusFilter === 'active';
 
-    dispatch(fetchScopes(params));
+    dispatch(fetchModules(params));
   };
 
   const handleSearch = () => {
-    loadScopes();
+    loadModules();
   };
 
   const handleRefresh = () => {
     setSearchTerm('');
     setStatusFilter('');
-    dispatch(fetchScopes());
+    dispatch(fetchModules());
   };
 
   const handleCreate = () => {
-    setEditingScope(null);
+    setEditingModule(null);
     setIsDialogOpen(true);
   };
 
-  const handleEdit = (scope: Scope) => {
-    setEditingScope(scope);
+  const handleEdit = (module: Module) => {
+    setEditingModule(module);
     setIsDialogOpen(true);
   };
 
   const handleDelete = async (id: string) => {
-    await dispatch(deleteScope(id)).unwrap();
+    await dispatch(deleteModule(id)).unwrap();
   };
 
-  const handleFormSubmit = async (data: CreateScopeData | UpdateScopeData) => {
+  const handleFormSubmit = async (data: CreateModuleData | UpdateModuleData) => {
     try {
-      if (editingScope) {
-        await dispatch(updateScope({ id: editingScope._id, data })).unwrap();
+      if (editingModule) {
+        await dispatch(updateModule({ id: editingModule._id, data })).unwrap();
       } else {
-        await dispatch(createScope(data as CreateScopeData)).unwrap();
+        await dispatch(createModule(data as CreateModuleData)).unwrap();
       }
       setIsDialogOpen(false);
-      setEditingScope(null);
+      setEditingModule(null);
     } catch (error) {
       // Error is handled in the slice with toast
     }
@@ -75,7 +75,7 @@ export default function Scopes() {
 
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
-    setEditingScope(null);
+    setEditingModule(null);
   };
 
   return (
@@ -83,12 +83,12 @@ export default function Scopes() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="display-sm text-on-surface">Scopes</h1>
-          <p className="text-on-surface-variant mt-1">Manage software scopes</p>
+          <h1 className="display-sm text-on-surface">Modules</h1>
+          <p className="text-on-surface-variant mt-1">Manage software modules</p>
         </div>
         <Button onClick={handleCreate} className="gap-2">
           <Plus className="h-4 w-4" />
-          Add Scope
+          Add Module
         </Button>
       </div>
 
@@ -100,7 +100,7 @@ export default function Scopes() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-on-surface-variant" />
               <Input
                 type="search"
-                placeholder="Search scopes..."
+                placeholder="Search modules..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
@@ -134,25 +134,25 @@ export default function Scopes() {
 
         {/* Results count */}
         <div className="mt-4 text-sm text-on-surface-variant">
-          Showing <span className="font-semibold">{scopes.length}</span> of{' '}
-          <span className="font-semibold">{total}</span> scopes
+          Showing <span className="font-semibold">{modules.length}</span> of{' '}
+          <span className="font-semibold">{total}</span> modules
         </div>
       </div>
 
-      {/* Scope Table */}
-      <ScopeTable
-        scopes={scopes}
+      {/* Module Table */}
+      <ModuleTable
+        modules={modules}
         onEdit={handleEdit}
         onDelete={handleDelete}
         loading={loading}
       />
 
       {/* Form Dialog */}
-      <ScopeFormDialog
+      <ModuleFormDialog
         isOpen={isDialogOpen}
         onClose={handleCloseDialog}
         onSubmit={handleFormSubmit}
-        scope={editingScope}
+        module={editingModule}
         loading={loading}
       />
     </div>

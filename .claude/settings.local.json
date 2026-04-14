@@ -17,7 +17,8 @@
       "Bash(grep -E \"\\\\.\\(tsx|ts\\)$\")",
       "Bash(find . -type f \\\\\\( -name \"*.tsx\" -o -name \"*.ts\" \\\\\\) -exec grep -l \"useMemo\\\\|stats\\\\|metrics\\\\|calculate\" {} \\\\;)",
       "Bash(grep -n \"Stats\\\\|statistics\\\\|getMyStats\" *.ts)",
-      "Bash(gh pr:*)"
+      "Bash(gh pr:*)",
+      "Bash(echo \"EXIT:$?\")"
     ]
   }
 }

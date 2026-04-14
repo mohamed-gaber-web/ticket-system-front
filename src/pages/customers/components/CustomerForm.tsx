@@ -5,12 +5,14 @@ import { Input } from '@/components/ui/input';
 import { CustomSelect } from '@/components/ui/custom-select';
 import { Loader2, Building2, User, Mail, Phone, MapPin, Lock, Database, Plus, Users } from 'lucide-react';
 import { ConsultantSelect } from '@/components/ui/consultant-select';
+import { MultiSelect } from '@/components/ui/multi-select';
 import type { CreateCustomerData, Customer, UpdateCustomerData } from '@/types/customer.types';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchErpTypes, createErpType } from '@/redux/slices/erpTypeSlice';
 import { fetchVersionNumbers, createVersionNumber } from '@/redux/slices/versionNumberSlice';
 import { fetchConsultants } from '@/redux/slices/consultantSlice';
 import { fetchCompanies } from '@/redux/slices/companySlice';
+import { fetchProductTypes } from '@/redux/slices/productTypeSlice';
 import {
   Dialog,
   DialogContent,
@@ -35,6 +37,7 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
   const { versionNumbers } = useAppSelector((state) => state.versionNumbers);
   const { consultants } = useAppSelector((state) => state.consultants);
   const { companies } = useAppSelector((state) => state.companies);
+  const { productTypes } = useAppSelector((state) => state.productTypes);
 
   const [formData, setFormData] = useState({
     company: '',
@@ -49,6 +52,7 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
     erpType: '',
     versionNumber: '',
     consultants: [] as string[],
+    productTypes: [] as string[],
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -64,12 +68,17 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
     dispatch(fetchVersionNumbers({ isActive: true }));
     dispatch(fetchConsultants({ status: 'active' }));
     dispatch(fetchCompanies({ isActive: true }));
+    dispatch(fetchProductTypes({ isActive: true }));
   }, [dispatch]);
 
   useEffect(() => {
     if (customer && isEditMode) {
       const consultantIds = Array.isArray(customer.consultants)
         ? customer.consultants.map((c: any) => typeof c === 'string' ? c : c._id)
+        : [];
+
+      const productTypeIds = Array.isArray(customer.productTypes)
+        ? customer.productTypes.map((pt: any) => typeof pt === 'string' ? pt : pt._id)
         : [];
 
       setFormData({
@@ -85,6 +94,7 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
         erpType: (typeof customer.erpType === 'string' ? customer.erpType : customer.erpType?._id) || '',
         versionNumber: (typeof customer.versionNumber === 'string' ? customer.versionNumber : customer.versionNumber?._id) || '',
         consultants: consultantIds,
+        productTypes: productTypeIds,
       });
     }
   }, [customer, isEditMode]);
@@ -199,6 +209,7 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
       if (formData.erpType) submitData.erpType = formData.erpType;
       if (formData.versionNumber) submitData.versionNumber = formData.versionNumber;
       if (formData.consultants.length > 0) submitData.consultants = formData.consultants;
+      submitData.productTypes = formData.productTypes;
 
       await onSubmit(submitData);
     } else {
@@ -217,6 +228,7 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
       if (formData.erpType) submitData.erpType = formData.erpType;
       if (formData.versionNumber) submitData.versionNumber = formData.versionNumber;
       if (formData.consultants.length > 0) submitData.consultants = formData.consultants;
+      submitData.productTypes = formData.productTypes;
 
       await onSubmit(submitData);
     }
@@ -380,12 +392,10 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
                   <Database className="w-4 h-4 text-green-600" />
                   ERP Type
                 </label>
-                <div className="flex gap-2">
-                  <CustomSelect
+                <CustomSelect
                     value={formData.erpType}
                     onChange={(val) => setFormData((prev) => ({ ...prev, erpType: val }))}
                     placeholder="Select ERP Type"
-                    className="flex-1"
                     options={[
                       { value: '', label: 'Select ERP Type' },
                       ...erpTypes
@@ -393,15 +403,6 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
                         .map((erp) => ({ value: erp._id, label: erp.name })),
                     ]}
                   />
-                  <Button
-                    type="button"
-                    onClick={() => setShowErpTypeDialog(true)}
-                    variant="outline"
-                    className="h-11 px-4"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </Button>
-                </div>
               </div>
 
               <div className="space-y-2">
@@ -409,12 +410,10 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
                   <Database className="w-4 h-4 text-green-600" />
                   Version Number
                 </label>
-                <div className="flex gap-2">
-                  <CustomSelect
+                <CustomSelect
                     value={formData.versionNumber}
                     onChange={(val) => setFormData((prev) => ({ ...prev, versionNumber: val }))}
                     placeholder="Select Version Number"
-                    className="flex-1"
                     options={[
                       { value: '', label: 'Select Version Number' },
                       ...versionNumbers
@@ -422,16 +421,22 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
                         .map((version) => ({ value: version._id, label: version.name })),
                     ]}
                   />
-                  <Button
-                    type="button"
-                    onClick={() => setShowVersionDialog(true)}
-                    variant="outline"
-                    className="h-11 px-4"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </Button>
-                </div>
               </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="form-label">Product Types</label>
+                <MultiSelect
+                  items={productTypes.filter((pt) => pt.isActive)}
+                  value={formData.productTypes}
+                  onChange={(vals) => setFormData((prev) => ({ ...prev, productTypes: vals }))}
+                  placeholder="Select product types..."
+                  searchPlaceholder="Search product types..."
+                  emptyMessage="No product types found"
+                />
+              </div>
+
             </div>
           </div>
 

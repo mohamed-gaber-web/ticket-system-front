@@ -10,34 +10,34 @@ import {
 import { Edit, Trash2, Power, PowerOff } from 'lucide-react';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
-import type { Feature } from '@/types/feature.types';
+import type { CustomizedSolution } from '@/types/customizedSolution.types';
 import { useAppDispatch } from '@/redux/hooks/hooks';
-import { toggleFeatureStatus } from '@/redux/slices/featureSlice';
+import { toggleCustomizedSolutionStatus } from '@/redux/slices/customizedSolutionSlice';
 
 const MySwal = withReactContent(Swal);
 
-interface FeatureTableProps {
-  features: Feature[];
-  onEdit: (feature: Feature) => void;
+interface CustomizedSolutionTableProps {
+  customizedSolutions: CustomizedSolution[];
+  onEdit: (solution: CustomizedSolution) => void;
   onDelete: (id: string) => void;
   loading: boolean;
 }
 
-export default function FeatureTable({
-  features,
+export default function CustomizedSolutionTable({
+  customizedSolutions,
   onEdit,
   onDelete,
   loading,
-}: FeatureTableProps) {
+}: CustomizedSolutionTableProps) {
   const dispatch = useAppDispatch();
 
-  const handleDelete = (feature: Feature) => {
+  const handleDelete = (solution: CustomizedSolution) => {
     MySwal.fire({
       title: 'Are you sure?',
       html: `
         <div class="text-left">
           <p class="mb-2">You are about to delete:</p>
-          <p class="font-semibold text-lg">${feature.name}</p>
+          <p class="font-semibold text-lg">${solution.name}</p>
           <p class="mt-3 text-red-600">This action cannot be undone!</p>
         </div>
       `,
@@ -51,31 +51,31 @@ export default function FeatureTable({
       focusCancel: true,
     }).then((result) => {
       if (result.isConfirmed) {
-        onDelete(feature._id);
+        onDelete(solution._id);
       }
     });
   };
 
-  const handleToggleStatus = (feature: Feature) => {
-    const newStatus = feature.isActive ? 'deactivate' : 'activate';
+  const handleToggleStatus = (solution: CustomizedSolution) => {
+    const newStatus = solution.isActive ? 'deactivate' : 'activate';
     MySwal.fire({
-      title: `${newStatus.charAt(0).toUpperCase() + newStatus.slice(1)} feature?`,
+      title: `${newStatus.charAt(0).toUpperCase() + newStatus.slice(1)} customized solution?`,
       html: `
         <div class="text-left">
           <p class="mb-2">You are about to ${newStatus}:</p>
-          <p class="font-semibold text-lg">${feature.name}</p>
+          <p class="font-semibold text-lg">${solution.name}</p>
           <p class="text-sm text-gray-600 mt-2">
             ${
-              feature.isActive
-                ? 'This feature will be disabled.'
-                : 'This feature will be enabled.'
+              solution.isActive
+                ? 'This customized solution will be disabled.'
+                : 'This customized solution will be enabled.'
             }
           </p>
         </div>
       `,
       icon: 'question',
       showCancelButton: true,
-      confirmButtonColor: feature.isActive ? '#EF4444' : '#10B981',
+      confirmButtonColor: solution.isActive ? '#EF4444' : '#10B981',
       cancelButtonColor: '#6B7280',
       confirmButtonText: `Yes, ${newStatus} it!`,
       cancelButtonText: 'Cancel',
@@ -83,7 +83,7 @@ export default function FeatureTable({
       focusCancel: true,
     }).then((result) => {
       if (result.isConfirmed) {
-        dispatch(toggleFeatureStatus(feature._id));
+        dispatch(toggleCustomizedSolutionStatus(solution._id));
       }
     });
   };
@@ -106,11 +106,11 @@ export default function FeatureTable({
     );
   }
 
-  if (features.length === 0) {
+  if (customizedSolutions.length === 0) {
     return (
       <div className="text-center py-12">
-        <p className="text-on-surface-variant text-lg">No features found</p>
-        <p className="text-on-surface-variant text-sm mt-2">Create your first feature to get started</p>
+        <p className="text-on-surface-variant text-lg">No customized solutions found</p>
+        <p className="text-on-surface-variant text-sm mt-2">Create your first customized solution to get started</p>
       </div>
     );
   }
@@ -129,18 +129,18 @@ export default function FeatureTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {features.map((feature) => (
-              <TableRow key={feature._id} className="hover:bg-surface-container-low transition-colors">
-                <TableCell className="font-medium text-on-surface">{feature.name}</TableCell>
+            {customizedSolutions.map((solution) => (
+              <TableRow key={solution._id} className="hover:bg-surface-container-low transition-colors">
+                <TableCell className="font-medium text-on-surface">{solution.name}</TableCell>
                 <TableCell>
                   <span
                     className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${
-                      feature.isActive
+                      solution.isActive
                         ? 'bg-green-500/10 text-green-700'
                         : 'bg-surface-container-high text-on-surface-variant'
                     }`}
                   >
-                    {feature.isActive ? (
+                    {solution.isActive ? (
                       <>
                         <Power className="w-3 h-3" />
                         Active
@@ -154,24 +154,24 @@ export default function FeatureTable({
                   </span>
                 </TableCell>
                 <TableCell className="text-on-surface-variant text-sm">
-                  {formatDate(feature.createdAt)}
+                  {formatDate(solution.createdAt)}
                 </TableCell>
                 <TableCell className="text-on-surface-variant text-sm">
-                  {formatDate(feature.updatedAt)}
+                  {formatDate(solution.updatedAt)}
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center justify-end gap-2">
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => handleToggleStatus(feature)}
+                      onClick={() => handleToggleStatus(solution)}
                       className={`${
-                        feature.isActive
+                        solution.isActive
                           ? 'text-orange-600 hover:text-orange-700'
                           : 'text-green-600 hover:text-green-700'
                       }`}
                     >
-                      {feature.isActive ? (
+                      {solution.isActive ? (
                         <>
                           <PowerOff className="w-4 h-4 mr-1" />
                           Deactivate
@@ -186,7 +186,7 @@ export default function FeatureTable({
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => onEdit(feature)}
+                      onClick={() => onEdit(solution)}
                     >
                       <Edit className="w-4 h-4 mr-1" />
                       Edit
@@ -195,7 +195,7 @@ export default function FeatureTable({
                       size="sm"
                       variant="outline"
                       className="text-error hover:text-error"
-                      onClick={() => handleDelete(feature)}
+                      onClick={() => handleDelete(solution)}
                     >
                       <Trash2 className="w-4 h-4 mr-1" />
                       Delete

@@ -88,9 +88,9 @@ const AssignmentAnalytics = lazy(() => import("@/pages/consultant-reports/Assign
 
 // Config Modules
 const Environments = lazy(() => import("@/pages/environments/Environments"));
-const Features = lazy(() => import("@/pages/features/Features"));
+const CustomizedSolutions = lazy(() => import("@/pages/customized-solutions/CustomizedSolutions"));
 const ProductTypes = lazy(() => import("@/pages/product-types/ProductTypes"));
-const Scopes = lazy(() => import("@/pages/scopes/Scopes"));
+const Modules = lazy(() => import("@/pages/modules/Modules"));
 const ServiceTypes = lazy(() => import("@/pages/service-types/ServiceTypes"));
 const ErpTypes = lazy(() => import("@/pages/erp-types/ErpTypes"));
 const VersionNumbers = lazy(() => import("@/pages/version-numbers/VersionNumbers"));
@@ -204,9 +204,9 @@ export const routes: RouteObject[] = [
 
       // Config Routes
       { path: "/environments", element: <Lazy><Environments /></Lazy> },
-      { path: "/features", element: <Lazy><Features /></Lazy> },
+      { path: "/customized-solutions", element: <Lazy><CustomizedSolutions /></Lazy> },
       { path: "/product-types", element: <Lazy><ProductTypes /></Lazy> },
-      { path: "/scopes", element: <Lazy><Scopes /></Lazy> },
+      { path: "/modules", element: <Lazy><Modules /></Lazy> },
       { path: "/service-types", element: <Lazy><ServiceTypes /></Lazy> },
       { path: "/erp-types", element: <Lazy><ErpTypes /></Lazy> },
       { path: "/version-numbers", element: <Lazy><VersionNumbers /></Lazy> },

@@ -11,9 +11,9 @@ import notificationReducer from './slices/notificationSlice';
 import attachmentReducer from './slices/attachmentSlice';
 import commentReducer from './slices/commentSlice';
 import environmentReducer from './slices/environmentSlice';
-import featureReducer from './slices/featureSlice';
+import customizedSolutionReducer from './slices/customizedSolutionSlice';
 import productTypeReducer from './slices/productTypeSlice';
-import scopeReducer from './slices/scopeSlice';
+import moduleReducer from './slices/moduleSlice';
 import serviceTypeReducer from './slices/serviceTypeSlice';
 import erpTypeReducer from './slices/erpTypeSlice';
 import versionNumberReducer from './slices/versionNumberSlice';
@@ -39,9 +39,9 @@ export const store = configureStore({
     attachments: attachmentReducer,
     comments: commentReducer,
     environments: environmentReducer,
-    features: featureReducer,
+    customizedSolutions: customizedSolutionReducer,
     productTypes: productTypeReducer,
-    scopes: scopeReducer,
+    modules: moduleReducer,
     serviceTypes: serviceTypeReducer,
     erpTypes: erpTypeReducer,
     versionNumbers: versionNumberReducer,

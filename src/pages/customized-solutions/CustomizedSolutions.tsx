@@ -1,73 +1,73 @@
 import { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import {
-  fetchFeatures,
-  createFeature,
-  updateFeature,
-  deleteFeature,
-} from '@/redux/slices/featureSlice';
-import FeatureTable from './FeatureTable';
-import FeatureFormDialog from './FeatureFormDialog';
+  fetchCustomizedSolutions,
+  createCustomizedSolution,
+  updateCustomizedSolution,
+  deleteCustomizedSolution,
+} from '@/redux/slices/customizedSolutionSlice';
+import CustomizedSolutionTable from './CustomizedSolutionTable';
+import CustomizedSolutionFormDialog from './CustomizedSolutionFormDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Search, RefreshCw } from 'lucide-react';
 import { CustomSelect } from '@/components/ui/custom-select';
-import type { Feature, CreateFeatureData, UpdateFeatureData } from '@/types/feature.types';
+import type { CustomizedSolution, CreateCustomizedSolutionData, UpdateCustomizedSolutionData } from '@/types/customizedSolution.types';
 
-export default function Features() {
+export default function CustomizedSolutions() {
   const dispatch = useAppDispatch();
-  const { features, loading, total } = useAppSelector((state) => state.features);
+  const { customizedSolutions, loading, total } = useAppSelector((state) => state.customizedSolutions);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingFeature, setEditingFeature] = useState<Feature | null>(null);
+  const [editingSolution, setEditingSolution] = useState<CustomizedSolution | null>(null);
 
   useEffect(() => {
-    loadFeatures();
+    loadCustomizedSolutions();
   }, []);
 
-  const loadFeatures = () => {
+  const loadCustomizedSolutions = () => {
     const params: any = {};
     if (searchTerm) params.search = searchTerm;
     if (statusFilter !== '') params.isActive = statusFilter === 'active';
 
-    dispatch(fetchFeatures(params));
+    dispatch(fetchCustomizedSolutions(params));
   };
 
   const handleSearch = () => {
-    loadFeatures();
+    loadCustomizedSolutions();
   };
 
   const handleRefresh = () => {
     setSearchTerm('');
     setStatusFilter('');
-    dispatch(fetchFeatures());
+    dispatch(fetchCustomizedSolutions());
   };
 
   const handleCreate = () => {
-    setEditingFeature(null);
+    setEditingSolution(null);
     setIsDialogOpen(true);
   };
 
-  const handleEdit = (feature: Feature) => {
-    setEditingFeature(feature);
+  const handleEdit = (solution: CustomizedSolution) => {
+    setEditingSolution(solution);
     setIsDialogOpen(true);
   };
 
   const handleDelete = async (id: string) => {
-    await dispatch(deleteFeature(id)).unwrap();
+    await dispatch(deleteCustomizedSolution(id)).unwrap();
   };
 
-  const handleFormSubmit = async (data: CreateFeatureData | UpdateFeatureData) => {
+  const handleFormSubmit = async (data: CreateCustomizedSolutionData | UpdateCustomizedSolutionData) => {
     try {
-      if (editingFeature) {
-        await dispatch(updateFeature({ id: editingFeature._id, data })).unwrap();
+      if (editingSolution) {
+        await dispatch(updateCustomizedSolution({ id: editingSolution._id, data })).unwrap();
       } else {
-        await dispatch(createFeature(data as CreateFeatureData)).unwrap();
+        await dispatch(createCustomizedSolution(data as CreateCustomizedSolutionData)).unwrap();
       }
       setIsDialogOpen(false);
-      setEditingFeature(null);
+      setEditingSolution(null);
     } catch (error) {
       // Error is handled in the slice with toast
     }
@@ -75,7 +75,7 @@ export default function Features() {
 
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
-    setEditingFeature(null);
+    setEditingSolution(null);
   };
 
   return (
@@ -83,12 +83,12 @@ export default function Features() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="display-sm text-on-surface">Features</h1>
-          <p className="text-on-surface-variant mt-1">Manage software features</p>
+          <h1 className="display-sm text-on-surface">Customized Solutions</h1>
+          <p className="text-on-surface-variant mt-1">Manage customized solutions</p>
         </div>
         <Button onClick={handleCreate} className="gap-2">
           <Plus className="h-4 w-4" />
-          Add Feature
+          Add Customized Solution
         </Button>
       </div>
 
@@ -100,7 +100,7 @@ export default function Features() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-on-surface-variant" />
               <Input
                 type="search"
-                placeholder="Search features..."
+                placeholder="Search customized solutions..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
@@ -134,25 +134,25 @@ export default function Features() {
 
         {/* Results count */}
         <div className="mt-4 text-sm text-on-surface-variant">
-          Showing <span className="font-semibold">{features.length}</span> of{' '}
-          <span className="font-semibold">{total}</span> features
+          Showing <span className="font-semibold">{customizedSolutions.length}</span> of{' '}
+          <span className="font-semibold">{total}</span> customized solutions
         </div>
       </div>
 
-      {/* Feature Table */}
-      <FeatureTable
-        features={features}
+      {/* Table */}
+      <CustomizedSolutionTable
+        customizedSolutions={customizedSolutions}
         onEdit={handleEdit}
         onDelete={handleDelete}
         loading={loading}
       />
 
       {/* Form Dialog */}
-      <FeatureFormDialog
+      <CustomizedSolutionFormDialog
         isOpen={isDialogOpen}
         onClose={handleCloseDialog}
         onSubmit={handleFormSubmit}
-        feature={editingFeature}
+        solution={editingSolution}
         loading={loading}
       />
     </div>

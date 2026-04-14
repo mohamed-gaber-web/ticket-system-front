@@ -19,7 +19,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { Ticket, Category, Consultant as TicketConsultant } from '@/types/ticket';
 
-const ITEMS_PER_PAGE = 15;
+const PAGE_SIZE_OPTIONS = [25, 30, 35, 40, 45, 50];
 
 export default function Tickets() {
   const navigate = useNavigate();
@@ -37,6 +37,7 @@ export default function Tickets() {
   const [priorityFilter, setPriorityFilter] = useState('');
   const [sourceFilter, setSourceFilter] = useState('');
   const [, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(PAGE_SIZE_OPTIONS[0]);
 
   // Advanced filters
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -61,7 +62,7 @@ export default function Tickets() {
 
   // Ticket fetch — depends on user._id so it re-runs if getProfile() updates the customer ID
   useEffect(() => {
-    const initialParams: any = { page: 1, limit: ITEMS_PER_PAGE };
+    const initialParams: any = { page: 1, limit: itemsPerPage };
     if (userType === 'customer' && user?._id) initialParams.customer = user._id;
     dispatch(fetchTickets(initialParams));
   }, [user?._id]);
@@ -70,7 +71,7 @@ export default function Tickets() {
   useEffect(() => {
     const params: any = {
       page: 1,
-      limit: ITEMS_PER_PAGE,
+      limit: itemsPerPage,
     };
     if (searchTerm) params.search = searchTerm;
     if (statusFilter) params.status = statusFilter;
@@ -92,12 +93,12 @@ export default function Tickets() {
 
     setCurrentPage(1);
     dispatch(fetchTickets(params));
-  }, [statusFilter, priorityFilter, sourceFilter, departmentFilter, assignedByFilter, serviceTypeFilter, customerFilter, startDate, createdDateFrom, createdDateTo, closedDateFrom, closedDateTo, user?._id]);
+  }, [statusFilter, priorityFilter, sourceFilter, departmentFilter, assignedByFilter, serviceTypeFilter, customerFilter, startDate, createdDateFrom, createdDateTo, closedDateFrom, closedDateTo, user?._id, itemsPerPage]);
 
   const getFilterParams = (pageNum: number) => {
     const params: any = {
       page: pageNum,
-      limit: ITEMS_PER_PAGE,
+      limit: itemsPerPage,
     };
     if (searchTerm) params.search = searchTerm;
     if (statusFilter) params.status = statusFilter;
@@ -158,7 +159,7 @@ export default function Tickets() {
     setPriorityFilter('');
     setSourceFilter('');
     setCurrentPage(1);
-    dispatch(fetchTickets({ page: 1, limit: ITEMS_PER_PAGE }));
+    dispatch(fetchTickets({ page: 1, limit: itemsPerPage }));
   };
 
   const activeAdvancedFilterCount = [
@@ -254,8 +255,8 @@ export default function Tickets() {
     return pageNumbers;
   };
 
-  const startItem = (page - 1) * ITEMS_PER_PAGE + 1;
-  const endItem = Math.min(page * ITEMS_PER_PAGE, total);
+  const startItem = (page - 1) * itemsPerPage + 1;
+  const endItem = Math.min(page * itemsPerPage, total);
 
   const [showActionsMenu, setShowActionsMenu] = useState(false);
   const actionsMenuRef = useRef<HTMLDivElement>(null);

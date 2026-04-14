@@ -2,23 +2,23 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { X } from 'lucide-react';
-import type { Scope, CreateScopeData, UpdateScopeData } from '@/types/scope.types';
+import type { Module, CreateModuleData, UpdateModuleData } from '@/types/module.types';
 
-interface ScopeFormDialogProps {
+interface ModuleFormDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: CreateScopeData | UpdateScopeData) => void;
-  scope?: Scope | null;
+  onSubmit: (data: CreateModuleData | UpdateModuleData) => void;
+  module?: Module | null;
   loading: boolean;
 }
 
-export default function ScopeFormDialog({
+export default function ModuleFormDialog({
   isOpen,
   onClose,
   onSubmit,
-  scope,
+  module,
   loading,
-}: ScopeFormDialogProps) {
+}: ModuleFormDialogProps) {
   const [formData, setFormData] = useState({
     name: '',
     isActive: true,
@@ -29,10 +29,10 @@ export default function ScopeFormDialog({
   });
 
   useEffect(() => {
-    if (scope) {
+    if (module) {
       setFormData({
-        name: scope.name,
-        isActive: scope.isActive,
+        name: module.name,
+        isActive: module.isActive,
       });
     } else {
       setFormData({
@@ -41,7 +41,7 @@ export default function ScopeFormDialog({
       });
     }
     setErrors({ name: '' });
-  }, [scope, isOpen]);
+  }, [module, isOpen]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -81,7 +81,7 @@ export default function ScopeFormDialog({
         {/* Header */}
         <div className="flex items-center justify-between p-6">
           <h2 className="text-xl font-semibold text-on-surface">
-            {scope ? 'Edit Scope' : 'Create Scope'}
+            {module ? 'Edit Module' : 'Create Module'}
           </h2>
           <button
             onClick={onClose}
@@ -104,7 +104,7 @@ export default function ScopeFormDialog({
               type="text"
               value={formData.name}
               onChange={handleChange}
-              placeholder="Enter scope name (e.g., User Management)"
+              placeholder="Enter module name (e.g., User Management)"
               className={errors.name ? 'ring-[2px] ring-error/30' : ''}
             />
             {errors.name && <p className="form-error">{errors.name}</p>}
@@ -131,7 +131,7 @@ export default function ScopeFormDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? 'Saving...' : scope ? 'Update' : 'Create'}
+              {loading ? 'Saving...' : module ? 'Update' : 'Create'}
             </Button>
           </div>
         </form>

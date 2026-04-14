@@ -25,6 +25,11 @@ export interface CompanyRef {
   name: string;
 }
 
+export interface ProductTypeRef {
+  _id: string;
+  name: string;
+}
+
 export interface Customer {
   _id: string;
   companyName: string;
@@ -40,6 +45,7 @@ export interface Customer {
   erpType?: ERPTypeRef | string;
   versionNumber?: VersionNumberRef | string;
   consultants?: ConsultantRef[] | string[];
+  productTypes?: ProductTypeRef[] | string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -57,6 +63,7 @@ export interface CreateCustomerData {
   erpType?: string;
   versionNumber?: string;
   consultants?: string[];
+  productTypes?: string[];
   role?: CustomerRole;
 }
 
@@ -73,6 +80,7 @@ export interface UpdateCustomerData {
   erpType?: string;
   versionNumber?: string;
   consultants?: string[];
+  productTypes?: string[];
   role?: CustomerRole;
 }
 

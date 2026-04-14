@@ -1,48 +1,38 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { Check, X, Search, ChevronDown } from 'lucide-react';
-import type { Consultant } from '@/types/consultant.types';
 import { cn } from '@/lib/utils';
 
-type ConsultantSelectProps = {
-  consultants: Consultant[];
-  loading?: boolean;
-  placeholder?: string;
-} & (
-  | { multiple: true; value: string[]; onChange: (value: string[]) => void }
-  | { multiple?: false; value: string; onChange: (value: string) => void }
-);
-
-function getInitials(c: Consultant) {
-  return `${c.firstName[0] ?? ''}${c.lastName[0] ?? ''}`.toUpperCase();
+export interface MultiSelectItem {
+  _id: string;
+  name: string;
 }
 
-const AVATAR_COLOR = 'bg-brand-600';
+interface MultiSelectProps {
+  items: MultiSelectItem[];
+  value: string[];
+  onChange: (value: string[]) => void;
+  placeholder?: string;
+  loading?: boolean;
+  searchPlaceholder?: string;
+  emptyMessage?: string;
+}
 
-export function ConsultantSelect({
-  consultants,
-  loading,
-  placeholder = 'Select consultant...',
-  ...props
-}: ConsultantSelectProps) {
+export function MultiSelect({
+  items,
+  value,
+  onChange,
+  placeholder = 'Select items...',
+  loading = false,
+  searchPlaceholder = 'Search...',
+  emptyMessage = 'No items found',
+}: MultiSelectProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const isMultiple = props.multiple === true;
-  const selectedIds: string[] = isMultiple
-    ? (props.value as string[])
-    : props.value
-    ? [props.value as string]
-    : [];
-
   const filtered = useMemo(
-    () =>
-      consultants.filter((c) =>
-        `${c.firstName} ${c.lastName} ${c.email}`
-          .toLowerCase()
-          .includes(search.toLowerCase())
-      ),
-    [consultants, search]
+    () => items.filter((item) => item.name.toLowerCase().includes(search.toLowerCase())),
+    [items, search]
   );
 
   useEffect(() => {
@@ -57,36 +47,20 @@ export function ConsultantSelect({
   }, []);
 
   const toggle = (id: string) => {
-    if (isMultiple) {
-      const current = props.value as string[];
-      const cb = props.onChange as (v: string[]) => void;
-      cb(current.includes(id) ? current.filter((v) => v !== id) : [...current, id]);
-    } else {
-      const cb = props.onChange as (v: string) => void;
-      cb((props.value as string) === id ? '' : id);
-      setOpen(false);
-      setSearch('');
-    }
+    onChange(value.includes(id) ? value.filter((v) => v !== id) : [...value, id]);
   };
 
   const remove = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    if (isMultiple) {
-      const cb = props.onChange as (v: string[]) => void;
-      cb((props.value as string[]).filter((v) => v !== id));
-    } else {
-      (props.onChange as (v: string) => void)('');
-    }
+    onChange(value.filter((v) => v !== id));
   };
 
   const clearAll = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (isMultiple) {
-      (props.onChange as (v: string[]) => void)([]);
-    }
+    onChange([]);
   };
 
-  const selectedConsultants = consultants.filter((c) => selectedIds.includes(c._id));
+  const selectedItems = items.filter((item) => value.includes(item._id));
 
   return (
     <div ref={containerRef} className="relative">
@@ -105,29 +79,21 @@ export function ConsultantSelect({
         )}
       >
         <div className="flex-1 flex flex-wrap gap-1.5 items-center min-h-[28px]">
-          {selectedConsultants.length === 0 ? (
+          {selectedItems.length === 0 ? (
             <span className="text-on-surface-variant">
-              {loading ? 'Loading consultants…' : placeholder}
+              {loading ? 'Loading...' : placeholder}
             </span>
           ) : (
-            selectedConsultants.map((c) => (
+            selectedItems.map((item) => (
               <span
-                key={c._id}
-                className="inline-flex items-center gap-1 bg-brand-50 border border-brand-200 text-brand-700 rounded-full pl-1 pr-1.5 py-0.5 text-xs font-medium select-none"
+                key={item._id}
+                className="inline-flex items-center gap-1 bg-brand-50 border border-brand-200 text-brand-700 rounded-full px-2 py-0.5 text-xs font-medium select-none"
               >
-                <span
-                  className={cn(
-                    'w-4 h-4 rounded-full flex items-center justify-center text-white text-[9px] font-bold shrink-0',
-                    AVATAR_COLOR
-                  )}
-                >
-                  {getInitials(c)}
-                </span>
-                {c.firstName} {c.lastName}
+                {item.name}
                 <span
                   role="button"
                   tabIndex={-1}
-                  onClick={(e) => remove(e, c._id)}
+                  onClick={(e) => remove(e, item._id)}
                   className="ml-0.5 rounded-full hover:text-red-600 transition-colors cursor-pointer"
                 >
                   <X className="w-3 h-3" />
@@ -156,7 +122,7 @@ export function ConsultantSelect({
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by name or email…"
+                placeholder={searchPlaceholder}
                 className="w-full pl-8 pr-3 py-1.5 text-sm bg-surface-container-low rounded-lg outline-none placeholder:text-on-surface-variant"
               />
             </div>
@@ -166,42 +132,23 @@ export function ConsultantSelect({
           <div className="max-h-52 overflow-y-auto p-1">
             {filtered.length === 0 ? (
               <div className="py-8 text-center text-sm text-on-surface-variant">
-                No consultants found
+                {emptyMessage}
               </div>
             ) : (
-              filtered.map((c) => {
-                const selected = selectedIds.includes(c._id);
+              filtered.map((item) => {
+                const selected = value.includes(item._id);
                 return (
                   <button
-                    key={c._id}
+                    key={item._id}
                     type="button"
-                    onClick={() => toggle(c._id)}
+                    onClick={() => toggle(item._id)}
                     className={cn(
                       'w-full flex items-center gap-3 px-3 py-2 rounded-[0.5rem] text-left transition-colors',
                       'hover:bg-surface-container-low',
                       selected && 'bg-brand-50'
                     )}
                   >
-                    {/* Avatar */}
-                    <div
-                      className={cn(
-                        'w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0',
-                        AVATAR_COLOR
-                      )}
-                    >
-                      {getInitials(c)}
-                    </div>
-                    {/* Info */}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-on-surface truncate">
-                        {c.firstName} {c.lastName}
-                      </p>
-                      {c.position && (
-                        <p className="text-xs text-brand-500 truncate font-medium">{c.position}</p>
-                      )}
-                      <p className="text-xs text-on-surface-variant truncate">{c.email}</p>
-                    </div>
-                    {/* Checkmark */}
+                    <span className="flex-1 text-sm text-on-surface">{item.name}</span>
                     <div
                       className={cn(
                         'w-4 h-4 shrink-0 rounded flex items-center justify-center transition-colors',
@@ -219,10 +166,10 @@ export function ConsultantSelect({
           </div>
 
           {/* Footer */}
-          {isMultiple && selectedIds.length > 0 && (
+          {value.length > 0 && (
             <div className="px-3 py-2 border-t border-surface-container-high flex items-center justify-between">
               <span className="text-xs text-on-surface-variant">
-                {selectedIds.length} consultant{selectedIds.length > 1 ? 's' : ''} selected
+                {value.length} item{value.length > 1 ? 's' : ''} selected
               </span>
               <button
                 type="button"

@@ -1,9 +1,10 @@
 import { useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
-import { fetchSubTickets, clearSubTickets } from '@/redux/slices/ticketSlice';
+import { fetchSubTickets, clearSubTickets, deleteTicket, updateTicket } from '@/redux/slices/ticketSlice';
 import { CreateSubTicketDialog } from './CreateSubTicketDialog';
-import { Loader2, ArrowUpRight, GitBranch, Clock, CheckCircle2 } from 'lucide-react';
+import { Loader2, ArrowUpRight, GitBranch, Clock, CheckCircle2, Trash2, XCircle, RotateCcw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import type { Ticket } from '@/types/ticket';
 
 interface SubTicketsListProps {
@@ -29,6 +30,39 @@ export function SubTicketsList({ parentTicketId, parentTicketNumber, isSubTicket
     dispatch(fetchSubTickets({ parentId: parentTicketId }));
   };
 
+  const handleDelete = async (e: React.MouseEvent, subTicketId: string) => {
+    e.stopPropagation();
+    try {
+      await dispatch(deleteTicket(subTicketId)).unwrap();
+      toast.success('Sub-ticket deleted');
+      handleRefresh();
+    } catch {
+      toast.error('Failed to delete sub-ticket');
+    }
+  };
+
+  const handleReject = async (e: React.MouseEvent, subTicketId: string) => {
+    e.stopPropagation();
+    try {
+      await dispatch(updateTicket({ id: subTicketId, data: { status: 'closed' } })).unwrap();
+      toast.success('Sub-ticket rejected');
+      handleRefresh();
+    } catch {
+      toast.error('Failed to reject sub-ticket');
+    }
+  };
+
+  const handleReopen = async (e: React.MouseEvent, subTicketId: string) => {
+    e.stopPropagation();
+    try {
+      await dispatch(updateTicket({ id: subTicketId, data: { status: 'reopened' } })).unwrap();
+      toast.success('Sub-ticket reopened');
+      handleRefresh();
+    } catch {
+      toast.error('Failed to reopen sub-ticket');
+    }
+  };
+
   if (isSubTicket) return null;
   if (userType === 'customer') return null;
 
@@ -45,6 +79,7 @@ export function SubTicketsList({ parentTicketId, parentTicketNumber, isSubTicket
     customer_pending: { bg: 'bg-purple-500', text: 'text-purple-600', label: 'Customer Pending' },
     resolved: { bg: 'bg-green-500', text: 'text-green-600', label: 'Resolved' },
     closed: { bg: 'bg-surface-container-highest', text: 'text-on-surface-variant', label: 'Closed' },
+    reopened: { bg: 'bg-brand-400', text: 'text-brand-500', label: 'Reopened' },
   };
 
   const priorityConfig: Record<string, { dot: string }> = {
@@ -172,12 +207,39 @@ export function SubTicketsList({ parentTicketId, parentTicketNumber, isSubTicket
                   </div>
                 </div>
 
-                {/* Right: Status + Arrow */}
-                <div className="flex items-center gap-3 shrink-0">
+                {/* Right: Status + Actions */}
+                <div className="flex items-center gap-2 shrink-0">
                   <span className={`text-[11px] font-semibold ${status.text}`}>
                     {status.label}
                   </span>
-                  <ArrowUpRight className="h-3.5 w-3.5 text-on-surface-variant/30 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {subTicket.status === 'resolved' && (
+                      <button
+                        onClick={(e) => handleReopen(e, subTicket._id)}
+                        title="Reopen"
+                        className="p-1 rounded-md text-brand-500 hover:bg-brand-50 transition-colors"
+                      >
+                        <RotateCcw className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                    {!['closed', 'resolved'].includes(subTicket.status) && (
+                      <button
+                        onClick={(e) => handleReject(e, subTicket._id)}
+                        title="Reject"
+                        className="p-1 rounded-md text-error hover:bg-error/10 transition-colors"
+                      >
+                        <XCircle className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                    <button
+                      onClick={(e) => handleDelete(e, subTicket._id)}
+                      title="Delete"
+                      className="p-1 rounded-md text-error hover:bg-error/10 transition-colors"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                    <ArrowUpRight className="h-3.5 w-3.5 text-on-surface-variant/30" />
+                  </div>
                 </div>
               </div>
             );

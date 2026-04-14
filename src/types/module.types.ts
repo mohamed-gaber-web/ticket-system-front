@@ -1,4 +1,4 @@
-export interface Feature {
+export interface Module {
   _id: string;
   name: string;
   isActive: boolean;
@@ -6,34 +6,34 @@ export interface Feature {
   updatedAt: string;
 }
 
-export interface CreateFeatureData {
+export interface CreateModuleData {
   name: string;
   isActive?: boolean;
 }
 
-export interface UpdateFeatureData {
+export interface UpdateModuleData {
   name?: string;
   isActive?: boolean;
 }
 
-export interface FeatureQueryParams {
+export interface ModuleQueryParams {
   page?: number;
   limit?: number;
   search?: string;
   isActive?: boolean;
 }
 
-export interface FeatureResponse {
+export interface ModuleResponse {
   success: boolean;
   message?: string;
-  data: Feature;
+  data: Module;
 }
 
-export interface FeaturesResponse {
+export interface ModulesResponse {
   success: boolean;
   count: number;
   total: number;
   page: number;
   totalPages: number;
-  data: Feature[];
+  data: Module[];
 }

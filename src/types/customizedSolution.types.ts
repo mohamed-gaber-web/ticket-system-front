@@ -1,4 +1,4 @@
-export interface Scope {
+export interface CustomizedSolution {
   _id: string;
   name: string;
   isActive: boolean;
@@ -6,34 +6,34 @@ export interface Scope {
   updatedAt: string;
 }
 
-export interface CreateScopeData {
+export interface CreateCustomizedSolutionData {
   name: string;
   isActive?: boolean;
 }
 
-export interface UpdateScopeData {
+export interface UpdateCustomizedSolutionData {
   name?: string;
   isActive?: boolean;
 }
 
-export interface ScopeQueryParams {
+export interface CustomizedSolutionQueryParams {
   page?: number;
   limit?: number;
   search?: string;
   isActive?: boolean;
 }
 
-export interface ScopeResponse {
+export interface CustomizedSolutionResponse {
   success: boolean;
   message?: string;
-  data: Scope;
+  data: CustomizedSolution;
 }
 
-export interface ScopesResponse {
+export interface CustomizedSolutionsResponse {
   success: boolean;
   count: number;
   total: number;
   page: number;
   totalPages: number;
-  data: Scope[];
+  data: CustomizedSolution[];
 }

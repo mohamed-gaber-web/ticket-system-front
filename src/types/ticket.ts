@@ -1,10 +1,10 @@
 // Import reference types for new properties
 import type { Environment } from './environment.types';
-import type { Feature } from './feature.types';
+import type { CustomizedSolution } from './customizedSolution.types';
 import type { Department } from './department.types';
 import type { ProductType } from './productType.types';
 import type { ServiceType } from './serviceType.types';
-import type { Scope } from './scope.types';
+import type { Module } from './module.types';
 import type { Source } from './source.types';
 
 export interface Customer {
@@ -92,11 +92,11 @@ export interface Ticket {
 
   // NEW PROPERTIES - Reference fields for better categorization
   environment?: string | Environment;
-  feature?: string | Feature;
+  feature?: string | CustomizedSolution;
   department?: string | Department;
   productType?: string | ProductType;
   serviceType?: string | ServiceType;
-  scope?: string | Scope;
+  scope?: string | Module;
   source?: string | Source;
   // END NEW PROPERTIES
 

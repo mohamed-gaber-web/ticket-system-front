@@ -2,23 +2,23 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { X } from 'lucide-react';
-import type { Feature, CreateFeatureData, UpdateFeatureData } from '@/types/feature.types';
+import type { CustomizedSolution, CreateCustomizedSolutionData, UpdateCustomizedSolutionData } from '@/types/customizedSolution.types';
 
-interface FeatureFormDialogProps {
+interface CustomizedSolutionFormDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: CreateFeatureData | UpdateFeatureData) => void;
-  feature?: Feature | null;
+  onSubmit: (data: CreateCustomizedSolutionData | UpdateCustomizedSolutionData) => void;
+  solution?: CustomizedSolution | null;
   loading: boolean;
 }
 
-export default function FeatureFormDialog({
+export default function CustomizedSolutionFormDialog({
   isOpen,
   onClose,
   onSubmit,
-  feature,
+  solution,
   loading,
-}: FeatureFormDialogProps) {
+}: CustomizedSolutionFormDialogProps) {
   const [formData, setFormData] = useState({
     name: '',
     isActive: true,
@@ -29,10 +29,10 @@ export default function FeatureFormDialog({
   });
 
   useEffect(() => {
-    if (feature) {
+    if (solution) {
       setFormData({
-        name: feature.name,
-        isActive: feature.isActive,
+        name: solution.name,
+        isActive: solution.isActive,
       });
     } else {
       setFormData({
@@ -41,7 +41,7 @@ export default function FeatureFormDialog({
       });
     }
     setErrors({ name: '' });
-  }, [feature, isOpen]);
+  }, [solution, isOpen]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -81,7 +81,7 @@ export default function FeatureFormDialog({
         {/* Header */}
         <div className="flex items-center justify-between p-6">
           <h2 className="text-xl font-semibold text-on-surface">
-            {feature ? 'Edit Feature' : 'Create Feature'}
+            {solution ? 'Edit Customized Solution' : 'Create Customized Solution'}
           </h2>
           <button
             onClick={onClose}
@@ -104,7 +104,7 @@ export default function FeatureFormDialog({
               type="text"
               value={formData.name}
               onChange={handleChange}
-              placeholder="Enter feature name (e.g., User Management)"
+              placeholder="Enter customized solution name"
               className={errors.name ? 'ring-[2px] ring-error/30' : ''}
             />
             {errors.name && <p className="form-error">{errors.name}</p>}
@@ -131,7 +131,7 @@ export default function FeatureFormDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? 'Saving...' : feature ? 'Update' : 'Create'}
+              {loading ? 'Saving...' : solution ? 'Update' : 'Create'}
             </Button>
           </div>
         </form>

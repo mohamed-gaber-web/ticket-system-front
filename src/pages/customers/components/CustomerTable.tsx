@@ -142,6 +142,7 @@ export default function CustomerTable({ customers, onEdit, onDelete, isLoading }
             <TableHead className="font-semibold">Contact Info</TableHead>
             <TableHead className="font-semibold">ERP Type</TableHead>
             <TableHead className="font-semibold">Version</TableHead>
+            <TableHead className="font-semibold">Product Types</TableHead>
             <TableHead className="font-semibold">Role</TableHead>
             <TableHead className="font-semibold">Status</TableHead>
             <TableHead className="font-semibold">Created At</TableHead>
@@ -194,6 +195,26 @@ export default function CustomerTable({ customers, onEdit, onDelete, isLoading }
                 </div>
               </TableCell>
               <TableCell>
+                {Array.isArray(customer.productTypes) && customer.productTypes.length > 0 ? (
+                  <div className="flex flex-wrap gap-1">
+                    {customer.productTypes.map((pt: any) => {
+                      const name = typeof pt === 'object' ? pt.name : pt;
+                      const key = typeof pt === 'object' ? pt._id : pt;
+                      return (
+                        <span
+                          key={key}
+                          className="px-2 py-0.5 rounded-[0.375rem] text-xs font-medium bg-brand-50 text-brand-700 border border-brand-200"
+                        >
+                          {name}
+                        </span>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <span className="text-sm text-on-surface-variant">—</span>
+                )}
+              </TableCell>
+              <TableCell>
                 {customer.role === 'company_admin' ? (
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[0.5rem] text-xs font-bold uppercase tracking-[0.05em] bg-brand-100 text-brand-700">
                     <ShieldCheck className="h-3 w-3" />
@@ -209,31 +230,31 @@ export default function CustomerTable({ customers, onEdit, onDelete, isLoading }
               <TableCell>{getStatusBadge(customer.status)}</TableCell>
               <TableCell className="text-on-surface-variant">{formatDate(customer.createdAt)}</TableCell>
               <TableCell>
-                <div className="flex items-center justify-end gap-2">
+                <div className="flex items-center justify-end gap-1">
                   <Button
-                    size="sm"
-                    variant="outline"
+                    size="icon"
+                    variant="ghost"
                     onClick={() => navigate(`/customers/view/${customer._id}`)}
+                    title="View"
                   >
-                    <Eye className="w-4 h-4 mr-1" />
-                    View
+                    <Eye className="w-4 h-4" />
                   </Button>
                   <Button
-                    size="sm"
-                    variant="outline"
+                    size="icon"
+                    variant="ghost"
                     onClick={() => onEdit(customer)}
+                    title="Edit"
                   >
-                    <Edit className="w-4 h-4 mr-1" />
-                    Edit
+                    <Edit className="w-4 h-4" />
                   </Button>
                   <Button
-                    size="sm"
-                    variant="outline"
+                    size="icon"
+                    variant="ghost"
                     className="text-error hover:text-error/80"
                     onClick={() => handleDelete(customer)}
+                    title="Delete"
                   >
-                    <Trash2 className="w-4 h-4 mr-1" />
-                    Delete
+                    <Trash2 className="w-4 h-4" />
                   </Button>
                 </div>
               </TableCell>

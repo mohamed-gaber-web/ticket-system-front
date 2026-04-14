@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
-import { fetchTicketById, clearCurrentTicket, updateTicket } from '@/redux/slices/ticketSlice';
+import { fetchTicketById, clearCurrentTicket, updateTicket, deleteTicket } from '@/redux/slices/ticketSlice';
+import { toast } from 'sonner';
 import { submitFeedback } from '@/api/ticketApi';
 import { fetchCurrentAssignment } from '@/redux/slices/assignmentSlice';
 import { AssignConsultantsDialog } from '@/components/consultantAssignment/AssignConsultantsDialog';
@@ -42,6 +43,8 @@ import {
   Star,
   MessageSquare,
   Truck,
+  Trash2,
+  RotateCcw,
 } from 'lucide-react';
 
 const PRIORITY_DOT: Record<string, string> = {
@@ -73,6 +76,9 @@ export default function ViewTicket() {
   const [resolving, setResolving] = useState(false);
   const [closing, setClosing] = useState(false);
   const [delivering, setDelivering] = useState(false);
+  const [reopening, setReopening] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [feedbackRating, setFeedbackRating] = useState(0);
   const [feedbackHover, setFeedbackHover] = useState(0);
   const [feedbackText, setFeedbackText] = useState('');
@@ -133,6 +139,41 @@ export default function ViewTicket() {
       await dispatch(updateTicket({ id: currentTicket._id, data: { status: 'delivered' } })).unwrap();
     } finally {
       setDelivering(false);
+    }
+  };
+
+  const handleReopen = async () => {
+    if (!currentTicket) return;
+    setReopening(true);
+    try {
+      await dispatch(updateTicket({ id: currentTicket._id, data: { status: 'reopened' } })).unwrap();
+      toast.success('Ticket reopened');
+    } finally {
+      setReopening(false);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!currentTicket) return;
+    setRejecting(true);
+    try {
+      await dispatch(updateTicket({ id: currentTicket._id, data: { status: 'closed' } })).unwrap();
+      toast.success('Sub-ticket rejected');
+    } finally {
+      setRejecting(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!currentTicket) return;
+    setDeleting(true);
+    try {
+      await dispatch(deleteTicket(currentTicket._id)).unwrap();
+      toast.success('Sub-ticket deleted');
+      navigate(-1);
+    } catch {
+      toast.error('Failed to delete sub-ticket');
+      setDeleting(false);
     }
   };
 
@@ -315,7 +356,7 @@ export default function ViewTicket() {
                 {resolving ? 'Resolving...' : 'Resolve'}
               </Button>
             )}
-            {!isCustomer && currentTicket.status === 'resolved' && (
+            {!isCustomer && currentTicket.status === 'resolved' && !currentTicket.isSubTicket && (
               <Button
                 variant="outline"
                 size="sm"
@@ -325,6 +366,42 @@ export default function ViewTicket() {
               >
                 <Truck className="h-3.5 w-3.5" />
                 {delivering ? 'Delivering...' : 'Mark as Delivered'}
+              </Button>
+            )}
+            {!isCustomer && currentTicket.status === 'resolved' && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleReopen}
+                disabled={reopening}
+                className="gap-1.5 text-brand-600 border-brand-200 hover:bg-brand-50 hover:text-brand-700"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                {reopening ? 'Reopening...' : 'Reopen'}
+              </Button>
+            )}
+            {!isCustomer && currentTicket.isSubTicket && !['closed', 'resolved'].includes(currentTicket.status) && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleReject}
+                disabled={rejecting}
+                className="gap-1.5 text-error border-error/30 hover:bg-error/5 hover:text-error"
+              >
+                <XCircle className="h-3.5 w-3.5" />
+                {rejecting ? 'Rejecting...' : 'Reject'}
+              </Button>
+            )}
+            {!isCustomer && currentTicket.isSubTicket && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDelete}
+                disabled={deleting}
+                className="gap-1.5 text-error border-error/30 hover:bg-error/5 hover:text-error"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                {deleting ? 'Deleting...' : 'Delete'}
               </Button>
             )}
             {isCustomer && currentTicket.status === 'delivered' && (
@@ -502,11 +579,11 @@ export default function ViewTicket() {
                 </h3>
                 <div className="space-y-4">
                   {environment && <PropertyRow icon={Server} label="Environment" value={environment.name} />}
-                  {feature && <PropertyRow icon={Sparkles} label="Feature" value={feature.name} />}
+                  {feature && <PropertyRow icon={Sparkles} label="Customized Solution" value={feature.name} />}
                   {department && <PropertyRow icon={Building2} label="Department" value={department.name} />}
                   {productType && <PropertyRow icon={Package} label="Product" value={productType.name} />}
                   {serviceType && <PropertyRow icon={Wrench} label="Service" value={serviceType.name} />}
-                  {scope && <PropertyRow icon={Target} label="Scope" value={scope.name} />}
+                  {scope && <PropertyRow icon={Target} label="Module" value={scope.name} />}
                   {source && <PropertyRow icon={Globe} label="Source" value={source.name} />}
                 </div>
               </div>
