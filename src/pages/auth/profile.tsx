@@ -5,7 +5,7 @@ import { updateConsultant } from '@/redux/slices/consultantSlice';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { Save, Mail, Phone, Calendar, Clock, Ticket as TicketIcon, Building2, MapPin } from 'lucide-react';
+import { Save, Mail, Phone, Calendar, Clock, Ticket as TicketIcon, Building2, MapPin, GitBranch } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import * as ticketApi from '@/api/ticketApi';
 import type { Ticket } from '@/types/ticket';
@@ -132,9 +132,9 @@ const ProfilePage = () => {
     if (!u?._id) return;
     setTicketsLoading(true);
     try {
-      const params = role === 'consultant'
-        ? { acceptedBy: u._id, page, limit: TICKET_LIMIT }
-        : { customer: u._id, page, limit: TICKET_LIMIT };
+      const params = role === 'customer'
+        ? { customer: u._id, page, limit: TICKET_LIMIT }
+        : { assignedConsultant: u._id, page, limit: TICKET_LIMIT };
       const res = await ticketApi.getTickets(params);
       setAssignedTickets(res.data);
       setTicketTotal(res.total);
@@ -560,6 +560,7 @@ const ProfilePage = () => {
                       <tr>
                         <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Ticket #</th>
                         <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Subject</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Parent</th>
                         <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Customer</th>
                         <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Priority</th>
                         <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Status</th>
@@ -571,17 +572,44 @@ const ProfilePage = () => {
                         const customer = typeof ticket.customer === 'object' && ticket.customer
                           ? (ticket.customer as any)
                           : null;
+                        const parent = ticket.isSubTicket && typeof ticket.parentTicket === 'object' && ticket.parentTicket
+                          ? (ticket.parentTicket as any)
+                          : null;
                         return (
                           <tr
                             key={ticket._id}
-                            className="hover:bg-surface-container-low cursor-pointer transition-colors"
+                            className={cn(
+                              'cursor-pointer transition-colors',
+                              ticket.isSubTicket
+                                ? 'bg-primary-fixed/20 hover:bg-primary-fixed/30'
+                                : 'hover:bg-surface-container-low'
+                            )}
                             onClick={() => navigate(`/tickets/view/${ticket._id}`)}
                           >
                             <td className="px-4 py-3 whitespace-nowrap">
-                              <span className="text-sm font-semibold text-brand-600">#{ticket.ticketNumber}</span>
+                              <div className="flex items-center gap-1.5">
+                                {ticket.isSubTicket && (
+                                  <GitBranch className="w-3 h-3 text-brand-400 flex-shrink-0" />
+                                )}
+                                <span className={cn(
+                                  'text-sm font-semibold',
+                                  ticket.isSubTicket ? 'text-brand-400' : 'text-brand-600'
+                                )}>
+                                  #{ticket.ticketNumber}
+                                </span>
+                              </div>
                             </td>
                             <td className="px-4 py-3 max-w-[180px]">
                               <p className="text-sm font-medium text-on-surface truncate">{ticket.subject}</p>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              {parent ? (
+                                <span className="inline-flex items-center gap-1 text-xs font-medium text-brand-600 bg-brand-50 px-2 py-0.5 rounded-md">
+                                  #{parent.ticketNumber}
+                                </span>
+                              ) : (
+                                <span className="text-on-surface-variant/40 text-sm">—</span>
+                              )}
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap">
                               <span className="text-sm text-on-surface-variant">{customer?.companyName || '—'}</span>

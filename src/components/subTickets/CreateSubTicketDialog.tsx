@@ -70,7 +70,6 @@ export function CreateSubTicketDialog({
 
     const dataToSend: CreateSubTicketData = {
       ...formData,
-      assignedBy: user?._id,
       notifyEmails,
     };
 
