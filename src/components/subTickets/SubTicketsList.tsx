@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchSubTickets, clearSubTickets, deleteTicket, updateTicket } from '@/redux/slices/ticketSlice';
 import { CreateSubTicketDialog } from './CreateSubTicketDialog';
-import { Loader2, ArrowUpRight, GitBranch, Clock, CheckCircle2, Trash2, XCircle, RotateCcw } from 'lucide-react';
+import { Loader2, ArrowUpRight, GitBranch, Clock, CheckCircle2, Trash2, XCircle, RotateCcw, User, Calendar } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import type { Ticket } from '@/types/ticket';
@@ -21,13 +21,13 @@ export function SubTicketsList({ parentTicketId, parentTicketNumber, isSubTicket
 
   useEffect(() => {
     if (!isSubTicket && parentTicketId) {
-      dispatch(fetchSubTickets({ parentId: parentTicketId }));
+      dispatch(fetchSubTickets({ parentId: parentTicketId, params: { limit: 500 } }));
     }
     return () => { dispatch(clearSubTickets()); };
   }, [dispatch, parentTicketId, isSubTicket]);
 
   const handleRefresh = () => {
-    dispatch(fetchSubTickets({ parentId: parentTicketId }));
+    dispatch(fetchSubTickets({ parentId: parentTicketId, params: { limit: 500 } }));
   };
 
   const handleDelete = async (e: React.MouseEvent, subTicketId: string) => {
@@ -195,13 +195,41 @@ export function SubTicketsList({ parentTicketId, parentTicketNumber, isSubTicket
                       {subTicket.subject}
                     </h4>
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-on-surface-variant">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-on-surface-variant">
                     <span className="font-mono font-medium">{subTicket.ticketNumber}</span>
                     <span className="text-on-surface-variant/30">·</span>
                     <div className="flex items-center gap-1">
                       <span className={`w-1.5 h-1.5 rounded-full ${priority.dot}`} />
                       <span className="capitalize">{subTicket.priority}</span>
                     </div>
+                    {/* Assignee */}
+                    {(() => {
+                      const assignee = subTicket.acceptedBy ?? subTicket.assignedBy;
+                      if (!assignee) return null;
+                      const name = typeof assignee === 'object'
+                        ? `${(assignee as any).firstName} ${(assignee as any).lastName}`
+                        : null;
+                      if (!name) return null;
+                      return (
+                        <>
+                          <span className="text-on-surface-variant/30">·</span>
+                          <div className="flex items-center gap-1">
+                            <User className="h-3 w-3 flex-shrink-0" />
+                            <span>{name}</span>
+                          </div>
+                        </>
+                      );
+                    })()}
+                    {/* Start Date */}
+                    {subTicket.startDate && (
+                      <>
+                        <span className="text-on-surface-variant/30">·</span>
+                        <div className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3 flex-shrink-0" />
+                          <span>{new Date(subTicket.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                        </div>
+                      </>
+                    )}
                     <span className="text-on-surface-variant/30">·</span>
                     <span>{getRelativeTime(subTicket.updatedAt || subTicket.createdAt)}</span>
                   </div>

@@ -221,6 +221,7 @@ export interface TicketQueryParams {
   closedDateFrom?: string;
   closedDateTo?: string;
   acceptedBy?: string;
+  assignedConsultant?: string;
   customerName?: string;
 }
 

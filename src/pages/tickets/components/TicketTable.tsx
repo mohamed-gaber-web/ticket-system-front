@@ -14,7 +14,7 @@ import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
 import type { Ticket, Consultant, Category } from '@/types/ticket';
 import { useAppSelector, useAppDispatch } from '@/redux/hooks/hooks';
-import { acceptTicket } from '@/redux/slices/ticketSlice';
+import { acceptTicket, fetchSubTickets } from '@/redux/slices/ticketSlice';
 
 const MySwal = withReactContent(Swal);
 
@@ -35,6 +35,8 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
   const isCustomer = userType === 'customer';
 
   const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set());
+  const [subTicketsByParent, setSubTicketsByParent] = useState<Map<string, Ticket[]>>(new Map());
+  const [loadingSubTickets, setLoadingSubTickets] = useState<Set<string>>(new Set());
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [menuPos, setMenuPos] = useState<{ top: number; right: number }>({ top: 0, right: 0 });
   const menuRef = useRef<HTMLDivElement>(null);
@@ -49,13 +51,33 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const toggleParent = (parentId: string) => {
-    setExpandedParents((prev) => {
-      const next = new Set(prev);
-      if (next.has(parentId)) next.delete(parentId);
-      else next.add(parentId);
-      return next;
-    });
+  const toggleParent = async (parentId: string) => {
+    if (expandedParents.has(parentId)) {
+      setExpandedParents((prev) => {
+        const next = new Set(prev);
+        next.delete(parentId);
+        return next;
+      });
+      return;
+    }
+
+    setExpandedParents((prev) => new Set(prev).add(parentId));
+
+    if (!subTicketsByParent.has(parentId)) {
+      setLoadingSubTickets((prev) => new Set(prev).add(parentId));
+      try {
+        const result = await dispatch(fetchSubTickets({ parentId, params: { limit: 500 } })).unwrap();
+        setSubTicketsByParent((prev) => new Map(prev).set(parentId, result.data));
+      } catch {
+        // fail silently — expand row but show nothing
+      } finally {
+        setLoadingSubTickets((prev) => {
+          const next = new Set(prev);
+          next.delete(parentId);
+          return next;
+        });
+      }
+    }
   };
 
   const handleMenuToggle = (ticketId: string, btn: HTMLElement) => {
@@ -116,18 +138,11 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
     });
   };
 
-  const getAcceptedByName = (acceptedBy: string | Consultant | undefined) => {
-    if (!acceptedBy) return null;
-
-    if (typeof acceptedBy === 'string') {
-      const consultant = consultants.find(c => c._id === acceptedBy);
-      if (consultant) {
-        return `${consultant.firstName} ${consultant.lastName}`;
-      }
-      return 'Unknown Consultant';
-    }
-
-    return `${acceptedBy.firstName} ${acceptedBy.lastName}`;
+  const getConsultantName = (person: string | Consultant | undefined): string | null => {
+    if (!person) return null;
+    if (typeof person === 'object') return `${person.firstName} ${person.lastName}`;
+    const found = consultants.find(c => c._id === person);
+    return found ? `${found.firstName} ${found.lastName}` : 'Unknown';
   };
 
   const isAcceptedByCurrentUser = (ticket: Ticket) => {
@@ -191,29 +206,18 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
     );
   };
 
-  const subTicketsMap = new Map<string, Ticket[]>();
-  tickets.forEach((ticket) => {
-    if (ticket.isSubTicket && ticket.parentTicket) {
-      const parentId = typeof ticket.parentTicket === 'string'
-        ? ticket.parentTicket
-        : (ticket.parentTicket as Ticket)._id;
-      if (!subTicketsMap.has(parentId)) subTicketsMap.set(parentId, []);
-      subTicketsMap.get(parentId)!.push(ticket);
-    }
-  });
+  const getSubTicketCount = (ticket: Ticket): number =>
+    (ticket.subTickets as unknown as { _id: string }[])?.length ?? 0;
 
   const organizeTickets = () => {
-    const mainTickets = tickets.filter((t) => !t.isSubTicket);
-
     const organized: Ticket[] = [];
-    mainTickets.forEach((mainTicket) => {
-      organized.push(mainTicket);
-      if (expandedParents.has(mainTicket._id)) {
-        const subTickets = subTicketsMap.get(mainTicket._id) || [];
-        organized.push(...subTickets);
+    tickets.forEach((ticket) => {
+      organized.push(ticket);
+      if (expandedParents.has(ticket._id)) {
+        const subs = subTicketsByParent.get(ticket._id) || [];
+        organized.push(...subs);
       }
     });
-
     return organized;
   };
 
@@ -283,16 +287,18 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                   <TableCell>
                     <div className="flex items-center gap-1.5">
                       {/* Expand/collapse toggle for parent tickets with sub-tickets */}
-                      {!isSubTicket && (subTicketsMap.get(ticket._id)?.length ?? 0) > 0 ? (
+                      {!isSubTicket && getSubTicketCount(ticket) > 0 ? (
                         <button
                           type="button"
                           onClick={() => toggleParent(ticket._id)}
                           className="p-0.5 rounded hover:bg-surface-container-high transition-colors flex-shrink-0"
                           aria-label={expandedParents.has(ticket._id) ? 'Collapse sub-tickets' : 'Expand sub-tickets'}
                         >
-                          {expandedParents.has(ticket._id)
-                            ? <ChevronDown className="h-4 w-4 text-primary" />
-                            : <ChevronRight className="h-4 w-4 text-on-surface-variant" />
+                          {loadingSubTickets.has(ticket._id)
+                            ? <span className="h-4 w-4 block animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
+                            : expandedParents.has(ticket._id)
+                              ? <ChevronDown className="h-4 w-4 text-primary" />
+                              : <ChevronRight className="h-4 w-4 text-on-surface-variant" />
                           }
                         </button>
                       ) : !isSubTicket ? (
@@ -345,24 +351,33 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                   </TableCell>
                   {/* Assignee */}
                   <TableCell>
-                    {isConsultant && !isSubTicket && ticket.status === 'new' && !ticket.acceptedBy ? (
-                      <Button
-                        size="sm"
-                        variant="tertiary"
-                        onClick={() => handleAccept(ticket)}
-                        disabled={ticketLoading}
-                        className="text-green-600 hover:text-green-700 whitespace-nowrap h-8 text-xs"
-                      >
-                        <CheckCircle className="w-3.5 h-3.5 mr-1" />
-                        Accept
-                      </Button>
-                    ) : ticket.acceptedBy ? (
-                      <span className="text-sm font-medium text-on-surface">
-                        {isConsultant && isAcceptedByCurrentUser(ticket) ? 'You' : getAcceptedByName(ticket.acceptedBy)}
-                      </span>
-                    ) : (
-                      <span className="text-on-surface-variant/40">&mdash;</span>
-                    )}
+                    {(() => {
+                      const assignee = ticket.acceptedBy ?? ticket.assignedBy;
+                      const showAcceptBtn = isConsultant && !isSubTicket && ticket.status === 'new' && !assignee;
+                      if (showAcceptBtn) {
+                        return (
+                          <Button
+                            size="sm"
+                            variant="tertiary"
+                            onClick={() => handleAccept(ticket)}
+                            disabled={ticketLoading}
+                            className="text-green-600 hover:text-green-700 whitespace-nowrap h-8 text-xs"
+                          >
+                            <CheckCircle className="w-3.5 h-3.5 mr-1" />
+                            Accept
+                          </Button>
+                        );
+                      }
+                      if (assignee) {
+                        const isSelf = isConsultant && isAcceptedByCurrentUser(ticket);
+                        return (
+                          <span className="text-sm font-medium text-on-surface">
+                            {isSelf ? 'You' : getConsultantName(assignee)}
+                          </span>
+                        );
+                      }
+                      return <span className="text-on-surface-variant/40">&mdash;</span>;
+                    })()}
                   </TableCell>
                   {/* Company */}
                   <TableCell>
@@ -458,7 +473,7 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                   <TableCell>
                     {!isSubTicket ? (
                       (() => {
-                        const count = subTicketsMap.get(ticket._id)?.length ?? 0;
+                        const count = getSubTicketCount(ticket);
                         const isExpanded = expandedParents.has(ticket._id);
                         return count > 0 ? (
                           <button
