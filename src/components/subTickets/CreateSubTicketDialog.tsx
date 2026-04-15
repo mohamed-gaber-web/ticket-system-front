@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { createSubTicket } from '@/redux/slices/ticketSlice';
+import { uploadAttachment } from '@/redux/slices/attachmentSlice';
 import { fetchConsultants } from '@/redux/slices/consultantSlice';
 import { createAssignment, assignConsultants } from '@/redux/slices/assignmentSlice';
 import { Button } from '@/components/ui/button';
@@ -16,9 +17,10 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, UserCheck, Mail, X } from 'lucide-react';
+import { Plus, UserCheck, Mail, X, Paperclip, Upload, File, ImageIcon } from 'lucide-react';
 import { ConsultantSelect } from '@/components/ui/consultant-select';
 import { CustomSelect } from '@/components/ui/custom-select';
+import { validateFile, formatFileSize } from '@/api/attachmentApi';
 import type { CreateSubTicketData } from '@/types/ticket';
 
 interface CreateSubTicketDialogProps {
@@ -42,10 +44,13 @@ export function CreateSubTicketDialog({
   const [notifyEmails, setNotifyEmails] = useState<string[]>([]);
   const [notifyEmailInput, setNotifyEmailInput] = useState('');
   const [notifyEmailError, setNotifyEmailError] = useState<string | null>(null);
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const [attachmentError, setAttachmentError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   const dispatch = useAppDispatch();
   const { loading } = useAppSelector((state) => state.tickets);
-  const { user } = useAppSelector((state) => state.auth);
+  const { user, userType } = useAppSelector((state) => state.auth);
   const { consultants, loading: consultantsLoading } = useAppSelector((state) => state.consultants);
 
   useEffect(() => {
@@ -64,6 +69,34 @@ export function CreateSubTicketDialog({
     setNotifyEmailInput('');
     setNotifyEmailError(null);
   };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setAttachmentError(null);
+    const newFiles: File[] = [];
+    const errors: string[] = [];
+    Array.from(files).forEach((file) => {
+      const validation = validateFile(file);
+      if (validation.valid) {
+        newFiles.push(file);
+      } else {
+        errors.push(`${file.name}: ${validation.error}`);
+      }
+    });
+    if (errors.length > 0) setAttachmentError(errors.join('; '));
+    if (newFiles.length > 0) setAttachments((prev) => [...prev, ...newFiles]);
+    e.target.value = '';
+  };
+
+  const removeAttachmentFile = (index: number) => {
+    setAttachments((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const getFileIcon = (fileType: string) =>
+    fileType.startsWith('image/')
+      ? <ImageIcon className="h-4 w-4 text-brand-500" />
+      : <File className="h-4 w-4 text-on-surface-variant" />;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,15 +130,29 @@ export function CreateSubTicketDialog({
         }
       }
 
+      // Upload attachments after the sub-ticket is created
+      if (attachments.length > 0 && subTicket && user) {
+        setUploading(true);
+        await Promise.all(
+          attachments.map((file) =>
+            dispatch(uploadAttachment({
+              ticketId: subTicket._id,
+              file,
+              uploadedByUserId: user._id,
+              uploadedByUserType: (userType as 'customer' | 'consultant' | 'team_member') ?? 'consultant',
+            }))
+          )
+        );
+        setUploading(false);
+      }
+
       setOpen(false);
-      setFormData({
-        subject: '',
-        description: '',
-        priority: 'medium',
-      });
+      setFormData({ subject: '', description: '', priority: 'medium' });
       setSelectedConsultants([]);
       setNotifyEmails([]);
       setNotifyEmailInput('');
+      setAttachments([]);
+      setAttachmentError(null);
       onSuccess?.();
     }
   };
@@ -118,15 +165,15 @@ export function CreateSubTicketDialog({
           Create Sub-Ticket
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[600px]">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[600px] flex flex-col max-h-[90vh]">
+        <DialogHeader className="shrink-0">
           <DialogTitle>Create Sub-Ticket</DialogTitle>
           <DialogDescription>
             Create a sub-ticket for {parentTicketNumber}. Inherits customer and SLA from parent.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
+        <form onSubmit={handleSubmit} className="flex flex-col min-h-0 flex-1">
+          <div className="grid gap-4 py-4 overflow-y-auto flex-1 pr-1">
             <div className="grid gap-2">
               <Label htmlFor="subject">Subject *</Label>
               <Input
@@ -150,6 +197,25 @@ export function CreateSubTicketDialog({
               />
             </div>
 
+            <div className="pt-2">
+              <div className="h-px bg-surface-container-high -mx-2 mb-4" />
+              <div className="flex items-center gap-2 mb-3">
+                <UserCheck className="h-5 w-5 text-on-surface-variant" />
+                <Label htmlFor="consultant" className="text-base font-semibold">Assign to Consultant (Optional)</Label>
+              </div>
+              <p className="text-sm text-on-surface-variant mb-3">
+                Select a consultant to assign to this sub-ticket. You can also assign them later.
+              </p>
+              <ConsultantSelect
+                multiple
+                value={selectedConsultants}
+                onChange={setSelectedConsultants}
+                consultants={consultants}
+                loading={consultantsLoading}
+                placeholder="Search and select consultants…"
+              />
+            </div>
+
             <div className="grid gap-2">
               <Label htmlFor="priority">Priority</Label>
               <CustomSelect
@@ -163,7 +229,6 @@ export function CreateSubTicketDialog({
                 ]}
               />
             </div>
-
 
             <div className="pt-2">
               <div className="h-px bg-surface-container-high -mx-2 mb-4" />
@@ -217,32 +282,72 @@ export function CreateSubTicketDialog({
                 </div>
               )}
             </div>
-
-            <div className="pt-4">
+            {/* Attachments */}
+            <div className="pt-2">
               <div className="h-px bg-surface-container-high -mx-2 mb-4" />
-              <div className="flex items-center gap-2 mb-3">
-                <UserCheck className="h-5 w-5 text-on-surface-variant" />
-                <Label htmlFor="consultant" className="text-base font-semibold">Assign to Consultant (Optional)</Label>
+              <div className="flex items-center gap-2 mb-1">
+                <Paperclip className="h-5 w-5 text-on-surface-variant" />
+                <Label className="text-base font-semibold">Attachments</Label>
               </div>
               <p className="text-sm text-on-surface-variant mb-3">
-                Select a consultant to assign to this sub-ticket. You can also assign them later.
+                Images &amp; documents (PDF, Word, Excel, PowerPoint, TXT) · Max 10MB each
               </p>
-              <ConsultantSelect
+
+              <input
+                type="file"
+                id="sub-ticket-attachment-upload"
+                accept="image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,text/plain"
                 multiple
-                value={selectedConsultants}
-                onChange={setSelectedConsultants}
-                consultants={consultants}
-                loading={consultantsLoading}
-                placeholder="Search and select consultants…"
+                className="hidden"
+                onChange={handleFileChange}
               />
+              <button
+                type="button"
+                onClick={() => document.getElementById('sub-ticket-attachment-upload')?.click()}
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-outline text-sm hover:bg-surface-container transition-colors"
+              >
+                <Upload className="h-4 w-4" />
+                Choose Files
+              </button>
+
+              {attachmentError && (
+                <p className="text-sm text-error mt-2">{attachmentError}</p>
+              )}
+
+              {attachments.length > 0 && (
+                <div className="mt-3 space-y-2">
+                  <p className="text-xs font-medium text-on-surface-variant uppercase tracking-wide">
+                    Selected ({attachments.length})
+                  </p>
+                  {attachments.map((file, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center gap-3 px-3 py-2 rounded-[0.75rem] bg-surface-container-low"
+                    >
+                      {getFileIcon(file.type)}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-on-surface truncate">{file.name}</p>
+                        <p className="text-xs text-on-surface-variant">{formatFileSize(file.size)}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeAttachmentFile(index)}
+                        className="p-1 rounded-md text-on-surface-variant hover:text-error hover:bg-error/10 transition-colors"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="shrink-0 pt-4 border-t border-outline-variant/10">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? 'Creating...' : 'Create Sub-Ticket'}
+            <Button type="submit" disabled={loading || uploading}>
+              {uploading ? 'Uploading...' : loading ? 'Creating...' : 'Create Sub-Ticket'}
             </Button>
           </DialogFooter>
         </form>

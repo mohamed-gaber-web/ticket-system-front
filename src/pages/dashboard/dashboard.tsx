@@ -8,6 +8,8 @@ import {
   Clock,
   Zap,
   BarChart3,
+  Layers,
+  GitBranch,
 } from "lucide-react";
 import { useEffect, useMemo } from "react";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks/hooks";
@@ -250,8 +252,10 @@ export default function Dashboard() {
     const inProgress = tickets.filter((t) => t.status === "in_progress").length;
     const newT = tickets.filter((t) => t.status === "new").length;
     const assigned = tickets.filter((t) => t.status === "assigned").length;
-    const total = tickets.length;
-    return { total, closed, resolved, inProgress, new: newT, assigned };
+    const mainTickets = tickets.length;
+    const subTicketsCount = tickets.reduce((acc, t) => acc + (t.subTickets?.length ?? 0), 0);
+    const total = mainTickets + subTicketsCount;
+    return { total, closed, resolved, inProgress, new: newT, assigned, mainTickets, subTicketsCount };
   }, [tickets]);
 
   const metrics = useMemo(() => {
@@ -300,8 +304,8 @@ export default function Dashboard() {
   );
 
   const resolutionRate =
-    stats.total > 0
-      ? Math.round(((stats.closed + stats.resolved) / stats.total) * 100)
+    stats.mainTickets > 0
+      ? Math.round(((stats.closed + stats.resolved) / stats.mainTickets) * 100)
       : 0;
 
   const today = new Date().toLocaleDateString("en-US", {
@@ -340,18 +344,20 @@ export default function Dashboard() {
         initial="hidden"
         animate="visible"
       >
-        <StatCard label="Total Tickets"   value={stats.total}          icon={Ticket}       numberColor="text-brand-500"         iconBg="bg-brand-100"               iconColor="text-brand-600"           bar="bg-brand-500"          loading={ticketsLoading}   idx={0} />
-        <StatCard label="New"             value={stats.new}            icon={AlertTriangle} numberColor="text-yellow-700"       iconBg="bg-yellow-100"              iconColor="text-yellow-600"          bar="bg-yellow-400"         loading={ticketsLoading}   idx={1} />
-        <StatCard label="In Progress"     value={stats.inProgress}     icon={Activity}      numberColor="text-brand-400"        iconBg="bg-brand-50"                iconColor="text-brand-400"           bar="bg-brand-400"          loading={ticketsLoading}   idx={2} />
-        <StatCard label="Customers"       value={totalCustomers}       icon={Users}         numberColor="text-brand-700"        iconBg="bg-brand-100"               iconColor="text-brand-700"           bar="bg-brand-700"          loading={customersLoading} idx={3} />
-        <StatCard label="Assigned"        value={stats.assigned}       icon={Ticket}        numberColor="text-accent-orange-500" iconBg="bg-accent-orange-100"      iconColor="text-accent-orange-500"   bar="bg-accent-orange-500"  loading={ticketsLoading}   idx={4} />
-        <StatCard label="Closed"          value={stats.closed}         icon={CheckCircle2}  numberColor="text-emerald-600"      iconBg="bg-emerald-100"             iconColor="text-emerald-600"         bar="bg-emerald-500"        loading={ticketsLoading}   idx={5} />
-        <StatCard label="Resolved"        value={stats.resolved}        icon={TrendingUp}   numberColor="text-emerald-700"      iconBg="bg-green-100"               iconColor="text-emerald-700"         bar="bg-emerald-400"        loading={ticketsLoading}   idx={6} />
+        <StatCard label="All Tickets"      value={stats.total}             icon={Layers}       numberColor="text-brand-500"         iconBg="bg-brand-100"               iconColor="text-brand-600"           bar="bg-brand-500"          loading={ticketsLoading}   idx={0} />
+        <StatCard label="Tickets"          value={stats.mainTickets}       icon={Ticket}       numberColor="text-brand-600"         iconBg="bg-brand-50"                iconColor="text-brand-500"           bar="bg-brand-600"          loading={ticketsLoading}   idx={1} />
+        <StatCard label="Sub Tickets"      value={stats.subTicketsCount}   icon={GitBranch}    numberColor="text-violet-600"        iconBg="bg-violet-100"              iconColor="text-violet-600"          bar="bg-violet-500"         loading={ticketsLoading}   idx={2} />
+        <StatCard label="New"             value={stats.new}            icon={AlertTriangle} numberColor="text-yellow-700"       iconBg="bg-yellow-100"              iconColor="text-yellow-600"          bar="bg-yellow-400"         loading={ticketsLoading}   idx={3} />
+        <StatCard label="In Progress"     value={stats.inProgress}     icon={Activity}      numberColor="text-brand-400"        iconBg="bg-brand-50"                iconColor="text-brand-400"           bar="bg-brand-400"          loading={ticketsLoading}   idx={4} />
+        <StatCard label="Customers"       value={totalCustomers}       icon={Users}         numberColor="text-brand-700"        iconBg="bg-brand-100"               iconColor="text-brand-700"           bar="bg-brand-700"          loading={customersLoading} idx={5} />
+        <StatCard label="Assigned"        value={stats.assigned}       icon={Ticket}        numberColor="text-accent-orange-500" iconBg="bg-accent-orange-100"      iconColor="text-accent-orange-500"   bar="bg-accent-orange-500"  loading={ticketsLoading}   idx={6} />
+        <StatCard label="Closed"          value={stats.closed}         icon={CheckCircle2}  numberColor="text-emerald-600"      iconBg="bg-emerald-100"             iconColor="text-emerald-600"         bar="bg-emerald-500"        loading={ticketsLoading}   idx={7} />
+        <StatCard label="Resolved"        value={stats.resolved}        icon={TrendingUp}   numberColor="text-emerald-700"      iconBg="bg-green-100"               iconColor="text-emerald-700"         bar="bg-emerald-400"        loading={ticketsLoading}   idx={8} />
 
         {/* Resolution rate — inline highlight card */}
         <motion.div
           variants={cardVariants}
-          custom={7}
+          custom={9}
           whileHover={{ y: -5, transition: SP_FAST }}
           className="relative flex flex-col gap-4 p-5 rounded-2xl overflow-hidden cursor-default shadow-sm hover:shadow-xl transition-shadow duration-300"
           style={{
@@ -403,9 +409,9 @@ export default function Dashboard() {
                       Ticket Distribution
                     </span>
                   </div>
-                  {!ticketsLoading && stats.total > 0 && (
+                  {!ticketsLoading && stats.mainTickets > 0 && (
                     <span className="label-technical bg-surface-container px-2.5 py-1 rounded-full border border-outline-variant/20">
-                      {stats.total} total
+                      {stats.mainTickets} total
                     </span>
                   )}
                 </>
@@ -439,7 +445,7 @@ export default function Dashboard() {
                             className={`${seg.color} first:rounded-l-full last:rounded-r-full`}
                             initial={{ width: 0 }}
                             animate={{
-                              width: `${stats.total > 0 ? (seg.v / stats.total) * 100 : 0}%`,
+                              width: `${stats.mainTickets > 0 ? (seg.v / stats.mainTickets) * 100 : 0}%`,
                             }}
                             transition={{ duration: 1, ease: [0.23, 1, 0.32, 1], delay: 0.4 + i * 0.07 }}
                           />
@@ -464,8 +470,8 @@ export default function Dashboard() {
                             {item.v}
                           </span>
                           <span className="text-[10px] text-on-surface-variant/50 tabular-nums">
-                            {stats.total > 0
-                              ? Math.round((item.v / stats.total) * 100)
+                            {stats.mainTickets > 0
+                              ? Math.round((item.v / stats.mainTickets) * 100)
                               : 0}
                             %
                           </span>
@@ -670,7 +676,7 @@ export default function Dashboard() {
                     </div>
                     <p className="text-xs text-on-surface-variant">
                       <span className="font-bold text-on-surface">{stats.closed}</span> of{" "}
-                      <span className="font-bold text-on-surface">{stats.total}</span>{" "}
+                      <span className="font-bold text-on-surface">{stats.mainTickets}</span>{" "}
                       tickets resolved
                     </p>
                   </>

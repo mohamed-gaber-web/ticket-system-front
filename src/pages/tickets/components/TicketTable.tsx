@@ -412,9 +412,14 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                   {/* Created Date */}
                   <TableCell>
                     {ticket.createdAt ? (
-                      <span className="text-sm text-on-surface">
-                        {new Date(ticket.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </span>
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-sm text-on-surface">
+                          {new Date(ticket.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </span>
+                        <span className="text-xs text-on-surface-variant">
+                          {new Date(ticket.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
                     ) : (
                       <span className="text-on-surface-variant/40">&mdash;</span>
                     )}

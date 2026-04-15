@@ -9,20 +9,12 @@ export default function CreateCategory() {
   const navigate = useNavigate();
 
   const handleSubmit = (data: CreateCategoryData | UpdateCategoryData) => {
-    console.log('Submitting category data:', data);
     dispatch(createCategory(data as CreateCategoryData)).unwrap()
-      .then((result) => {
-        console.log('Category created successfully:', result);
-        console.log('Navigating to /categories');
-
-        // Use setTimeout to ensure state updates are complete before navigation
-        setTimeout(() => {
-          navigate("/categories");
-        }, 100);
+      .then(() => {
+        navigate("/categories");
       })
       .catch((error) => {
         console.error("Failed to create category:", error);
-        console.error("Error details:", JSON.stringify(error, null, 2));
       });
   };
 

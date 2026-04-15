@@ -189,10 +189,8 @@ const categorySlice = createSlice({
         state.loading = true;
         state.error = null;
       })
-      .addCase(createCategory.fulfilled, (state, action) => {
+      .addCase(createCategory.fulfilled, (state) => {
         state.loading = false;
-        state.categories.push(action.payload);
-        state.total += 1;
       })
       .addCase(createCategory.rejected, (state, action) => {
         state.loading = false;

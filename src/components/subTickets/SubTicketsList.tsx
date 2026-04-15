@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchSubTickets, clearSubTickets, deleteTicket, updateTicket } from '@/redux/slices/ticketSlice';
 import { CreateSubTicketDialog } from './CreateSubTicketDialog';
-import { Loader2, ArrowUpRight, GitBranch, Clock, CheckCircle2, Trash2, XCircle, RotateCcw, User, Calendar } from 'lucide-react';
+import { Loader2, ArrowUpRight, GitBranch, Clock, CheckCircle2, Trash2, XCircle, RotateCcw, User, Calendar, Building2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import type { Ticket } from '@/types/ticket';
@@ -89,15 +89,11 @@ export function SubTicketsList({ parentTicketId, parentTicketNumber, isSubTicket
     low: { dot: 'bg-green-500' },
   };
 
-  function getRelativeTime(dateStr: string): string {
-    const now = new Date();
+  function formatDateTime(dateStr: string): string {
     const date = new Date(dateStr);
-    const diffMs = now.getTime() - date.getTime();
-    const diffDays = Math.floor(diffMs / 86400000);
-    if (diffDays === 0) return 'Today';
-    if (diffDays === 1) return 'Yesterday';
-    if (diffDays < 7) return `${diffDays}d ago`;
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const datePart = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const timePart = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    return `${datePart}, ${timePart}`;
   }
 
   return (
@@ -169,7 +165,14 @@ export function SubTicketsList({ parentTicketId, parentTicketNumber, isSubTicket
         </div>
       ) : (
         <div className="space-y-1">
-          {subTickets.map((subTicket: Ticket, index: number) => {
+          {[...subTickets]
+            .sort((a, b) => {
+              const isDoneA = a.status === 'resolved' || a.status === 'closed';
+              const isDoneB = b.status === 'resolved' || b.status === 'closed';
+              if (isDoneA === isDoneB) return 0;
+              return isDoneA ? 1 : -1;
+            })
+            .map((subTicket: Ticket, index: number) => {
             const status = statusConfig[subTicket.status] || statusConfig.new;
             const priority = priorityConfig[subTicket.priority] || priorityConfig.medium;
             const isDone = subTicket.status === 'resolved' || subTicket.status === 'closed';
@@ -202,6 +205,16 @@ export function SubTicketsList({ parentTicketId, parentTicketNumber, isSubTicket
                       <span className={`w-1.5 h-1.5 rounded-full ${priority.dot}`} />
                       <span className="capitalize">{subTicket.priority}</span>
                     </div>
+                    {/* Department */}
+                    {subTicket.department && typeof subTicket.department === 'object' && (subTicket.department as any).name && (
+                      <>
+                        <span className="text-on-surface-variant/30">·</span>
+                        <div className="flex items-center gap-1">
+                          <Building2 className="h-3 w-3 flex-shrink-0" />
+                          <span>{(subTicket.department as any).name}</span>
+                        </div>
+                      </>
+                    )}
                     {/* Assignee */}
                     {(() => {
                       const assignee = subTicket.acceptedBy ?? subTicket.assignedBy;
@@ -231,7 +244,7 @@ export function SubTicketsList({ parentTicketId, parentTicketNumber, isSubTicket
                       </>
                     )}
                     <span className="text-on-surface-variant/30">·</span>
-                    <span>{getRelativeTime(subTicket.updatedAt || subTicket.createdAt)}</span>
+                    <span>{formatDateTime(subTicket.updatedAt || subTicket.createdAt)}</span>
                   </div>
                 </div>
 

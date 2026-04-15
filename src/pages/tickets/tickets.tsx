@@ -78,7 +78,7 @@ export default function Tickets() {
     if (priorityFilter) params.priority = priorityFilter;
     if (sourceFilter) params.source = sourceFilter;
     if (departmentFilter) params.department = departmentFilter;
-    if (assignedByFilter) params.acceptedBy = assignedByFilter;
+    if (assignedByFilter) params.assignedConsultant = assignedByFilter;
     if (serviceTypeFilter) params.serviceType = serviceTypeFilter;
     if (customerFilter) params.customer = customerFilter;
     if (startDate) params.startDate = startDate;
@@ -105,7 +105,7 @@ export default function Tickets() {
     if (priorityFilter) params.priority = priorityFilter;
     if (sourceFilter) params.source = sourceFilter;
     if (departmentFilter) params.department = departmentFilter;
-    if (assignedByFilter) params.acceptedBy = assignedByFilter;
+    if (assignedByFilter) params.assignedConsultant = assignedByFilter;
     if (serviceTypeFilter) params.serviceType = serviceTypeFilter;
     if (customerFilter) params.customer = customerFilter;
     if (startDate) params.startDate = startDate;
