@@ -335,7 +335,7 @@ export default function Tickets() {
       </div>
 
       {/* Search & Filters */}
-      <div className="bg-surface-container-lowest rounded-[1rem] overflow-hidden">
+      <div className="bg-surface-container-lowest rounded-[1rem]">
         {/* Top Bar: Search + Quick Filters */}
         <div className="p-4 flex flex-wrap items-center gap-3">
           <div className="relative flex-1 min-w-[240px]">
