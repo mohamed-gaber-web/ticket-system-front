@@ -316,7 +316,7 @@ const assignmentSlice = createSlice({
       })
       .addCase(createAssignment.fulfilled, (state, action) => {
         state.loading = false;
-        state.assignments.unshift(action.payload.data);
+        state.assignments.unshift(action.payload);
         state.total += 1;
       })
       .addCase(createAssignment.rejected, (state, action) => {
