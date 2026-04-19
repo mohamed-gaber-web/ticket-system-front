@@ -33,6 +33,7 @@ const TicketComments: React.FC<TicketCommentsProps> = ({ ticketId }) => {
 
   const isStaff = userType === 'consultant' || userType === 'team_member';
   const isCustomer = userType === 'customer';
+  const isAdmin = (user as any)?.role === 'admin';
 
   useEffect(() => {
     loadComments();
@@ -186,6 +187,7 @@ const TicketComments: React.FC<TicketCommentsProps> = ({ ticketId }) => {
             loading={loading}
             currentUserType={userType as UserType}
             currentUserId={user?._id || ''}
+            isAdmin={isAdmin}
             onUpdate={handleUpdateComment}
             onDelete={handleDeleteComment}
           />

@@ -16,6 +16,7 @@ interface CommentItemProps {
   comment: TicketComment;
   currentUserType: UserType;
   currentUserId: string;
+  isAdmin?: boolean;
   onUpdate?: (commentId: string, commentText: string, isInternal: boolean) => void;
   onDelete?: (commentId: string) => void;
 }
@@ -24,6 +25,7 @@ const CommentItem: React.FC<CommentItemProps> = ({
   comment,
   currentUserType,
   currentUserId,
+  isAdmin = false,
   onUpdate,
   onDelete,
 }) => {
@@ -112,28 +114,32 @@ const CommentItem: React.FC<CommentItemProps> = ({
             </span>
           </div>
 
-          {isOwnComment && (
+          {(isOwnComment || isAdmin) && (
             <div className="flex items-center gap-1">
               {!isEditing ? (
                 <>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={() => setIsEditing(true)}
-                    className="text-on-surface-variant hover:text-brand-500"
-                    title="Edit comment"
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={handleDelete}
-                    className="text-on-surface-variant hover:text-error"
-                    title="Delete comment"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
+                  {isOwnComment && (
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => setIsEditing(true)}
+                      className="text-on-surface-variant hover:text-brand-500"
+                      title="Edit comment"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                  {isAdmin && (
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={handleDelete}
+                      className="text-on-surface-variant hover:text-error"
+                      title="Delete comment"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
                 </>
               ) : (
                 <>

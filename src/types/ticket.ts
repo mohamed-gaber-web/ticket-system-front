@@ -96,7 +96,7 @@ export interface Ticket {
   department?: string | Department;
   productType?: string | ProductType;
   serviceType?: string | ServiceType;
-  scope?: string | Module;
+  scope?: string[] | Module[];
   source?: string | Source;
   // END NEW PROPERTIES
 
@@ -141,7 +141,7 @@ export interface CreateTicketData {
   department?: string;
   productType?: string;
   serviceType?: string;
-  scope?: string;
+  scope?: string[];
   source?: string;
 }
 
@@ -194,7 +194,7 @@ export interface UpdateTicketData {
   department?: string;
   productType?: string;
   serviceType?: string;
-  scope?: string;
+  scope?: string[];
   source?: string;
 }
 

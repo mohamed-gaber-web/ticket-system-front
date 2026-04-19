@@ -9,6 +9,7 @@ interface CommentListProps {
   loading: boolean;
   currentUserType: UserType;
   currentUserId: string;
+  isAdmin?: boolean;
   onUpdate?: (commentId: string, commentText: string, isInternal: boolean) => void;
   onDelete?: (commentId: string) => void;
 }
@@ -18,6 +19,7 @@ const CommentList: React.FC<CommentListProps> = ({
   loading,
   currentUserType,
   currentUserId,
+  isAdmin = false,
   onUpdate,
   onDelete,
 }) => {
@@ -45,6 +47,7 @@ const CommentList: React.FC<CommentListProps> = ({
           comment={comment}
           currentUserType={currentUserType}
           currentUserId={currentUserId}
+          isAdmin={isAdmin}
           onUpdate={onUpdate}
           onDelete={onDelete}
         />

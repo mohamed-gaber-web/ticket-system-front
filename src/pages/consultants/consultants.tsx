@@ -4,34 +4,38 @@ import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchConsultants, deleteConsultant } from '@/redux/slices/consultantSlice';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, RefreshCw, Edit, Trash2 } from 'lucide-react';
+import { Plus, Search, RefreshCw, Edit, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { CustomSelect } from '@/components/ui/custom-select';
 import { cn } from '@/lib/utils';
 import Swal from 'sweetalert2';
 
+const PAGE_SIZE = 10;
+
 export default function Consultants() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const { consultants, loading, total } = useAppSelector((state) => state.consultants);
+  const { consultants, loading, total, pages } = useAppSelector((state) => state.consultants);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
-    loadConsultants();
+    loadConsultants(1);
   }, []);
 
-  const loadConsultants = () => {
-    const params: any = {};
+  const loadConsultants = (page = currentPage) => {
+    const params: any = { page, limit: PAGE_SIZE };
     if (searchTerm) params.search = searchTerm;
     if (statusFilter) params.status = statusFilter;
     if (roleFilter) params.role = roleFilter;
+    setCurrentPage(page);
     dispatch(fetchConsultants(params));
   };
 
   const handleSearch = () => {
-    loadConsultants();
+    loadConsultants(1);
   };
 
   const handleDelete = async (id: string, name: string) => {
@@ -47,7 +51,7 @@ export default function Consultants() {
 
     if (result.isConfirmed) {
       await dispatch(deleteConsultant(id));
-      loadConsultants();
+      loadConsultants(1);
     }
   };
 
@@ -55,7 +59,8 @@ export default function Consultants() {
     setSearchTerm('');
     setStatusFilter('');
     setRoleFilter('');
-    dispatch(fetchConsultants({}));
+    setCurrentPage(1);
+    dispatch(fetchConsultants({ page: 1, limit: PAGE_SIZE }));
   };
 
   const STATUS_STYLES = {
@@ -246,10 +251,56 @@ export default function Consultants() {
                 </tbody>
               </table>
             </div>
-            <div className="bg-surface-container-low px-6 py-3">
-              <p className="text-sm text-on-surface">
-                Showing {consultants.length} of {total} consultants
+            <div className="bg-surface-container-low px-6 py-3 flex items-center justify-between">
+              <p className="text-sm text-on-surface-variant">
+                Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, total)} of {total} consultants
               </p>
+              {pages > 1 && (
+                <div className="flex items-center gap-1">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={currentPage <= 1}
+                    onClick={() => loadConsultants(currentPage - 1)}
+                    className="w-8 h-8 p-0"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  {Array.from({ length: pages }, (_, i) => i + 1)
+                    .filter((p) => p === 1 || p === pages || Math.abs(p - currentPage) <= 1)
+                    .reduce<(number | '...')[]>((acc, p, idx, arr) => {
+                      if (idx > 0 && p - (arr[idx - 1] as number) > 1) acc.push('...');
+                      acc.push(p);
+                      return acc;
+                    }, [])
+                    .map((item, idx) =>
+                      item === '...' ? (
+                        <span key={`ellipsis-${idx}`} className="w-8 h-8 flex items-center justify-center text-sm text-on-surface-variant">
+                          …
+                        </span>
+                      ) : (
+                        <Button
+                          key={item}
+                          size="sm"
+                          variant={item === currentPage ? 'default' : 'outline'}
+                          onClick={() => loadConsultants(item as number)}
+                          className="w-8 h-8 p-0"
+                        >
+                          {item}
+                        </Button>
+                      )
+                    )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={currentPage >= pages}
+                    onClick={() => loadConsultants(currentPage + 1)}
+                    className="w-8 h-8 p-0"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              )}
             </div>
           </>
         )}

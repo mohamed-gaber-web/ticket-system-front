@@ -198,7 +198,9 @@ export default function ViewTicket() {
   const department = currentTicket.department && typeof currentTicket.department !== 'string' ? currentTicket.department : null;
   const productType = currentTicket.productType && typeof currentTicket.productType !== 'string' ? currentTicket.productType : null;
   const serviceType = currentTicket.serviceType && typeof currentTicket.serviceType !== 'string' ? currentTicket.serviceType : null;
-  const scope = currentTicket.scope && typeof currentTicket.scope !== 'string' ? currentTicket.scope : null;
+  const scopes = Array.isArray(currentTicket.scope)
+    ? (currentTicket.scope as any[]).filter((s) => s && typeof s !== 'string')
+    : [];
   const source = currentTicket.source && typeof currentTicket.source !== 'string' ? currentTicket.source : null;
 
   const displayStatus = currentTicket.status.replace('_', ' ');
@@ -571,7 +573,7 @@ export default function ViewTicket() {
             </div>
 
             {/* Properties */}
-            {(environment || feature || department || productType || serviceType || scope || source) && (
+            {(environment || feature || department || productType || serviceType || scopes.length > 0 || source) && (
               <div className="bg-surface-container-lowest rounded-[1rem] p-6">
                 <h3 className="label-technical mb-5 flex items-center gap-2">
                   <Layers className="h-3.5 w-3.5" />
@@ -583,7 +585,24 @@ export default function ViewTicket() {
                   {department && <PropertyRow icon={Building2} label="Department" value={department.name} />}
                   {productType && <PropertyRow icon={Package} label="Product" value={productType.name} />}
                   {serviceType && <PropertyRow icon={Wrench} label="Service" value={serviceType.name} />}
-                  {scope && <PropertyRow icon={Target} label="Module" value={scope.name} />}
+                  {scopes.length > 0 && (
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 text-on-surface-variant shrink-0">
+                        <Target className="h-3.5 w-3.5" />
+                        <span className="text-xs">Module</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1 justify-end">
+                        {scopes.map((s: any) => (
+                          <span
+                            key={s._id}
+                            className="text-xs font-semibold bg-surface-container px-2 py-0.5 rounded-md text-on-surface"
+                          >
+                            {s.name}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {source && <PropertyRow icon={Globe} label="Source" value={source.name} />}
                 </div>
               </div>

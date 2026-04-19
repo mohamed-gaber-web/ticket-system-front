@@ -5,7 +5,7 @@ import { updateConsultant } from '@/redux/slices/consultantSlice';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { Save, Mail, Phone, Calendar, Clock, Ticket as TicketIcon, Building2, MapPin, GitBranch } from 'lucide-react';
+import { Save, Mail, Phone, Calendar, Clock, Ticket as TicketIcon, Building2, MapPin, GitBranch, Zap, CheckCircle2, ArchiveX, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import * as ticketApi from '@/api/ticketApi';
 import type { Ticket } from '@/types/ticket';
@@ -98,6 +98,14 @@ const ProfilePage = () => {
   const [ticketTotal, setTicketTotal] = useState(0);
   const [ticketPages, setTicketPages] = useState(1);
 
+  const [dashboardStats, setDashboardStats] = useState({
+    inProgress: 0,
+    resolved: 0,
+    closed: 0,
+    critical: 0,
+    statsLoading: true,
+  });
+
   useEffect(() => {
     dispatch(getProfile());
   }, [dispatch]);
@@ -127,6 +135,30 @@ const ProfilePage = () => {
       loadTickets(1, userType ?? undefined);
     }
   }, [user, userType]);
+
+  useEffect(() => {
+    if (!isConsultant || !u?._id) return;
+    const fetchDashboardStats = async () => {
+      try {
+        const [inProgressRes, resolvedRes, closedRes, criticalRes] = await Promise.all([
+          ticketApi.getTickets({ assignedConsultant: u._id, status: 'in_progress', limit: 1 }),
+          ticketApi.getTickets({ assignedConsultant: u._id, status: 'resolved', limit: 1 }),
+          ticketApi.getTickets({ assignedConsultant: u._id, status: 'closed', limit: 1 }),
+          ticketApi.getTickets({ assignedConsultant: u._id, priority: 'critical', limit: 1 }),
+        ]);
+        setDashboardStats({
+          inProgress: inProgressRes.total,
+          resolved: resolvedRes.total,
+          closed: closedRes.total,
+          critical: criticalRes.total,
+          statsLoading: false,
+        });
+      } catch {
+        setDashboardStats((prev) => ({ ...prev, statsLoading: false }));
+      }
+    };
+    fetchDashboardStats();
+  }, [user, isConsultant]);
 
   const loadTickets = async (page: number, role = userType) => {
     if (!u?._id) return;
@@ -427,6 +459,82 @@ const ProfilePage = () => {
           <div className="flex flex-col items-center px-6 border-l border-surface-container-high self-stretch justify-center min-w-[90px]">
             <span className="text-3xl font-bold text-on-surface">{ticketTotal}</span>
             <span className="text-xs text-on-surface-variant mt-1 text-center">Assigned Tickets</span>
+          </div>
+        </div>
+
+        {/* Mini Dashboard */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-5 gap-4">
+          {/* Total Assigned */}
+          <div className="bg-surface-container-lowest rounded-[1rem] p-4 flex items-center gap-4">
+            <div className="w-10 h-10 rounded-lg bg-brand-100 flex items-center justify-center flex-shrink-0">
+              <TicketIcon className="w-5 h-5 text-brand-600" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-2xl font-bold text-on-surface leading-none">{ticketTotal}</p>
+              <p className="text-xs text-on-surface-variant mt-1 truncate">Total Assigned</p>
+            </div>
+          </div>
+
+          {/* In Progress */}
+          <div className="bg-surface-container-lowest rounded-[1rem] p-4 flex items-center gap-4">
+            <div className="w-10 h-10 rounded-lg bg-yellow-100 flex items-center justify-center flex-shrink-0">
+              <Zap className="w-5 h-5 text-yellow-600" />
+            </div>
+            <div className="min-w-0">
+              {dashboardStats.statsLoading ? (
+                <div className="h-7 w-8 bg-surface-container-high rounded animate-pulse" />
+              ) : (
+                <p className="text-2xl font-bold text-on-surface leading-none">{dashboardStats.inProgress}</p>
+              )}
+              <p className="text-xs text-on-surface-variant mt-1 truncate">In Progress</p>
+            </div>
+          </div>
+
+          {/* Resolved */}
+          <div className="bg-surface-container-lowest rounded-[1rem] p-4 flex items-center gap-4">
+            <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
+              <CheckCircle2 className="w-5 h-5 text-green-600" />
+            </div>
+            <div className="min-w-0">
+              {dashboardStats.statsLoading ? (
+                <div className="h-7 w-8 bg-surface-container-high rounded animate-pulse" />
+              ) : (
+                <p className="text-2xl font-bold text-on-surface leading-none">{dashboardStats.resolved}</p>
+              )}
+              <p className="text-xs text-on-surface-variant mt-1 truncate">Resolved</p>
+            </div>
+          </div>
+
+          {/* Closed */}
+          <div className="bg-surface-container-lowest rounded-[1rem] p-4 flex items-center gap-4">
+            <div className="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center flex-shrink-0">
+              <ArchiveX className="w-5 h-5 text-on-surface-variant" />
+            </div>
+            <div className="min-w-0">
+              {dashboardStats.statsLoading ? (
+                <div className="h-7 w-8 bg-surface-container-high rounded animate-pulse" />
+              ) : (
+                <p className="text-2xl font-bold text-on-surface leading-none">{dashboardStats.closed}</p>
+              )}
+              <p className="text-xs text-on-surface-variant mt-1 truncate">Closed</p>
+            </div>
+          </div>
+
+          {/* Critical Priority */}
+          <div className="col-span-2 sm:col-span-4 xl:col-span-1 bg-surface-container-lowest rounded-[1rem] p-4 flex items-center gap-4">
+            <div className="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0">
+              <AlertTriangle className="w-5 h-5 text-error" />
+            </div>
+            <div className="min-w-0">
+              {dashboardStats.statsLoading ? (
+                <div className="h-7 w-8 bg-surface-container-high rounded animate-pulse" />
+              ) : (
+                <p className={cn('text-2xl font-bold leading-none', dashboardStats.critical > 0 ? 'text-error' : 'text-on-surface')}>
+                  {dashboardStats.critical}
+                </p>
+              )}
+              <p className="text-xs text-on-surface-variant mt-1 truncate">Critical Priority</p>
+            </div>
           </div>
         </div>
 

@@ -251,6 +251,7 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
           <TableHeader>
             <TableRow>
               <TableHead className="min-w-[100px]">Ticket #</TableHead>
+              <TableHead className="min-w-[120px]">Status</TableHead>
               <TableHead className="min-w-[200px]">Subject</TableHead>
               <TableHead className="min-w-[140px]">Customer</TableHead>
               <TableHead className="min-w-[140px]">Assignee</TableHead>
@@ -258,7 +259,6 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
               {isConsultant && <TableHead className="min-w-[120px]">Category</TableHead>}
               {isConsultant && <TableHead className="min-w-[120px]">Module</TableHead>}
               <TableHead className="min-w-[100px]">Priority</TableHead>
-              <TableHead className="min-w-[120px]">Status</TableHead>
               <TableHead className="min-w-[120px]">Created Date</TableHead>
               <TableHead className="min-w-[120px]">Assigned Date</TableHead>
               <TableHead className="min-w-[120px]">Delivery Date</TableHead>
@@ -323,6 +323,7 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                       )}
                     </div>
                   </TableCell>
+                  <TableCell>{getStatusBadge(ticket.status)}</TableCell>
                   <TableCell>
                     <div>
                       <p className={`font-medium text-sm ${isSubTicket ? 'text-brand-500' : 'text-on-surface'}`}>
@@ -397,18 +398,28 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                       )}
                     </TableCell>
                   )}
-                  {/* Environment */}
+                  {/* Module (scope — multi-value) */}
                   {isConsultant && (
                     <TableCell>
-                      {ticket.environment && typeof ticket.environment === 'object' ? (
-                        <span className="text-sm text-on-surface">{ticket.environment.name}</span>
+                      {Array.isArray(ticket.scope) && ticket.scope.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {(ticket.scope as any[]).map((s, i) =>
+                            s && typeof s === 'object' ? (
+                              <span
+                                key={s._id ?? i}
+                                className="inline-block px-2 py-0.5 rounded-md text-xs font-medium bg-surface-container text-on-surface"
+                              >
+                                {s.name}
+                              </span>
+                            ) : null
+                          )}
+                        </div>
                       ) : (
                         <span className="text-on-surface-variant/40">&mdash;</span>
                       )}
                     </TableCell>
                   )}
                   <TableCell>{getPriorityDisplay(ticket.priority)}</TableCell>
-                  <TableCell>{getStatusBadge(ticket.status)}</TableCell>
                   {/* Created Date */}
                   <TableCell>
                     {ticket.createdAt ? (

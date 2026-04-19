@@ -4,6 +4,7 @@ import type { Ticket, CreateTicketData, UpdateTicketData } from '@/types/ticket'
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { CustomSelect } from '@/components/ui/custom-select';
+import { MultiSelect } from '@/components/ui/multi-select';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchCustomers } from '@/redux/slices/customerSlice';
 import { fetchCategories } from '@/redux/slices/categorySlice';
@@ -59,7 +60,7 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
           feature: '',
           department: '',
           serviceType: '',
-          scope: '',
+          scope: [],
           source: '',
         }
       : {
@@ -74,7 +75,7 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
           feature: '',
           department: '',
           serviceType: '',
-          scope: '',
+          scope: [],
           source: '',
         }
   );
@@ -116,10 +117,10 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
     ...(serviceTypes?.filter(st => st.isActive).map(st => ({ value: st._id, label: st.name })) ?? []),
   ], [serviceTypes]);
 
-  const moduleOptions = useMemo(() => [
-    { value: '', label: '-- Select Module --' },
-    ...(modules?.filter(m => m.isActive).map(m => ({ value: m._id, label: m.name })) ?? []),
-  ], [modules]);
+  const moduleItems = useMemo(
+    () => modules?.filter(m => m.isActive).map(m => ({ _id: m._id, name: m.name })) ?? [],
+    [modules]
+  );
 
   const sourceOptions = useMemo(() => [
     { value: '', label: '-- Select Source --' },
@@ -164,6 +165,15 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
         return typeof field === 'string' ? field : field._id || '';
       };
 
+      // Extract IDs from a scope array (each item may be a string or object)
+      const extractScopeIds = (field: typeof initialData.scope): string[] => {
+        if (!field) return [];
+        if (Array.isArray(field)) {
+          return field.map(s => (typeof s === 'string' ? s : s._id)).filter(Boolean);
+        }
+        return [];
+      };
+
       if (isEdit) {
         setFormData({
           subject: initialData.subject,
@@ -176,7 +186,7 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
           feature: extractId(initialData.feature),
           department: extractId(initialData.department),
           serviceType: extractId(initialData.serviceType),
-          scope: extractId(initialData.scope),
+          scope: extractScopeIds(initialData.scope),
           source: extractId(initialData.source),
         });
       } else {
@@ -192,7 +202,7 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
           feature: extractId(initialData.feature),
           department: extractId(initialData.department),
           serviceType: extractId(initialData.serviceType),
-          scope: extractId(initialData.scope),
+          scope: extractScopeIds(initialData.scope),
           source: extractId(initialData.source),
         });
       }
@@ -284,7 +294,9 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
 
     // Clean up empty optional fields before submitting
     const cleanedData = Object.fromEntries(
-      Object.entries(formData).filter(([_, value]) => value !== '' && value !== undefined)
+      Object.entries(formData).filter(([_, value]) =>
+        value !== '' && value !== undefined && !(Array.isArray(value) && value.length === 0)
+      )
     );
 
     const finalData = isEdit
@@ -378,11 +390,12 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
 
           <div>
             <label className="form-label">Module</label>
-            <CustomSelect
-              value={formData.scope || ''}
+            <MultiSelect
+              items={moduleItems}
+              value={(formData.scope as string[]) ?? []}
               onChange={(val) => setFormData({ ...formData, scope: val })}
-              placeholder="-- Select Module --"
-              options={moduleOptions}
+              placeholder="-- Select Modules --"
+              searchPlaceholder="Search modules..."
             />
           </div>
 

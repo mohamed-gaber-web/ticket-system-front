@@ -45,6 +45,7 @@ export default function Tickets() {
   const [assignedByFilter, setAssignedByFilter] = useState('');
   const [serviceTypeFilter, setServiceTypeFilter] = useState('');
   const [customerFilter, setCustomerFilter] = useState('');
+  const [companyFilter, setCompanyFilter] = useState('');
   const [startDate, setStartDate] = useState('');
   const [createdDateFrom, setCreatedDateFrom] = useState('');
   const [createdDateTo, setCreatedDateTo] = useState('');
@@ -53,9 +54,9 @@ export default function Tickets() {
 
   // Supporting data — fetch once on mount
   useEffect(() => {
-    dispatch(fetchConsultants());
+    dispatch(fetchConsultants({ limit: 1000 }));
     dispatch(fetchSources({ isActive: true }));
-    dispatch(fetchCustomers());
+    dispatch(fetchCustomers({ limit: 1000 }));
     dispatch(fetchDepartments());
     dispatch(fetchServiceTypes());
   }, []);
@@ -81,6 +82,7 @@ export default function Tickets() {
     if (assignedByFilter) params.assignedConsultant = assignedByFilter;
     if (serviceTypeFilter) params.serviceType = serviceTypeFilter;
     if (customerFilter) params.customer = customerFilter;
+    if (companyFilter) params.companyName = companyFilter;
     if (startDate) params.startDate = startDate;
     if (createdDateFrom) params.createdDateFrom = createdDateFrom;
     if (createdDateTo) params.createdDateTo = createdDateTo;
@@ -93,7 +95,7 @@ export default function Tickets() {
 
     setCurrentPage(1);
     dispatch(fetchTickets(params));
-  }, [statusFilter, priorityFilter, sourceFilter, departmentFilter, assignedByFilter, serviceTypeFilter, customerFilter, startDate, createdDateFrom, createdDateTo, closedDateFrom, closedDateTo, user?._id]);
+  }, [statusFilter, priorityFilter, sourceFilter, departmentFilter, assignedByFilter, serviceTypeFilter, customerFilter, companyFilter, startDate, createdDateFrom, createdDateTo, closedDateFrom, closedDateTo, user?._id]);
 
   const getFilterParams = (pageNum: number) => {
     const params: any = {
@@ -108,6 +110,7 @@ export default function Tickets() {
     if (assignedByFilter) params.assignedConsultant = assignedByFilter;
     if (serviceTypeFilter) params.serviceType = serviceTypeFilter;
     if (customerFilter) params.customer = customerFilter;
+    if (companyFilter) params.companyName = companyFilter;
     if (startDate) params.startDate = startDate;
     if (createdDateFrom) params.createdDateFrom = createdDateFrom;
     if (createdDateTo) params.createdDateTo = createdDateTo;
@@ -149,6 +152,7 @@ export default function Tickets() {
     setAssignedByFilter('');
     setServiceTypeFilter('');
     setCustomerFilter('');
+    setCompanyFilter('');
     setStartDate('');
     setCreatedDateFrom('');
     setCreatedDateTo('');
@@ -163,7 +167,7 @@ export default function Tickets() {
   };
 
   const activeAdvancedFilterCount = [
-    departmentFilter, assignedByFilter, serviceTypeFilter, customerFilter,
+    departmentFilter, assignedByFilter, serviceTypeFilter, customerFilter, companyFilter,
     startDate, createdDateFrom, createdDateTo, closedDateFrom, closedDateTo,
   ].filter(Boolean).length;
 
@@ -273,7 +277,7 @@ export default function Tickets() {
 
   const totalActiveFilters = [
     statusFilter, priorityFilter, sourceFilter,
-    departmentFilter, assignedByFilter, serviceTypeFilter, customerFilter,
+    departmentFilter, assignedByFilter, serviceTypeFilter, customerFilter, companyFilter,
     startDate, createdDateFrom, createdDateTo, closedDateFrom, closedDateTo,
   ].filter(Boolean).length;
 
@@ -419,7 +423,7 @@ export default function Tickets() {
               {/* Dropdowns Row */}
               <div>
                 <p className="text-xs font-medium text-on-surface-variant mb-3">Filter by</p>
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
                   <CustomSelect
                     variant="filter"
                     value={sourceFilter}
@@ -467,7 +471,18 @@ export default function Tickets() {
                     label="Customer"
                     options={[
                       { value: '', label: 'All' },
-                      ...(customers?.map((c) => ({ value: c._id, label: c.companyName })) || []),
+                      ...(customers?.map((c) => ({ value: c._id, label: c.contactPerson })) || []),
+                    ]}
+                  />
+                  <CustomSelect
+                    variant="filter"
+                    value={companyFilter}
+                    onChange={setCompanyFilter}
+                    label="Company"
+                    options={[
+                      { value: '', label: 'All' },
+                      ...Array.from(new Map(customers?.map((c) => [c.companyName, c.companyName]) ?? []).entries())
+                        .map(([name]) => ({ value: name, label: name })),
                     ]}
                   />
                 </div>
