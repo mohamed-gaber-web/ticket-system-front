@@ -46,7 +46,7 @@ export function AssignConsultantsDialog({
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (nextOpen) {
-      setSelectedConsultants([]);
+      setSelectedConsultants(isReassign ? [...currentConsultants] : []);
       setNotes('');
       dispatch(fetchConsultants());
     }
@@ -65,28 +65,32 @@ export function AssignConsultantsDialog({
     e.preventDefault();
     if (selectedConsultants.length === 0) return;
 
-    let resolvedAssignmentId = assignmentId;
+    try {
+      let resolvedAssignmentId = assignmentId;
 
-    // No assignment record yet — create one first
-    if (!resolvedAssignmentId) {
-      if (!ticketId || !assignedByConsultantId) return;
-      const createResult = await dispatch(
-        createAssignment({ ticket: ticketId, assignedByConsultant: assignedByConsultantId })
-      );
-      if (!createAssignment.fulfilled.match(createResult)) return;
-      resolvedAssignmentId = (createResult.payload as any)._id as string;
-    }
+      // No assignment record yet — create one first
+      if (!resolvedAssignmentId) {
+        if (!ticketId || !assignedByConsultantId) return;
+        const created = await dispatch(
+          createAssignment({ ticket: ticketId, assignedByConsultant: assignedByConsultantId })
+        ).unwrap();
+        resolvedAssignmentId = (created as any)._id as string;
+      }
 
-    const thunk = isReassign
-      ? reassignConsultants({ assignmentId: resolvedAssignmentId, consultants: selectedConsultants, notes: notes.trim() || undefined })
-      : assignConsultants({ assignmentId: resolvedAssignmentId, consultants: selectedConsultants });
+      if (isReassign) {
+        await dispatch(
+          reassignConsultants({ assignmentId: resolvedAssignmentId!, consultants: selectedConsultants, notes: notes.trim() || undefined })
+        ).unwrap();
+      } else {
+        await dispatch(
+          assignConsultants({ assignmentId: resolvedAssignmentId!, consultants: selectedConsultants })
+        ).unwrap();
+      }
 
-    const result = await dispatch(thunk as any);
-
-    const action = isReassign ? reassignConsultants : assignConsultants;
-    if ((action as any).fulfilled.match(result)) {
       setOpen(false);
       onSuccess?.();
+    } catch {
+      // Error toast already shown by the slice
     }
   };
 

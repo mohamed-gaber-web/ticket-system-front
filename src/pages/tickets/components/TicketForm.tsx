@@ -435,6 +435,7 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
                   { value: 'in_progress', label: 'In Progress' },
                   { value: 'customer_pending', label: 'Customer Pending' },
                   { value: 'resolved', label: 'Resolved' },
+                  { value: 'tested', label: 'Tested' },
                   { value: 'closed', label: 'Closed' },
                   { value: 'delivered', label: 'Delivered' },
                 ]}

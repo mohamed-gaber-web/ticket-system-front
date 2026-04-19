@@ -59,6 +59,7 @@ const STATUS_STYLE: Record<string, string> = {
   in_progress: 'bg-yellow-500 text-white',
   customer_pending: 'bg-purple-500 text-white',
   resolved: 'bg-green-500 text-white',
+  tested: 'bg-cyan-600 text-white',
   closed: 'bg-surface-container-highest text-on-surface-variant',
   delivered: 'bg-teal-500 text-white',
 };

@@ -25,12 +25,24 @@ export default function Tickets() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { tickets, loading, total, page, pages } = useAppSelector((state) => state.tickets);
-  const { user, userType } = useAppSelector((state) => state.auth);
+  const { user, userType, customerRole } = useAppSelector((state) => state.auth);
   const { sources } = useAppSelector((state) => state.sources);
   const { consultants } = useAppSelector((state) => state.consultants);
   const { customers } = useAppSelector((state) => state.customers);
   const { departments } = useAppSelector((state) => state.departments);
   const { serviceTypes } = useAppSelector((state) => state.serviceTypes);
+
+  // Returns the scoping params based on customer role:
+  // - company_admin → filter by companyName (sees all company tickets)
+  // - company_user  → filter by customer ID (sees only own tickets)
+  const getCustomerScopeParams = () => {
+    if (userType !== 'customer') return {};
+    if (customerRole === 'company_admin') {
+      const companyName = (user as any)?.companyName;
+      return companyName ? { companyName } : {};
+    }
+    return user?._id ? { customer: user._id } : {};
+  };
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -63,8 +75,7 @@ export default function Tickets() {
 
   // Ticket fetch — depends on user._id so it re-runs if getProfile() updates the customer ID
   useEffect(() => {
-    const initialParams: any = { page: 1, limit: itemsPerPage };
-    if (userType === 'customer' && user?._id) initialParams.customer = user._id;
+    const initialParams: any = { page: 1, limit: itemsPerPage, ...getCustomerScopeParams() };
     dispatch(fetchTickets(initialParams));
   }, [user?._id]);
 
@@ -89,9 +100,7 @@ export default function Tickets() {
     if (closedDateFrom) params.closedDateFrom = closedDateFrom;
     if (closedDateTo) params.closedDateTo = closedDateTo;
 
-    if (userType === 'customer' && user?._id) {
-      params.customer = user._id;
-    }
+    Object.assign(params, getCustomerScopeParams());
 
     setCurrentPage(1);
     dispatch(fetchTickets(params));
@@ -117,9 +126,7 @@ export default function Tickets() {
     if (closedDateFrom) params.closedDateFrom = closedDateFrom;
     if (closedDateTo) params.closedDateTo = closedDateTo;
 
-    if (userType === 'customer' && user?._id) {
-      params.customer = user._id;
-    }
+    Object.assign(params, getCustomerScopeParams());
 
     return params;
   };
@@ -163,7 +170,7 @@ export default function Tickets() {
     setPriorityFilter('');
     setSourceFilter('');
     setCurrentPage(1);
-    dispatch(fetchTickets({ page: 1, limit: itemsPerPage }));
+    dispatch(fetchTickets({ page: 1, limit: itemsPerPage, ...getCustomerScopeParams() }));
   };
 
   const activeAdvancedFilterCount = [
@@ -368,6 +375,7 @@ export default function Tickets() {
               { value: 'in_progress', label: 'In Progress' },
               { value: 'customer_pending', label: 'Customer Pending' },
               { value: 'resolved', label: 'Resolved' },
+              { value: 'tested', label: 'Tested' },
               { value: 'closed', label: 'Closed' },
             ]}
           />
