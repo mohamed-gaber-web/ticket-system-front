@@ -64,7 +64,8 @@ export function SubTicketsList({ parentTicketId, parentTicketNumber, isSubTicket
   };
 
   if (isSubTicket) return null;
-  if (userType === 'customer') return null;
+
+  const isCustomer = userType === 'customer';
 
   // Stats
   const total = subTickets.length;
@@ -115,6 +116,7 @@ export function SubTicketsList({ parentTicketId, parentTicketNumber, isSubTicket
         <CreateSubTicketDialog
           parentTicketId={parentTicketId}
           parentTicketNumber={parentTicketNumber}
+          isCustomer={isCustomer}
           onSuccess={handleRefresh}
         />
       </div>
@@ -161,6 +163,7 @@ export function SubTicketsList({ parentTicketId, parentTicketNumber, isSubTicket
           <CreateSubTicketDialog
             parentTicketId={parentTicketId}
             parentTicketNumber={parentTicketNumber}
+            isCustomer={isCustomer}
             onSuccess={handleRefresh}
           />
         </div>
@@ -255,7 +258,7 @@ export function SubTicketsList({ parentTicketId, parentTicketNumber, isSubTicket
                     {status.label}
                   </span>
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {subTicket.status === 'resolved' && (
+                    {!isCustomer && subTicket.status === 'resolved' && (
                       <button
                         onClick={(e) => handleReopen(e, subTicket._id)}
                         title="Reopen"
@@ -264,7 +267,7 @@ export function SubTicketsList({ parentTicketId, parentTicketNumber, isSubTicket
                         <RotateCcw className="h-3.5 w-3.5" />
                       </button>
                     )}
-                    {!['closed', 'resolved'].includes(subTicket.status) && (
+                    {!isCustomer && !['closed', 'resolved'].includes(subTicket.status) && (
                       <button
                         onClick={(e) => handleReject(e, subTicket._id)}
                         title="Reject"
@@ -273,13 +276,15 @@ export function SubTicketsList({ parentTicketId, parentTicketNumber, isSubTicket
                         <XCircle className="h-3.5 w-3.5" />
                       </button>
                     )}
-                    <button
-                      onClick={(e) => handleDelete(e, subTicket._id)}
-                      title="Delete"
-                      className="p-1 rounded-md text-error hover:bg-error/10 transition-colors"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                    {!isCustomer && (
+                      <button
+                        onClick={(e) => handleDelete(e, subTicket._id)}
+                        title="Delete"
+                        className="p-1 rounded-md text-error hover:bg-error/10 transition-colors"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    )}
                     <ArrowUpRight className="h-3.5 w-3.5 text-on-surface-variant/30" />
                   </div>
                 </div>

@@ -106,6 +106,14 @@ const ProfilePage = () => {
     statsLoading: true,
   });
 
+  const [customerStats, setCustomerStats] = useState({
+    open: 0,
+    inProgress: 0,
+    resolved: 0,
+    closed: 0,
+    statsLoading: true,
+  });
+
   useEffect(() => {
     dispatch(getProfile());
   }, [dispatch]);
@@ -134,6 +142,30 @@ const ProfilePage = () => {
     if (!isTeleSales) {
       loadTickets(1, userType ?? undefined);
     }
+  }, [user, userType]);
+
+  useEffect(() => {
+    if (isConsultant || !u?._id || userType !== 'customer') return;
+    const fetchCustomerStats = async () => {
+      try {
+        const [openRes, inProgressRes, resolvedRes, closedRes] = await Promise.all([
+          ticketApi.getTickets({ customer: u._id, status: 'new', limit: 1 }),
+          ticketApi.getTickets({ customer: u._id, status: 'in_progress', limit: 1 }),
+          ticketApi.getTickets({ customer: u._id, status: 'resolved', limit: 1 }),
+          ticketApi.getTickets({ customer: u._id, status: 'closed', limit: 1 }),
+        ]);
+        setCustomerStats({
+          open: openRes.total,
+          inProgress: inProgressRes.total,
+          resolved: resolvedRes.total,
+          closed: closedRes.total,
+          statsLoading: false,
+        });
+      } catch {
+        setCustomerStats((prev) => ({ ...prev, statsLoading: false }));
+      }
+    };
+    fetchCustomerStats();
   }, [user, userType]);
 
   useEffect(() => {
@@ -819,6 +851,65 @@ const ProfilePage = () => {
         <div className="flex flex-col items-center px-6 border-l border-surface-container-high self-stretch justify-center min-w-[90px]">
           <span className="text-3xl font-bold text-on-surface">{ticketTotal}</span>
           <span className="text-xs text-on-surface-variant mt-1 text-center">My Tickets</span>
+        </div>
+      </div>
+
+      {/* Mini Dashboard */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        {/* Total */}
+        <div className="bg-surface-container-lowest rounded-[1rem] p-4 flex items-center gap-4">
+          <div className="w-10 h-10 rounded-lg bg-brand-100 flex items-center justify-center flex-shrink-0">
+            <TicketIcon className="w-5 h-5 text-brand-600" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-2xl font-bold text-on-surface leading-none">{ticketTotal}</p>
+            <p className="text-xs text-on-surface-variant mt-1 truncate">Total Tickets</p>
+          </div>
+        </div>
+
+        {/* Open / New */}
+        <div className="bg-surface-container-lowest rounded-[1rem] p-4 flex items-center gap-4">
+          <div className="w-10 h-10 rounded-lg bg-accent-orange-100 flex items-center justify-center flex-shrink-0">
+            <AlertTriangle className="w-5 h-5 text-accent-orange-600" />
+          </div>
+          <div className="min-w-0">
+            {customerStats.statsLoading ? (
+              <div className="h-7 w-8 bg-surface-container-high rounded animate-pulse" />
+            ) : (
+              <p className="text-2xl font-bold text-on-surface leading-none">{customerStats.open}</p>
+            )}
+            <p className="text-xs text-on-surface-variant mt-1 truncate">Open</p>
+          </div>
+        </div>
+
+        {/* In Progress */}
+        <div className="bg-surface-container-lowest rounded-[1rem] p-4 flex items-center gap-4">
+          <div className="w-10 h-10 rounded-lg bg-yellow-100 flex items-center justify-center flex-shrink-0">
+            <Zap className="w-5 h-5 text-yellow-600" />
+          </div>
+          <div className="min-w-0">
+            {customerStats.statsLoading ? (
+              <div className="h-7 w-8 bg-surface-container-high rounded animate-pulse" />
+            ) : (
+              <p className="text-2xl font-bold text-on-surface leading-none">{customerStats.inProgress}</p>
+            )}
+            <p className="text-xs text-on-surface-variant mt-1 truncate">In Progress</p>
+          </div>
+        </div>
+
+        {/* Resolved */}
+        <div className="bg-surface-container-lowest rounded-[1rem] p-4 flex items-center gap-4">
+          <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
+            <CheckCircle2 className="w-5 h-5 text-green-600" />
+          </div>
+          <div className="min-w-0">
+            {customerStats.statsLoading ? (
+              <div className="h-7 w-8 bg-surface-container-high rounded animate-pulse" />
+            ) : (
+              <p className="text-2xl font-bold text-on-surface leading-none">{customerStats.resolved}</p>
+            )}
+            <p className="text-xs text-on-surface-variant mt-1 truncate">Resolved</p>
+          </div>
         </div>
       </div>
 

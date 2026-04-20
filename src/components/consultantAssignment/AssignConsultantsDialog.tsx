@@ -48,7 +48,7 @@ export function AssignConsultantsDialog({
     if (nextOpen) {
       setSelectedConsultants(isReassign ? [...currentConsultants] : []);
       setNotes('');
-      dispatch(fetchConsultants());
+      dispatch(fetchConsultants({ limit: 500 }));
     }
     setOpen(nextOpen);
   };

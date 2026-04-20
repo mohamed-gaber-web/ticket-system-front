@@ -26,12 +26,14 @@ import type { CreateSubTicketData } from '@/types/ticket';
 interface CreateSubTicketDialogProps {
   parentTicketId: string;
   parentTicketNumber: string;
+  isCustomer?: boolean;
   onSuccess?: () => void;
 }
 
 export function CreateSubTicketDialog({
   parentTicketId,
   parentTicketNumber,
+  isCustomer = false,
   onSuccess
 }: CreateSubTicketDialogProps) {
   const [open, setOpen] = useState(false);
@@ -197,24 +199,26 @@ export function CreateSubTicketDialog({
               />
             </div>
 
-            <div className="pt-2">
-              <div className="h-px bg-surface-container-high -mx-2 mb-4" />
-              <div className="flex items-center gap-2 mb-3">
-                <UserCheck className="h-5 w-5 text-on-surface-variant" />
-                <Label htmlFor="consultant" className="text-base font-semibold">Assign to Consultant (Optional)</Label>
+            {!isCustomer && (
+              <div className="pt-2">
+                <div className="h-px bg-surface-container-high -mx-2 mb-4" />
+                <div className="flex items-center gap-2 mb-3">
+                  <UserCheck className="h-5 w-5 text-on-surface-variant" />
+                  <Label htmlFor="consultant" className="text-base font-semibold">Assign to Consultant (Optional)</Label>
+                </div>
+                <p className="text-sm text-on-surface-variant mb-3">
+                  Select a consultant to assign to this sub-ticket. You can also assign them later.
+                </p>
+                <ConsultantSelect
+                  multiple
+                  value={selectedConsultants}
+                  onChange={setSelectedConsultants}
+                  consultants={consultants}
+                  loading={consultantsLoading}
+                  placeholder="Search and select consultants…"
+                />
               </div>
-              <p className="text-sm text-on-surface-variant mb-3">
-                Select a consultant to assign to this sub-ticket. You can also assign them later.
-              </p>
-              <ConsultantSelect
-                multiple
-                value={selectedConsultants}
-                onChange={setSelectedConsultants}
-                consultants={consultants}
-                loading={consultantsLoading}
-                placeholder="Search and select consultants…"
-              />
-            </div>
+            )}
 
             <div className="grid gap-2">
               <Label htmlFor="priority">Priority</Label>

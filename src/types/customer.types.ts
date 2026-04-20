@@ -129,4 +129,6 @@ export interface CustomerQueryParams {
   status?: string;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
+  companyName?: string;
+  role?: CustomerRole;
 }

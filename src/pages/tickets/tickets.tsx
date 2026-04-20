@@ -19,7 +19,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { Ticket, Category, Consultant as TicketConsultant } from '@/types/ticket';
 
-const PAGE_SIZE_OPTIONS = [25, 30, 35, 40, 45, 50];
+const PAGE_SIZE_OPTIONS = [25, 50, 100, 200];
 
 export default function Tickets() {
   const navigate = useNavigate();
@@ -49,7 +49,7 @@ export default function Tickets() {
   const [priorityFilter, setPriorityFilter] = useState('');
   const [sourceFilter, setSourceFilter] = useState('');
   const [, setCurrentPage] = useState(1);
-  const itemsPerPage = PAGE_SIZE_OPTIONS[0];
+  const [itemsPerPage, setItemsPerPage] = useState(PAGE_SIZE_OPTIONS[0]);
 
   // Advanced filters
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -104,7 +104,7 @@ export default function Tickets() {
 
     setCurrentPage(1);
     dispatch(fetchTickets(params));
-  }, [statusFilter, priorityFilter, sourceFilter, departmentFilter, assignedByFilter, serviceTypeFilter, customerFilter, companyFilter, startDate, createdDateFrom, createdDateTo, closedDateFrom, closedDateTo, user?._id]);
+  }, [statusFilter, priorityFilter, sourceFilter, departmentFilter, assignedByFilter, serviceTypeFilter, customerFilter, companyFilter, startDate, createdDateFrom, createdDateTo, closedDateFrom, closedDateTo, user?._id, itemsPerPage]);
 
   const getFilterParams = (pageNum: number) => {
     const params: any = {
@@ -571,10 +571,27 @@ export default function Tickets() {
       {/* Pagination */}
       {total > 0 && (
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-on-surface-variant">
-            Showing <span className="font-semibold text-on-surface">{startItem}-{endItem}</span> of{' '}
-            <span className="font-semibold text-on-surface">{total.toLocaleString()}</span> results
-          </p>
+          <div className="flex items-center gap-3">
+            <p className="text-sm text-on-surface-variant">
+              Showing <span className="font-semibold text-on-surface">{startItem}-{endItem}</span> of{' '}
+              <span className="font-semibold text-on-surface">{total.toLocaleString()}</span> results
+            </p>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-on-surface-variant">Per page:</span>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => {
+                  setItemsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="h-7 px-2 pr-6 rounded-[0.5rem] text-xs font-semibold bg-surface-container-lowest border border-border text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-500/30 cursor-pointer appearance-none"
+              >
+                {PAGE_SIZE_OPTIONS.map((size) => (
+                  <option key={size} value={size}>{size}</option>
+                ))}
+              </select>
+            </div>
+          </div>
 
           <div className="flex items-center gap-1.5">
             <button

@@ -310,18 +310,12 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                           <GitBranch className="h-3 w-3 text-brand-400" />
                         </div>
                       )}
-                      {isCustomer ? (
-                        <button
-                          onClick={() => navigate(`/tickets/view/${ticket._id}`)}
-                          className="font-semibold text-brand-600 text-sm whitespace-nowrap hover:underline"
-                        >
-                          #{ticket.ticketNumber}
-                        </button>
-                      ) : (
-                        <span className="font-semibold text-on-surface text-sm whitespace-nowrap">
-                          #{ticket.ticketNumber}
-                        </span>
-                      )}
+                      <button
+                        onClick={() => navigate(`/tickets/view/${ticket._id}`)}
+                        className="font-semibold text-brand-600 text-sm whitespace-nowrap hover:underline cursor-pointer"
+                      >
+                        #{ticket.ticketNumber}
+                      </button>
                     </div>
                   </TableCell>
                   <TableCell>{getStatusBadge(ticket.status)}</TableCell>
