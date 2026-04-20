@@ -109,6 +109,8 @@ export interface RefreshTokenRequest {
   userType: UserType;
 }
 
+export type ConsultantRole = 'consultant' | 'senior_consultant' | 'admin';
+
 // Auth State Interface
 export interface AuthState {
   user: User | Customer | Consultant | TeamMember | null;
@@ -116,6 +118,7 @@ export interface AuthState {
   refreshToken: string | null;
   userType: UserType | null;
   customerRole: import('./customer.types').CustomerRole | null;
+  consultantRole: ConsultantRole | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;

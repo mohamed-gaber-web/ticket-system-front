@@ -123,6 +123,20 @@ export const setCustomerRole = createAsyncThunk(
   }
 );
 
+export const adminResetCustomerPassword = createAsyncThunk(
+  'customers/adminResetCustomerPassword',
+  async ({ id, newPassword }: { id: string; newPassword: string }, { rejectWithValue }) => {
+    try {
+      await customerApi.resetCustomerPassword(id, newPassword);
+      toast.success('Password updated successfully');
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Failed to update password';
+      toast.error(message);
+      return rejectWithValue(message);
+    }
+  }
+);
+
 // Slice
 const customerSlice = createSlice({
   name: 'customers',
@@ -234,6 +248,20 @@ const customerSlice = createSlice({
         }
       })
       .addCase(setCustomerRole.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      });
+
+    // Admin Reset Customer Password
+    builder
+      .addCase(adminResetCustomerPassword.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(adminResetCustomerPassword.fulfilled, (state) => {
+        state.loading = false;
+      })
+      .addCase(adminResetCustomerPassword.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       });

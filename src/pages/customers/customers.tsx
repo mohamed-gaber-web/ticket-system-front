@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
-import { fetchCustomers, deleteCustomer, createCustomer, updateCustomer } from '@/redux/slices/customerSlice';
+import { fetchCustomers, deleteCustomer, createCustomer, updateCustomer, adminResetCustomerPassword } from '@/redux/slices/customerSlice';
 import { fetchErpTypes } from '@/redux/slices/erpTypeSlice';
 import { fetchVersionNumbers } from '@/redux/slices/versionNumberSlice';
 import CustomerTable from './components/CustomerTable';
 import CustomerFormDialog from './components/CustomerFormDialog';
+import AdminChangePasswordDialog from '@/components/admin/AdminChangePasswordDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Search, RefreshCw } from 'lucide-react';
@@ -14,12 +15,14 @@ import type { Customer, CreateCustomerData, UpdateCustomerData } from '@/types/c
 export default function Customers() {
   const dispatch = useAppDispatch();
   const { customers, loading, total } = useAppSelector((state) => state.customers);
-  const { userType } = useAppSelector((state) => state.auth);
+  const { userType, consultantRole } = useAppSelector((state) => state.auth);
+  const isAdmin = userType === 'consultant' && consultantRole === 'admin';
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [passwordTarget, setPasswordTarget] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     dispatch(fetchErpTypes({}));
@@ -167,7 +170,14 @@ export default function Customers() {
       </div>
 
       {/* Customer Table */}
-      <CustomerTable customers={customers} onEdit={handleEdit} onDelete={handleDelete} isLoading={loading} />
+      <CustomerTable
+        customers={customers}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        onChangePassword={(customer) => setPasswordTarget({ id: customer._id, name: customer.companyName })}
+        showChangePassword={isAdmin}
+        isLoading={loading}
+      />
 
       {/* Form Dialog */}
       <CustomerFormDialog
@@ -176,6 +186,18 @@ export default function Customers() {
         onSubmit={handleFormSubmit}
         customer={editingCustomer}
         loading={loading}
+      />
+
+      {/* Change Password Dialog */}
+      <AdminChangePasswordDialog
+        open={!!passwordTarget}
+        onOpenChange={(open) => { if (!open) setPasswordTarget(null); }}
+        targetName={passwordTarget?.name ?? ''}
+        loading={loading}
+        onSubmit={async (newPassword) => {
+          if (!passwordTarget) return;
+          await dispatch(adminResetCustomerPassword({ id: passwordTarget.id, newPassword }));
+        }}
       />
     </div>
   );

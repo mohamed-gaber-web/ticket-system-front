@@ -7,7 +7,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Edit, Trash2, Mail, Phone, Building2, Database, Eye, ShieldCheck, User } from 'lucide-react';
+import { Edit, Trash2, Mail, Phone, Building2, Database, Eye, ShieldCheck, User, KeyRound } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
@@ -20,10 +20,12 @@ interface CustomerTableProps {
   customers: Customer[];
   onEdit: (customer: Customer) => void;
   onDelete: (id: string) => void;
+  onChangePassword: (customer: Customer) => void;
+  showChangePassword?: boolean;
   isLoading: boolean;
 }
 
-export default function CustomerTable({ customers, onEdit, onDelete, isLoading }: CustomerTableProps) {
+export default function CustomerTable({ customers, onEdit, onDelete, onChangePassword, showChangePassword = false, isLoading }: CustomerTableProps) {
   const navigate = useNavigate();
   const { erpTypes } = useAppSelector((state) => state.erpTypes);
   const { versionNumbers } = useAppSelector((state) => state.versionNumbers);
@@ -247,6 +249,17 @@ export default function CustomerTable({ customers, onEdit, onDelete, isLoading }
                   >
                     <Edit className="w-4 h-4" />
                   </Button>
+                  {showChangePassword && (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="text-brand-600 hover:text-brand-700"
+                      onClick={() => onChangePassword(customer)}
+                      title="Change Password"
+                    >
+                      <KeyRound className="w-4 h-4" />
+                    </Button>
+                  )}
                   <Button
                     size="icon"
                     variant="ghost"

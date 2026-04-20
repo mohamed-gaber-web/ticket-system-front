@@ -19,6 +19,7 @@ export default function EditConsultant() {
     lastName: '',
     email: '',
     phone: '',
+    position: '',
     role: 'consultant',
     status: 'active',
   });
@@ -42,6 +43,7 @@ export default function EditConsultant() {
         lastName: currentConsultant.lastName,
         email: currentConsultant.email,
         phone: currentConsultant.phone || '',
+        position: currentConsultant.position || '',
         role: currentConsultant.role,
         status: currentConsultant.status,
       });
@@ -118,16 +120,14 @@ export default function EditConsultant() {
   }
 
   return (
-    <div className="p-8 space-y-8">
-      <div className="flex items-center gap-4">
-        <Button variant="outline" size="sm" onClick={() => navigate('/consultants')}>
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back
-        </Button>
-        <div>
-          <h1 className="display-sm text-on-surface">Edit Consultant</h1>
-          <p className="text-on-surface-variant mt-1">Update consultant information</p>
-        </div>
+    <div className="p-8 space-y-6">
+      <Button variant="outline" size="sm" onClick={() => navigate('/consultants')} className="w-fit">
+        <ArrowLeft className="w-4 h-4 mr-2" />
+        Back
+      </Button>
+      <div>
+        <h1 className="display-sm text-on-surface">Edit Consultant</h1>
+        <p className="text-on-surface-variant mt-1">Update consultant information</p>
       </div>
 
       <div className="form-card">
@@ -179,6 +179,15 @@ export default function EditConsultant() {
             </div>
           </div>
 
+          <div>
+            <label className="form-label">Position</label>
+            <Input
+              value={formData.position}
+              onChange={(e) => handleChange('position', e.target.value)}
+              placeholder="e.g. Senior ERP Consultant"
+            />
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="form-label">Role</label>
@@ -207,8 +216,8 @@ export default function EditConsultant() {
             </div>
           </div>
 
-          <div className="flex gap-3 pt-6">
-            <div className="h-px bg-surface-container-high w-full absolute left-0" />
+          <div className="pt-6 border-t border-surface-container-high">
+            <div className="flex gap-3 mt-6">
             <Button type="submit" disabled={loading}>
               {loading ? (
                 <>
@@ -225,6 +234,7 @@ export default function EditConsultant() {
             <Button type="button" variant="outline" onClick={() => navigate('/consultants')} disabled={loading}>
               Cancel
             </Button>
+            </div>
           </div>
         </form>
       </div>

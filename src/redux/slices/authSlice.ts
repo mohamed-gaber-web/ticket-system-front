@@ -24,6 +24,13 @@ const getUserFromLocalStorage = () => {
   return null;
 };
 
+const getConsultantRoleFromStorage = (): AuthState['consultantRole'] => {
+  const userType = localStorage.getItem('userType');
+  if (userType !== 'consultant') return null;
+  const role = getUserFromLocalStorage()?.role;
+  return (role as AuthState['consultantRole']) ?? null;
+};
+
 // Initial state
 const initialState: AuthState = {
   user: getUserFromLocalStorage(),
@@ -31,6 +38,7 @@ const initialState: AuthState = {
   refreshToken: localStorage.getItem('refreshToken'),
   userType: (localStorage.getItem('userType') as AuthState['userType']) || null,
   customerRole: (getUserFromLocalStorage()?.role as AuthState['customerRole']) ?? null,
+  consultantRole: getConsultantRoleFromStorage(),
   isAuthenticated: !!localStorage.getItem('token'),
   isLoading: false,
   error: null,
@@ -229,6 +237,7 @@ const authSlice = createSlice({
       state.refreshToken = null;
       state.userType = null;
       state.customerRole = null;
+      state.consultantRole = null;
       state.isAuthenticated = false;
       state.error = null;
       localStorage.removeItem('token');
@@ -250,7 +259,8 @@ const authSlice = createSlice({
         state.token = action.payload.token;
         state.refreshToken = action.payload.refreshToken || null;
         state.userType = action.payload.userType;
-        state.customerRole = (action.payload.data as any)?.role ?? null;
+        state.customerRole = action.payload.userType === 'customer' ? ((action.payload.data as any)?.role ?? null) : null;
+        state.consultantRole = action.payload.userType === 'consultant' ? ((action.payload.data as any)?.role ?? null) : null;
         state.isAuthenticated = true;
         state.error = null;
       })
@@ -271,7 +281,8 @@ const authSlice = createSlice({
         state.token = action.payload.token;
         state.refreshToken = action.payload.refreshToken || null;
         state.userType = action.payload.userType;
-        state.customerRole = (action.payload.data as any)?.role ?? null;
+        state.customerRole = action.payload.userType === 'customer' ? ((action.payload.data as any)?.role ?? null) : null;
+        state.consultantRole = action.payload.userType === 'consultant' ? ((action.payload.data as any)?.role ?? null) : null;
         state.isAuthenticated = true;
         state.error = null;
       })
@@ -292,6 +303,7 @@ const authSlice = createSlice({
         state.refreshToken = null;
         state.userType = null;
         state.customerRole = null;
+        state.consultantRole = null;
         state.isAuthenticated = false;
         state.error = null;
       })
@@ -302,6 +314,7 @@ const authSlice = createSlice({
         state.refreshToken = null;
         state.userType = null;
         state.customerRole = null;
+        state.consultantRole = null;
         state.isAuthenticated = false;
         state.error = action.payload as string;
       });
@@ -316,7 +329,8 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.user = action.payload.data;
         state.userType = action.payload.userType;
-        state.customerRole = (action.payload.data as any)?.role ?? null;
+        state.customerRole = action.payload.userType === 'customer' ? ((action.payload.data as any)?.role ?? null) : null;
+        state.consultantRole = action.payload.userType === 'consultant' ? ((action.payload.data as any)?.role ?? null) : null;
         state.error = null;
 
         // Update user data in localStorage when profile is fetched
@@ -337,7 +351,8 @@ const authSlice = createSlice({
       .addCase(updateProfile.fulfilled, (state, action) => {
         state.isLoading = false;
         state.user = action.payload.data;
-        state.customerRole = (action.payload.data as any)?.role ?? null;
+        state.customerRole = state.userType === 'customer' ? ((action.payload.data as any)?.role ?? null) : null;
+        state.consultantRole = state.userType === 'consultant' ? ((action.payload.data as any)?.role ?? null) : null;
         state.error = null;
 
         // Update user data in localStorage when profile is updated

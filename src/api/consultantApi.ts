@@ -44,3 +44,9 @@ export const deleteConsultant = async (id: string): Promise<DeleteResponse> => {
   const response = await api.delete<DeleteResponse>(`/consultants/${id}`);
   return response.data;
 };
+
+// Reset consultant password (admin)
+export const resetConsultantPassword = async (id: string, newPassword: string): Promise<{ success: boolean; message: string }> => {
+  const response = await api.put(`/consultants/${id}/password`, { newPassword });
+  return response.data;
+};

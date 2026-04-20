@@ -41,6 +41,12 @@ export const setCustomerRole = async (id: string, data: SetCustomerRoleData): Pr
   return response.data;
 };
 
+// Reset customer password (admin)
+export const resetCustomerPassword = async (id: string, newPassword: string): Promise<{ success: boolean; message: string }> => {
+  const response = await api.put(`/customers/${id}/password`, { newPassword });
+  return response.data;
+};
+
 // Get dashboard stats for the logged-in customer
 export const getMyStats = async (): Promise<{ success: boolean; data: CustomerDashboardStats }> => {
   const response = await api.get<{ success: boolean; data: CustomerDashboardStats }>('/customers/my-stats');

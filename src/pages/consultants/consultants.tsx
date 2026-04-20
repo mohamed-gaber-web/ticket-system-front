@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
-import { fetchConsultants, deleteConsultant } from '@/redux/slices/consultantSlice';
+import { fetchConsultants, deleteConsultant, adminResetConsultantPassword } from '@/redux/slices/consultantSlice';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, RefreshCw, Edit, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Search, RefreshCw, Edit, Trash2, ChevronLeft, ChevronRight, KeyRound } from 'lucide-react';
 import { CustomSelect } from '@/components/ui/custom-select';
 import { cn } from '@/lib/utils';
 import Swal from 'sweetalert2';
+import AdminChangePasswordDialog from '@/components/admin/AdminChangePasswordDialog';
 
 const PAGE_SIZE = 10;
 
@@ -15,11 +16,14 @@ export default function Consultants() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { consultants, loading, total, pages } = useAppSelector((state) => state.consultants);
+  const { consultantRole } = useAppSelector((state) => state.auth);
+  const isAdmin = consultantRole === 'admin';
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [passwordTarget, setPasswordTarget] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     loadConsultants(1);
@@ -226,23 +230,34 @@ export default function Consultants() {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div className="flex items-center justify-center gap-2">
+                        <div className="flex items-center justify-center gap-1">
                           <Button
-                            size="sm"
-                            variant="outline"
+                            size="icon"
+                            variant="ghost"
+                            title="Edit"
                             onClick={() => navigate(`/consultants/edit/${consultant._id}`)}
                           >
-                            <Edit className="w-4 h-4 mr-1" />
-                            Edit
+                            <Edit className="w-4 h-4" />
                           </Button>
+                          {isAdmin && (
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              title="Change Password"
+                              className="text-brand-600 hover:text-brand-700"
+                              onClick={() => setPasswordTarget({ id: consultant._id, name: consultant.fullName })}
+                            >
+                              <KeyRound className="w-4 h-4" />
+                            </Button>
+                          )}
                           <Button
-                            size="sm"
-                            variant="outline"
-                            className="text-error hover:text-error hover:border-red-300"
+                            size="icon"
+                            variant="ghost"
+                            title="Delete"
+                            className="text-error hover:text-error/80"
                             onClick={() => handleDelete(consultant._id, consultant.fullName)}
                           >
-                            <Trash2 className="w-4 h-4 mr-1" />
-                            Delete
+                            <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
                       </td>
@@ -305,6 +320,17 @@ export default function Consultants() {
           </>
         )}
       </div>
+
+      <AdminChangePasswordDialog
+        open={!!passwordTarget}
+        onOpenChange={(open) => { if (!open) setPasswordTarget(null); }}
+        targetName={passwordTarget?.name ?? ''}
+        loading={loading}
+        onSubmit={async (newPassword) => {
+          if (!passwordTarget) return;
+          await dispatch(adminResetConsultantPassword({ id: passwordTarget.id, newPassword }));
+        }}
+      />
     </div>
   );
 }

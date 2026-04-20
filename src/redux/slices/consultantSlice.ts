@@ -120,6 +120,20 @@ export const deleteConsultant = createAsyncThunk(
   }
 );
 
+export const adminResetConsultantPassword = createAsyncThunk(
+  'consultant/adminResetConsultantPassword',
+  async ({ id, newPassword }: { id: string; newPassword: string }, { rejectWithValue }) => {
+    try {
+      await consultantApi.resetConsultantPassword(id, newPassword);
+      toast.success('Password updated successfully');
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Failed to update password';
+      toast.error(message);
+      return rejectWithValue(message);
+    }
+  }
+);
+
 const consultantSlice = createSlice({
   name: 'consultant',
   initialState,
@@ -222,6 +236,19 @@ const consultantSlice = createSlice({
         state.total -= 1;
       })
       .addCase(deleteConsultant.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+
+      // Admin Reset Consultant Password
+      .addCase(adminResetConsultantPassword.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(adminResetConsultantPassword.fulfilled, (state) => {
+        state.loading = false;
+      })
+      .addCase(adminResetConsultantPassword.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       });
