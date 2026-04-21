@@ -81,7 +81,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ ticketId, onUploadSuccess }) =>
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*,application/pdf"
+          accept="image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,text/plain,video/*"
           onChange={handleFileSelect}
           disabled={uploading}
           className="hidden"
@@ -176,7 +176,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ ticketId, onUploadSuccess }) =>
 
       {/* File Type Info */}
       <p className="text-xs text-on-surface-variant">
-        Images, PDF · Max 10MB
+        Images, PDF, Word, Excel, PowerPoint, TXT, Video · Max 10MB
       </p>
     </div>
   );

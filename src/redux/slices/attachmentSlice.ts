@@ -46,18 +46,12 @@ export const uploadAttachment = createAsyncThunk(
       toast.success('File uploaded successfully!');
       return attachment;
     } catch (error: any) {
-      console.error('Upload error details:', error);
       const message = error.response?.data?.message
+        || error.response?.data?.error
         || error.message
         || 'Failed to upload file';
-
-      // More detailed error message for debugging
-      const detailedError = error.response?.data?.error
-        ? `${message}: ${error.response.data.error}`
-        : message;
-
-      toast.error(detailedError);
-      return rejectWithValue(detailedError);
+      toast.error(message);
+      return rejectWithValue(message);
     }
   }
 );

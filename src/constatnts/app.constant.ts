@@ -53,10 +53,10 @@ export const ROUTERLINKS = [
   // HIDDEN: Teams and Team Members are not currently in use
   // { name: "Teams", path: "/teams", icon: UsersRound },
   // { name: "Team Members", path: "/team-members", icon: UserCheck },
-  { name: "SLA", path: "/sla", icon: Clock },
+  // { name: "SLA", path: "/sla", icon: Clock },
   { name: "Working Hours", path: "/working-hours", icon: CalendarClock },
-  { name: "Reports", path: "/reports", icon: BarChart3 },
-  { name: "Consultant Reports", path: "/consultant-reports", icon: FileBarChart },
+  // { name: "Reports", path: "/reports", icon: BarChart3 },
+  // { name: "Consultant Reports", path: "/consultant-reports", icon: FileBarChart },
 ];
 
 // Customer links — built dynamically based on role
@@ -126,10 +126,10 @@ const CONSULTANT_ADMIN_LINKS = [
       { name: "Companies", path: "/companies", icon: Building },
     ]
   },
-  { name: "SLA", path: "/sla", icon: Clock },
+  // { name: "SLA", path: "/sla", icon: Clock },
   { name: "Working Hours", path: "/working-hours", icon: CalendarClock },
-  { name: "Reports", path: "/reports", icon: BarChart3 },
-  { name: "Consultant Reports", path: "/consultant-reports", icon: FileBarChart },
+  // { name: "Reports", path: "/reports", icon: BarChart3 },
+  // { name: "Consultant Reports", path: "/consultant-reports", icon: FileBarChart },
 ];
 
 // Team Member can only see My Assignments

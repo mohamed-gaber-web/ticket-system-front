@@ -15,43 +15,16 @@ export const uploadFile = async (file: File, ticketId: string): Promise<UploadFi
 
     // Try different common field names that multer might expect
     // Common names: 'file', 'upload', 'attachment', 'image'
-    formData.append('file', file, file.name); // Include filename explicitly
+    formData.append('file', file, file.name);
     formData.append('ticketId', ticketId);
-
-    console.log('Uploading file:', {
-      fileName: file.name,
-      fileSize: file.size,
-      fileType: file.type,
-      ticketId
-    });
-
-    // Log FormData contents
-    console.log('FormData entries:');
-    for (const pair of formData.entries()) {
-      console.log(pair[0], pair[1]);
-    }
 
     const response = await axiosInstance.post<{ success: boolean; data: UploadFileResponse }>(
       '/upload',
-      formData,
-      {
-        headers: {
-          // Let axios set Content-Type with boundary automatically
-          // But we need to delete it from default headers if it exists
-          'Content-Type': undefined as any,
-        },
-      }
+      formData
     );
 
-    console.log('Upload response:', response.data);
     return response.data.data;
   } catch (error: any) {
-    console.error('Upload file error:', {
-      status: error.response?.status,
-      statusText: error.response?.statusText,
-      data: error.response?.data,
-      message: error.message
-    });
     throw error;
   }
 };

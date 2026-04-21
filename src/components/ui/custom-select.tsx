@@ -197,6 +197,121 @@ export function CustomSelect({
   );
 }
 
+// ─── MultiSelect ────────────────────────────────────────────────────────────
+
+interface MultiSelectProps {
+  values: string[];
+  onChange: (values: string[]) => void;
+  options: SelectOption[];
+  label?: string;
+  className?: string;
+}
+
+export function MultiSelect({ values, onChange, options, label, className }: MultiSelectProps) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const isActive = values.length > 0;
+
+  const displayText =
+    values.length === 0
+      ? 'All'
+      : values.length === 1
+        ? (options.find((o) => o.value === values[0])?.label ?? '1 selected')
+        : `${values.length} selected`;
+
+  const handleToggle = (value: string) => {
+    onChange(values.includes(value) ? values.filter((v) => v !== value) : [...values, value]);
+  };
+
+  return (
+    <div className={cn('relative', className)} ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className={cn(
+          'flex items-center justify-between gap-2 w-full px-4 py-2.5 rounded-[1rem] text-sm font-semibold transition-all cursor-pointer',
+          isActive
+            ? 'bg-primary text-white'
+            : 'bg-surface-container-high text-on-surface hover:bg-surface-container-highest'
+        )}
+      >
+        <span className="truncate flex items-center gap-1.5">
+          {label ? `${label}: ${displayText}` : displayText}
+          {values.length > 1 && (
+            <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-white/25 text-[10px] font-bold leading-none">
+              {values.length}
+            </span>
+          )}
+        </span>
+        <ChevronDown
+          className={cn(
+            'h-3.5 w-3.5 shrink-0 transition-transform duration-200',
+            open && 'rotate-180',
+            isActive ? 'text-white/70' : 'text-on-surface-variant'
+          )}
+          aria-hidden="true"
+        />
+      </button>
+
+      {open && (
+        <div
+          ref={listRef}
+          className="absolute top-full left-0 mt-1.5 min-w-[200px] max-h-[260px] overflow-y-auto py-1 rounded-[0.75rem] glass shadow-ambient z-50 animate-in fade-in slide-in-from-top-1 duration-150"
+        >
+          {values.length > 0 && (
+            <button
+              type="button"
+              onClick={() => onChange([])}
+              className="w-full text-left px-3.5 py-2 text-xs font-semibold text-primary hover:bg-surface-container-highest transition-colors border-b border-border/40 mb-1"
+            >
+              Clear selection ({values.length})
+            </button>
+          )}
+          {options.filter((o) => o.value !== '').map((option) => {
+            const isSelected = values.includes(option.value);
+            return (
+              <div
+                key={option.value}
+                role="option"
+                aria-selected={isSelected}
+                onClick={() => handleToggle(option.value)}
+                className={cn(
+                  'flex items-center gap-2.5 px-3.5 py-2.5 text-sm transition-colors cursor-pointer',
+                  isSelected
+                    ? 'text-primary font-semibold bg-primary-fixed/30'
+                    : 'text-on-surface font-medium hover:bg-surface-container-highest'
+                )}
+              >
+                <div
+                  className={cn(
+                    'h-4 w-4 rounded-[4px] border-2 flex items-center justify-center shrink-0 transition-colors',
+                    isSelected ? 'bg-primary border-primary' : 'border-input bg-transparent'
+                  )}
+                >
+                  {isSelected && <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />}
+                </div>
+                <span className="truncate">{option.label}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Single-select DropdownPanel (used by CustomSelect) ─────────────────────
+
 function DropdownPanel({
   listboxId,
   options,

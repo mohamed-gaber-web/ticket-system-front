@@ -22,12 +22,13 @@ api.interceptors.request.use(
       config.headers = {} as AxiosRequestHeaders;
     }
 
-    // Don't set Content-Type for FormData (file uploads)
-    // Axios needs to set it automatically with the correct boundary
     const isFormData = config.data instanceof FormData;
 
-    // Only set Content-Type to application/json if it's not FormData and not already set
-    if (!isFormData && !config.headers['Content-Type']) {
+    if (isFormData) {
+      // Remove the default application/json header so axios can auto-set
+      // multipart/form-data with the correct boundary for file uploads
+      delete (config.headers as any)['Content-Type'];
+    } else if (!config.headers['Content-Type']) {
       config.headers['Content-Type'] = 'application/json';
     }
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchTicketById, clearCurrentTicket, updateTicket, deleteTicket } from '@/redux/slices/ticketSlice';
@@ -35,6 +35,7 @@ import {
   Layers,
   Edit,
   ChevronRight,
+  ChevronDown,
   Globe,
   CheckCircle2,
   FileSpreadsheet,
@@ -42,9 +43,8 @@ import {
   XCircle,
   Star,
   MessageSquare,
-  Truck,
   Trash2,
-  RotateCcw,
+  Download,
 } from 'lucide-react';
 
 const PRIORITY_DOT: Record<string, string> = {
@@ -64,6 +64,17 @@ const STATUS_STYLE: Record<string, string> = {
   delivered: 'bg-teal-500 text-white',
 };
 
+const ALL_STATUSES = [
+  { value: 'new', label: 'New' },
+  { value: 'assigned', label: 'Assigned' },
+  { value: 'in_progress', label: 'In Progress' },
+  { value: 'customer_pending', label: 'Customer Pending' },
+  { value: 'resolved', label: 'Resolved' },
+  { value: 'tested', label: 'Tested' },
+  { value: 'delivered', label: 'Delivered' },
+  { value: 'closed', label: 'Closed' },
+];
+
 export default function ViewTicket() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -74,17 +85,27 @@ export default function ViewTicket() {
 
   const isCustomer = userType === 'customer';
   const [activeTab, setActiveTab] = useState<'details' | 'comments' | 'attachments'>('details');
-  const [resolving, setResolving] = useState(false);
   const [closing, setClosing] = useState(false);
-  const [delivering, setDelivering] = useState(false);
-  const [reopening, setReopening] = useState(false);
-  const [rejecting, setRejecting] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [feedbackRating, setFeedbackRating] = useState(0);
   const [feedbackHover, setFeedbackHover] = useState(0);
   const [feedbackText, setFeedbackText] = useState('');
   const [submittingFeedback, setSubmittingFeedback] = useState(false);
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [showStatusMenu, setShowStatusMenu] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
+  const statusMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) setShowExportMenu(false);
+      if (statusMenuRef.current && !statusMenuRef.current.contains(e.target as Node)) setShowStatusMenu(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   const handleSubmitFeedback = async () => {
     if (!currentTicket || feedbackRating === 0) return;
@@ -112,17 +133,6 @@ export default function ViewTicket() {
   const handleRefreshAssignment = () => { if (id) dispatch(fetchCurrentAssignment(id)); };
   const handleUploadSuccess = () => { if (id) dispatch(fetchTicketAttachments({ ticketId: id })); };
 
-  const handleResolve = async () => {
-    if (!currentTicket) return;
-    setResolving(true);
-    try {
-      // updateTicket.fulfilled already sets currentTicket in Redux — no re-fetch needed
-      await dispatch(updateTicket({ id: currentTicket._id, data: { status: 'resolved' } })).unwrap();
-    } finally {
-      setResolving(false);
-    }
-  };
-
   const handleClose = async () => {
     if (!currentTicket) return;
     setClosing(true);
@@ -130,38 +140,6 @@ export default function ViewTicket() {
       await dispatch(updateTicket({ id: currentTicket._id, data: { status: 'closed' } })).unwrap();
     } finally {
       setClosing(false);
-    }
-  };
-
-  const handleDeliver = async () => {
-    if (!currentTicket) return;
-    setDelivering(true);
-    try {
-      await dispatch(updateTicket({ id: currentTicket._id, data: { status: 'delivered' } })).unwrap();
-    } finally {
-      setDelivering(false);
-    }
-  };
-
-  const handleReopen = async () => {
-    if (!currentTicket) return;
-    setReopening(true);
-    try {
-      await dispatch(updateTicket({ id: currentTicket._id, data: { status: 'reopened' } })).unwrap();
-      toast.success('Ticket reopened');
-    } finally {
-      setReopening(false);
-    }
-  };
-
-  const handleReject = async () => {
-    if (!currentTicket) return;
-    setRejecting(true);
-    try {
-      await dispatch(updateTicket({ id: currentTicket._id, data: { status: 'closed' } })).unwrap();
-      toast.success('Sub-ticket rejected');
-    } finally {
-      setRejecting(false);
     }
   };
 
@@ -175,6 +153,20 @@ export default function ViewTicket() {
     } catch {
       toast.error('Failed to delete sub-ticket');
       setDeleting(false);
+    }
+  };
+
+  const handleStatusChange = async (newStatus: string) => {
+    if (!currentTicket || newStatus === currentTicket.status) return;
+    setShowStatusMenu(false);
+    setUpdatingStatus(true);
+    try {
+      await dispatch(updateTicket({ id: currentTicket._id, data: { status: newStatus } })).unwrap();
+      toast.success(`Status updated to ${newStatus.replace('_', ' ')}`);
+    } catch {
+      toast.error('Failed to update status');
+    } finally {
+      setUpdatingStatus(false);
     }
   };
 
@@ -347,66 +339,46 @@ export default function ViewTicket() {
               userId={user?._id}
               onSuccess={handleRefreshAssignment}
             />}
-            {!isCustomer && currentTicket.status !== 'resolved' && currentTicket.status !== 'closed' && currentTicket.status !== 'delivered' && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleResolve}
-                disabled={resolving}
-                className="gap-1.5 text-green-600 border-green-200 hover:bg-green-50 hover:text-green-700"
-              >
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                {resolving ? 'Resolving...' : 'Resolve'}
-              </Button>
+            {/* Status dropdown — non-customers only */}
+            {!isCustomer && (
+              <div className="relative" ref={statusMenuRef}>
+                <button
+                  onClick={() => setShowStatusMenu(!showStatusMenu)}
+                  disabled={updatingStatus}
+                  className="flex items-center gap-2 h-8 px-3 rounded-[0.5rem] border border-border bg-surface-container-lowest text-sm font-medium text-on-surface hover:bg-surface-container-high transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {updatingStatus
+                    ? <Loader2 className="h-3.5 w-3.5 animate-spin text-on-surface-variant" />
+                    : <span className={`w-2 h-2 rounded-full shrink-0 ${STATUS_STYLE[currentTicket.status]?.split(' ')[0]}`} />
+                  }
+                  <span className="capitalize">{displayStatus}</span>
+                  <ChevronDown className="h-3.5 w-3.5 text-on-surface-variant" />
+                </button>
+                {showStatusMenu && (
+                  <div className="absolute right-0 top-full mt-1.5 w-48 rounded-[0.75rem] bg-surface-container-lowest border border-border shadow-ambient py-1.5 z-50">
+                    <p className="px-3.5 py-1.5 text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider">Change Status</p>
+                    {ALL_STATUSES.map(s => (
+                      <button
+                        key={s.value}
+                        onClick={() => handleStatusChange(s.value)}
+                        className={`flex items-center gap-2.5 w-full px-3.5 py-2.5 text-sm font-medium transition-colors ${
+                          s.value === currentTicket.status
+                            ? 'text-on-surface-variant bg-surface-container-high cursor-default'
+                            : 'text-on-surface hover:bg-surface-container-high'
+                        }`}
+                      >
+                        <span className={`w-2 h-2 rounded-full shrink-0 ${STATUS_STYLE[s.value]?.split(' ')[0]}`} />
+                        {s.label}
+                        {s.value === currentTicket.status && (
+                          <CheckCircle2 className="h-3.5 w-3.5 ml-auto text-on-surface-variant" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             )}
-            {!isCustomer && currentTicket.status === 'resolved' && !currentTicket.isSubTicket && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleDeliver}
-                disabled={delivering}
-                className="gap-1.5 text-teal-600 border-teal-200 hover:bg-teal-50 hover:text-teal-700"
-              >
-                <Truck className="h-3.5 w-3.5" />
-                {delivering ? 'Delivering...' : 'Mark as Delivered'}
-              </Button>
-            )}
-            {!isCustomer && currentTicket.status === 'resolved' && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleReopen}
-                disabled={reopening}
-                className="gap-1.5 text-brand-600 border-brand-200 hover:bg-brand-50 hover:text-brand-700"
-              >
-                <RotateCcw className="h-3.5 w-3.5" />
-                {reopening ? 'Reopening...' : 'Reopen'}
-              </Button>
-            )}
-            {!isCustomer && currentTicket.isSubTicket && !['closed', 'resolved'].includes(currentTicket.status) && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleReject}
-                disabled={rejecting}
-                className="gap-1.5 text-error border-error/30 hover:bg-error/5 hover:text-error"
-              >
-                <XCircle className="h-3.5 w-3.5" />
-                {rejecting ? 'Rejecting...' : 'Reject'}
-              </Button>
-            )}
-            {!isCustomer && currentTicket.isSubTicket && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleDelete}
-                disabled={deleting}
-                className="gap-1.5 text-error border-error/30 hover:bg-error/5 hover:text-error"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-                {deleting ? 'Deleting...' : 'Delete'}
-              </Button>
-            )}
+            {/* Customer: close ticket after delivery */}
             {isCustomer && currentTicket.status === 'delivered' && (
               <Button
                 variant="outline"
@@ -419,19 +391,56 @@ export default function ViewTicket() {
                 {closing ? 'Closing...' : 'Close Ticket'}
               </Button>
             )}
-            <div className="flex items-center rounded-[0.5rem] border border-border overflow-hidden">
-              <Button variant="ghost" size="sm" onClick={handleExportExcel} className="gap-1.5 rounded-none border-0 border-r border-border h-8 px-3 text-xs">
-                <FileSpreadsheet className="h-3.5 w-3.5" />
-                XLS
+            {/* Sub-ticket delete */}
+            {!isCustomer && currentTicket.isSubTicket && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDelete}
+                disabled={deleting}
+                className="gap-1.5 text-error border-error/30 hover:bg-error/5 hover:text-error"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                {deleting ? 'Deleting...' : 'Delete'}
               </Button>
-              <Button variant="ghost" size="sm" onClick={handleExportCSV} className="gap-1.5 rounded-none border-0 border-r border-border h-8 px-3 text-xs">
-                <FileCsv className="h-3.5 w-3.5" />
-                CSV
+            )}
+            <div className="relative" ref={exportMenuRef}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowExportMenu(!showExportMenu)}
+                className="gap-1.5"
+              >
+                <Download className="h-3.5 w-3.5" />
+                Export
+                <ChevronDown className="h-3.5 w-3.5" />
               </Button>
-              <Button variant="ghost" size="sm" onClick={handleExportPDF} className="gap-1.5 rounded-none border-0 h-8 px-3 text-xs">
-                <FileText className="h-3.5 w-3.5" />
-                PDF
-              </Button>
+              {showExportMenu && (
+                <div className="absolute right-0 mt-1.5 w-44 rounded-[0.75rem] glass shadow-ambient py-1.5 z-50">
+                  <p className="px-3.5 py-1.5 text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider">Export as</p>
+                  <button
+                    onClick={() => { handleExportExcel(); setShowExportMenu(false); }}
+                    className="flex items-center gap-2.5 w-full px-3.5 py-2.5 text-sm font-medium text-on-surface hover:bg-surface-container-highest transition-colors"
+                  >
+                    <FileSpreadsheet className="h-4 w-4 text-on-surface-variant" />
+                    Excel
+                  </button>
+                  <button
+                    onClick={() => { handleExportCSV(); setShowExportMenu(false); }}
+                    className="flex items-center gap-2.5 w-full px-3.5 py-2.5 text-sm font-medium text-on-surface hover:bg-surface-container-highest transition-colors"
+                  >
+                    <FileCsv className="h-4 w-4 text-on-surface-variant" />
+                    CSV
+                  </button>
+                  <button
+                    onClick={() => { handleExportPDF(); setShowExportMenu(false); }}
+                    className="flex items-center gap-2.5 w-full px-3.5 py-2.5 text-sm font-medium text-on-surface hover:bg-surface-container-highest transition-colors"
+                  >
+                    <FileText className="h-4 w-4 text-on-surface-variant" />
+                    PDF
+                  </button>
+                </div>
+              )}
             </div>
             {!isCustomer && (
               <Button

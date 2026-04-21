@@ -1,5 +1,5 @@
-import { useEffect, useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState, useRef, useCallback } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchTickets, deleteTicket } from '@/redux/slices/ticketSlice';
 import { fetchConsultants } from '@/redux/slices/consultantSlice';
@@ -9,7 +9,7 @@ import { fetchServiceTypes } from '@/redux/slices/serviceTypeSlice';
 import TicketTable from './components/TicketTable';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { CustomSelect } from '@/components/ui/custom-select';
+import { CustomSelect, MultiSelect } from '@/components/ui/custom-select';
 import { fetchSources } from '@/redux/slices/sourceSlice';
 import { Plus, Search, Download, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, FileText, FileSpreadsheet, SlidersHorizontal, Calendar, X, MoreVertical } from 'lucide-react';
 import { toast } from 'sonner';
@@ -23,6 +23,7 @@ const PAGE_SIZE_OPTIONS = [25, 50, 100, 200];
 
 export default function Tickets() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const dispatch = useAppDispatch();
   const { tickets, loading, total, page, pages } = useAppSelector((state) => state.tickets);
   const { user, userType, customerRole } = useAppSelector((state) => state.auth);
@@ -44,25 +45,71 @@ export default function Tickets() {
     return user?._id ? { customer: user._id } : {};
   };
 
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [priorityFilter, setPriorityFilter] = useState('');
-  const [sourceFilter, setSourceFilter] = useState('');
-  const [, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(PAGE_SIZE_OPTIONS[0]);
+  // --- URL param helpers ---
+  const sp = (key: string, def = '') => searchParams.get(key) ?? def;
+  const spArray = (key: string): string[] => {
+    const val = searchParams.get(key);
+    return val ? val.split(',').filter(Boolean) : [];
+  };
 
-  // Advanced filters
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [departmentFilter, setDepartmentFilter] = useState('');
-  const [assignedByFilter, setAssignedByFilter] = useState('');
-  const [serviceTypeFilter, setServiceTypeFilter] = useState('');
-  const [customerFilter, setCustomerFilter] = useState('');
-  const [companyFilter, setCompanyFilter] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [createdDateFrom, setCreatedDateFrom] = useState('');
-  const [createdDateTo, setCreatedDateTo] = useState('');
-  const [closedDateFrom, setClosedDateFrom] = useState('');
-  const [closedDateTo, setClosedDateTo] = useState('');
+  const searchTerm        = sp('q');
+  const statusFilter      = spArray('status');
+  const priorityFilter    = spArray('priority');
+  const sourceFilter      = spArray('source');
+  const itemsPerPage      = Number(sp('limit', String(PAGE_SIZE_OPTIONS[0])));
+  const departmentFilter  = spArray('department');
+  const assignedByFilter  = spArray('consultant');
+  const serviceTypeFilter = spArray('serviceType');
+  const customerFilter    = spArray('customer');
+  const companyFilter     = spArray('company');
+  const startDate         = sp('startDate');
+  const createdDateFrom   = sp('createdFrom');
+  const createdDateTo     = sp('createdTo');
+  const closedDateFrom    = sp('closedFrom');
+  const closedDateTo      = sp('closedTo');
+  const currentPage       = Math.max(1, Number(sp('page', '1')));
+
+  // Local buffer for the search input — committed to URL on Enter / Search button
+  const [searchInput, setSearchInput] = useState(searchTerm);
+
+  // Sync local input if URL param is cleared externally (e.g. "Clear all")
+  useEffect(() => {
+    setSearchInput(searchTerm);
+  }, [searchTerm]);
+
+  // Update one or more URL filter params (supports both string and string[])
+  const updateFilters = useCallback((updates: Record<string, string | string[]>, resetPage = true) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      for (const [key, value] of Object.entries(updates)) {
+        if (Array.isArray(value)) {
+          if (value.length > 0) next.set(key, value.join(','));
+          else next.delete(key);
+        } else {
+          if (value) next.set(key, value);
+          else next.delete(key);
+        }
+      }
+      if (resetPage) next.set('page', '1');
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
+
+  const activeAdvancedFilterCount = [
+    departmentFilter.length > 0,
+    assignedByFilter.length > 0,
+    serviceTypeFilter.length > 0,
+    customerFilter.length > 0,
+    companyFilter.length > 0,
+    Boolean(startDate),
+    Boolean(createdDateFrom),
+    Boolean(createdDateTo),
+    Boolean(closedDateFrom),
+    Boolean(closedDateTo),
+  ].filter(Boolean).length;
+
+  // Auto-expand advanced panel if filters are present (e.g. on back-navigation)
+  const [showAdvanced, setShowAdvanced] = useState(() => activeAdvancedFilterCount > 0);
 
   // Supporting data — fetch once on mount
   useEffect(() => {
@@ -73,109 +120,99 @@ export default function Tickets() {
     dispatch(fetchServiceTypes());
   }, []);
 
-  // Ticket fetch — depends on user._id so it re-runs if getProfile() updates the customer ID
+  // Fetch tickets whenever URL params or user identity changes
   useEffect(() => {
-    const initialParams: any = { page: 1, limit: itemsPerPage, ...getCustomerScopeParams() };
-    dispatch(fetchTickets(initialParams));
-  }, [user?._id]);
-
-  // Re-fetch when any filter changes
-  useEffect(() => {
-    const params: any = {
-      page: 1,
-      limit: itemsPerPage,
-    };
-    if (searchTerm) params.search = searchTerm;
-    if (statusFilter) params.status = statusFilter;
-    if (priorityFilter) params.priority = priorityFilter;
-    if (sourceFilter) params.source = sourceFilter;
-    if (departmentFilter) params.department = departmentFilter;
-    if (assignedByFilter) params.assignedConsultant = assignedByFilter;
-    if (serviceTypeFilter) params.serviceType = serviceTypeFilter;
-    if (customerFilter) params.customer = customerFilter;
-    if (companyFilter) params.companyName = companyFilter;
-    if (startDate) params.startDate = startDate;
-    if (createdDateFrom) params.createdDateFrom = createdDateFrom;
-    if (createdDateTo) params.createdDateTo = createdDateTo;
-    if (closedDateFrom) params.closedDateFrom = closedDateFrom;
-    if (closedDateTo) params.closedDateTo = closedDateTo;
-
+    const params: any = { page: currentPage, limit: itemsPerPage };
+    if (searchTerm)              params.search             = searchTerm;
+    if (statusFilter.length)     params.status             = statusFilter.join(',');
+    if (priorityFilter.length)   params.priority           = priorityFilter.join(',');
+    if (sourceFilter.length)     params.source             = sourceFilter.join(',');
+    if (departmentFilter.length) params.department         = departmentFilter.join(',');
+    if (assignedByFilter.length) params.assignedConsultant = assignedByFilter.join(',');
+    if (serviceTypeFilter.length) params.serviceType       = serviceTypeFilter.join(',');
+    if (customerFilter.length)   params.customer           = customerFilter.join(',');
+    if (companyFilter.length)    params.companyName        = companyFilter.join(',');
+    if (startDate)               params.startDate          = startDate;
+    if (createdDateFrom)         params.createdDateFrom    = createdDateFrom;
+    if (createdDateTo)           params.createdDateTo      = createdDateTo;
+    if (closedDateFrom)          params.closedDateFrom     = closedDateFrom;
+    if (closedDateTo)            params.closedDateTo       = closedDateTo;
     Object.assign(params, getCustomerScopeParams());
-
-    setCurrentPage(1);
     dispatch(fetchTickets(params));
-  }, [statusFilter, priorityFilter, sourceFilter, departmentFilter, assignedByFilter, serviceTypeFilter, customerFilter, companyFilter, startDate, createdDateFrom, createdDateTo, closedDateFrom, closedDateTo, user?._id, itemsPerPage]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams.toString(), user?._id]);
 
-  const getFilterParams = (pageNum: number) => {
-    const params: any = {
-      page: pageNum,
-      limit: itemsPerPage,
-    };
-    if (searchTerm) params.search = searchTerm;
-    if (statusFilter) params.status = statusFilter;
-    if (priorityFilter) params.priority = priorityFilter;
-    if (sourceFilter) params.source = sourceFilter;
-    if (departmentFilter) params.department = departmentFilter;
-    if (assignedByFilter) params.assignedConsultant = assignedByFilter;
-    if (serviceTypeFilter) params.serviceType = serviceTypeFilter;
-    if (customerFilter) params.customer = customerFilter;
-    if (companyFilter) params.companyName = companyFilter;
-    if (startDate) params.startDate = startDate;
-    if (createdDateFrom) params.createdDateFrom = createdDateFrom;
-    if (createdDateTo) params.createdDateTo = createdDateTo;
-    if (closedDateFrom) params.closedDateFrom = closedDateFrom;
-    if (closedDateTo) params.closedDateTo = closedDateTo;
-
+  const buildCurrentParams = (pageNum: number) => {
+    const params: any = { page: pageNum, limit: itemsPerPage };
+    if (searchTerm)              params.search             = searchTerm;
+    if (statusFilter.length)     params.status             = statusFilter.join(',');
+    if (priorityFilter.length)   params.priority           = priorityFilter.join(',');
+    if (sourceFilter.length)     params.source             = sourceFilter.join(',');
+    if (departmentFilter.length) params.department         = departmentFilter.join(',');
+    if (assignedByFilter.length) params.assignedConsultant = assignedByFilter.join(',');
+    if (serviceTypeFilter.length) params.serviceType       = serviceTypeFilter.join(',');
+    if (customerFilter.length)   params.customer           = customerFilter.join(',');
+    if (companyFilter.length)    params.companyName        = companyFilter.join(',');
+    if (startDate)               params.startDate          = startDate;
+    if (createdDateFrom)         params.createdDateFrom    = createdDateFrom;
+    if (createdDateTo)           params.createdDateTo      = createdDateTo;
+    if (closedDateFrom)          params.closedDateFrom     = closedDateFrom;
+    if (closedDateTo)            params.closedDateTo       = closedDateTo;
     Object.assign(params, getCustomerScopeParams());
-
     return params;
   };
 
   const handleSearch = () => {
-    setCurrentPage(1);
-    dispatch(fetchTickets(getFilterParams(1)));
+    updateFilters({ q: searchInput });
   };
 
   const handlePageChange = (newPage: number) => {
-    setCurrentPage(newPage);
-    dispatch(fetchTickets(getFilterParams(newPage)));
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      next.set('page', String(newPage));
+      return next;
+    }, { replace: true });
   };
 
   const handleDelete = async (id: string) => {
     try {
       await dispatch(deleteTicket(id)).unwrap();
       toast.success('Ticket deleted successfully!');
-      // tickets.length is pre-delete value; subtract 1 to get post-delete count
       const remainingOnPage = tickets.length - 1;
-      const targetPage = remainingOnPage === 0 && page > 1 ? page - 1 : page;
-      dispatch(fetchTickets(getFilterParams(targetPage)));
+      if (remainingOnPage === 0 && currentPage > 1) {
+        // Changing page triggers re-fetch via the URL params effect
+        setSearchParams(prev => {
+          const next = new URLSearchParams(prev);
+          next.set('page', String(currentPage - 1));
+          return next;
+        }, { replace: true });
+      } else {
+        dispatch(fetchTickets(buildCurrentParams(currentPage)));
+      }
     } catch (error: any) {
       toast.error(error.message || 'Failed to delete ticket');
     }
   };
 
   const handleResetAdvanced = () => {
-    setDepartmentFilter('');
-    setAssignedByFilter('');
-    setServiceTypeFilter('');
-    setCustomerFilter('');
-    setCompanyFilter('');
-    setStartDate('');
-    setCreatedDateFrom('');
-    setCreatedDateTo('');
-    setClosedDateFrom('');
-    setClosedDateTo('');
-    setSearchTerm('');
-    setStatusFilter('');
-    setPriorityFilter('');
-    setSourceFilter('');
-    setCurrentPage(1);
-    dispatch(fetchTickets({ page: 1, limit: itemsPerPage, ...getCustomerScopeParams() }));
+    setSearchParams(new URLSearchParams(), { replace: true });
+    setSearchInput('');
   };
 
-  const activeAdvancedFilterCount = [
-    departmentFilter, assignedByFilter, serviceTypeFilter, customerFilter, companyFilter,
-    startDate, createdDateFrom, createdDateTo, closedDateFrom, closedDateTo,
+  const totalActiveFilters = [
+    statusFilter.length > 0,
+    priorityFilter.length > 0,
+    sourceFilter.length > 0,
+    departmentFilter.length > 0,
+    assignedByFilter.length > 0,
+    serviceTypeFilter.length > 0,
+    customerFilter.length > 0,
+    companyFilter.length > 0,
+    Boolean(startDate),
+    Boolean(createdDateFrom),
+    Boolean(createdDateTo),
+    Boolean(closedDateFrom),
+    Boolean(closedDateTo),
   ].filter(Boolean).length;
 
   const EXPORT_HEADERS = [
@@ -282,12 +319,6 @@ export default function Tickets() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const totalActiveFilters = [
-    statusFilter, priorityFilter, sourceFilter,
-    departmentFilter, assignedByFilter, serviceTypeFilter, customerFilter, companyFilter,
-    startDate, createdDateFrom, createdDateTo, closedDateFrom, closedDateTo,
-  ].filter(Boolean).length;
-
   return (
     <div className="p-8 space-y-6">
       {/* Header */}
@@ -355,21 +386,19 @@ export default function Tickets() {
               type="search"
               placeholder="Search by subject, ticket number..."
               aria-label="Search tickets"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
               className="pl-10"
             />
           </div>
 
-          <CustomSelect
-            variant="filter"
-            value={statusFilter}
-            onChange={setStatusFilter}
+          <MultiSelect
+            values={statusFilter}
+            onChange={(v) => updateFilters({ status: v })}
             label="Status"
             className="min-w-[160px]"
             options={[
-              { value: '', label: 'All' },
               { value: 'new', label: 'New' },
               { value: 'assigned', label: 'Assigned' },
               { value: 'in_progress', label: 'In Progress' },
@@ -380,14 +409,12 @@ export default function Tickets() {
             ]}
           />
 
-          <CustomSelect
-            variant="filter"
-            value={priorityFilter}
-            onChange={setPriorityFilter}
+          <MultiSelect
+            values={priorityFilter}
+            onChange={(v) => updateFilters({ priority: v })}
             label="Priority"
             className="min-w-[160px]"
             options={[
-              { value: '', label: 'All' },
               { value: 'low', label: 'Low' },
               { value: 'medium', label: 'Medium' },
               { value: 'high', label: 'High' },
@@ -432,66 +459,42 @@ export default function Tickets() {
               <div>
                 <p className="text-xs font-medium text-on-surface-variant mb-3">Filter by</p>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-                  <CustomSelect
-                    variant="filter"
-                    value={sourceFilter}
-                    onChange={setSourceFilter}
+                  <MultiSelect
+                    values={sourceFilter}
+                    onChange={(v) => updateFilters({ source: v })}
                     label="Source"
-                    options={[
-                      { value: '', label: 'All' },
-                      ...(sources?.filter(s => s.isActive).map((source) => ({ value: source._id, label: source.name })) || []),
-                    ]}
+                    options={sources?.filter(s => s.isActive).map((s) => ({ value: s._id, label: s.name })) || []}
                   />
-                  <CustomSelect
-                    variant="filter"
-                    value={departmentFilter}
-                    onChange={setDepartmentFilter}
+                  <MultiSelect
+                    values={departmentFilter}
+                    onChange={(v) => updateFilters({ department: v })}
                     label="Department"
-                    options={[
-                      { value: '', label: 'All' },
-                      ...(departments?.filter(d => d.isActive).map((dept) => ({ value: dept._id, label: dept.name })) || []),
-                    ]}
+                    options={departments?.filter(d => d.isActive).map((d) => ({ value: d._id, label: d.name })) || []}
                   />
-                  <CustomSelect
-                    variant="filter"
-                    value={assignedByFilter}
-                    onChange={setAssignedByFilter}
+                  <MultiSelect
+                    values={assignedByFilter}
+                    onChange={(v) => updateFilters({ consultant: v })}
                     label="Assigned To"
-                    options={[
-                      { value: '', label: 'All' },
-                      ...(consultants?.map((c) => ({ value: c._id, label: `${c.firstName} ${c.lastName}` })) || []),
-                    ]}
+                    options={consultants?.map((c) => ({ value: c._id, label: `${c.firstName} ${c.lastName}` })) || []}
                   />
-                  <CustomSelect
-                    variant="filter"
-                    value={serviceTypeFilter}
-                    onChange={setServiceTypeFilter}
+                  <MultiSelect
+                    values={serviceTypeFilter}
+                    onChange={(v) => updateFilters({ serviceType: v })}
                     label="Service Type"
-                    options={[
-                      { value: '', label: 'All' },
-                      ...(serviceTypes?.filter(s => s.isActive).map((st) => ({ value: st._id, label: st.name })) || []),
-                    ]}
+                    options={serviceTypes?.filter(s => s.isActive).map((st) => ({ value: st._id, label: st.name })) || []}
                   />
-                  <CustomSelect
-                    variant="filter"
-                    value={customerFilter}
-                    onChange={setCustomerFilter}
+                  <MultiSelect
+                    values={customerFilter}
+                    onChange={(v) => updateFilters({ customer: v })}
                     label="Customer"
-                    options={[
-                      { value: '', label: 'All' },
-                      ...(customers?.map((c) => ({ value: c._id, label: c.contactPerson })) || []),
-                    ]}
+                    options={customers?.map((c) => ({ value: c._id, label: c.contactPerson })) || []}
                   />
-                  <CustomSelect
-                    variant="filter"
-                    value={companyFilter}
-                    onChange={setCompanyFilter}
+                  <MultiSelect
+                    values={companyFilter}
+                    onChange={(v) => updateFilters({ company: v })}
                     label="Company"
-                    options={[
-                      { value: '', label: 'All' },
-                      ...Array.from(new Map(customers?.map((c) => [c.companyName, c.companyName]) ?? []).entries())
-                        .map(([name]) => ({ value: name, label: name })),
-                    ]}
+                    options={Array.from(new Map(customers?.map((c) => [c.companyName, c.companyName]) ?? []).entries())
+                      .map(([name]) => ({ value: name, label: name }))}
                   />
                 </div>
               </div>
@@ -509,7 +512,7 @@ export default function Tickets() {
                     <Input
                       type="date"
                       value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
+                      onChange={(e) => updateFilters({ startDate: e.target.value })}
                     />
                   </div>
                   {/* Created Date Range */}
@@ -518,7 +521,7 @@ export default function Tickets() {
                     <Input
                       type="date"
                       value={createdDateFrom}
-                      onChange={(e) => setCreatedDateFrom(e.target.value)}
+                      onChange={(e) => updateFilters({ createdFrom: e.target.value })}
                     />
                   </div>
                   {/* Closed Date Range */}
@@ -527,7 +530,7 @@ export default function Tickets() {
                     <Input
                       type="date"
                       value={closedDateFrom}
-                      onChange={(e) => setClosedDateFrom(e.target.value)}
+                      onChange={(e) => updateFilters({ closedFrom: e.target.value })}
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -535,7 +538,7 @@ export default function Tickets() {
                     <Input
                       type="date"
                       value={createdDateTo}
-                      onChange={(e) => setCreatedDateTo(e.target.value)}
+                      onChange={(e) => updateFilters({ createdTo: e.target.value })}
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -543,7 +546,7 @@ export default function Tickets() {
                     <Input
                       type="date"
                       value={closedDateTo}
-                      onChange={(e) => setClosedDateTo(e.target.value)}
+                      onChange={(e) => updateFilters({ closedTo: e.target.value })}
                     />
                   </div>
                 </div>
@@ -580,10 +583,7 @@ export default function Tickets() {
               <span className="text-xs text-on-surface-variant">Per page:</span>
               <select
                 value={itemsPerPage}
-                onChange={(e) => {
-                  setItemsPerPage(Number(e.target.value));
-                  setCurrentPage(1);
-                }}
+                onChange={(e) => updateFilters({ limit: e.target.value })}
                 className="h-7 px-2 pr-6 rounded-[0.5rem] text-xs font-semibold bg-surface-container-lowest border border-border text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-500/30 cursor-pointer appearance-none"
               >
                 {PAGE_SIZE_OPTIONS.map((size) => (
