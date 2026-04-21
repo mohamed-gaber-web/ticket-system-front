@@ -9,7 +9,7 @@ import { fetchServiceTypes } from '@/redux/slices/serviceTypeSlice';
 import TicketTable from './components/TicketTable';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { CustomSelect, MultiSelect } from '@/components/ui/custom-select';
+import { MultiSelect } from '@/components/ui/custom-select';
 import { fetchSources } from '@/redux/slices/sourceSlice';
 import { Plus, Search, Download, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, FileText, FileSpreadsheet, SlidersHorizontal, Calendar, X, MoreVertical } from 'lucide-react';
 import { toast } from 'sonner';

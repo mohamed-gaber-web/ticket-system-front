@@ -5,10 +5,10 @@ import {
   UserCog,
   // UsersRound, // Hidden - not in use
   // UserCheck, // Hidden - not in use
-  Clock,
-  BarChart3,
+  // Clock,        // Hidden - SLA not in use
+  // BarChart3,    // Hidden - Reports not in use
+  // FileBarChart, // Hidden - Consultant Reports not in use
   FolderKanban,
-  FileBarChart,
   ClipboardList,
   Server,
   Sparkles,

@@ -64,7 +64,7 @@ const STATUS_STYLE: Record<string, string> = {
   delivered: 'bg-teal-500 text-white',
 };
 
-const ALL_STATUSES = [
+const ALL_STATUSES: { value: 'new' | 'assigned' | 'in_progress' | 'customer_pending' | 'resolved' | 'tested' | 'delivered' | 'closed'; label: string }[] = [
   { value: 'new', label: 'New' },
   { value: 'assigned', label: 'Assigned' },
   { value: 'in_progress', label: 'In Progress' },
@@ -156,7 +156,7 @@ export default function ViewTicket() {
     }
   };
 
-  const handleStatusChange = async (newStatus: string) => {
+  const handleStatusChange = async (newStatus: 'new' | 'assigned' | 'in_progress' | 'customer_pending' | 'resolved' | 'tested' | 'delivered' | 'closed' | 'reopened') => {
     if (!currentTicket || newStatus === currentTicket.status) return;
     setShowStatusMenu(false);
     setUpdatingStatus(true);
