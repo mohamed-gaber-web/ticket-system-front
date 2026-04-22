@@ -3,6 +3,7 @@ import {
   Users,
   Ticket,
   UserCog,
+  BarChart2,
   // UsersRound, // Hidden - not in use
   // UserCheck, // Hidden - not in use
   // Clock,        // Hidden - SLA not in use
@@ -75,6 +76,7 @@ const buildCustomerLinks = (customerRole?: string | null) => {
 const CONSULTANT_LINKS = [
   { name: "Dashboard", path: "/", icon: LayoutDashboard },
   { name: "Customers", path: "/customers", icon: Users },
+  { name: "Customer Summary", path: "/customers/summary", icon: BarChart2 },
   { name: "Tickets", path: "/tickets", icon: Ticket },
   { name: "Consultants", path: "/consultants", icon: UserCog },
   // Modules Group
@@ -106,6 +108,7 @@ const CONSULTANT_LINKS = [
 const CONSULTANT_ADMIN_LINKS = [
   { name: "Dashboard", path: "/", icon: LayoutDashboard },
   { name: "Customers", path: "/customers", icon: Users },
+  { name: "Customer Summary", path: "/customers/summary", icon: BarChart2 },
   { name: "Tickets", path: "/tickets", icon: Ticket },
   { name: "Consultants", path: "/consultants", icon: UserCog },
   {

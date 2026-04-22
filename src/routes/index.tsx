@@ -49,6 +49,7 @@ const Customers = lazy(() => import("@/pages/customers/customers"));
 const CreateCustomer = lazy(() => import("@/pages/customers/createCustomer"));
 const EditCustomer = lazy(() => import("@/pages/customers/editCustomer"));
 const ViewCustomer = lazy(() => import("@/pages/customers/viewCustomer"));
+const CustomerSummary = lazy(() => import("@/pages/customers/CustomerSummary"));
 
 // Ticket Module
 const Tickets = lazy(() => import("@/pages/tickets/tickets"));
@@ -165,6 +166,14 @@ export const routes: RouteObject[] = [
       },
       { path: "/customers/edit/:id", element: <Lazy><EditCustomer /></Lazy> },
       { path: "/customers/view/:id", element: <Lazy><ViewCustomer /></Lazy> },
+      {
+        path: "/customers/summary",
+        element: (
+          <ProtectedRoute allowedUserTypes={["consultant"]}>
+            <Lazy><CustomerSummary /></Lazy>
+          </ProtectedRoute>
+        ),
+      },
 
       // Ticket Routes
       { path: "/tickets", element: <Lazy><Tickets /></Lazy> },

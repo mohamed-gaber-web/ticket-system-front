@@ -45,6 +45,8 @@ import {
   MessageSquare,
   Trash2,
   Download,
+  Users,
+  UserCircle,
 } from 'lucide-react';
 
 const PRIORITY_DOT: Record<string, string> = {
@@ -564,6 +566,61 @@ export default function ViewTicket() {
 
           {/* Sidebar */}
           <div className="space-y-6">
+            {/* People */}
+            <div className="bg-surface-container-lowest rounded-[1rem] p-6">
+              <h3 className="label-technical mb-5 flex items-center gap-2">
+                <Users className="h-3.5 w-3.5" />
+                People
+              </h3>
+              <div className="space-y-4">
+                {/* Reporter */}
+                {customer && (
+                  <div className="flex items-start gap-3">
+                    <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-brand-500 to-accent-orange-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                      {customer.companyName.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider mb-0.5">Reported by</p>
+                      <p className="text-sm font-semibold text-on-surface truncate">{customer.contactPerson || customer.companyName}</p>
+                      <p className="text-xs text-on-surface-variant truncate">{customer.email}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Assigned by consultant */}
+                {currentAssignment?.assignedByConsultant && typeof currentAssignment.assignedByConsultant !== 'string' && (
+                  <div className="flex items-start gap-3">
+                    <div className="h-8 w-8 rounded-lg bg-surface-container flex items-center justify-center shrink-0">
+                      <UserCircle className="h-4 w-4 text-on-surface-variant" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider mb-0.5">Assigned by</p>
+                      <p className="text-sm font-semibold text-on-surface truncate">
+                        {currentAssignment.assignedByConsultant.firstName} {currentAssignment.assignedByConsultant.lastName}
+                      </p>
+                      <p className="text-xs text-on-surface-variant truncate">{currentAssignment.assignedByConsultant.email}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Accepted by */}
+                {currentTicket.acceptedBy && typeof currentTicket.acceptedBy !== 'string' && (
+                  <div className="flex items-start gap-3">
+                    <div className="h-8 w-8 rounded-lg bg-green-500/10 flex items-center justify-center shrink-0">
+                      <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider mb-0.5">Accepted by</p>
+                      <p className="text-sm font-semibold text-on-surface truncate">
+                        {currentTicket.acceptedBy.firstName} {currentTicket.acceptedBy.lastName}
+                      </p>
+                      <p className="text-xs text-on-surface-variant truncate">{currentTicket.acceptedBy.email}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* Timeline */}
             <div className="bg-surface-container-lowest rounded-[1rem] p-6">
               <h3 className="label-technical mb-5 flex items-center gap-2">
@@ -573,6 +630,12 @@ export default function ViewTicket() {
               <div className="space-y-5">
                 <TimelineEntry label="Created" date={currentTicket.createdAt} color="brand" />
                 <TimelineEntry label="Last Updated" date={currentTicket.updatedAt} color="green" />
+                {currentAssignment?.updatedAt && currentAssignment.updatedAt !== currentAssignment.createdAt && (
+                  <TimelineEntry label="Assignment Updated" date={currentAssignment.updatedAt} color="blue" />
+                )}
+                {currentAssignment?.assignedAt && (
+                  <TimelineEntry label="Assigned At" date={currentAssignment.assignedAt} color="orange" />
+                )}
                 {currentTicket.acceptedAt && <TimelineEntry label="Accepted" date={currentTicket.acceptedAt} color="blue" />}
                 {currentTicket.startDate && <TimelineEntry label="Start Date" date={currentTicket.startDate} color="orange" />}
                 {currentTicket.estimationStartDate && <TimelineEntry label="Estimation Start" date={currentTicket.estimationStartDate} color="blue" />}

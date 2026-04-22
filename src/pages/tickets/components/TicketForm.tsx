@@ -132,7 +132,7 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
     dispatch(fetchCategories());
     // Fetch customers if user is a consultant
     if (isConsultant) {
-      dispatch(fetchCustomers());
+      dispatch(fetchCustomers({ limit: 1000 }));
     }
     // Fetch all reference data for the new properties
     dispatch(fetchEnvironments({ isActive: true }));

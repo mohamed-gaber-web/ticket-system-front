@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchSubTickets, clearSubTickets, deleteTicket, updateTicket } from '@/redux/slices/ticketSlice';
 import { CreateSubTicketDialog } from './CreateSubTicketDialog';
@@ -18,6 +18,7 @@ export function SubTicketsList({ parentTicketId, parentTicketNumber, isSubTicket
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { subTickets, subTicketsLoading } = useAppSelector((state) => state.tickets);
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isSubTicket && parentTicketId) {
@@ -84,6 +85,9 @@ export function SubTicketsList({ parentTicketId, parentTicketNumber, isSubTicket
     reopened: { bg: 'bg-brand-400', text: 'text-brand-500', label: 'Reopened' },
   };
 
+  const allStatuses = Object.keys(statusConfig);
+  const filteredSubTickets = statusFilter ? subTickets.filter(t => t.status === statusFilter) : subTickets;
+
   const priorityConfig: Record<string, { dot: string }> = {
     critical: { dot: 'bg-error' },
     high: { dot: 'bg-accent-orange-500' },
@@ -146,6 +150,42 @@ export function SubTicketsList({ parentTicketId, parentTicketNumber, isSubTicket
         </div>
       )}
 
+      {/* Status Filter Pills */}
+      {total > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 mb-4">
+          <button
+            onClick={() => setStatusFilter(null)}
+            className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
+              statusFilter === null
+                ? 'bg-brand-500 text-white'
+                : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
+            }`}
+          >
+            All <span className="ml-1 opacity-70">{total}</span>
+          </button>
+          {allStatuses.map(s => {
+            const cfg = statusConfig[s];
+            const count = subTickets.filter(t => t.status === s).length;
+            const isActive = statusFilter === s;
+            return (
+              <button
+                key={s}
+                onClick={() => setStatusFilter(isActive ? null : s)}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
+                  isActive
+                    ? `${cfg.bg} text-white`
+                    : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
+                }`}
+              >
+                <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-white/70' : cfg.bg}`} />
+                {cfg.label}
+                <span className="opacity-70">{count}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* Content */}
       {subTicketsLoading ? (
         <div className="flex items-center justify-center py-12">
@@ -167,9 +207,13 @@ export function SubTicketsList({ parentTicketId, parentTicketNumber, isSubTicket
             onSuccess={handleRefresh}
           />
         </div>
+      ) : filteredSubTickets.length === 0 ? (
+        <div className="py-8 text-center">
+          <p className="text-sm text-on-surface-variant">No sub-tickets match the selected status.</p>
+        </div>
       ) : (
         <div className="space-y-1">
-          {[...subTickets]
+          {[...filteredSubTickets]
             .sort((a, b) => {
               const isDoneA = a.status === 'resolved' || a.status === 'closed';
               const isDoneB = b.status === 'resolved' || b.status === 'closed';
@@ -190,7 +234,7 @@ export function SubTicketsList({ parentTicketId, parentTicketNumber, isSubTicket
                 {/* Left: Status indicator line */}
                 <div className="flex flex-col items-center gap-1 self-stretch">
                   <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${isDone ? 'bg-green-500' : status.bg} ring-2 ring-surface/80`} />
-                  {index < subTickets.length - 1 && (
+                  {index < filteredSubTickets.length - 1 && (
                     <div className="w-px flex-1 bg-surface-container-high" />
                   )}
                 </div>

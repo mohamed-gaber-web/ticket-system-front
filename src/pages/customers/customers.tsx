@@ -8,18 +8,24 @@ import CustomerFormDialog from './components/CustomerFormDialog';
 import AdminChangePasswordDialog from '@/components/admin/AdminChangePasswordDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, RefreshCw } from 'lucide-react';
+import { Plus, Search, RefreshCw, ChevronLeft, ChevronRight, BarChart2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { CustomSelect } from '@/components/ui/custom-select';
 import type { Customer, CreateCustomerData, UpdateCustomerData } from '@/types/customer.types';
 
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
+
 export default function Customers() {
   const dispatch = useAppDispatch();
-  const { customers, loading, total } = useAppSelector((state) => state.customers);
+  const navigate = useNavigate();
+  const { customers, loading, total, page, pages } = useAppSelector((state) => state.customers);
   const { userType, consultantRole } = useAppSelector((state) => state.auth);
   const isAdmin = userType === 'consultant' && consultantRole === 'admin';
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [passwordTarget, setPasswordTarget] = useState<{ id: string; name: string } | null>(null);
@@ -29,37 +35,71 @@ export default function Customers() {
     dispatch(fetchVersionNumbers({}));
   }, []);
 
-  // Auto-search with debounce when searchTerm or statusFilter changes
+  const buildParams = (pageNum = currentPage, limit = itemsPerPage) => {
+    const params: any = { page: pageNum, limit };
+    if (searchTerm) params.search = searchTerm;
+    if (statusFilter) params.status = statusFilter;
+    return params;
+  };
+
+  // Auto-search with debounce when searchTerm or statusFilter changes — reset to page 1
   useEffect(() => {
     const timer = setTimeout(() => {
-      const params: any = {};
-      if (searchTerm) params.search = searchTerm;
-      if (statusFilter) params.status = statusFilter;
-      dispatch(fetchCustomers(params));
+      setCurrentPage(1);
+      dispatch(fetchCustomers(buildParams(1)));
     }, 400);
     return () => clearTimeout(timer);
   }, [searchTerm, statusFilter]);
 
+  // Re-fetch when page or page size changes
+  useEffect(() => {
+    dispatch(fetchCustomers(buildParams()));
+  }, [currentPage, itemsPerPage]);
+
   const loadCustomers = () => {
-    const params: any = {};
-    if (searchTerm) params.search = searchTerm;
-    if (statusFilter) params.status = statusFilter;
-    dispatch(fetchCustomers(params));
+    dispatch(fetchCustomers(buildParams()));
   };
 
   const handleSearch = () => {
-    loadCustomers();
+    setCurrentPage(1);
+    dispatch(fetchCustomers(buildParams(1)));
   };
 
   const handleDelete = (id: string) => {
-    dispatch(deleteCustomer(id));
+    dispatch(deleteCustomer(id)).then(() => {
+      const remainingOnPage = customers.length - 1;
+      if (remainingOnPage === 0 && currentPage > 1) {
+        setCurrentPage((p) => p - 1);
+      } else {
+        loadCustomers();
+      }
+    });
   };
 
   const handleRefresh = () => {
     setSearchTerm('');
     setStatusFilter('');
-    dispatch(fetchCustomers({}));
+    setCurrentPage(1);
+    dispatch(fetchCustomers({ page: 1, limit: itemsPerPage }));
   };
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage < 1 || newPage > pages) return;
+    setCurrentPage(newPage);
+  };
+
+  const getPageNumbers = () => {
+    const maxVisible = 5;
+    const pageNumbers: number[] = [];
+    let start = Math.max(1, page - Math.floor(maxVisible / 2));
+    const end = Math.min(pages, start + maxVisible - 1);
+    if (end - start + 1 < maxVisible) start = Math.max(1, end - maxVisible + 1);
+    for (let i = start; i <= end; i++) pageNumbers.push(i);
+    return pageNumbers;
+  };
+
+  const startItem = total === 0 ? 0 : (page - 1) * itemsPerPage + 1;
+  const endItem = Math.min(page * itemsPerPage, total);
 
   const handleCreate = () => {
     setEditingCustomer(null);
@@ -115,10 +155,16 @@ export default function Customers() {
           <p className="text-on-surface-variant mt-1">Manage your customer accounts</p>
         </div>
         {userType === 'consultant' && (
-          <Button onClick={handleCreate} className="gap-2">
-            <Plus className="h-4 w-4" />
-            Add Customer
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => navigate('/customers/summary')} className="gap-2">
+              <BarChart2 className="h-4 w-4" />
+              Summary
+            </Button>
+            <Button onClick={handleCreate} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Add Customer
+            </Button>
+          </div>
         )}
       </div>
 
@@ -164,8 +210,8 @@ export default function Customers() {
 
         {/* Results count */}
         <div className="mt-4 text-sm text-on-surface-variant">
-          Showing <span className="font-semibold">{customers.length}</span> of{' '}
-          <span className="font-semibold">{total}</span> customers
+          Showing <span className="font-semibold text-on-surface">{startItem}{endItem > startItem ? `–${endItem}` : ''}</span> of{' '}
+          <span className="font-semibold text-on-surface">{total}</span> customers
         </div>
       </div>
 
@@ -178,6 +224,66 @@ export default function Customers() {
         showChangePassword={isAdmin}
         isLoading={loading}
       />
+
+      {/* Pagination */}
+      {total > 0 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <p className="text-sm text-on-surface-variant">
+              Showing <span className="font-semibold text-on-surface">{startItem}–{endItem}</span> of{' '}
+              <span className="font-semibold text-on-surface">{total.toLocaleString()}</span> customers
+            </p>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-on-surface-variant">Per page:</span>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
+                className="h-7 px-2 pr-6 rounded-[0.5rem] text-xs font-semibold bg-surface-container-lowest border border-border text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-500/30 cursor-pointer appearance-none"
+              >
+                {PAGE_SIZE_OPTIONS.map((size) => (
+                  <option key={size} value={size}>{size}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => handlePageChange(page - 1)}
+              disabled={page <= 1}
+              aria-label="Previous page"
+              className="p-2 rounded-[0.75rem] bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-high disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+
+            {getPageNumbers().map((pageNum) => (
+              <button
+                key={pageNum}
+                onClick={() => handlePageChange(pageNum)}
+                aria-label={`Page ${pageNum}`}
+                aria-current={pageNum === page ? 'page' : undefined}
+                className={`min-w-[36px] h-9 rounded-[0.75rem] text-sm font-semibold transition-colors ${
+                  pageNum === page
+                    ? 'bg-primary-fixed text-on-primary-fixed'
+                    : 'bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
+                }`}
+              >
+                {pageNum}
+              </button>
+            ))}
+
+            <button
+              onClick={() => handlePageChange(page + 1)}
+              disabled={page >= pages}
+              aria-label="Next page"
+              className="p-2 rounded-[0.75rem] bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-high disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Form Dialog */}
       <CustomerFormDialog
