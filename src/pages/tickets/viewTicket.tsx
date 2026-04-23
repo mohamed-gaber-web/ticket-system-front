@@ -591,58 +591,66 @@ export default function ViewTicket() {
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* People */}
+            {/* Lifecycle */}
             <div className="bg-surface-container-lowest rounded-[1rem] p-6">
               <h3 className="label-technical mb-5 flex items-center gap-2">
-                <Users className="h-3.5 w-3.5" />
-                People
+                <Clock className="h-3.5 w-3.5" />
+                Lifecycle
               </h3>
-              <div className="space-y-4">
-                {/* Reporter */}
-                {customer && (
-                  <div className="flex items-start gap-3">
-                    <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-brand-500 to-accent-orange-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
-                      {customer.companyName.charAt(0).toUpperCase()}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider mb-0.5">Reported by</p>
-                      <p className="text-sm font-semibold text-on-surface truncate">{customer.contactPerson || customer.companyName}</p>
-                      <p className="text-xs text-on-surface-variant truncate">{customer.email}</p>
-                    </div>
+              <div className="space-y-0">
+                {/* Created by */}
+                <div className="flex gap-3">
+                  <div className="flex flex-col items-center">
+                    <div className="w-2 h-2 rounded-full bg-brand-500 mt-1 shrink-0" />
+                    <div className="w-px flex-1 bg-surface-container-high mt-1" />
                   </div>
-                )}
+                  <div className="pb-5 min-w-0">
+                    <p className="text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider">Created by</p>
+                    <p className="text-sm font-semibold text-on-surface truncate mt-0.5">
+                      {customer ? (customer.contactPerson || customer.companyName) : '—'}
+                    </p>
+                    <p className="text-xs text-on-surface-variant mt-0.5">
+                      {new Date(currentTicket.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      {' · '}
+                      {new Date(currentTicket.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  </div>
+                </div>
 
-                {/* Assigned by consultant */}
-                {currentAssignment?.assignedByConsultant && typeof currentAssignment.assignedByConsultant !== 'string' && (
-                  <div className="flex items-start gap-3">
-                    <div className="h-8 w-8 rounded-lg bg-surface-container flex items-center justify-center shrink-0">
-                      <UserCircle className="h-4 w-4 text-on-surface-variant" />
+                {/* Assigned by */}
+                {currentAssignment?.assignedByConsultant && typeof currentAssignment.assignedByConsultant !== 'string' ? (
+                  <div className="flex gap-3">
+                    <div className="flex flex-col items-center">
+                      <div className="w-2 h-2 rounded-full bg-accent-orange-500 mt-1 shrink-0" />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider mb-0.5">Assigned by</p>
-                      <p className="text-sm font-semibold text-on-surface truncate">
+                      <p className="text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider">Assigned by</p>
+                      <p className="text-sm font-semibold text-on-surface truncate mt-0.5">
                         {currentAssignment.assignedByConsultant.firstName} {currentAssignment.assignedByConsultant.lastName}
                       </p>
-                      <p className="text-xs text-on-surface-variant truncate">{currentAssignment.assignedByConsultant.email}</p>
+                      <p className="text-xs text-on-surface-variant mt-0.5">
+                        {currentAssignment.assignedAt ? (
+                          <>
+                            {new Date(currentAssignment.assignedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                            {' · '}
+                            {new Date(currentAssignment.assignedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                          </>
+                        ) : '—'}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex gap-3">
+                    <div className="flex flex-col items-center">
+                      <div className="w-2 h-2 rounded-full bg-surface-container-high mt-1 shrink-0 border border-surface-container-highest" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider">Assigned by</p>
+                      <p className="text-sm text-on-surface-variant mt-0.5 italic">Not yet assigned</p>
                     </div>
                   </div>
                 )}
 
-                {/* Accepted by */}
-                {currentTicket.acceptedBy && typeof currentTicket.acceptedBy !== 'string' && (
-                  <div className="flex items-start gap-3">
-                    <div className="h-8 w-8 rounded-lg bg-green-500/10 flex items-center justify-center shrink-0">
-                      <CheckCircle2 className="h-4 w-4 text-green-600" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider mb-0.5">Accepted by</p>
-                      <p className="text-sm font-semibold text-on-surface truncate">
-                        {currentTicket.acceptedBy.firstName} {currentTicket.acceptedBy.lastName}
-                      </p>
-                      <p className="text-xs text-on-surface-variant truncate">{currentTicket.acceptedBy.email}</p>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
 
