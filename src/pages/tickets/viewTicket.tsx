@@ -45,8 +45,6 @@ import {
   MessageSquare,
   Trash2,
   Download,
-  Users,
-  UserCircle,
 } from 'lucide-react';
 
 const PRIORITY_DOT: Record<string, string> = {
