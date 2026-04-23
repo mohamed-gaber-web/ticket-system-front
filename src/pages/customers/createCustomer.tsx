@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { createCustomer } from '@/redux/slices/customerSlice';
 import CustomerForm from './components/CustomerForm';
@@ -10,6 +10,11 @@ export default function CreateCustomer() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { loading } = useAppSelector((state) => state.customers);
+  const isAdmin = useAppSelector((state) => state.auth.consultantRole) === 'admin';
+
+  if (!isAdmin) {
+    return <Navigate to="/unauthorized" replace />;
+  }
 
   const handleSubmit = async (data: CreateCustomerData | UpdateCustomerData): Promise<void> => {
     const result = await dispatch(createCustomer(data as CreateCustomerData));

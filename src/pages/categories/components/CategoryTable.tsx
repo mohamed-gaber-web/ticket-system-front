@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { useAppSelector } from '@/redux/hooks/hooks';
 import {
   Table,
   TableBody,
@@ -23,6 +24,7 @@ interface CategoryTableProps {
 
 export default function CategoryTable({ categories, onDelete, loading }: CategoryTableProps) {
   const navigate = useNavigate();
+  const isAdmin = useAppSelector((state) => state.auth.consultantRole) === 'admin';
 
   const handleDelete = (category: Category) => {
     MySwal.fire({
@@ -88,7 +90,7 @@ export default function CategoryTable({ categories, onDelete, loading }: Categor
             <TableHead className="font-semibold">Category Name</TableHead>
             <TableHead className="font-semibold">Description</TableHead>
             <TableHead className="font-semibold">Created At</TableHead>
-            <TableHead className="text-right font-semibold">Actions</TableHead>
+            {isAdmin && <TableHead className="text-right font-semibold">Actions</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -108,27 +110,29 @@ export default function CategoryTable({ categories, onDelete, loading }: Categor
                 <p className="text-on-surface-variant">{category.description}</p>
               </TableCell>
               <TableCell className="text-on-surface-variant">{formatDate(category.createdAt)}</TableCell>
-              <TableCell>
-                <div className="flex items-center justify-end gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => navigate(`/categories/edit/${category._id}`)}
-                  >
-                    <Edit className="w-4 h-4 mr-1" />
-                    Edit
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="text-error hover:text-error hover:border-error/30"
-                    onClick={() => handleDelete(category)}
-                  >
-                    <Trash2 className="w-4 h-4 mr-1" />
-                    Delete
-                  </Button>
-                </div>
-              </TableCell>
+              {isAdmin && (
+                <TableCell>
+                  <div className="flex items-center justify-end gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => navigate(`/categories/edit/${category._id}`)}
+                    >
+                      <Edit className="w-4 h-4 mr-1" />
+                      Edit
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-error hover:text-error hover:border-error/30"
+                      onClick={() => handleDelete(category)}
+                    >
+                      <Trash2 className="w-4 h-4 mr-1" />
+                      Delete
+                    </Button>
+                  </div>
+                </TableCell>
+              )}
             </TableRow>
           ))}
         </TableBody>

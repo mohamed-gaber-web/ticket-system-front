@@ -20,6 +20,7 @@ export const useAuth = () => {
   const isCustomer = auth.userType === 'customer';
   const isConsultant = auth.userType === 'consultant';
   const isTeamMember = auth.userType === 'team_member';
+  const isAdmin = auth.consultantRole === 'admin';
 
   return {
     ...auth,
@@ -27,5 +28,6 @@ export const useAuth = () => {
     isCustomer,
     isConsultant,
     isTeamMember,
+    isAdmin,
   };
 };

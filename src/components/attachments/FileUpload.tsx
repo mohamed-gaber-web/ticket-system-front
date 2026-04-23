@@ -94,7 +94,6 @@ const FileUpload: React.FC<FileUploadProps> = ({ ticketId, onUploadSuccess }) =>
             size="sm"
             disabled={uploading}
             className="cursor-pointer"
-            onClick={() => fileInputRef.current?.click()}
             asChild
           >
             <span>

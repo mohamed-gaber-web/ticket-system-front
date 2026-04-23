@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, Navigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchCustomerById, updateCustomer, clearCurrentCustomer } from '@/redux/slices/customerSlice';
 import CustomerForm from './components/CustomerForm';
@@ -12,6 +12,11 @@ export default function EditCustomer() {
   const { id } = useParams<{ id: string }>();
   const dispatch = useAppDispatch();
   const { currentCustomer, loading } = useAppSelector((state) => state.customers);
+  const isAdmin = useAppSelector((state) => state.auth.consultantRole) === 'admin';
+
+  if (!isAdmin) {
+    return <Navigate to="/unauthorized" replace />;
+  }
 
   useEffect(() => {
     if (id) {

@@ -58,6 +58,7 @@ export default function ViewConsultant() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { currentConsultant, loading } = useAppSelector((state) => state.consultants);
+  const isAdmin = useAppSelector((state) => state.auth.consultantRole) === 'admin';
 
   const [formData, setFormData] = useState<UpdateConsultantData>({
     firstName: '',
@@ -337,8 +338,8 @@ export default function ViewConsultant() {
       {/* Main Content: Edit Form + Assigned Tickets */}
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
 
-        {/* Edit Profile Form */}
-        <div className="xl:col-span-2 bg-surface-container-lowest rounded-[1rem] p-6">
+        {/* Edit Profile Form — admin only */}
+        {isAdmin && <div className="xl:col-span-2 bg-surface-container-lowest rounded-[1rem] p-6">
           <h3 className="text-base font-semibold text-on-surface mb-5">Edit Profile</h3>
           <form onSubmit={handleSubmit} className="space-y-4">
 
@@ -438,10 +439,10 @@ export default function ViewConsultant() {
               </Button>
             </div>
           </form>
-        </div>
+        </div>}
 
         {/* Assigned Tickets */}
-        <div className="xl:col-span-3 bg-surface-container-lowest rounded-[1rem] overflow-hidden flex flex-col">
+        <div className={`${isAdmin ? 'xl:col-span-3' : 'xl:col-span-5'} bg-surface-container-lowest rounded-[1rem] overflow-hidden flex flex-col`}>
           <div className="px-6 py-4 border-b border-surface-container-high flex items-center gap-2">
             <TicketIcon className="w-4 h-4 text-on-surface-variant" />
             <h3 className="text-base font-semibold text-on-surface">Assigned Tickets</h3>

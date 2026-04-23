@@ -29,6 +29,7 @@ export default function CustomerTable({ customers, onEdit, onDelete, onChangePas
   const navigate = useNavigate();
   const { erpTypes } = useAppSelector((state) => state.erpTypes);
   const { versionNumbers } = useAppSelector((state) => state.versionNumbers);
+  const isAdmin = useAppSelector((state) => state.auth.consultantRole) === 'admin';
 
   const getErpTypeName = (erpType?: any) => {
     if (!erpType) return 'N/A';
@@ -148,7 +149,7 @@ export default function CustomerTable({ customers, onEdit, onDelete, onChangePas
             <TableHead className="font-semibold">Role</TableHead>
             <TableHead className="font-semibold">Status</TableHead>
             <TableHead className="font-semibold">Created At</TableHead>
-            <TableHead className="text-right font-semibold">Actions</TableHead>
+            {isAdmin && <TableHead className="text-right font-semibold">Actions</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -231,46 +232,48 @@ export default function CustomerTable({ customers, onEdit, onDelete, onChangePas
               </TableCell>
               <TableCell>{getStatusBadge(customer.status)}</TableCell>
               <TableCell className="text-on-surface-variant">{formatDate(customer.createdAt)}</TableCell>
-              <TableCell>
-                <div className="flex items-center justify-end gap-1">
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => navigate(`/customers/view/${customer._id}`)}
-                    title="View"
-                  >
-                    <Eye className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => onEdit(customer)}
-                    title="Edit"
-                  >
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                  {showChangePassword && (
+              {isAdmin && (
+                <TableCell>
+                  <div className="flex items-center justify-end gap-1">
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="text-brand-600 hover:text-brand-700"
-                      onClick={() => onChangePassword(customer)}
-                      title="Change Password"
+                      onClick={() => navigate(`/customers/view/${customer._id}`)}
+                      title="View"
                     >
-                      <KeyRound className="w-4 h-4" />
+                      <Eye className="w-4 h-4" />
                     </Button>
-                  )}
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="text-error hover:text-error/80"
-                    onClick={() => handleDelete(customer)}
-                    title="Delete"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              </TableCell>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => onEdit(customer)}
+                      title="Edit"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                    {showChangePassword && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="text-brand-600 hover:text-brand-700"
+                        onClick={() => onChangePassword(customer)}
+                        title="Change Password"
+                      >
+                        <KeyRound className="w-4 h-4" />
+                      </Button>
+                    )}
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="text-error hover:text-error/80"
+                      onClick={() => handleDelete(customer)}
+                      title="Delete"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </TableCell>
+              )}
             </TableRow>
           ))}
         </TableBody>

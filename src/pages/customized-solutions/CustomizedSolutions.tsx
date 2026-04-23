@@ -17,6 +17,7 @@ import type { CustomizedSolution, CreateCustomizedSolutionData, UpdateCustomized
 export default function CustomizedSolutions() {
   const dispatch = useAppDispatch();
   const { customizedSolutions, loading, total } = useAppSelector((state) => state.customizedSolutions);
+  const isAdmin = useAppSelector((state) => state.auth.consultantRole) === 'admin';
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -86,10 +87,12 @@ export default function CustomizedSolutions() {
           <h1 className="display-sm text-on-surface">Customized Solutions</h1>
           <p className="text-on-surface-variant mt-1">Manage customized solutions</p>
         </div>
-        <Button onClick={handleCreate} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Add Customized Solution
-        </Button>
+        {isAdmin && (
+          <Button onClick={handleCreate} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Add Customized Solution
+          </Button>
+        )}
       </div>
 
       {/* Filters */}

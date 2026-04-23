@@ -17,6 +17,7 @@ import type { VersionNumber, CreateVersionNumberDto, UpdateVersionNumberDto } fr
 export default function VersionNumbers() {
   const dispatch = useAppDispatch();
   const { versionNumbers, loading, total } = useAppSelector((state) => state.versionNumbers);
+  const isAdmin = useAppSelector((state) => state.auth.consultantRole) === 'admin';
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -87,10 +88,12 @@ export default function VersionNumbers() {
           <h1 className="display-sm text-on-surface">Version Numbers</h1>
           <p className="text-on-surface-variant mt-1">Manage version numbers</p>
         </div>
-        <Button onClick={handleCreate} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Add Version Number
-        </Button>
+        {isAdmin && (
+          <Button onClick={handleCreate} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Add Version Number
+          </Button>
+        )}
       </div>
 
       <div className="bg-surface-container-lowest rounded-[1rem] p-4">

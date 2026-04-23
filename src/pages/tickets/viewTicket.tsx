@@ -81,9 +81,10 @@ export default function ViewTicket() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const { currentTicket, loading } = useAppSelector((state) => state.tickets);
+  const { currentTicket, loading, subTickets } = useAppSelector((state) => state.tickets);
   const { currentAssignment } = useAppSelector((state) => state.assignments);
   const { user, userType } = useAppSelector((state) => state.auth);
+  const { total } = useAppSelector((state) => state.attachments);
 
   const isCustomer = userType === 'customer';
   const [activeTab, setActiveTab] = useState<'details' | 'comments' | 'attachments'>('details');
@@ -135,8 +136,16 @@ export default function ViewTicket() {
   const handleRefreshAssignment = () => { if (id) dispatch(fetchCurrentAssignment(id)); };
   const handleUploadSuccess = () => { if (id) dispatch(fetchTicketAttachments({ ticketId: id })); };
 
+  const hasOpenSubTickets = subTickets.length > 0 && subTickets.some(
+    (t) => t.status !== 'closed' && t.status !== 'resolved'
+  );
+
   const handleClose = async () => {
     if (!currentTicket) return;
+    if (hasOpenSubTickets) {
+      toast.error('Cannot close ticket — all sub-tickets must be closed first');
+      return;
+    }
     setClosing(true);
     try {
       await dispatch(updateTicket({ id: currentTicket._id, data: { status: 'closed' } })).unwrap();
@@ -160,6 +169,11 @@ export default function ViewTicket() {
 
   const handleStatusChange = async (newStatus: 'new' | 'assigned' | 'in_progress' | 'customer_pending' | 'resolved' | 'tested' | 'delivered' | 'closed' | 'reopened') => {
     if (!currentTicket || newStatus === currentTicket.status) return;
+    if (newStatus === 'closed' && hasOpenSubTickets) {
+      setShowStatusMenu(false);
+      toast.error('Cannot close ticket — all sub-tickets must be closed first');
+      return;
+    }
     setShowStatusMenu(false);
     setUpdatingStatus(true);
     try {
@@ -504,7 +518,18 @@ export default function ViewTicket() {
                 : 'text-on-surface-variant hover:text-on-surface'
             }`}
           >
-            {tab}
+            {tab === 'attachments' ? (
+              <span className="flex items-center gap-1.5">
+                Attachments
+                {total > 0 && (
+                  <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full ${
+                    activeTab === 'attachments' ? 'bg-brand-500 text-white' : 'bg-surface-container-high text-on-surface-variant'
+                  }`}>
+                    {total}
+                  </span>
+                )}
+              </span>
+            ) : tab}
           </button>
         ))}
       </div>

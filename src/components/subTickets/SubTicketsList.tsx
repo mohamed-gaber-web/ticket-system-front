@@ -46,10 +46,10 @@ export function SubTicketsList({ parentTicketId, parentTicketNumber, isSubTicket
     e.stopPropagation();
     try {
       await dispatch(updateTicket({ id: subTicketId, data: { status: 'closed' } })).unwrap();
-      toast.success('Sub-ticket rejected');
+      toast.success('Sub-ticket closed');
       handleRefresh();
     } catch {
-      toast.error('Failed to reject sub-ticket');
+      toast.error('Failed to close sub-ticket');
     }
   };
 

@@ -317,7 +317,9 @@ const ticketSlice = createSlice({
         if (index !== -1) {
           state.tickets[index] = action.payload;
         }
-        state.currentTicket = action.payload;
+        if (state.currentTicket?._id === action.payload._id) {
+          state.currentTicket = action.payload;
+        }
       })
       .addCase(updateTicket.rejected, (state, action) => {
         state.loading = false;

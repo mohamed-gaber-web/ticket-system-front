@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Navigate } from 'react-router-dom';
 import { ArrowLeft, ShieldCheck, User, Mail, Phone, MapPin, Building2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -31,6 +31,11 @@ export default function ViewCustomer() {
   const { currentCustomer, loading } = useAppSelector((state) => state.customers);
   const { userType } = useAppSelector((state) => state.auth);
   const isSystemAdmin = userType === 'consultant';
+  const isAdmin = useAppSelector((state) => state.auth.consultantRole) === 'admin';
+
+  if (!isAdmin) {
+    return <Navigate to="/unauthorized" replace />;
+  }
 
   useEffect(() => {
     if (id) dispatch(fetchCustomerById(id));

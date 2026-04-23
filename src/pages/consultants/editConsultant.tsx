@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, Navigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchConsultantById, updateConsultant, clearCurrentConsultant } from '@/redux/slices/consultantSlice';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,11 @@ export default function EditConsultant() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { currentConsultant, loading } = useAppSelector((state) => state.consultants);
+  const isAdmin = useAppSelector((state) => state.auth.consultantRole) === 'admin';
+
+  if (!isAdmin) {
+    return <Navigate to="/unauthorized" replace />;
+  }
 
   const [formData, setFormData] = useState<UpdateConsultantData>({
     firstName: '',

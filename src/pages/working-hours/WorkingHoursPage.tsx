@@ -39,6 +39,21 @@ export default function WorkingHoursPage() {
   const { config, holidays, loading, holidaysLoading, importingHolidays } = useAppSelector(
     (state) => state.workingHours
   );
+  const isAdmin = useAppSelector((state) => state.auth.consultantRole) === 'admin';
+
+  if (!isAdmin) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full min-h-[60vh] gap-4 text-center p-8">
+        <div className="h-16 w-16 rounded-full bg-surface-container-high flex items-center justify-center">
+          <Save className="h-7 w-7 text-on-surface-variant" />
+        </div>
+        <h2 className="text-xl font-semibold text-on-surface">Access Restricted</h2>
+        <p className="text-on-surface-variant max-w-sm">
+          Working hours configuration is only available to administrators.
+        </p>
+      </div>
+    );
+  }
 
 
   // Settings form state

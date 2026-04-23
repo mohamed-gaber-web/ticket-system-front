@@ -160,10 +160,12 @@ export default function Customers() {
               <BarChart2 className="h-4 w-4" />
               Summary
             </Button>
-            <Button onClick={handleCreate} className="gap-2">
-              <Plus className="h-4 w-4" />
-              Add Customer
-            </Button>
+            {isAdmin && (
+              <Button onClick={handleCreate} className="gap-2">
+                <Plus className="h-4 w-4" />
+                Add Customer
+              </Button>
+            )}
           </div>
         )}
       </div>

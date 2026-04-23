@@ -95,10 +95,12 @@ export default function Consultants() {
           <h1 className="display-sm text-on-surface">Consultants</h1>
           <p className="text-on-surface-variant mt-1">Manage consultant accounts and permissions</p>
         </div>
-        <Button onClick={() => navigate('/consultants/create')}>
-          <Plus className="w-4 h-4 mr-2" />
-          Add Consultant
-        </Button>
+        {isAdmin && (
+          <Button onClick={() => navigate('/consultants/create')}>
+            <Plus className="w-4 h-4 mr-2" />
+            Add Consultant
+          </Button>
+        )}
       </div>
 
       {/* Filters */}
@@ -183,9 +185,11 @@ export default function Consultants() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-on-surface-variant uppercase tracking-wider">
-                      Actions
-                    </th>
+                    {isAdmin && (
+                      <th className="px-6 py-3 text-center text-xs font-medium text-on-surface-variant uppercase tracking-wider">
+                        Actions
+                      </th>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-surface-container-high">
@@ -229,17 +233,17 @@ export default function Consultants() {
                           {formatStatus(consultant.status)}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div className="flex items-center justify-center gap-1">
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            title="Edit"
-                            onClick={() => navigate(`/consultants/edit/${consultant._id}`)}
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          {isAdmin && (
+                      {isAdmin && (
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              title="Edit"
+                              onClick={() => navigate(`/consultants/edit/${consultant._id}`)}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
                             <Button
                               size="icon"
                               variant="ghost"
@@ -249,18 +253,18 @@ export default function Consultants() {
                             >
                               <KeyRound className="w-4 h-4" />
                             </Button>
-                          )}
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            title="Delete"
-                            className="text-error hover:text-error/80"
-                            onClick={() => handleDelete(consultant._id, consultant.fullName)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </td>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              title="Delete"
+                              className="text-error hover:text-error/80"
+                              onClick={() => handleDelete(consultant._id, consultant.fullName)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>

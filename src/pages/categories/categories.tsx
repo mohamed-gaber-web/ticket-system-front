@@ -13,6 +13,7 @@ export default function CategoryList() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { categories, loading, total } = useAppSelector((state) => state.categories);
+  const isAdmin = useAppSelector((state) => state.auth.consultantRole) === 'admin';
 
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -56,10 +57,12 @@ export default function CategoryList() {
           <h1 className="display-sm text-on-surface">Categories</h1>
           <p className="text-on-surface-variant mt-1">Manage your ticket categories</p>
         </div>
-        <Button onClick={() => navigate('/categories/create')} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Add Category
-        </Button>
+        {isAdmin && (
+          <Button onClick={() => navigate('/categories/create')} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Add Category
+          </Button>
+        )}
       </div>
 
       {/* Filters */}

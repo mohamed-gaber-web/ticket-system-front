@@ -17,6 +17,7 @@ import type { ProductType, CreateProductTypeData, UpdateProductTypeData } from '
 export default function ProductTypes() {
   const dispatch = useAppDispatch();
   const { productTypes, loading, total } = useAppSelector((state) => state.productTypes);
+  const isAdmin = useAppSelector((state) => state.auth.consultantRole) === 'admin';
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -86,10 +87,12 @@ export default function ProductTypes() {
           <h1 className="display-sm text-on-surface">Product Types</h1>
           <p className="text-on-surface-variant mt-1">Manage product types</p>
         </div>
-        <Button onClick={handleCreate} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Add Product Type
-        </Button>
+        {isAdmin && (
+          <Button onClick={handleCreate} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Add Product Type
+          </Button>
+        )}
       </div>
 
       {/* Filters */}

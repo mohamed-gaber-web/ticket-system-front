@@ -17,6 +17,7 @@ import type { ServiceType, CreateServiceTypeDto, UpdateServiceTypeDto } from '@/
 export default function ServiceTypes() {
   const dispatch = useAppDispatch();
   const { serviceTypes, loading, total } = useAppSelector((state) => state.serviceTypes);
+  const isAdmin = useAppSelector((state) => state.auth.consultantRole) === 'admin';
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -90,10 +91,12 @@ export default function ServiceTypes() {
           <h1 className="display-sm text-on-surface">Service Types</h1>
           <p className="text-on-surface-variant mt-1">Manage service types</p>
         </div>
-        <Button onClick={handleCreate} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Add Service Type
-        </Button>
+        {isAdmin && (
+          <Button onClick={handleCreate} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Add Service Type
+          </Button>
+        )}
       </div>
 
       {/* Filters */}

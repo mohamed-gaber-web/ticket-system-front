@@ -17,6 +17,7 @@ import type { Environment, CreateEnvironmentData, UpdateEnvironmentData } from '
 export default function Environments() {
   const dispatch = useAppDispatch();
   const { environments, loading, total } = useAppSelector((state) => state.environments);
+  const isAdmin = useAppSelector((state) => state.auth.consultantRole) === 'admin';
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -86,10 +87,12 @@ export default function Environments() {
           <h1 className="display-sm text-on-surface">Environments</h1>
           <p className="text-on-surface-variant mt-1">Manage system environments</p>
         </div>
-        <Button onClick={handleCreate} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Add Environment
-        </Button>
+        {isAdmin && (
+          <Button onClick={handleCreate} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Add Environment
+          </Button>
+        )}
       </div>
 
       {/* Filters */}

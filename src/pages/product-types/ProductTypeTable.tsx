@@ -11,7 +11,7 @@ import { Edit, Trash2, Power, PowerOff } from 'lucide-react';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
 import type { ProductType } from '@/types/productType.types';
-import { useAppDispatch } from '@/redux/hooks/hooks';
+import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { toggleProductTypeStatus } from '@/redux/slices/productTypeSlice';
 
 const MySwal = withReactContent(Swal);
@@ -30,6 +30,7 @@ export default function ProductTypeTable({
   loading,
 }: ProductTypeTableProps) {
   const dispatch = useAppDispatch();
+  const isAdmin = useAppSelector((state) => state.auth.consultantRole) === 'admin';
 
   const handleDelete = (productType: ProductType) => {
     MySwal.fire({
@@ -125,7 +126,7 @@ export default function ProductTypeTable({
               <TableHead className="font-semibold">Status</TableHead>
               <TableHead className="font-semibold">Created At</TableHead>
               <TableHead className="font-semibold">Updated At</TableHead>
-              <TableHead className="text-right font-semibold">Actions</TableHead>
+              {isAdmin && <TableHead className="text-right font-semibold">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -159,49 +160,51 @@ export default function ProductTypeTable({
                 <TableCell className="text-on-surface-variant text-sm">
                   {formatDate(productType.updatedAt)}
                 </TableCell>
-                <TableCell>
-                  <div className="flex items-center justify-end gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleToggleStatus(productType)}
-                      className={`${
-                        productType.isActive
-                          ? 'text-orange-600 hover:text-orange-700'
-                          : 'text-green-600 hover:text-green-700'
-                      }`}
-                    >
-                      {productType.isActive ? (
-                        <>
-                          <PowerOff className="w-4 h-4 mr-1" />
-                          Deactivate
-                        </>
-                      ) : (
-                        <>
-                          <Power className="w-4 h-4 mr-1" />
-                          Activate
-                        </>
-                      )}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => onEdit(productType)}
-                    >
-                      <Edit className="w-4 h-4 mr-1" />
-                      Edit
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="text-error hover:text-error"
-                      onClick={() => handleDelete(productType)}
-                    >
-                      <Trash2 className="w-4 h-4 mr-1" />
-                      Delete
-                    </Button>
-                  </div>
-                </TableCell>
+                {isAdmin && (
+                  <TableCell>
+                    <div className="flex items-center justify-end gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleToggleStatus(productType)}
+                        className={`${
+                          productType.isActive
+                            ? 'text-orange-600 hover:text-orange-700'
+                            : 'text-green-600 hover:text-green-700'
+                        }`}
+                      >
+                        {productType.isActive ? (
+                          <>
+                            <PowerOff className="w-4 h-4 mr-1" />
+                            Deactivate
+                          </>
+                        ) : (
+                          <>
+                            <Power className="w-4 h-4 mr-1" />
+                            Activate
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => onEdit(productType)}
+                      >
+                        <Edit className="w-4 h-4 mr-1" />
+                        Edit
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-error hover:text-error"
+                        onClick={() => handleDelete(productType)}
+                      >
+                        <Trash2 className="w-4 h-4 mr-1" />
+                        Delete
+                      </Button>
+                    </div>
+                  </TableCell>
+                )}
               </TableRow>
             ))}
           </TableBody>
