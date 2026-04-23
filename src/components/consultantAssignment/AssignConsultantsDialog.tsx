@@ -1,9 +1,9 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { assignConsultants, reassignConsultants, createAssignment } from '@/redux/slices/assignmentSlice';
 import { fetchConsultants } from '@/redux/slices/consultantSlice';
 import { Button } from '@/components/ui/button';
-import { UserPlus, RefreshCw, CheckCircle2, Loader2, Check, ChevronDown } from 'lucide-react';
+import { UserPlus, RefreshCw, CheckCircle2, Loader2, Check, ChevronDown, Search } from 'lucide-react';
 import type { Consultant } from '@/types/consultant.types';
 
 interface AssignConsultantsDialogProps {
@@ -26,6 +26,7 @@ export function AssignConsultantsDialog({
   const [open, setOpen] = useState(false);
   const [selectedConsultants, setSelectedConsultants] = useState<string[]>([]);
   const [notes, setNotes] = useState('');
+  const [search, setSearch] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
 
   const dispatch = useAppDispatch();
@@ -44,9 +45,20 @@ export function AssignConsultantsDialog({
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
+  const filteredConsultants = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return consultants;
+    return consultants.filter((c) =>
+      `${c.firstName} ${c.lastName}`.toLowerCase().includes(q) ||
+      c.email?.toLowerCase().includes(q) ||
+      c.position?.toLowerCase().includes(q)
+    );
+  }, [consultants, search]);
+
   const handleOpen = () => {
     setSelectedConsultants(isReassign ? [...currentConsultants] : []);
     setNotes('');
+    setSearch('');
     dispatch(fetchConsultants({ limit: 500 }));
     setOpen(true);
   };
@@ -110,7 +122,7 @@ export function AssignConsultantsDialog({
 
       {/* Dropdown panel */}
       {open && (
-        <div className="absolute left-0 top-full mt-1.5 w-80 rounded-[0.75rem] bg-surface-container-lowest border border-border shadow-ambient z-50 flex flex-col">
+        <div className="absolute right-0 top-full mt-1.5 w-80 rounded-[0.75rem] bg-surface-container-lowest border border-border shadow-ambient z-50 flex flex-col">
           {/* Header */}
           <div className="px-4 pt-4 pb-3 border-b border-border">
             <p className="text-sm font-semibold text-on-surface flex items-center gap-2">
@@ -124,19 +136,32 @@ export function AssignConsultantsDialog({
                 ? 'Select new consultants to replace the current assignment.'
                 : 'Select one or more consultants to assign.'}
             </p>
+            {/* Search */}
+            <div className="relative mt-3">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-on-surface-variant pointer-events-none" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search consultants…"
+                className="w-full pl-8 pr-3 py-1.5 text-sm bg-surface-container-low border border-border rounded-[0.5rem] text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50 transition"
+              />
+            </div>
           </div>
 
           {/* Consultant list */}
-          <div className="max-h-[280px] overflow-y-auto p-2 space-y-1">
+          <div className="max-h-[260px] overflow-y-auto p-2 space-y-1">
             {consultantsLoading ? (
               <div className="flex items-center justify-center py-8 gap-2 text-on-surface-variant">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 <span className="text-sm">Loading…</span>
               </div>
-            ) : consultants.length === 0 ? (
-              <div className="text-center py-8 text-sm text-on-surface-variant">No consultants available</div>
+            ) : filteredConsultants.length === 0 ? (
+              <div className="text-center py-8 text-sm text-on-surface-variant">
+                {search ? 'No consultants match your search' : 'No consultants available'}
+              </div>
             ) : (
-              consultants.map((consultant: Consultant) => {
+              filteredConsultants.map((consultant: Consultant) => {
                 const isCurrentlyAssigned = currentConsultants.includes(consultant._id);
                 const isSelected = selectedConsultants.includes(consultant._id);
                 const isDisabled = !isReassign && isCurrentlyAssigned;

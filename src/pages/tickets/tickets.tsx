@@ -4,6 +4,7 @@ import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchTickets, deleteTicket } from '@/redux/slices/ticketSlice';
 import { fetchConsultants } from '@/redux/slices/consultantSlice';
 import { fetchCustomers } from '@/redux/slices/customerSlice';
+import { fetchCompanies } from '@/redux/slices/companySlice';
 import { fetchDepartments } from '@/redux/slices/departmentSlice';
 import { fetchServiceTypes } from '@/redux/slices/serviceTypeSlice';
 import TicketTable from './components/TicketTable';
@@ -30,6 +31,7 @@ export default function Tickets() {
   const { sources } = useAppSelector((state) => state.sources);
   const { consultants } = useAppSelector((state) => state.consultants);
   const { customers } = useAppSelector((state) => state.customers);
+  const { companies } = useAppSelector((state) => state.companies);
   const { departments } = useAppSelector((state) => state.departments);
   const { serviceTypes } = useAppSelector((state) => state.serviceTypes);
 
@@ -116,6 +118,7 @@ export default function Tickets() {
     dispatch(fetchConsultants({ limit: 1000 }));
     dispatch(fetchSources({ isActive: true }));
     dispatch(fetchCustomers({ limit: 1000 }));
+    dispatch(fetchCompanies({ limit: 1000 }));
     dispatch(fetchDepartments());
     dispatch(fetchServiceTypes());
   }, []);
@@ -493,8 +496,7 @@ export default function Tickets() {
                     values={companyFilter}
                     onChange={(v) => updateFilters({ company: v })}
                     label="Company"
-                    options={Array.from(new Map(customers?.map((c) => [c.companyName, c.companyName]) ?? []).entries())
-                      .map(([name]) => ({ value: name, label: name }))}
+                    options={companies?.map((c) => ({ value: c.name, label: c.name })) ?? []}
                   />
                 </div>
               </div>

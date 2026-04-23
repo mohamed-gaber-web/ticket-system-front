@@ -69,7 +69,7 @@ export function ConsultantAssignmentsList({
   );
 
   return (
-    <Card className="overflow-hidden p-0">
+    <Card className="overflow-visible p-0">
       <CardHeader className="flex flex-row items-center justify-between bg-surface-container px-6 py-4 m-0">
         <CardTitle className="text-base font-semibold m-0">
           <div className="flex items-center gap-2 text-on-surface">
