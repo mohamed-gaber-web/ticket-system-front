@@ -57,7 +57,7 @@ export function CreateSubTicketDialog({
 
   useEffect(() => {
     if (open) {
-      dispatch(fetchConsultants());
+      dispatch(fetchConsultants({ limit: 500 }));
     }
   }, [dispatch, open]);
 
