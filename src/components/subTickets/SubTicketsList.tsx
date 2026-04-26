@@ -70,7 +70,7 @@ export function SubTicketsList({ parentTicketId, parentTicketNumber, isSubTicket
 
   // Stats
   const total = subTickets.length;
-  const completed = subTickets.filter(t => t.status === 'resolved' || t.status === 'closed').length;
+  const completed = subTickets.filter(t => ['resolved', 'closed', 'delivered'].includes(t.status)).length;
   const inProgress = subTickets.filter(t => t.status === 'in_progress').length;
   const progressPercent = total > 0 ? Math.round((completed / total) * 100) : 0;
 
@@ -81,8 +81,10 @@ export function SubTicketsList({ parentTicketId, parentTicketNumber, isSubTicket
     customer_pending: { bg: 'bg-purple-500', text: 'text-purple-600', label: 'Customer Pending' },
     resolved: { bg: 'bg-green-500', text: 'text-green-600', label: 'Resolved' },
     tested: { bg: 'bg-cyan-600', text: 'text-cyan-700', label: 'Tested' },
+    delivered: { bg: 'bg-teal-500', text: 'text-teal-600', label: 'Delivered' },
     closed: { bg: 'bg-surface-container-highest', text: 'text-on-surface-variant', label: 'Closed' },
     reopened: { bg: 'bg-brand-400', text: 'text-brand-500', label: 'Reopened' },
+    not_related: { bg: 'bg-slate-500', text: 'text-slate-600', label: 'Not Related' },
   };
 
   const allStatuses = Object.keys(statusConfig);
@@ -215,15 +217,15 @@ export function SubTicketsList({ parentTicketId, parentTicketNumber, isSubTicket
         <div className="space-y-1">
           {[...filteredSubTickets]
             .sort((a, b) => {
-              const isDoneA = a.status === 'resolved' || a.status === 'closed';
-              const isDoneB = b.status === 'resolved' || b.status === 'closed';
+              const isDoneA = ['resolved', 'closed', 'delivered'].includes(a.status);
+              const isDoneB = ['resolved', 'closed', 'delivered'].includes(b.status);
               if (isDoneA === isDoneB) return 0;
               return isDoneA ? 1 : -1;
             })
             .map((subTicket: Ticket, index: number) => {
             const status = statusConfig[subTicket.status] || statusConfig.new;
             const priority = priorityConfig[subTicket.priority] || priorityConfig.medium;
-            const isDone = subTicket.status === 'resolved' || subTicket.status === 'closed';
+            const isDone = ['resolved', 'closed', 'delivered'].includes(subTicket.status);
 
             return (
               <div

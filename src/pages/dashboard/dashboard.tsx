@@ -10,6 +10,9 @@ import {
   BarChart3,
   Layers,
   GitBranch,
+  FlaskConical,
+  PackageCheck,
+  Ban,
 } from "lucide-react";
 import { useEffect, useMemo } from "react";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks/hooks";
@@ -252,10 +255,14 @@ export default function Dashboard() {
     const inProgress = tickets.filter((t) => t.status === "in_progress").length;
     const newT = tickets.filter((t) => t.status === "new").length;
     const assigned = tickets.filter((t) => t.status === "assigned").length;
+    const customerPending = tickets.filter((t) => t.status === "customer_pending").length;
+    const tested = tickets.filter((t) => t.status === "tested").length;
+    const delivered = tickets.filter((t) => t.status === "delivered").length;
+    const notRelated = tickets.filter((t) => t.status === "not_related").length;
     const mainTickets = tickets.length;
     const subTicketsCount = tickets.reduce((acc, t) => acc + (t.subTickets?.length ?? 0), 0);
     const total = mainTickets + subTicketsCount;
-    return { total, closed, resolved, inProgress, new: newT, assigned, mainTickets, subTicketsCount };
+    return { total, closed, resolved, inProgress, new: newT, assigned, customerPending, tested, delivered, notRelated, mainTickets, subTicketsCount };
   }, [tickets]);
 
   const metrics = useMemo(() => {
@@ -351,8 +358,12 @@ export default function Dashboard() {
         <StatCard label="In Progress"     value={stats.inProgress}     icon={Activity}      numberColor="text-brand-400"        iconBg="bg-brand-50"                iconColor="text-brand-400"           bar="bg-brand-400"          loading={ticketsLoading}   idx={4} />
         <StatCard label="Customers"       value={totalCustomers}       icon={Users}         numberColor="text-brand-700"        iconBg="bg-brand-100"               iconColor="text-brand-700"           bar="bg-brand-700"          loading={customersLoading} idx={5} />
         <StatCard label="Assigned"        value={stats.assigned}       icon={Ticket}        numberColor="text-accent-orange-500" iconBg="bg-accent-orange-100"      iconColor="text-accent-orange-500"   bar="bg-accent-orange-500"  loading={ticketsLoading}   idx={6} />
-        <StatCard label="Closed"          value={stats.closed}         icon={CheckCircle2}  numberColor="text-emerald-600"      iconBg="bg-emerald-100"             iconColor="text-emerald-600"         bar="bg-emerald-500"        loading={ticketsLoading}   idx={7} />
-        <StatCard label="Resolved"        value={stats.resolved}        icon={TrendingUp}   numberColor="text-emerald-700"      iconBg="bg-green-100"               iconColor="text-emerald-700"         bar="bg-emerald-400"        loading={ticketsLoading}   idx={8} />
+        <StatCard label="Closed"           value={stats.closed}          icon={CheckCircle2}  numberColor="text-emerald-600"      iconBg="bg-emerald-100"             iconColor="text-emerald-600"         bar="bg-emerald-500"        loading={ticketsLoading}   idx={7} />
+        <StatCard label="Resolved"         value={stats.resolved}        icon={TrendingUp}    numberColor="text-emerald-700"      iconBg="bg-green-100"               iconColor="text-emerald-700"         bar="bg-emerald-400"        loading={ticketsLoading}   idx={8} />
+        <StatCard label="Cust. Pending"    value={stats.customerPending} icon={Clock}         numberColor="text-purple-600"       iconBg="bg-purple-100"              iconColor="text-purple-600"          bar="bg-purple-500"         loading={ticketsLoading}   idx={10} />
+        <StatCard label="Tested"           value={stats.tested}          icon={FlaskConical}  numberColor="text-cyan-600"         iconBg="bg-cyan-100"                iconColor="text-cyan-600"            bar="bg-cyan-500"           loading={ticketsLoading}   idx={11} />
+        <StatCard label="Delivered"        value={stats.delivered}       icon={PackageCheck}  numberColor="text-teal-600"         iconBg="bg-teal-100"                iconColor="text-teal-600"            bar="bg-teal-500"           loading={ticketsLoading}   idx={12} />
+        <StatCard label="Not Related"      value={stats.notRelated}      icon={Ban}           numberColor="text-slate-600"        iconBg="bg-slate-100"               iconColor="text-slate-600"           bar="bg-slate-500"          loading={ticketsLoading}   idx={13} />
 
         {/* Resolution rate — inline highlight card */}
         <motion.div
@@ -435,8 +446,12 @@ export default function Dashboard() {
                         { v: stats.new, color: "bg-yellow-400" },
                         { v: stats.assigned, color: "bg-accent-orange-500" },
                         { v: stats.inProgress, color: "bg-brand-400" },
+                        { v: stats.customerPending, color: "bg-purple-500" },
                         { v: stats.resolved, color: "bg-emerald-400" },
+                        { v: stats.tested, color: "bg-cyan-500" },
+                        { v: stats.delivered, color: "bg-teal-500" },
                         { v: stats.closed, color: "bg-emerald-600" },
+                        { v: stats.notRelated, color: "bg-slate-500" },
                       ]
                         .filter((s) => s.v > 0)
                         .map((seg, i) => (
@@ -455,11 +470,15 @@ export default function Dashboard() {
                     {/* Legend */}
                     <div className="grid grid-cols-2 gap-x-6 gap-y-2.5">
                       {[
-                        { label: "New",         v: stats.new,        dot: "bg-yellow-400",       text: "text-yellow-700" },
-                        { label: "Assigned",    v: stats.assigned,   dot: "bg-accent-orange-500", text: "text-accent-orange-600" },
-                        { label: "In Progress", v: stats.inProgress, dot: "bg-brand-400",         text: "text-brand-600" },
-                        { label: "Resolved",    v: stats.resolved,   dot: "bg-emerald-400",       text: "text-emerald-600" },
-                        { label: "Closed",      v: stats.closed,     dot: "bg-emerald-600",       text: "text-emerald-700" },
+                        { label: "New",              v: stats.new,             dot: "bg-yellow-400",        text: "text-yellow-700" },
+                        { label: "Assigned",         v: stats.assigned,        dot: "bg-accent-orange-500", text: "text-accent-orange-600" },
+                        { label: "In Progress",      v: stats.inProgress,      dot: "bg-brand-400",         text: "text-brand-600" },
+                        { label: "Cust. Pending",    v: stats.customerPending, dot: "bg-purple-500",        text: "text-purple-600" },
+                        { label: "Resolved",         v: stats.resolved,        dot: "bg-emerald-400",       text: "text-emerald-600" },
+                        { label: "Tested",           v: stats.tested,          dot: "bg-cyan-500",          text: "text-cyan-600" },
+                        { label: "Delivered",        v: stats.delivered,       dot: "bg-teal-500",          text: "text-teal-600" },
+                        { label: "Closed",           v: stats.closed,          dot: "bg-emerald-600",       text: "text-emerald-700" },
+                        { label: "Not Related",      v: stats.notRelated,      dot: "bg-slate-500",         text: "text-slate-600" },
                       ].map((item) => (
                         <div key={item.label} className="flex items-center gap-2">
                           <div className={`h-2.5 w-2.5 rounded-full shrink-0 ${item.dot}`} />
@@ -771,9 +790,38 @@ export default function Dashboard() {
                     dot: "bg-brand-400",
                     text: "text-brand-600",
                   },
+                  {
+                    label: "Cust. Pending",
+                    value: stats.customerPending,
+                    bar: "bg-purple-500",
+                    dot: "bg-purple-500",
+                    text: "text-purple-600",
+                  },
+                  {
+                    label: "Tested",
+                    value: stats.tested,
+                    bar: "bg-cyan-500",
+                    dot: "bg-cyan-500",
+                    text: "text-cyan-600",
+                  },
+                  {
+                    label: "Delivered",
+                    value: stats.delivered,
+                    bar: "bg-teal-500",
+                    dot: "bg-teal-500",
+                    text: "text-teal-600",
+                  },
+                  {
+                    label: "Not Related",
+                    value: stats.notRelated,
+                    bar: "bg-slate-500",
+                    dot: "bg-slate-500",
+                    text: "text-slate-600",
+                  },
                 ].map((item, i) => {
                   const activeTotal =
-                    stats.new + stats.assigned + stats.inProgress;
+                    stats.new + stats.assigned + stats.inProgress +
+                    stats.customerPending + stats.tested + stats.delivered + stats.notRelated;
                   const pct =
                     activeTotal > 0 ? (item.value / activeTotal) * 100 : 0;
                   return (

@@ -19,6 +19,7 @@ import { saveAs } from 'file-saver';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { Ticket, Category, Consultant as TicketConsultant } from '@/types/ticket';
+import { getTickets } from '@/api/ticketApi';
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 200];
 
@@ -219,7 +220,8 @@ export default function Tickets() {
   ].filter(Boolean).length;
 
   const EXPORT_HEADERS = [
-    'Ticket #', 'Subject', 'Customer', 'Assignee', 'Company',
+    'Type', 'Ticket #', 'Parent Ticket #', 'Subject', 'Customer', 'Contact Person',
+    'Assignee', 'Assigned By', 'Company',
     'Category', 'Module', 'Priority', 'Status',
     'Created Date', 'Assigned Date', 'Delivery Date',
     'Last Updated', 'Resolved Date', 'Closed Date',
@@ -234,11 +236,17 @@ export default function Tickets() {
     const categoryObj = typeof ticket.category === 'object' && ticket.category ? (ticket.category as Category) : null;
     const environmentObj = typeof ticket.environment === 'object' && ticket.environment ? ticket.environment as any : null;
     const assigneeObj = typeof ticket.acceptedBy === 'object' && ticket.acceptedBy ? (ticket.acceptedBy as TicketConsultant) : null;
+    const assignedByObj = typeof ticket.assignedBy === 'object' && ticket.assignedBy ? (ticket.assignedBy as TicketConsultant) : null;
+    const parentObj = typeof ticket.parentTicket === 'object' && ticket.parentTicket ? (ticket.parentTicket as Ticket) : null;
     return [
+      ticket.isSubTicket ? 'Sub-ticket' : 'Main Ticket',
       ticket.ticketNumber,
+      parentObj?.ticketNumber ?? '',
       ticket.subject,
+      customerObj?.companyName ?? '',
       customerObj?.contactPerson ?? '',
       assigneeObj ? `${assigneeObj.firstName} ${assigneeObj.lastName}` : '',
+      assignedByObj ? `${assignedByObj.firstName} ${assignedByObj.lastName}` : '',
       customerObj?.companyName ?? '',
       categoryObj?.name ?? '',
       environmentObj?.name ?? '',
@@ -250,47 +258,104 @@ export default function Tickets() {
       fmtDate(ticket.updatedAt),
       fmtDate(ticket.resolvedAt),
       fmtDate(ticket.closedAt),
-      String(ticket.subTickets?.length ?? 0),
+      ticket.isSubTicket ? '' : String((ticket.subTickets as any[])?.length ?? 0),
       customerObj?.email ?? '',
     ];
   };
 
-  const handleExportCSV = () => {
-    const escape = (v: string) => `"${v.replace(/"/g, '""')}"`;
-    const rows = [
-      EXPORT_HEADERS.map(escape).join(','),
-      ...tickets.map((t) => getExportValues(t).map(escape).join(',')),
-    ];
-    saveAs(new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8;' }), `tickets-export-${new Date().toISOString().split('T')[0]}.csv`);
-  };
-
-  const handleExportExcel = () => {
-    const rows = tickets.map((t) => getExportValues(t));
-    const worksheet = XLSX.utils.aoa_to_sheet([EXPORT_HEADERS, ...rows]);
-    worksheet['!cols'] = EXPORT_HEADERS.map((h, i) => ({
-      wch: Math.max(h.length, ...rows.map((r) => String(r[i] ?? '').length)) + 2,
-    }));
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Tickets');
-    const buffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-    saveAs(new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), `tickets-export-${new Date().toISOString().split('T')[0]}.xlsx`);
-  };
-
-  const handleExportPDF = () => {
-    const doc = new jsPDF('landscape');
-    doc.setFontSize(16);
-    doc.text('Tickets Report', 14, 18);
-    doc.setFontSize(9);
-    doc.text(`Generated: ${new Date().toLocaleString()}  |  Total: ${total}`, 14, 25);
-    autoTable(doc, {
-      head: [EXPORT_HEADERS],
-      body: tickets.map((t) => getExportValues(t)),
-      startY: 30,
-      styles: { fontSize: 7, cellPadding: 2 },
-      headStyles: { fillColor: [0, 58, 143], fontSize: 7 },
-      alternateRowStyles: { fillColor: [245, 247, 250] },
+  const orderTicketsForExport = (allTickets: Ticket[]): Ticket[] => {
+    const mains = allTickets.filter((t) => !t.isSubTicket);
+    const subMap = new Map<string, Ticket[]>();
+    allTickets.filter((t) => t.isSubTicket).forEach((t) => {
+      const parentId = typeof t.parentTicket === 'object' && t.parentTicket ? (t.parentTicket as Ticket)._id : String(t.parentTicket ?? '');
+      if (!subMap.has(parentId)) subMap.set(parentId, []);
+      subMap.get(parentId)!.push(t);
     });
-    doc.save(`tickets-report-${new Date().toISOString().split('T')[0]}.pdf`);
+    const ordered: Ticket[] = [];
+    mains.forEach((m) => {
+      ordered.push(m);
+      (subMap.get(m._id) ?? []).forEach((s) => ordered.push(s));
+    });
+    return ordered;
+  };
+
+  const buildExportParams = () => {
+    const params: any = { limit: 9999, includeSubTickets: true };
+    if (searchTerm)              params.search             = searchTerm;
+    if (statusFilter.length)     params.status             = statusFilter.join(',');
+    if (priorityFilter.length)   params.priority           = priorityFilter.join(',');
+    if (sourceFilter.length)     params.source             = sourceFilter.join(',');
+    if (departmentFilter.length) params.department         = departmentFilter.join(',');
+    if (assignedByFilter.length) params.assignedConsultant = assignedByFilter.join(',');
+    if (serviceTypeFilter.length) params.serviceType       = serviceTypeFilter.join(',');
+    if (customerFilter.length)   params.customer           = customerFilter.join(',');
+    if (companyFilter.length)    params.companyName        = companyFilter.join(',');
+    if (startDate)               params.startDate          = startDate;
+    if (createdDateFrom)         params.createdDateFrom    = createdDateFrom;
+    if (createdDateTo)           params.createdDateTo      = createdDateTo;
+    if (closedDateFrom)          params.closedDateFrom     = closedDateFrom;
+    if (closedDateTo)            params.closedDateTo       = closedDateTo;
+    Object.assign(params, getCustomerScopeParams());
+    return params;
+  };
+
+  const handleExportCSV = async () => {
+    try {
+      toast.info('Preparing CSV export…');
+      const res = await getTickets(buildExportParams());
+      const data = orderTicketsForExport(res.data);
+      const escape = (v: string) => `"${v.replace(/"/g, '""')}"`;
+      const rows = [
+        EXPORT_HEADERS.map(escape).join(','),
+        ...data.map((t) => getExportValues(t).map(escape).join(',')),
+      ];
+      saveAs(new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8;' }), `tickets-export-${new Date().toISOString().split('T')[0]}.csv`);
+    } catch {
+      toast.error('Failed to export CSV');
+    }
+  };
+
+  const handleExportExcel = async () => {
+    try {
+      toast.info('Preparing Excel export…');
+      const res = await getTickets(buildExportParams());
+      const data = orderTicketsForExport(res.data);
+      const rows = data.map((t) => getExportValues(t));
+      const worksheet = XLSX.utils.aoa_to_sheet([EXPORT_HEADERS, ...rows]);
+      worksheet['!cols'] = EXPORT_HEADERS.map((h, i) => ({
+        wch: Math.max(h.length, ...rows.map((r) => String(r[i] ?? '').length)) + 2,
+      }));
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Tickets');
+      const buffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+      saveAs(new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), `tickets-export-${new Date().toISOString().split('T')[0]}.xlsx`);
+    } catch {
+      toast.error('Failed to export Excel');
+    }
+  };
+
+  const handleExportPDF = async () => {
+    try {
+      toast.info('Preparing PDF export…');
+      const res = await getTickets(buildExportParams());
+      const data = orderTicketsForExport(res.data);
+      const doc = new jsPDF('landscape');
+      doc.setFontSize(16);
+      doc.text('Tickets Report', 14, 18);
+      doc.setFontSize(9);
+      doc.text(`Generated: ${new Date().toLocaleString()}  |  Total: ${data.length}`, 14, 25);
+      autoTable(doc, {
+        head: [EXPORT_HEADERS],
+        body: data.map((t) => getExportValues(t)),
+        startY: 30,
+        styles: { fontSize: 7, cellPadding: 2 },
+        headStyles: { fillColor: [0, 58, 143], fontSize: 7 },
+        alternateRowStyles: { fillColor: [245, 247, 250] },
+      });
+      doc.save(`tickets-report-${new Date().toISOString().split('T')[0]}.pdf`);
+    } catch {
+      toast.error('Failed to export PDF');
+    }
   };
 
   const getPageNumbers = () => {
@@ -409,6 +474,7 @@ export default function Tickets() {
               { value: 'resolved', label: 'Resolved' },
               { value: 'tested', label: 'Tested' },
               { value: 'closed', label: 'Closed' },
+              { value: 'not_related', label: 'Not Related' },
             ]}
           />
 

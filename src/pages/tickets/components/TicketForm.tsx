@@ -56,6 +56,7 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
           priority: 'medium',
           status: 'new',
           startDate: '',
+          deliveryEstimationDate: '',
           environment: '',
           feature: '',
           department: '',
@@ -174,6 +175,8 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
         return [];
       };
 
+      const toDateInput = (val?: string) => (val ? val.slice(0, 10) : '');
+
       if (isEdit) {
         setFormData({
           subject: initialData.subject,
@@ -181,7 +184,8 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
           category: categoryId,
           priority: initialData.priority,
           status: initialData.status,
-          startDate: initialData.startDate || '',
+          startDate: toDateInput(initialData.startDate),
+          deliveryEstimationDate: toDateInput(initialData.deliveryEstimationDate),
           environment: extractId(initialData.environment),
           feature: extractId(initialData.feature),
           department: extractId(initialData.department),
@@ -197,7 +201,7 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
           description: initialData.description,
           category: categoryId,
           priority: initialData.priority,
-          startDate: initialData.startDate || '',
+          startDate: toDateInput(initialData.startDate),
           environment: extractId(initialData.environment),
           feature: extractId(initialData.feature),
           department: extractId(initialData.department),
@@ -438,6 +442,7 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
                   { value: 'tested', label: 'Tested' },
                   { value: 'closed', label: 'Closed' },
                   { value: 'delivered', label: 'Delivered' },
+                  { value: 'not_related', label: 'Not Related' },
                 ]}
               />
             </div>
@@ -489,6 +494,18 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
                 onChange={handleChange}
               />
             </div>
+
+            {isEdit && (
+              <div>
+                <label className="form-label">Delivery Date</label>
+                <Input
+                  type="date"
+                  name="deliveryEstimationDate"
+                  value={(formData as UpdateTicketData).deliveryEstimationDate || ''}
+                  onChange={handleChange}
+                />
+              </div>
+            )}
           </div>
         </div>
       )}

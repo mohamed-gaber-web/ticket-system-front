@@ -75,6 +75,12 @@ export const updateTicket = async (id: string, payload: UpdateTicketData): Promi
   return response.data;
 };
 
+// Update ticket status only (dedicated endpoint)
+export const updateTicketStatus = async (id: string, status: string): Promise<TicketResponse> => {
+  const response = await api.patch<TicketResponse>(`/tickets/${id}/status`, { status });
+  return response.data;
+};
+
 // Delete ticket
 export const deleteTicket = async (id: string): Promise<void> => {
   await api.delete(`/tickets/${id}`, {

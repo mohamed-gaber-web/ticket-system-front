@@ -63,7 +63,7 @@ export interface TicketAttachment {
 export interface TicketStatusHistory {
   _id: string;
   ticket: string;
-  status: 'new' | 'assigned' | 'in_progress' | 'resolved' | 'closed' | 'customer_pending' | 'delivered' | 'tested';
+  status: 'new' | 'assigned' | 'in_progress' | 'resolved' | 'closed' | 'customer_pending' | 'delivered' | 'tested' | 'not_related';
   changedAt: string;
   changedBy: string;
 }
@@ -84,7 +84,7 @@ export interface Ticket {
   description: string;
   category: string | Category;
   priority: 'low' | 'medium' | 'high' | 'critical';
-  status: 'new' | 'assigned' | 'in_progress' | 'resolved' | 'closed' | 'customer_pending' | 'delivered' | 'tested';
+  status: 'new' | 'assigned' | 'in_progress' | 'resolved' | 'closed' | 'customer_pending' | 'delivered' | 'tested' | 'not_related';
   notifyEmails?: string[];
   sla?: string | SLA;
   assignedTeam?: string | Team;
@@ -181,13 +181,14 @@ export interface UpdateTicketData {
   description?: string;
   category?: string;
   priority?: 'low' | 'medium' | 'high' | 'critical';
-  status?: 'new' | 'assigned' | 'in_progress' | 'resolved' | 'closed' | 'customer_pending' | 'reopened' | 'delivered' | 'tested';
+  status?: 'new' | 'assigned' | 'in_progress' | 'resolved' | 'closed' | 'customer_pending' | 'reopened' | 'delivered' | 'tested' | 'not_related';
   sla?: string;
   assignedTeam?: string;
   assignedBy?: string;
   customerRating?: number;
   customerFeedback?: string;
   startDate?: string;
+  deliveryEstimationDate?: string;
   // New optional properties
   environment?: string;
   feature?: string;
@@ -223,6 +224,7 @@ export interface TicketQueryParams {
   acceptedBy?: string;
   assignedConsultant?: string;
   customerName?: string;
+  includeSubTickets?: boolean;
 }
 
 export interface TicketResponse {

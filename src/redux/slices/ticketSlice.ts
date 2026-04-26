@@ -109,6 +109,20 @@ export const createTicket = createAsyncThunk(
   }
 );
 
+export const changeTicketStatus = createAsyncThunk(
+  'tickets/changeTicketStatus',
+  async ({ id, status }: { id: string; status: string }, { rejectWithValue }) => {
+    try {
+      const response = await ticketApi.updateTicketStatus(id, status);
+      return response.data;
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Failed to update status';
+      toast.error(message);
+      return rejectWithValue(message);
+    }
+  }
+);
+
 export const updateTicket = createAsyncThunk(
   'tickets/updateTicket',
   async ({ id, data }: { id: string; data: UpdateTicketData }, { rejectWithValue }) => {
@@ -301,6 +315,23 @@ const ticketSlice = createSlice({
         state.tickets.unshift(action.payload);
       })
       .addCase(createTicket.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      });
+
+    // Change ticket status
+    builder
+      .addCase(changeTicketStatus.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(changeTicketStatus.fulfilled, (state, action) => {
+        state.loading = false;
+        const index = state.tickets.findIndex((t) => t._id === action.payload._id);
+        if (index !== -1) state.tickets[index] = action.payload;
+        if (state.currentTicket?._id === action.payload._id) state.currentTicket = action.payload;
+      })
+      .addCase(changeTicketStatus.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       });

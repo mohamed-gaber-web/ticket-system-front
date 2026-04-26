@@ -192,6 +192,7 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
       tested: 'bg-cyan-600 text-white',
       closed: 'bg-surface-container-highest text-on-surface-variant',
       delivered: 'bg-teal-500 text-white',
+      not_related: 'bg-slate-500 text-white',
     };
 
     const displayStatus = status.replace(/_/g, ' ');

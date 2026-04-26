@@ -72,7 +72,7 @@ export default function CustomerFormDialog({
   useEffect(() => {
     dispatch(fetchErpTypes({ isActive: true }));
     dispatch(fetchVersionNumbers({ isActive: true }));
-    dispatch(fetchConsultants({ status: 'active' }));
+    dispatch(fetchConsultants({ status: 'active', limit: 500 }));
     dispatch(fetchCompanies({ isActive: true }));
     dispatch(fetchProductTypes({ isActive: true }));
   }, [dispatch]);

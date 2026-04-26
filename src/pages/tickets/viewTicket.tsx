@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
-import { fetchTicketById, clearCurrentTicket, updateTicket, deleteTicket } from '@/redux/slices/ticketSlice';
+import { fetchTicketById, clearCurrentTicket, updateTicket, deleteTicket, changeTicketStatus } from '@/redux/slices/ticketSlice';
 import { toast } from 'sonner';
 import { submitFeedback } from '@/api/ticketApi';
 import { fetchCurrentAssignment } from '@/redux/slices/assignmentSlice';
@@ -10,7 +10,6 @@ import { fetchTicketAttachments } from '@/redux/slices/attachmentSlice';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { SubTicketsList } from '@/components/subTickets/SubTicketsList';
-import { ConsultantAssignmentsList } from '@/components/consultantAssignment/ConsultantAssignmentsList';
 import FileUpload from '@/components/attachments/FileUpload';
 import AttachmentList from '@/components/attachments/AttachmentList';
 import { TicketComments } from '@/components/comments';
@@ -27,6 +26,7 @@ import {
   Tag,
   FileText,
   Building2,
+  UserCheck,
   Server,
   Sparkles,
   Package,
@@ -62,9 +62,10 @@ const STATUS_STYLE: Record<string, string> = {
   tested: 'bg-cyan-600 text-white',
   closed: 'bg-surface-container-highest text-on-surface-variant',
   delivered: 'bg-teal-500 text-white',
+  not_related: 'bg-slate-500 text-white',
 };
 
-const ALL_STATUSES: { value: 'new' | 'assigned' | 'in_progress' | 'customer_pending' | 'resolved' | 'tested' | 'delivered' | 'closed'; label: string }[] = [
+const ALL_STATUSES: { value: 'new' | 'assigned' | 'in_progress' | 'customer_pending' | 'resolved' | 'tested' | 'delivered' | 'closed' | 'not_related'; label: string }[] = [
   { value: 'new', label: 'New' },
   { value: 'assigned', label: 'Assigned' },
   { value: 'in_progress', label: 'In Progress' },
@@ -73,6 +74,7 @@ const ALL_STATUSES: { value: 'new' | 'assigned' | 'in_progress' | 'customer_pend
   { value: 'tested', label: 'Tested' },
   { value: 'delivered', label: 'Delivered' },
   { value: 'closed', label: 'Closed' },
+  { value: 'not_related', label: 'Not Related' },
 ];
 
 export default function ViewTicket() {
@@ -165,7 +167,7 @@ export default function ViewTicket() {
     }
   };
 
-  const handleStatusChange = async (newStatus: 'new' | 'assigned' | 'in_progress' | 'customer_pending' | 'resolved' | 'tested' | 'delivered' | 'closed' | 'reopened') => {
+  const handleStatusChange = async (newStatus: 'new' | 'assigned' | 'in_progress' | 'customer_pending' | 'resolved' | 'tested' | 'delivered' | 'closed' | 'reopened' | 'not_related') => {
     if (!currentTicket || newStatus === currentTicket.status) return;
     if (newStatus === 'closed' && hasOpenSubTickets) {
       setShowStatusMenu(false);
@@ -175,8 +177,8 @@ export default function ViewTicket() {
     setShowStatusMenu(false);
     setUpdatingStatus(true);
     try {
-      await dispatch(updateTicket({ id: currentTicket._id, data: { status: newStatus } })).unwrap();
-      toast.success(`Status updated to ${newStatus.replace('_', ' ')}`);
+      await dispatch(changeTicketStatus({ id: currentTicket._id, status: newStatus })).unwrap();
+      toast.success(`Status updated to ${newStatus.replace(/_/g, ' ')}`);
     } catch {
       toast.error('Failed to update status');
     } finally {
@@ -209,6 +211,13 @@ export default function ViewTicket() {
     ? (currentTicket.scope as any[]).filter((s) => s && typeof s !== 'string')
     : [];
   const source = currentTicket.source && typeof currentTicket.source !== 'string' ? currentTicket.source : null;
+  const assignedByConsultant = (() => {
+    if (currentAssignment?.assignedByConsultant && typeof currentAssignment.assignedByConsultant !== 'string')
+      return currentAssignment.assignedByConsultant;
+    if (currentTicket.acceptedBy && typeof currentTicket.acceptedBy !== 'string')
+      return currentTicket.acceptedBy;
+    return null;
+  })();
 
   const displayStatus = currentTicket.status.replace('_', ' ');
 
@@ -335,6 +344,12 @@ export default function ViewTicket() {
                 <Calendar className="h-3.5 w-3.5" />
                 <span>{new Date(currentTicket.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
               </div>
+              {assignedByConsultant && (
+                <div className="flex items-center gap-1.5">
+                  <UserCheck className="h-3.5 w-3.5" />
+                  <span>Assigned by <span className="font-medium text-on-surface">{assignedByConsultant.firstName} {assignedByConsultant.lastName}</span></span>
+                </div>
+              )}
               {category && (
                 <div className="flex items-center gap-1.5">
                   <Tag className="h-3.5 w-3.5" />
@@ -568,15 +583,6 @@ export default function ViewTicket() {
               />
             )}
 
-            {/* Assignments */}
-            {currentAssignment && currentAssignment.assignedToConsultants && (
-              <ConsultantAssignmentsList
-                assignmentId={currentAssignment._id}
-                consultantAssignments={currentAssignment.assignedToConsultants}
-                currentUserId={user?._id}
-                onUpdate={handleRefreshAssignment}
-              />
-            )}
 
             {/* Sub-tickets */}
             <SubTicketsList
@@ -616,7 +622,7 @@ export default function ViewTicket() {
                 </div>
 
                 {/* Assigned by */}
-                {currentAssignment?.assignedByConsultant && typeof currentAssignment.assignedByConsultant !== 'string' ? (
+                {assignedByConsultant ? (
                   <div className="flex gap-3">
                     <div className="flex flex-col items-center">
                       <div className="w-2 h-2 rounded-full bg-accent-orange-500 mt-1 shrink-0" />
@@ -624,16 +630,19 @@ export default function ViewTicket() {
                     <div className="min-w-0">
                       <p className="text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider">Assigned by</p>
                       <p className="text-sm font-semibold text-on-surface truncate mt-0.5">
-                        {currentAssignment.assignedByConsultant.firstName} {currentAssignment.assignedByConsultant.lastName}
+                        {assignedByConsultant.firstName} {assignedByConsultant.lastName}
                       </p>
                       <p className="text-xs text-on-surface-variant mt-0.5">
-                        {currentAssignment.assignedAt ? (
-                          <>
-                            {new Date(currentAssignment.assignedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                            {' · '}
-                            {new Date(currentAssignment.assignedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-                          </>
-                        ) : '—'}
+                        {(() => {
+                          const d = currentAssignment?.assignedAt || currentTicket.acceptedAt;
+                          return d ? (
+                            <>
+                              {new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                              {' · '}
+                              {new Date(d).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                            </>
+                          ) : '—';
+                        })()}
                       </p>
                     </div>
                   </div>
@@ -777,11 +786,17 @@ function TicketAssignButton({
   const assignedIds = [...new Set([...formalIds, ...(acceptedById ? [acceptedById] : [])])];
   const hasConsultants = assignedIds.length > 0;
 
+  const assignedBy = currentAssignment?.assignedByConsultant;
+  const assignedByName = assignedBy && typeof assignedBy !== 'string'
+    ? `${assignedBy.firstName} ${assignedBy.lastName}`
+    : undefined;
+
   return (
     <AssignConsultantsDialog
       assignmentId={currentAssignment?._id}
       ticketId={ticketId}
       assignedByConsultantId={userId}
+      assignedByName={assignedByName}
       currentConsultants={assignedIds}
       mode={hasConsultants ? 'reassign' : 'assign'}
       onSuccess={onSuccess}
