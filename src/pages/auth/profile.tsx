@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { getProfile, updateProfile } from '@/redux/slices/authSlice';
-import { updateConsultant } from '@/redux/slices/consultantSlice';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
@@ -230,12 +229,17 @@ const ProfilePage = () => {
 
   const handleConsultantSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateConsultant() || !u?._id) return;
-    const result = await dispatch(
-      updateConsultant({ id: u._id, data: consultantForm })
-    );
-    if (updateConsultant.fulfilled.match(result)) {
+    if (!validateConsultant()) return;
+    try {
+      await dispatch(updateProfile({
+        firstName: consultantForm.firstName,
+        lastName: consultantForm.lastName,
+        phone: consultantForm.phone,
+        position: consultantForm.position,
+      } as any)).unwrap();
       toast.success('Profile updated successfully');
+    } catch (error: any) {
+      toast.error(error || 'Failed to update profile');
     }
   };
 

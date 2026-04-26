@@ -11,6 +11,7 @@ import {
   // FileBarChart, // Hidden - Consultant Reports not in use
   FolderKanban,
   ClipboardList,
+  ListChecks,
   Server,
   Sparkles,
   Package,
@@ -153,12 +154,20 @@ const TELE_SALES_USER_LINKS = [
 ];
 
 // Filter links based on user type
-export const getRouterLinksByUserType = (userType: string | null, customerRole?: string | null, userRole?: string | null) => {
+export const getRouterLinksByUserType = (
+  userType: string | null,
+  customerRole?: string | null,
+  userRole?: string | null,
+) => {
   if (userType === 'customer') {
     return buildCustomerLinks(customerRole);
   }
   if (userType === 'consultant') {
-    return userRole === 'admin' ? CONSULTANT_ADMIN_LINKS : CONSULTANT_LINKS;
+    const myTasksLink = { name: 'My Tasks', path: '/profile', icon: ListChecks };
+    const base = userRole === 'admin' ? CONSULTANT_ADMIN_LINKS : CONSULTANT_LINKS;
+    // Insert after the first item (Dashboard)
+    const [first, ...rest] = base;
+    return [first, myTasksLink, ...rest];
   }
   if (userType === 'team_member') {
     return TEAM_MEMBER_LINKS;
