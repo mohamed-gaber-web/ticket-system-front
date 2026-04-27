@@ -184,6 +184,11 @@ export default function CustomerSummary() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const comboRef = useRef<HTMLDivElement>(null);
 
+  const [ticketSearch, setTicketSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [tablePage, setTablePage] = useState(1);
+  const TABLE_PAGE_SIZE = 20;
+
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const id = searchParams.get("customerId");
@@ -222,17 +227,33 @@ export default function CustomerSummary() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  // Fetch tickets when selected customer changes
+  // Fetch ALL tickets for selected customer (paginate until done)
   useEffect(() => {
     if (!selectedCustomer) {
       setTickets([]);
       return;
     }
+    let cancelled = false;
     setTicketsLoading(true);
-    getTickets({ customer: selectedCustomer._id, limit: 200 })
-      .then((res) => setTickets(res.data))
-      .catch(() => setTickets([]))
-      .finally(() => setTicketsLoading(false));
+
+    const fetchAll = async () => {
+      let page = 1;
+      const all: Ticket[] = [];
+      while (true) {
+        const res = await getTickets({ customer: selectedCustomer._id, limit: 200, page });
+        all.push(...res.data);
+        if (all.length >= res.total || res.data.length === 0) break;
+        page++;
+      }
+      return all;
+    };
+
+    fetchAll()
+      .then((all) => { if (!cancelled) setTickets(all); })
+      .catch(() => { if (!cancelled) setTickets([]); })
+      .finally(() => { if (!cancelled) setTicketsLoading(false); });
+
+    return () => { cancelled = true; };
   }, [selectedCustomer?._id]);
 
   const stats = useMemo(() => {
@@ -246,23 +267,45 @@ export default function CustomerSummary() {
       if (t.isSlaBreached)            counts.slaBreached++;
       if (t.priority in byPriority)   byPriority[t.priority]++;
     }
-    const recentTickets = [...tickets]
-      .sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))
-      .slice(0, 10);
-    return { total: tickets.length, ...counts, byPriority, recentTickets };
+    const sorted = [...tickets].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
+    return { total: tickets.length, ...counts, byPriority, sortedTickets: sorted };
   }, [tickets]);
+
+  // Filtered + paginated ticket list
+  const filteredTickets = useMemo(() => {
+    let list = stats.sortedTickets;
+    if (statusFilter !== "all") list = list.filter((t) => t.status === statusFilter);
+    if (ticketSearch.trim()) {
+      const q = ticketSearch.trim().toLowerCase();
+      list = list.filter(
+        (t) =>
+          t.ticketNumber?.toLowerCase().includes(q) ||
+          t.subject?.toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [stats.sortedTickets, statusFilter, ticketSearch]);
+
+  const totalPages = Math.ceil(filteredTickets.length / TABLE_PAGE_SIZE);
+  const pagedTickets = filteredTickets.slice((tablePage - 1) * TABLE_PAGE_SIZE, tablePage * TABLE_PAGE_SIZE);
 
   const handleSelectCustomer = (customer: Customer) => {
     setSelectedCustomer(customer);
     setQuery("");
     setDropdownOpen(false);
     setResults([]);
+    setTablePage(1);
+    setStatusFilter("all");
+    setTicketSearch("");
   };
 
   const handleClear = () => {
     setSelectedCustomer(null);
     setTickets([]);
     setQuery("");
+    setTablePage(1);
+    setStatusFilter("all");
+    setTicketSearch("");
   };
 
   const statCards: (StatCardProps & { key: string })[] = [
@@ -477,16 +520,42 @@ export default function CustomerSummary() {
               </SectionBlock>
             </motion.div>
 
-            {/* Recent tickets */}
+            {/* All Tickets */}
             <motion.div variants={sectionVariants} custom={2}>
               <SectionBlock
                 bar="bg-brand-500"
                 header={
-                  <div className="flex items-center justify-between w-full">
-                    <p className="text-sm font-semibold text-on-surface">Recent Tickets</p>
-                    <span className="text-xs text-on-surface-variant">
-                      Last {stats.recentTickets.length} tickets
-                    </span>
+                  <div className="flex items-center justify-between w-full gap-3 flex-wrap">
+                    <p className="text-sm font-semibold text-on-surface shrink-0">
+                      All Tickets
+                      <span className="ml-2 px-1.5 py-0.5 rounded-full bg-brand-500/10 text-brand-600 text-[11px] font-bold">
+                        {stats.total}
+                      </span>
+                    </p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {/* Inline search */}
+                      <div className="relative">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-on-surface-variant pointer-events-none" />
+                        <input
+                          type="text"
+                          value={ticketSearch}
+                          onChange={(e) => { setTicketSearch(e.target.value); setTablePage(1); }}
+                          placeholder="Search tickets..."
+                          className="pl-8 pr-3 py-1.5 rounded-lg border border-outline-variant/30 bg-surface text-xs text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-brand-500/30 w-44"
+                        />
+                      </div>
+                      {/* Status filter */}
+                      <select
+                        value={statusFilter}
+                        onChange={(e) => { setStatusFilter(e.target.value); setTablePage(1); }}
+                        className="py-1.5 px-2 rounded-lg border border-outline-variant/30 bg-surface text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+                      >
+                        <option value="all">All statuses</option>
+                        {Object.entries(STATUS_PILL).map(([val, { label }]) => (
+                          <option key={val} value={val}>{label}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                 }
               >
@@ -500,45 +569,96 @@ export default function CustomerSummary() {
                       </div>
                     ))}
                   </div>
-                ) : stats.recentTickets.length === 0 ? (
+                ) : filteredTickets.length === 0 ? (
                   <div className="flex items-center justify-center py-12 text-sm text-on-surface-variant">
-                    No tickets found for this customer.
+                    {stats.total === 0 ? "No tickets found for this customer." : "No tickets match your filters."}
                   </div>
                 ) : (
-                  <motion.ul
-                    variants={stagger}
-                    initial="hidden"
-                    animate="visible"
-                    className="divide-y divide-outline-variant/10"
-                  >
-                    {stats.recentTickets.map((ticket, idx) => {
-                      const sc = STATUS_PILL[ticket.status] ?? { label: ticket.status, pill: "bg-slate-400/20 text-slate-600" };
-                      const pc = PRIORITY_PILL[ticket.priority] ?? { label: ticket.priority, pill: "bg-slate-400/20 text-slate-600" };
-                      return (
-                        <motion.li
-                          key={ticket._id}
-                          variants={rowVariants}
-                          custom={idx}
-                          onClick={() => navigate(`/tickets/view/${ticket._id}`)}
-                          className="flex items-center gap-3 px-5 py-3.5 hover:bg-surface-container-low/60 cursor-pointer transition-colors"
-                        >
-                          <span className="font-mono text-xs text-on-surface-variant shrink-0 hidden sm:inline">
-                            {ticket.ticketNumber}
-                          </span>
-                          <p className="flex-1 text-sm text-on-surface truncate">{ticket.subject}</p>
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-semibold shrink-0 ${sc.pill}`}>
-                            {sc.label}
-                          </span>
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-semibold shrink-0 hidden sm:inline ${pc.pill}`}>
-                            {pc.label}
-                          </span>
-                          <span className="text-xs text-on-surface-variant shrink-0 hidden md:inline">
-                            {new Date(ticket.createdAt).toLocaleDateString()}
-                          </span>
-                        </motion.li>
-                      );
-                    })}
-                  </motion.ul>
+                  <>
+                    <motion.ul
+                      variants={stagger}
+                      initial="hidden"
+                      animate="visible"
+                      className="divide-y divide-outline-variant/10"
+                    >
+                      {pagedTickets.map((ticket, idx) => {
+                        const sc = STATUS_PILL[ticket.status] ?? { label: ticket.status, pill: "bg-slate-400/20 text-slate-600" };
+                        const pc = PRIORITY_PILL[ticket.priority] ?? { label: ticket.priority, pill: "bg-slate-400/20 text-slate-600" };
+                        return (
+                          <motion.li
+                            key={ticket._id}
+                            variants={rowVariants}
+                            custom={idx}
+                            onClick={() => navigate(`/tickets/view/${ticket._id}`)}
+                            className="flex items-center gap-3 px-5 py-3.5 hover:bg-surface-container-low/60 cursor-pointer transition-colors"
+                          >
+                            <span className="font-mono text-xs text-on-surface-variant shrink-0 hidden sm:inline">
+                              {ticket.ticketNumber}
+                            </span>
+                            <p className="flex-1 text-sm text-on-surface truncate">{ticket.subject}</p>
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold shrink-0 ${sc.pill}`}>
+                              {sc.label}
+                            </span>
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold shrink-0 hidden sm:inline ${pc.pill}`}>
+                              {pc.label}
+                            </span>
+                            <span className="text-xs text-on-surface-variant shrink-0 hidden md:inline">
+                              {new Date(ticket.createdAt).toLocaleDateString()}
+                            </span>
+                          </motion.li>
+                        );
+                      })}
+                    </motion.ul>
+
+                    {/* Pagination */}
+                    {totalPages > 1 && (
+                      <div className="flex items-center justify-between px-5 py-3 border-t border-outline-variant/10 bg-surface-container-low/40">
+                        <span className="text-xs text-on-surface-variant">
+                          Showing {(tablePage - 1) * TABLE_PAGE_SIZE + 1}–{Math.min(tablePage * TABLE_PAGE_SIZE, filteredTickets.length)} of {filteredTickets.length}
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => setTablePage((p) => Math.max(1, p - 1))}
+                            disabled={tablePage === 1}
+                            className="px-2.5 py-1 rounded-lg text-xs font-medium text-on-surface-variant hover:bg-surface-container-high disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                          >
+                            ← Prev
+                          </button>
+                          {Array.from({ length: totalPages }, (_, i) => i + 1)
+                            .filter((p) => p === 1 || p === totalPages || Math.abs(p - tablePage) <= 1)
+                            .reduce<(number | "...")[]>((acc, p, i, arr) => {
+                              if (i > 0 && (p as number) - (arr[i - 1] as number) > 1) acc.push("...");
+                              acc.push(p);
+                              return acc;
+                            }, [])
+                            .map((p, i) =>
+                              p === "..." ? (
+                                <span key={`ellipsis-${i}`} className="px-1 text-xs text-on-surface-variant">…</span>
+                              ) : (
+                                <button
+                                  key={p}
+                                  onClick={() => setTablePage(p as number)}
+                                  className={`w-7 h-7 rounded-lg text-xs font-medium transition-colors ${
+                                    tablePage === p
+                                      ? "bg-brand-500 text-white"
+                                      : "text-on-surface-variant hover:bg-surface-container-high"
+                                  }`}
+                                >
+                                  {p}
+                                </button>
+                              )
+                            )}
+                          <button
+                            onClick={() => setTablePage((p) => Math.min(totalPages, p + 1))}
+                            disabled={tablePage === totalPages}
+                            className="px-2.5 py-1 rounded-lg text-xs font-medium text-on-surface-variant hover:bg-surface-container-high disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                          >
+                            Next →
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </SectionBlock>
             </motion.div>
