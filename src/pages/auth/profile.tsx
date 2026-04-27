@@ -8,7 +8,7 @@ import { Save, Mail, Phone, Calendar, Clock, Ticket as TicketIcon, Building2, Ma
 import { cn } from '@/lib/utils';
 import * as ticketApi from '@/api/ticketApi';
 import type { Ticket } from '@/types/ticket';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -64,6 +64,8 @@ const STATUS_BADGE: Record<string, string> = {
 const ProfilePage = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isTasksView = searchParams.get('view') === 'tasks';
   const { user, userType, isLoading } = useAppSelector((state) => state.auth);
 
   const u = user as any;
@@ -439,8 +441,8 @@ const ProfilePage = () => {
     return (
       <div className="p-8 space-y-6">
         <div>
-          <h1 className="display-sm text-on-surface">My Profile</h1>
-          <p className="text-on-surface-variant mt-1">View and manage your account information</p>
+          <h1 className="display-sm text-on-surface">{isTasksView ? 'My Tasks' : 'My Profile'}</h1>
+          <p className="text-on-surface-variant mt-1">{isTasksView ? 'Your assigned tickets and workload overview' : 'View and manage your account information'}</p>
         </div>
 
         {/* Profile Summary Card */}
@@ -577,8 +579,8 @@ const ProfilePage = () => {
         {/* Two-column: Edit Form + Assigned Tickets */}
         <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
 
-          {/* Edit Profile Form */}
-          <div className="xl:col-span-2 bg-surface-container-lowest rounded-[1rem] p-6">
+          {/* Edit Profile Form — hidden in tasks view */}
+          {!isTasksView && <div className="xl:col-span-2 bg-surface-container-lowest rounded-[1rem] p-6">
             <h3 className="text-base font-semibold text-on-surface mb-5">Edit Profile</h3>
             <form onSubmit={handleConsultantSubmit} className="space-y-4">
 
@@ -675,10 +677,10 @@ const ProfilePage = () => {
                 </Button>
               </div>
             </form>
-          </div>
+          </div>}
 
           {/* Assigned Tickets */}
-          <div className="xl:col-span-3 bg-surface-container-lowest rounded-[1rem] overflow-hidden flex flex-col">
+          <div className={cn('bg-surface-container-lowest rounded-[1rem] overflow-hidden flex flex-col', isTasksView ? 'xl:col-span-5' : 'xl:col-span-3')}>
             <div className="px-6 py-4 border-b border-surface-container-high flex items-center gap-2">
               <TicketIcon className="w-4 h-4 text-on-surface-variant" />
               <h3 className="text-base font-semibold text-on-surface">Assigned Tickets</h3>

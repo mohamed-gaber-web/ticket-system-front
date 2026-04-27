@@ -163,7 +163,7 @@ export const getRouterLinksByUserType = (
     return buildCustomerLinks(customerRole);
   }
   if (userType === 'consultant') {
-    const myTasksLink = { name: 'My Tasks', path: '/profile', icon: ListChecks };
+    const myTasksLink = { name: 'My Tasks', path: '/profile?view=tasks', icon: ListChecks };
     const base = userRole === 'admin' ? CONSULTANT_ADMIN_LINKS : CONSULTANT_LINKS;
     // Insert after the first item (Dashboard)
     const [first, ...rest] = base;

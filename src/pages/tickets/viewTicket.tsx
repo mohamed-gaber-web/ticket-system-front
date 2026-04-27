@@ -5,6 +5,7 @@ import { fetchTicketById, clearCurrentTicket, updateTicket, deleteTicket, change
 import { toast } from 'sonner';
 import { submitFeedback } from '@/api/ticketApi';
 import { fetchCurrentAssignment } from '@/redux/slices/assignmentSlice';
+import { fetchConsultants } from '@/redux/slices/consultantSlice';
 import { AssignConsultantsDialog } from '@/components/consultantAssignment/AssignConsultantsDialog';
 import { fetchTicketAttachments } from '@/redux/slices/attachmentSlice';
 import { Button } from '@/components/ui/button';
@@ -85,6 +86,7 @@ export default function ViewTicket() {
   const { currentAssignment } = useAppSelector((state) => state.assignments);
   const { user, userType } = useAppSelector((state) => state.auth);
   const { total } = useAppSelector((state) => state.attachments);
+  const { consultants } = useAppSelector((state) => state.consultants);
 
   const isCustomer = userType === 'customer';
   const [activeTab, setActiveTab] = useState<'details' | 'comments' | 'attachments'>('details');
@@ -129,11 +131,17 @@ export default function ViewTicket() {
     if (id) {
       dispatch(fetchTicketById(id));
       dispatch(fetchCurrentAssignment(id));
+      dispatch(fetchConsultants({ limit: 500 }));
     }
     return () => { dispatch(clearCurrentTicket()); };
   }, [dispatch, id]);
 
-  const handleRefreshAssignment = () => { if (id) dispatch(fetchCurrentAssignment(id)); };
+  const handleRefreshAssignment = () => {
+    if (id) {
+      dispatch(fetchCurrentAssignment(id));
+      dispatch(fetchTicketById(id));
+    }
+  };
   const handleUploadSuccess = () => { if (id) dispatch(fetchTicketAttachments({ ticketId: id })); };
 
   const hasOpenSubTickets = subTickets.length > 0 && subTickets.some(
@@ -221,10 +229,14 @@ export default function ViewTicket() {
 
   const displayStatus = currentTicket.status.replace('_', ' ');
 
-  const firstConsultant = (() => {
-    const list = currentAssignment?.assignedToConsultants ?? [];
-    return list.length > 0 && typeof list[0].consultant !== 'string' ? list[0].consultant : null;
-  })();
+  const assignedConsultants = (currentAssignment?.assignedToConsultants ?? []).map((item) => {
+    const raw = item.consultant;
+    if (raw && typeof raw !== 'string') return raw;
+    if (typeof raw === 'string') return consultants.find((c) => c._id === raw) ?? null;
+    return null;
+  }).filter(Boolean) as typeof consultants;
+
+  const firstConsultant = assignedConsultants[0] ?? null;
 
   const fmtDate = (date?: string) =>
     date ? new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
@@ -344,10 +356,10 @@ export default function ViewTicket() {
                 <Calendar className="h-3.5 w-3.5" />
                 <span>{new Date(currentTicket.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
               </div>
-              {assignedByConsultant && (
+              {assignedConsultants.length > 0 && (
                 <div className="flex items-center gap-1.5">
                   <UserCheck className="h-3.5 w-3.5" />
-                  <span>Assigned by <span className="font-medium text-on-surface">{assignedByConsultant.firstName} {assignedByConsultant.lastName}</span></span>
+                  <span>Assigned to <span className="font-medium text-on-surface">{assignedConsultants.map((c) => `${c.firstName} ${c.lastName}`).join(', ')}</span></span>
                 </div>
               )}
               {category && (
@@ -611,7 +623,12 @@ export default function ViewTicket() {
                   <div className="pb-5 min-w-0">
                     <p className="text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider">Created by</p>
                     <p className="text-sm font-semibold text-on-surface truncate mt-0.5">
-                      {customer ? (customer.contactPerson || customer.companyName) : '—'}
+                      {(() => {
+                        if (customer) return customer.contactPerson || customer.companyName;
+                        const cb = currentTicket.assignedBy;
+                        if (cb && typeof cb !== 'string') return `${cb.firstName} ${cb.lastName}`;
+                        return '—';
+                      })()}
                     </p>
                     <p className="text-xs text-on-surface-variant mt-0.5">
                       {new Date(currentTicket.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
@@ -622,41 +639,58 @@ export default function ViewTicket() {
                 </div>
 
                 {/* Assigned by */}
-                {assignedByConsultant ? (
-                  <div className="flex gap-3">
-                    <div className="flex flex-col items-center">
-                      <div className="w-2 h-2 rounded-full bg-accent-orange-500 mt-1 shrink-0" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider">Assigned by</p>
-                      <p className="text-sm font-semibold text-on-surface truncate mt-0.5">
-                        {assignedByConsultant.firstName} {assignedByConsultant.lastName}
-                      </p>
-                      <p className="text-xs text-on-surface-variant mt-0.5">
-                        {(() => {
-                          const d = currentAssignment?.assignedAt || currentTicket.acceptedAt;
-                          return d ? (
-                            <>
-                              {new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                              {' · '}
-                              {new Date(d).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-                            </>
-                          ) : '—';
-                        })()}
-                      </p>
-                    </div>
+                <div className="flex gap-3">
+                  <div className="flex flex-col items-center">
+                    <div className={`w-2 h-2 rounded-full mt-1 shrink-0 ${assignedByConsultant ? 'bg-accent-orange-500' : 'bg-surface-container-high border border-surface-container-highest'}`} />
+                    {firstConsultant && <div className="w-px flex-1 bg-surface-container-high mt-1" />}
                   </div>
-                ) : (
-                  <div className="flex gap-3">
-                    <div className="flex flex-col items-center">
-                      <div className="w-2 h-2 rounded-full bg-surface-container-high mt-1 shrink-0 border border-surface-container-highest" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider">Assigned by</p>
+                  <div className={`min-w-0 ${firstConsultant ? 'pb-5' : ''}`}>
+                    <p className="text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider">Assigned by</p>
+                    {assignedByConsultant ? (
+                      <>
+                        <p className="text-sm font-semibold text-on-surface truncate mt-0.5">
+                          {assignedByConsultant.firstName} {assignedByConsultant.lastName}
+                        </p>
+                        <p className="text-xs text-on-surface-variant mt-0.5">
+                          {(() => {
+                            const d = currentAssignment?.assignedAt || currentTicket.acceptedAt;
+                            return d ? (
+                              <>
+                                {new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                {' · '}
+                                {new Date(d).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                              </>
+                            ) : '—';
+                          })()}
+                        </p>
+                      </>
+                    ) : (
                       <p className="text-sm text-on-surface-variant mt-0.5 italic">Not yet assigned</p>
-                    </div>
+                    )}
                   </div>
-                )}
+                </div>
+
+                {/* Assigned to */}
+                <div className="flex gap-3">
+                  <div className="flex flex-col items-center">
+                    <div className={`w-2 h-2 rounded-full mt-1 shrink-0 ${assignedConsultants.length > 0 ? 'bg-green-500' : 'bg-surface-container-high border border-surface-container-highest'}`} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider">Assigned to</p>
+                    {assignedConsultants.length > 0 ? (
+                      <div className="mt-1 space-y-1">
+                        {assignedConsultants.map((c) => (
+                          <div key={c._id} className="flex items-center gap-1.5">
+                            <div className="w-1 h-1 rounded-full bg-green-500 shrink-0" />
+                            <p className="text-sm font-semibold text-on-surface truncate">{c.firstName} {c.lastName}</p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-on-surface-variant mt-0.5 italic">Not yet assigned</p>
+                    )}
+                  </div>
+                </div>
 
               </div>
             </div>
