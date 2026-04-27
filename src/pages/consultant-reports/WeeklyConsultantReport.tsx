@@ -327,7 +327,6 @@ function ConsultantCard({ summary, idx }: { summary: ConsultantWeeklySummary; id
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function WeeklyConsultantReport() {
   const dispatch = useAppDispatch();
-  const navigate = useNavigate();
   const { weeklySummary, weeklyLoading } = useAppSelector((state) => state.assignments);
 
   const [currentMonday, setCurrentMonday] = useState<Date>(() => getMondayOfWeek(new Date()));
