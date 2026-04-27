@@ -31,7 +31,7 @@ function isGroup(item: NavigationItem): item is NavGroup {
 }
 
 export function SidebarMobile({ links, isMobileOpen, setIsMobileOpen }: SidebarMobileProps) {
-  const [expandedGroups, setExpandedGroups] = useState<string[]>(["Modules"]);
+  const [expandedGroups, setExpandedGroups] = useState<string[]>([]);
 
   const toggleGroup = (name: string) =>
     setExpandedGroups((prev) =>

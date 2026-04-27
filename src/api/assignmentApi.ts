@@ -10,6 +10,7 @@ import type {
   AssignConsultantsData,
   UpdateConsultantStatusData,
   ConsultantAssignmentsResponse,
+  WeeklyReportResponse,
 } from '../types/assignment.types';
 
 export const assignmentApi = {
@@ -118,6 +119,13 @@ export const assignmentApi = {
     const response = await api.delete<AssignmentResponse>(
       `/ticket-assignments/${assignmentId}/consultant/${consultantId}`
     );
+    return response.data;
+  },
+
+  getWeeklySummary: async (weekStart: string, weekEnd: string): Promise<WeeklyReportResponse> => {
+    const response = await api.get<WeeklyReportResponse>('/ticket-assignments/weekly-summary', {
+      params: { weekStart, weekEnd },
+    });
     return response.data;
   },
 

@@ -4,6 +4,7 @@ import {
   Ticket,
   UserCog,
   BarChart2,
+  CalendarDays,
   // UsersRound, // Hidden - not in use
   // UserCheck, // Hidden - not in use
   // Clock,        // Hidden - SLA not in use
@@ -28,36 +29,47 @@ import {
   UserPlus,
 } from "lucide-react";
 
+const MODULES_GROUP = {
+  name: "Modules",
+  icon: Layers,
+  isGroup: true as const,
+  children: [
+    { name: "Categories", path: "/categories", icon: FolderKanban },
+    { name: "Environments", path: "/environments", icon: Server },
+    { name: "Customized Solutions", path: "/customized-solutions", icon: Sparkles },
+    { name: "Departments", path: "/departments", icon: Building2 },
+    { name: "Product Types", path: "/product-types", icon: Package },
+    { name: "Service Types", path: "/service-types", icon: Wrench },
+    { name: "Modules", path: "/modules", icon: Target },
+    { name: "ERP Types", path: "/erp-types", icon: Database },
+    { name: "Version Numbers", path: "/version-numbers", icon: Hash },
+    { name: "Sources", path: "/sources", icon: Globe },
+    { name: "Companies", path: "/companies", icon: Building },
+  ],
+};
+
 export const ROUTERLINKS = [
   { name: "Dashboard", path: "/", icon: LayoutDashboard },
-  { name: "Customers", path: "/customers", icon: Users },
-  { name: "Tickets", path: "/tickets", icon: Ticket },
-  { name: "Consultants", path: "/consultants", icon: UserCog },
-  // Modules Group
   {
-    name: "Modules",
-    icon: Layers,
+    name: "Customers",
+    icon: Users,
     isGroup: true as const,
     children: [
-      { name: "Categories", path: "/categories", icon: FolderKanban },
-      { name: "Environments", path: "/environments", icon: Server },
-      { name: "Customized Solutions", path: "/customized-solutions", icon: Sparkles },
-      { name: "Departments", path: "/departments", icon: Building2 },
-      { name: "Product Types", path: "/product-types", icon: Package },
-      { name: "Service Types", path: "/service-types", icon: Wrench },
-      { name: "Modules", path: "/modules", icon: Target },
-      { name: "ERP Types", path: "/erp-types", icon: Database },
-      { name: "Version Numbers", path: "/version-numbers", icon: Hash },
-      { name: "Sources", path: "/sources", icon: Globe },
-      { name: "Companies", path: "/companies", icon: Building },
-    ]
+      { name: "Customers", path: "/customers", icon: Users },
+      { name: "Customer Summary", path: "/customers/summary", icon: BarChart2 },
+    ],
   },
-  // HIDDEN: Teams and Team Members are not currently in use
-  // { name: "Teams", path: "/teams", icon: UsersRound },
-  // { name: "Team Members", path: "/team-members", icon: UserCheck },
-  // { name: "SLA", path: "/sla", icon: Clock },
-  // { name: "Reports", path: "/reports", icon: BarChart3 },
-  // { name: "Consultant Reports", path: "/consultant-reports", icon: FileBarChart },
+  { name: "Tickets", path: "/tickets", icon: Ticket },
+  {
+    name: "Consultants",
+    icon: UserCog,
+    isGroup: true as const,
+    children: [
+      { name: "Consultants", path: "/consultants", icon: UserCog },
+      { name: "Weekly Report", path: "/consultant-reports/weekly", icon: CalendarDays },
+    ],
+  },
+  MODULES_GROUP,
   { name: "Working Hours", path: "/working-hours", icon: CalendarClock },
 ];
 
@@ -76,63 +88,53 @@ const buildCustomerLinks = (customerRole?: string | null) => {
 // Consultant (regular & senior) can see specific modules
 const CONSULTANT_LINKS = [
   { name: "Dashboard", path: "/", icon: LayoutDashboard },
-  { name: "Customers", path: "/customers", icon: Users },
-  { name: "Customer Summary", path: "/customers/summary", icon: BarChart2 },
-  { name: "Tickets", path: "/tickets", icon: Ticket },
-  { name: "Consultants", path: "/consultants", icon: UserCog },
-  // Modules Group
   {
-    name: "Modules",
-    icon: Layers,
+    name: "Customers",
+    icon: Users,
     isGroup: true as const,
     children: [
-      { name: "Categories", path: "/categories", icon: FolderKanban },
-      { name: "Environments", path: "/environments", icon: Server },
-      { name: "Customized Solutions", path: "/customized-solutions", icon: Sparkles },
-      { name: "Departments", path: "/departments", icon: Building2 },
-      { name: "Product Types", path: "/product-types", icon: Package },
-      { name: "Service Types", path: "/service-types", icon: Wrench },
-      { name: "Modules", path: "/modules", icon: Target },
-      { name: "ERP Types", path: "/erp-types", icon: Database },
-      { name: "Version Numbers", path: "/version-numbers", icon: Hash },
-      { name: "Sources", path: "/sources", icon: Globe },
-      { name: "Companies", path: "/companies", icon: Building },
-    ]
+      { name: "Customers", path: "/customers", icon: Users },
+      { name: "Customer Summary", path: "/customers/summary", icon: BarChart2 },
+    ],
   },
-  // HIDDEN: Teams and Team Members are not currently in use
-  // { name: "Teams", path: "/teams", icon: UsersRound },
-  // { name: "Team Members", path: "/team-members", icon: UserCheck },
+  { name: "Tickets", path: "/tickets", icon: Ticket },
+  {
+    name: "Consultants",
+    icon: UserCog,
+    isGroup: true as const,
+    children: [
+      { name: "My Tasks", path: "/profile?view=tasks", icon: ListChecks },
+      { name: "Consultants", path: "/consultants", icon: UserCog },
+    ],
+  },
+  MODULES_GROUP,
 ];
 
-// Consultant admin sees everything — same as the full ROUTERLINKS set
+// Consultant admin sees everything
 const CONSULTANT_ADMIN_LINKS = [
   { name: "Dashboard", path: "/", icon: LayoutDashboard },
-  { name: "Customers", path: "/customers", icon: Users },
-  { name: "Customer Summary", path: "/customers/summary", icon: BarChart2 },
-  { name: "Tickets", path: "/tickets", icon: Ticket },
-  { name: "Consultants", path: "/consultants", icon: UserCog },
   {
-    name: "Modules",
-    icon: Layers,
+    name: "Customers",
+    icon: Users,
     isGroup: true as const,
     children: [
-      { name: "Categories", path: "/categories", icon: FolderKanban },
-      { name: "Environments", path: "/environments", icon: Server },
-      { name: "Customized Solutions", path: "/customized-solutions", icon: Sparkles },
-      { name: "Departments", path: "/departments", icon: Building2 },
-      { name: "Product Types", path: "/product-types", icon: Package },
-      { name: "Service Types", path: "/service-types", icon: Wrench },
-      { name: "Modules", path: "/modules", icon: Target },
-      { name: "ERP Types", path: "/erp-types", icon: Database },
-      { name: "Version Numbers", path: "/version-numbers", icon: Hash },
-      { name: "Sources", path: "/sources", icon: Globe },
-      { name: "Companies", path: "/companies", icon: Building },
-    ]
+      { name: "Customers", path: "/customers", icon: Users },
+      { name: "Customer Summary", path: "/customers/summary", icon: BarChart2 },
+    ],
   },
-  // { name: "SLA", path: "/sla", icon: Clock },
+  { name: "Tickets", path: "/tickets", icon: Ticket },
+  {
+    name: "Consultants",
+    icon: UserCog,
+    isGroup: true as const,
+    children: [
+      { name: "My Tasks", path: "/profile?view=tasks", icon: ListChecks },
+      { name: "Consultants", path: "/consultants", icon: UserCog },
+      { name: "Weekly Report", path: "/consultant-reports/weekly", icon: CalendarDays },
+    ],
+  },
+  MODULES_GROUP,
   { name: "Working Hours", path: "/working-hours", icon: CalendarClock },
-  // { name: "Reports", path: "/reports", icon: BarChart3 },
-  // { name: "Consultant Reports", path: "/consultant-reports", icon: FileBarChart },
 ];
 
 // Team Member can only see My Assignments
@@ -163,11 +165,7 @@ export const getRouterLinksByUserType = (
     return buildCustomerLinks(customerRole);
   }
   if (userType === 'consultant') {
-    const myTasksLink = { name: 'My Tasks', path: '/profile?view=tasks', icon: ListChecks };
-    const base = userRole === 'admin' ? CONSULTANT_ADMIN_LINKS : CONSULTANT_LINKS;
-    // Insert after the first item (Dashboard)
-    const [first, ...rest] = base;
-    return [first, myTasksLink, ...rest];
+    return userRole === 'admin' ? CONSULTANT_ADMIN_LINKS : CONSULTANT_LINKS;
   }
   if (userType === 'team_member') {
     return TEAM_MEMBER_LINKS;

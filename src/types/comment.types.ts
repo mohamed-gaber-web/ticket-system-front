@@ -1,5 +1,13 @@
 import type { UserType } from './auth.types';
 
+export interface CommentImage {
+  url: string;
+  fileName: string;
+  fileSize?: number;
+  fileType?: string;
+  fileId?: string;
+}
+
 export interface CommentBy {
   _id: string;
   firstName?: string;
@@ -21,6 +29,7 @@ export interface TicketComment {
   commentByUserId: string;
   commentByUserType: UserType;
   isInternal: boolean;
+  images?: CommentImage[];
   createdAt: string;
   updatedAt: string;
   commentBy?: CommentBy;
@@ -47,6 +56,7 @@ export interface CreateCommentPayload {
   commentByUserId: string;
   commentByUserType: UserType;
   isInternal?: boolean;
+  images?: CommentImage[];
 }
 
 export interface UpdateCommentPayload {

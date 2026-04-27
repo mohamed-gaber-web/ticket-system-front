@@ -31,7 +31,7 @@ function isGroup(item: NavigationItem): item is NavGroup {
 }
 
 export function SidebarDesktop({ links, isOpen, setIsOpen }: SidebarDesktopProps) {
-  const [expandedGroups, setExpandedGroups] = useState<string[]>(["Modules"]);
+  const [expandedGroups, setExpandedGroups] = useState<string[]>([]);
 
   const toggleGroup = (name: string) =>
     setExpandedGroups((prev) =>

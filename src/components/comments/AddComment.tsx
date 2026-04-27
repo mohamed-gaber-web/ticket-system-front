@@ -5,14 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Send, Loader2, Mail, X, Plus } from 'lucide-react';
+import { Send, Loader2, Mail, X, Plus, ImagePlus } from 'lucide-react';
 import type { UserType } from '@/types/auth.types';
 
 interface AddCommentProps {
   ticketId: string;
   userId: string;
   userType: UserType;
-  onSubmit: (commentText: string, isInternal: boolean, emails: string[]) => Promise<void>;
+  onSubmit: (commentText: string, isInternal: boolean, emails: string[], images: File[]) => Promise<void>;
   loading?: boolean;
 }
 
@@ -33,7 +33,27 @@ const AddComment: React.FC<AddCommentProps> = ({
   const [emailError, setEmailError] = useState<string | null>(null);
   const emailInputRef = useRef<HTMLInputElement>(null);
 
+  const [images, setImages] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
   const isStaff = userType === 'consultant' || userType === 'team_member';
+
+  const addImages = (files: FileList | null) => {
+    if (!files) return;
+    const newFiles = Array.from(files).filter((f) => f.type.startsWith('image/'));
+    const combined = [...images, ...newFiles].slice(0, 5);
+    setImages(combined);
+    const previews = combined.map((f) => URL.createObjectURL(f));
+    imagePreviews.forEach((p) => URL.revokeObjectURL(p));
+    setImagePreviews(previews);
+  };
+
+  const removeImage = (index: number) => {
+    URL.revokeObjectURL(imagePreviews[index]);
+    setImages((prev) => prev.filter((_, i) => i !== index));
+    setImagePreviews((prev) => prev.filter((_, i) => i !== index));
+  };
 
   const addEmail = (raw: string) => {
     const value = raw.trim().toLowerCase();
@@ -95,12 +115,15 @@ const AddComment: React.FC<AddCommentProps> = ({
 
     try {
       setError(null);
-      await onSubmit(commentText.trim(), isInternal, finalEmails);
+      await onSubmit(commentText.trim(), isInternal, finalEmails, images);
       setCommentText('');
       setIsInternal(false);
       setEmails([]);
       setEmailInput('');
       setShowEmailSection(false);
+      imagePreviews.forEach((p) => URL.revokeObjectURL(p));
+      setImages([]);
+      setImagePreviews([]);
     } catch (err: any) {
       setError(err.message || 'Failed to add comment');
     }
@@ -207,6 +230,53 @@ const AddComment: React.FC<AddCommentProps> = ({
                   </button>
                 )}
               </div>
+            </div>
+          )}
+        </div>
+
+        {/* Image attachment */}
+        <div className="space-y-2">
+          <input
+            ref={imageInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={(e) => addImages(e.target.files)}
+          />
+          <button
+            type="button"
+            onClick={() => imageInputRef.current?.click()}
+            disabled={loading || images.length >= 5}
+            className="flex items-center gap-1.5 text-xs font-medium text-on-surface-variant hover:text-on-surface disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            <ImagePlus className="h-3.5 w-3.5" />
+            Attach images
+            {images.length > 0 && (
+              <span className="ml-1 px-1.5 py-0.5 rounded-full bg-brand-500/10 text-brand-600 text-[10px] font-semibold">
+                {images.length}/5
+              </span>
+            )}
+          </button>
+
+          {imagePreviews.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {imagePreviews.map((src, i) => (
+                <div key={i} className="relative group">
+                  <img
+                    src={src}
+                    alt={images[i]?.name}
+                    className="h-16 w-16 object-cover rounded-lg border border-outline-variant/30"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeImage(i)}
+                    className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-error text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X className="h-2.5 w-2.5" />
+                  </button>
+                </div>
+              ))}
             </div>
           )}
         </div>

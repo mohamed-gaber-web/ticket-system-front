@@ -16,8 +16,10 @@ import {
   clearComments,
 } from '@/redux/slices/commentSlice';
 import { sendCommentEmail } from '@/api/emailApi';
+import { uploadFile } from '@/api/attachmentApi';
 import type { AppDispatch, RootState } from '@/redux/store';
 import type { UserType } from '@/types/auth.types';
+import type { CommentImage } from '@/types/comment.types';
 
 interface TicketCommentsProps {
   ticketId: string;
@@ -57,8 +59,25 @@ const TicketComments: React.FC<TicketCommentsProps> = ({ ticketId }) => {
     }
   };
 
-  const handleAddComment = async (commentText: string, isInternal: boolean, emails: string[]) => {
+  const handleAddComment = async (commentText: string, isInternal: boolean, emails: string[], imageFiles: File[]) => {
     if (!user?._id || !userType) return;
+
+    let images: CommentImage[] = [];
+    if (imageFiles.length > 0) {
+      try {
+        const uploads = await Promise.all(imageFiles.map((f) => uploadFile(f, ticketId)));
+        images = uploads.map((u) => ({
+          url: u.url,
+          fileName: u.fileName,
+          fileSize: u.fileSize,
+          fileType: u.fileType,
+          fileId: u.fileId,
+        }));
+      } catch {
+        toast.error('Failed to upload images. Comment not posted.');
+        return;
+      }
+    }
 
     await dispatch(
       createComment({
@@ -67,6 +86,7 @@ const TicketComments: React.FC<TicketCommentsProps> = ({ ticketId }) => {
         commentByUserId: user._id,
         commentByUserType: userType,
         isInternal,
+        images,
       })
     ).unwrap();
 

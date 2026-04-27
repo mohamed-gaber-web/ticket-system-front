@@ -7,6 +7,7 @@ import type {
   AssignmentStats,
   CreateAssignmentData,
   ReassignTicketData,
+  ConsultantWeeklySummary,
 } from '../../types/assignment.types';
 
 interface AssignmentState {
@@ -14,9 +15,11 @@ interface AssignmentState {
   currentAssignment: TicketAssignment | null;
   stats: AssignmentStats | null;
   ticketHistory: TicketAssignment[];
+  weeklySummary: ConsultantWeeklySummary[];
   loading: boolean;
   statsLoading: boolean;
   historyLoading: boolean;
+  weeklyLoading: boolean;
   error: string | null;
   total: number;
   page: number;
@@ -28,9 +31,11 @@ const initialState: AssignmentState = {
   currentAssignment: null,
   stats: null,
   ticketHistory: [],
+  weeklySummary: [],
   loading: false,
   statsLoading: false,
   historyLoading: false,
+  weeklyLoading: false,
   error: null,
   total: 0,
   page: 1,
@@ -246,6 +251,19 @@ export const fetchConsultantAssignments = createAsyncThunk(
     } catch (error: any) {
       const message = error.response?.data?.message || 'Failed to fetch consultant assignments';
       toast.error(message);
+      return rejectWithValue(message);
+    }
+  }
+);
+
+export const fetchWeeklySummary = createAsyncThunk(
+  'assignment/fetchWeeklySummary',
+  async ({ weekStart, weekEnd }: { weekStart: string; weekEnd: string }, { rejectWithValue }) => {
+    try {
+      const response = await assignmentApi.getWeeklySummary(weekStart, weekEnd);
+      return response;
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Failed to fetch weekly summary';
       return rejectWithValue(message);
     }
   }
@@ -477,7 +495,15 @@ const assignmentSlice = createSlice({
       .addCase(removeConsultant.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
-      });
+      })
+
+      // Weekly Summary
+      .addCase(fetchWeeklySummary.pending,   (state) => { state.weeklyLoading = true; })
+      .addCase(fetchWeeklySummary.fulfilled, (state, action) => {
+        state.weeklyLoading = false;
+        state.weeklySummary = action.payload.data;
+      })
+      .addCase(fetchWeeklySummary.rejected,  (state) => { state.weeklyLoading = false; });
   },
 });
 

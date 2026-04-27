@@ -142,3 +142,44 @@ export interface ConsultantAssignmentsResponse {
     assignedAt: string;
   }[];
 }
+
+export interface WeeklyTicketItem {
+  _id: string;
+  ticketNumber: string;
+  subject: string;
+  status: string;
+  priority: string;
+  estimationDays?: number;
+  startDate?: string;
+  deliveryEstimationDate?: string;
+  acceptedAt?: string;
+  resolvedAt?: string;
+  closedAt?: string;
+  assignedAt: string;
+  completedAt?: string;
+  assignmentStatus: 'pending' | 'accepted' | 'declined' | 'completed';
+}
+
+export interface ConsultantWeeklySummary {
+  consultant: {
+    _id: string;
+    firstName: string;
+    lastName: string;
+    role: string;
+    status: string;
+  };
+  totalTickets: number;
+  resolvedCount: number;
+  pendingCount: number;
+  totalEstimatedDays: number;
+  totalActualDays: number;
+  availableDaysInWeek: number;
+  tickets: WeeklyTicketItem[];
+}
+
+export interface WeeklyReportResponse {
+  success: boolean;
+  weekStart: string;
+  weekEnd: string;
+  data: ConsultantWeeklySummary[];
+}

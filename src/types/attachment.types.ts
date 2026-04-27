@@ -19,6 +19,7 @@ export interface TicketAttachment {
 }
 
 export interface UploadFileResponse {
+  fileId?: string;
   fileName: string;
   filePath: string;
   fileSize: number;

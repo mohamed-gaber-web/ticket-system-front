@@ -86,6 +86,7 @@ const ConsultantReportsDashboard = lazy(() => import("@/pages/consultant-reports
 const ConsultantListReport = lazy(() => import("@/pages/consultant-reports/ConsultantListReport"));
 const ConsultantDetailReport = lazy(() => import("@/pages/consultant-reports/ConsultantDetailReport"));
 const AssignmentAnalytics = lazy(() => import("@/pages/consultant-reports/AssignmentAnalytics"));
+const WeeklyConsultantReport = lazy(() => import("@/pages/consultant-reports/WeeklyConsultantReport"));
 
 // Config Modules
 const Environments = lazy(() => import("@/pages/environments/Environments"));
@@ -208,8 +209,9 @@ export const routes: RouteObject[] = [
       // Consultant Report Routes
       { path: "/consultant-reports", element: <Lazy><ConsultantReportsDashboard /></Lazy> },
       { path: "/consultant-reports/list", element: <Lazy><ConsultantListReport /></Lazy> },
-      { path: "/consultant-reports/:id", element: <Lazy><ConsultantDetailReport /></Lazy> },
+      { path: "/consultant-reports/weekly", element: <Lazy><WeeklyConsultantReport /></Lazy> },
       { path: "/consultant-reports/analytics", element: <Lazy><AssignmentAnalytics /></Lazy> },
+      { path: "/consultant-reports/:id", element: <Lazy><ConsultantDetailReport /></Lazy> },
 
       // Config Routes
       { path: "/environments", element: <Lazy><Environments /></Lazy> },

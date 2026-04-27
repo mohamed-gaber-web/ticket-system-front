@@ -4,10 +4,11 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Pencil, Trash2, X, Check } from 'lucide-react';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Pencil, Trash2, X, Check, ZoomIn } from 'lucide-react';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
-import type { TicketComment } from '@/types/comment.types';
+import type { TicketComment, CommentImage } from '@/types/comment.types';
 import type { UserType } from '@/types/auth.types';
 
 const MySwal = withReactContent(Swal);
@@ -31,6 +32,7 @@ const CommentItem: React.FC<CommentItemProps> = ({
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedText, setEditedText] = useState(comment.commentText);
+  const [lightboxImage, setLightboxImage] = useState<CommentImage | null>(null);
 
   const isOwnComment = comment.commentByUserId === currentUserId;
   const canSeeInternal = currentUserType !== 'customer';
@@ -180,6 +182,42 @@ const CommentItem: React.FC<CommentItemProps> = ({
             <p className="whitespace-pre-wrap break-words leading-relaxed">{comment.commentText}</p>
           )}
         </div>
+
+        {!isEditing && comment.images && comment.images.length > 0 && (
+          <div className="flex flex-wrap gap-2 pt-1">
+            {comment.images.map((img, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => setLightboxImage(img)}
+                className="relative group block rounded-lg overflow-hidden border border-outline-variant/30 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                title={img.fileName}
+              >
+                <img
+                  src={img.url}
+                  alt={img.fileName}
+                  className="h-20 w-20 object-cover transition-opacity group-hover:opacity-75"
+                />
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
+                  <ZoomIn className="h-5 w-5 text-white drop-shadow" />
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Lightbox */}
+        <Dialog open={!!lightboxImage} onOpenChange={(open) => !open && setLightboxImage(null)}>
+          <DialogContent className="max-w-4xl w-full p-2 bg-black/90 border-none">
+            {lightboxImage && (
+              <img
+                src={lightboxImage.url}
+                alt={lightboxImage.fileName}
+                className="w-full max-h-[80vh] object-contain rounded"
+              />
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </Card>
   );
