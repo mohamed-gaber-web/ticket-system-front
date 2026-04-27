@@ -112,6 +112,7 @@ export const signout = createAsyncThunk(
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('userType');
       localStorage.removeItem('user');
+      localStorage.removeItem('lastActivity');
 
       return null;
     } catch (error: any) {
@@ -120,6 +121,7 @@ export const signout = createAsyncThunk(
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('userType');
       localStorage.removeItem('user');
+      localStorage.removeItem('lastActivity');
 
       return rejectWithValue(
         error.response?.data?.message || 'Failed to signout.'
@@ -244,6 +246,7 @@ const authSlice = createSlice({
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('userType');
       localStorage.removeItem('user');
+      localStorage.removeItem('lastActivity');
     },
   },
   extraReducers: (builder) => {
