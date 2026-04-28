@@ -181,6 +181,7 @@ export interface SubTicketsResponse {
 export interface UpdateTicketData {
   subject?: string;
   description?: string;
+  customer?: string;
   category?: string;
   priority?: 'low' | 'medium' | 'high' | 'critical';
   status?: 'new' | 'assigned' | 'in_progress' | 'resolved' | 'closed' | 'customer_pending' | 'reopened' | 'delivered' | 'tested' | 'not_related';

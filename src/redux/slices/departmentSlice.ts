@@ -15,7 +15,7 @@ interface DepartmentState {
   error: string | null;
   total: number;
   page: number;
-  totalPages: number;
+  pages: number;
 }
 
 const initialState: DepartmentState = {
@@ -25,7 +25,7 @@ const initialState: DepartmentState = {
   error: null,
   total: 0,
   page: 1,
-  totalPages: 0,
+  pages: 0,
 };
 
 export const fetchDepartments = createAsyncThunk(
@@ -142,23 +142,23 @@ const departmentSlice = createSlice({
           state.departments = payload;
           state.total = payload.length;
           state.page = 1;
-          state.totalPages = 1;
+          state.pages = 1;
         } else if (payload.departments) {
           state.departments = payload.departments;
           state.total = payload.total || payload.departments.length;
           state.page = payload.page || 1;
-          state.totalPages = payload.totalPages || 1;
+          state.pages = payload.totalPages || 1;
         } else if (payload.data) {
           if (Array.isArray(payload.data)) {
             state.departments = payload.data;
             state.total = payload.total || payload.data.length;
             state.page = payload.page || 1;
-            state.totalPages = payload.totalPages || 1;
+            state.pages = payload.totalPages || 1;
           } else {
             state.departments = payload.data.departments || [];
             state.total = payload.data.total || 0;
             state.page = payload.data.page || 1;
-            state.totalPages = payload.data.totalPages || 1;
+            state.pages = payload.data.totalPages || 1;
           }
         } else {
           console.error('Unexpected response structure:', payload);

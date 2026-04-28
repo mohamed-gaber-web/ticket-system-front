@@ -15,7 +15,7 @@ interface ServiceTypeState {
   error: string | null;
   total: number;
   page: number;
-  totalPages: number;
+  pages: number;
 }
 
 const initialState: ServiceTypeState = {
@@ -25,7 +25,7 @@ const initialState: ServiceTypeState = {
   error: null,
   total: 0,
   page: 1,
-  totalPages: 0,
+  pages: 0,
 };
 
 export const fetchServiceTypes = createAsyncThunk(
@@ -143,25 +143,25 @@ const serviceTypeSlice = createSlice({
           state.serviceTypes = payload;
           state.total = payload.length;
           state.page = 1;
-          state.totalPages = 1;
+          state.pages = 1;
         } else if (payload.serviceTypes) {
           // If payload has serviceTypes property
           state.serviceTypes = payload.serviceTypes;
           state.total = payload.total || payload.serviceTypes.length;
           state.page = payload.page || 1;
-          state.totalPages = payload.totalPages || 1;
+          state.pages = payload.totalPages || 1;
         } else if (payload.data) {
           // If payload has data property (common backend pattern)
           if (Array.isArray(payload.data)) {
             state.serviceTypes = payload.data;
             state.total = payload.total || payload.data.length;
             state.page = payload.page || 1;
-            state.totalPages = payload.totalPages || 1;
+            state.pages = payload.totalPages || 1;
           } else {
             state.serviceTypes = payload.data.serviceTypes || [];
             state.total = payload.data.total || 0;
             state.page = payload.data.page || 1;
-            state.totalPages = payload.data.totalPages || 1;
+            state.pages = payload.data.totalPages || 1;
           }
         } else {
           console.error('Unexpected response structure:', payload);
