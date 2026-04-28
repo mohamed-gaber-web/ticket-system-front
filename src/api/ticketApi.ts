@@ -12,14 +12,12 @@ import api from './axiosConfig';
 
 // Get all tickets
 export const getTickets = async (params?: TicketQueryParams): Promise<TicketsResponse> => {
-  console.log('Get tickets API params being sent:', params);
   const response = await api.get<TicketsResponse>('/tickets', {
     params,
     headers: {
       'Cache-Control': 'no-cache',
     },
   });
-  console.log('Get tickets API response:', response.data);
   return response.data;
 };
 

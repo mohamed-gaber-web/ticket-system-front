@@ -184,8 +184,22 @@ export const routes: RouteObject[] = [
 
       // Consultant Routes
       { path: "/consultants", element: <Lazy><Consultants /></Lazy> },
-      { path: "/consultants/create", element: <Lazy><CreateConsultant /></Lazy> },
-      { path: "/consultants/edit/:id", element: <Lazy><EditConsultant /></Lazy> },
+      {
+        path: "/consultants/create",
+        element: (
+          <ProtectedRoute allowedUserTypes={["consultant"]}>
+            <Lazy><CreateConsultant /></Lazy>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "/consultants/edit/:id",
+        element: (
+          <ProtectedRoute allowedUserTypes={["consultant"]}>
+            <Lazy><EditConsultant /></Lazy>
+          </ProtectedRoute>
+        ),
+      },
       { path: "/consultants/view/:id", element: <Lazy><ViewConsultant /></Lazy> },
       { path: "/consultants/dashboard", element: <Lazy><ConsultantDashboard /></Lazy> },
 

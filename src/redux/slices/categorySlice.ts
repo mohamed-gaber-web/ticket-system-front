@@ -34,10 +34,8 @@ export const fetchCategories = createAsyncThunk(
   async (params: CategoryQueryParams | undefined, { rejectWithValue }) => {
     try {
       const response = await categoryApi.getCategories(params);
-      console.log('Fetch categories response in thunk:', response);
       return response;
     } catch (error: any) {
-      console.error('Fetch categories error:', error);
       const message = error.response?.data?.message || 'Failed to fetch categories';
       toast.error(message);
       return rejectWithValue(message);
@@ -67,12 +65,9 @@ export const createCategory = createAsyncThunk(
       toast.success('Category created successfully!');
       return response.data;
     } catch (error: any) {
-      console.error('Category creation error:', error);
-      console.error('Error response:', error.response?.data);
       const message = error.response?.data?.message || error.response?.data?.error || 'Failed to create category';
       const details = error.response?.data?.details || error.response?.data?.errors;
       if (details) {
-        console.error('Validation errors:', details);
         toast.error(`${message}: ${JSON.stringify(details)}`);
       } else {
         toast.error(message);

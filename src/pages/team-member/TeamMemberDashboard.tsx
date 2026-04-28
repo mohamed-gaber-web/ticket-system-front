@@ -42,7 +42,6 @@ export default function TeamMemberDashboard() {
         : undefined;
 
     if (teamId) {
-      console.log('🔍 Fetching assignments for team:', teamId, 'member:', memberId);
       dispatch(
         fetchAssignmentsByTeam({
           teamId,
@@ -50,16 +49,14 @@ export default function TeamMemberDashboard() {
         })
       );
     } else if (memberId) {
-      console.log('🔍 No team found; fallback to member assignments:', memberId);
       dispatch(
         fetchAssignmentsByTeamMember({
           memberId,
           params: { isCurrent: true },
         })
       );
-    } else {
-      console.warn('⚠️ No user ID found - cannot fetch assignments');
     }
+
   }, [dispatch, user, userType]);
 
   const handleAccept = async (assignmentId: string) => {

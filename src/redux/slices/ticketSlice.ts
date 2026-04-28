@@ -94,14 +94,10 @@ export const createTicket = createAsyncThunk(
   'tickets/createTicket',
   async (data: CreateTicketData, { rejectWithValue }) => {
     try {
-      console.log('Creating ticket with data:', data);
       const response = await ticketApi.createTicket(data);
-      console.log('Ticket created successfully:', response);
       toast.success('Ticket created successfully!');
       return response.data;
     } catch (error: any) {
-      console.error('Ticket creation error:', error);
-      console.error('Error response:', error.response?.data);
       const message = error.response?.data?.message || 'Failed to create ticket';
       toast.error(message);
       return rejectWithValue(message);
@@ -159,14 +155,10 @@ export const createSubTicket = createAsyncThunk(
   'tickets/createSubTicket',
   async ({ parentId, data }: { parentId: string; data: CreateSubTicketData }, { rejectWithValue }) => {
     try {
-      console.log('Creating sub-ticket with data:', data);
       const response = await ticketApi.createSubTicket(parentId, data);
-      console.log('Sub-ticket created successfully:', response);
       toast.success('Sub-ticket created successfully!');
       return response.data;
     } catch (error: any) {
-      console.error('Sub-ticket creation error:', error);
-      console.error('Error response:', error.response?.data);
       const message = error.response?.data?.message || 'Failed to create sub-ticket';
       toast.error(message);
       return rejectWithValue(message);

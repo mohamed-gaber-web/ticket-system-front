@@ -10,6 +10,9 @@ import withReactContent from 'sweetalert2-react-content';
 
 const MySwal = withReactContent(Swal);
 
+const escapeHtml = (s: string) =>
+  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
 interface AttachmentListProps {
   ticketId: string;
 }
@@ -80,7 +83,7 @@ const AttachmentList: React.FC<AttachmentListProps> = ({ ticketId }) => {
       html: `
         <div class="text-left">
           <p class="mb-2">Are you sure you want to delete:</p>
-          <p class="font-semibold">${fileName}</p>
+          <p class="font-semibold">${escapeHtml(fileName)}</p>
           <p class="mt-3" style="color: #BA1A1A">This action cannot be undone!</p>
         </div>
       `,

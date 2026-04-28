@@ -49,7 +49,7 @@ api.interceptors.request.use(
     return config;
   },
   (error) => {
-    console.error('Request interceptor error:', error);
+    if (import.meta.env.DEV) console.error('Request interceptor error:', error);
     return Promise.reject(error);
   }
 );
@@ -64,7 +64,7 @@ api.interceptors.response.use(
   },
   async (error) => {
     // Skip logging expected "not found" responses — these are handled gracefully by the callers
-    if (error.response?.status !== 404) {
+    if (import.meta.env.DEV && error.response?.status !== 404) {
       console.error('API Error:', {
         status: error.response?.status,
         url: error.config?.url,
@@ -110,7 +110,7 @@ api.interceptors.response.use(
           return api(originalRequest);
         } catch (err) {
           // Refresh token failed - redirect to login
-          console.error('Token refresh failed:', err);
+          if (import.meta.env.DEV) console.error('Token refresh failed:', err);
           const storedUserType = localStorage.getItem('userType');
           localStorage.clear();
           window.location.href = storedUserType === 'tele_sales' ? '/tele-sales/login' : '/signin';
