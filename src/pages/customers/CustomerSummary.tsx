@@ -19,6 +19,8 @@ import {
   CheckCircle2,
   XCircle,
   ExternalLink,
+  Building2,
+  User,
 } from "lucide-react";
 import type { Customer } from "@/types/customer.types";
 import type { Ticket } from "@/types/ticket";
@@ -167,6 +169,8 @@ const PRIORITY_PILL: Record<string, { label: string; pill: string }> = {
   critical: { label: "Critical", pill: "bg-red-500/12 text-red-700"         },
 };
 
+type SearchMode = 'customer' | 'company';
+
 /* ─────────────────────────────────────────────────────────────
    Page
 ───────────────────────────────────────────────────────────── */
@@ -174,21 +178,37 @@ export default function CustomerSummary() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-  const [tickets, setTickets] = useState<Ticket[]>([]);
-  const [ticketsLoading, setTicketsLoading] = useState(false);
+  /* ── Mode ── */
+  const [searchMode, setSearchMode] = useState<SearchMode>('customer');
 
+  /* ── Customer mode state ── */
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Customer[]>([]);
   const [searching, setSearching] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const comboRef = useRef<HTMLDivElement>(null);
 
+  /* ── Company mode state ── */
+  const [selectedCompany, setSelectedCompany] = useState<string | null>(null);
+  const [companyQuery, setCompanyQuery] = useState("");
+  const [companyResults, setCompanyResults] = useState<string[]>([]);
+  const [companySearching, setCompanySearching] = useState(false);
+  const [companyDropdownOpen, setCompanyDropdownOpen] = useState(false);
+
+  /* ── Shared state ── */
+  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [ticketsLoading, setTicketsLoading] = useState(false);
   const [ticketSearch, setTicketSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [tablePage, setTablePage] = useState(1);
   const TABLE_PAGE_SIZE = 20;
 
+  const comboRef = useRef<HTMLDivElement>(null);
+  const companyComboRef = useRef<HTMLDivElement>(null);
+
+  const hasSelection = searchMode === 'customer' ? !!selectedCustomer : !!selectedCompany;
+
+  // Preselect customer from URL
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const id = searchParams.get("customerId");
@@ -196,9 +216,9 @@ export default function CustomerSummary() {
     getCustomerById(id)
       .then((res) => setSelectedCustomer(res.data))
       .catch(() => {});
-  }, []); // intentional mount-only: preselect from URL once
+  }, []);
 
-  // Debounced customer search
+  /* ── Customer search (debounced) ── */
   useEffect(() => {
     if (!query.trim()) {
       setResults([]);
@@ -216,26 +236,54 @@ export default function CustomerSummary() {
     return () => clearTimeout(timer);
   }, [query]);
 
-  // Close dropdown on outside click
+  /* ── Company search (debounced) ── */
+  useEffect(() => {
+    if (!companyQuery.trim()) {
+      setCompanyResults([]);
+      setCompanyDropdownOpen(false);
+      return;
+    }
+    setCompanySearching(true);
+    setCompanyDropdownOpen(true);
+    const timer = setTimeout(() => {
+      getCustomers({ search: companyQuery.trim(), limit: 50 })
+        .then((res) => {
+          // Deduplicate company names
+          const seen = new Set<string>();
+          const names: string[] = [];
+          for (const c of res.data) {
+            if (c.companyName && !seen.has(c.companyName)) {
+              seen.add(c.companyName);
+              names.push(c.companyName);
+            }
+          }
+          setCompanyResults(names);
+        })
+        .catch(() => setCompanyResults([]))
+        .finally(() => setCompanySearching(false));
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [companyQuery]);
+
+  /* ── Close dropdowns on outside click ── */
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (comboRef.current && !comboRef.current.contains(e.target as Node)) {
         setDropdownOpen(false);
+      }
+      if (companyComboRef.current && !companyComboRef.current.contains(e.target as Node)) {
+        setCompanyDropdownOpen(false);
       }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  // Fetch ALL tickets for selected customer (paginate until done)
+  /* ── Fetch tickets for selected customer ── */
   useEffect(() => {
-    if (!selectedCustomer) {
-      setTickets([]);
-      return;
-    }
+    if (searchMode !== 'customer' || !selectedCustomer) return;
     let cancelled = false;
     setTicketsLoading(true);
-
     const fetchAll = async () => {
       let page = 1;
       const all: Ticket[] = [];
@@ -247,15 +295,37 @@ export default function CustomerSummary() {
       }
       return all;
     };
-
     fetchAll()
       .then((all) => { if (!cancelled) setTickets(all); })
       .catch(() => { if (!cancelled) setTickets([]); })
       .finally(() => { if (!cancelled) setTicketsLoading(false); });
-
     return () => { cancelled = true; };
-  }, [selectedCustomer?._id]);
+  }, [selectedCustomer?._id, searchMode]);
 
+  /* ── Fetch tickets for selected company ── */
+  useEffect(() => {
+    if (searchMode !== 'company' || !selectedCompany) return;
+    let cancelled = false;
+    setTicketsLoading(true);
+    const fetchAll = async () => {
+      let page = 1;
+      const all: Ticket[] = [];
+      while (true) {
+        const res = await getTickets({ companyName: selectedCompany, limit: 200, page });
+        all.push(...res.data);
+        if (all.length >= res.total || res.data.length === 0) break;
+        page++;
+      }
+      return all;
+    };
+    fetchAll()
+      .then((all) => { if (!cancelled) setTickets(all); })
+      .catch(() => { if (!cancelled) setTickets([]); })
+      .finally(() => { if (!cancelled) setTicketsLoading(false); });
+    return () => { cancelled = true; };
+  }, [selectedCompany, searchMode]);
+
+  /* ── Stats ── */
   const stats = useMemo(() => {
     const counts = { newCount: 0, inProgressCount: 0, resolvedCount: 0, closedCount: 0, slaBreached: 0 };
     const byPriority = { low: 0, medium: 0, high: 0, critical: 0 };
@@ -265,13 +335,13 @@ export default function CustomerSummary() {
       if (t.status === "resolved")    counts.resolvedCount++;
       if (t.status === "closed")      counts.closedCount++;
       if (t.isSlaBreached)            counts.slaBreached++;
-      if (t.priority in byPriority)   byPriority[t.priority]++;
+      if (t.priority in byPriority)   byPriority[t.priority as keyof typeof byPriority]++;
     }
     const sorted = [...tickets].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
     return { total: tickets.length, ...counts, byPriority, sortedTickets: sorted };
   }, [tickets]);
 
-  // Filtered + paginated ticket list
+  /* ── Filtered + paginated ticket list ── */
   const filteredTickets = useMemo(() => {
     let list = stats.sortedTickets;
     if (statusFilter !== "all") list = list.filter((t) => t.status === statusFilter);
@@ -289,6 +359,7 @@ export default function CustomerSummary() {
   const totalPages = Math.ceil(filteredTickets.length / TABLE_PAGE_SIZE);
   const pagedTickets = filteredTickets.slice((tablePage - 1) * TABLE_PAGE_SIZE, tablePage * TABLE_PAGE_SIZE);
 
+  /* ── Handlers ── */
   const handleSelectCustomer = (customer: Customer) => {
     setSelectedCustomer(customer);
     setQuery("");
@@ -297,12 +368,39 @@ export default function CustomerSummary() {
     setTablePage(1);
     setStatusFilter("all");
     setTicketSearch("");
+    setTickets([]);
+  };
+
+  const handleSelectCompany = (name: string) => {
+    setSelectedCompany(name);
+    setCompanyQuery("");
+    setCompanyDropdownOpen(false);
+    setCompanyResults([]);
+    setTablePage(1);
+    setStatusFilter("all");
+    setTicketSearch("");
+    setTickets([]);
   };
 
   const handleClear = () => {
     setSelectedCustomer(null);
+    setSelectedCompany(null);
     setTickets([]);
     setQuery("");
+    setCompanyQuery("");
+    setTablePage(1);
+    setStatusFilter("all");
+    setTicketSearch("");
+  };
+
+  const handleModeSwitch = (mode: SearchMode) => {
+    if (mode === searchMode) return;
+    setSearchMode(mode);
+    setSelectedCustomer(null);
+    setSelectedCompany(null);
+    setTickets([]);
+    setQuery("");
+    setCompanyQuery("");
     setTablePage(1);
     setStatusFilter("all");
     setTicketSearch("");
@@ -317,17 +415,34 @@ export default function CustomerSummary() {
     { key: "sla",         label: "SLA Breached",   value: stats.slaBreached,     icon: AlertTriangle,  numberColor: "text-red-600",     iconBg: "bg-red-500/10",       iconColor: "text-red-500",     bar: "bg-red-500",      loading: ticketsLoading, idx: 5 },
   ];
 
+  /* ── Customer name helper for company-mode ticket list ── */
+  const getCustomerName = (customer: Ticket['customer']) => {
+    if (!customer) return '—';
+    if (typeof customer === 'object') return customer.contactPerson || customer.companyName || '—';
+    return '—';
+  };
+
   return (
     <div className="p-6 md:p-8 space-y-6 min-h-screen">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="display-sm text-on-surface">Customer Summary</h1>
-          <p className="text-on-surface-variant mt-1">Select a customer to view their ticket statistics</p>
+          <p className="text-on-surface-variant mt-1">
+            {searchMode === 'customer'
+              ? 'Select a customer to view their ticket statistics'
+              : 'Select a company to view all tickets across the company'}
+          </p>
         </div>
-        {selectedCustomer && (
+        {hasSelection && (
           <button
-            onClick={() => navigate(`/tickets?customer=${selectedCustomer._id}`)}
+            onClick={() => {
+              if (searchMode === 'customer' && selectedCustomer) {
+                navigate(`/tickets?customer=${selectedCustomer._id}`);
+              } else if (searchMode === 'company' && selectedCompany) {
+                navigate(`/tickets?companyName=${encodeURIComponent(selectedCompany)}`);
+              }
+            }}
             className="flex items-center gap-1.5 text-sm text-brand-500 hover:text-brand-600 transition-colors"
           >
             View All Tickets
@@ -336,90 +451,209 @@ export default function CustomerSummary() {
         )}
       </div>
 
-      {/* Customer Search Combobox */}
-      <div ref={comboRef} className="relative max-w-lg">
-        {selectedCustomer ? (
-          <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-outline-variant/30 bg-surface-container-lowest shadow-sm">
-            <div className="h-8 w-8 rounded-full bg-brand-100 flex items-center justify-center shrink-0">
-              <span className="text-xs font-bold text-brand-600">
-                {selectedCustomer.companyName.charAt(0).toUpperCase()}
-              </span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-on-surface truncate">{selectedCustomer.companyName}</p>
-              <p className="text-xs text-on-surface-variant truncate">{selectedCustomer.email}</p>
-            </div>
-            <button
-              onClick={handleClear}
-              className="p-1 rounded-lg hover:bg-surface-container-high transition-colors shrink-0"
-            >
-              <X className="h-4 w-4 text-on-surface-variant" />
-            </button>
-          </div>
-        ) : (
-          <div className="relative">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-on-surface-variant pointer-events-none" />
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search customers by name or email..."
-              className="w-full pl-10 pr-10 py-3 rounded-xl border border-outline-variant/30 bg-surface-container-lowest text-sm text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400 transition-all"
-            />
-            {searching && (
-              <Loader2 className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-on-surface-variant animate-spin" />
-            )}
-          </div>
-        )}
-
-        <AnimatePresence>
-          {dropdownOpen && !selectedCustomer && (
-            <motion.div
-              initial={{ opacity: 0, y: -8, scale: 0.97 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -8, scale: 0.97 }}
-              transition={SP_FAST}
-              className="absolute top-full mt-1.5 left-0 right-0 z-50 rounded-xl border border-outline-variant/20 bg-surface-container-lowest shadow-xl overflow-hidden"
-            >
-              {searching ? (
-                <div className="flex items-center gap-2.5 px-4 py-3.5 text-sm text-on-surface-variant">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Searching...
-                </div>
-              ) : results.length === 0 ? (
-                <div className="px-4 py-3.5 text-sm text-on-surface-variant">
-                  {query.trim() ? "No customers found." : "Type to search customers..."}
-                </div>
-              ) : (
-                <ul className="max-h-60 overflow-y-auto divide-y divide-outline-variant/10">
-                  {results.map((customer) => (
-                    <li key={customer._id}>
-                      <button
-                        onClick={() => handleSelectCustomer(customer)}
-                        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-surface-container-high transition-colors"
-                      >
-                        <div className="h-7 w-7 rounded-full bg-brand-100 flex items-center justify-center shrink-0">
-                          <span className="text-xs font-bold text-brand-600">
-                            {customer.companyName.charAt(0).toUpperCase()}
-                          </span>
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-on-surface truncate">{customer.companyName}</p>
-                          <p className="text-xs text-on-surface-variant truncate">{customer.email}</p>
-                        </div>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
+      {/* Mode toggle */}
+      <div className="flex items-center gap-1 p-1 rounded-xl bg-surface-container-low w-fit">
+        <button
+          onClick={() => handleModeSwitch('customer')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+            searchMode === 'customer'
+              ? 'bg-surface-container-lowest text-on-surface shadow-sm'
+              : 'text-on-surface-variant hover:text-on-surface'
+          }`}
+        >
+          <User className="h-4 w-4" />
+          By Customer
+        </button>
+        <button
+          onClick={() => handleModeSwitch('company')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+            searchMode === 'company'
+              ? 'bg-surface-container-lowest text-on-surface shadow-sm'
+              : 'text-on-surface-variant hover:text-on-surface'
+          }`}
+        >
+          <Building2 className="h-4 w-4" />
+          By Company
+        </button>
       </div>
+
+      {/* Search area */}
+      <AnimatePresence mode="wait">
+        {searchMode === 'customer' ? (
+          <motion.div
+            key="customer-search"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={SP_FAST}
+            ref={comboRef}
+            className="relative max-w-lg"
+          >
+            {selectedCustomer ? (
+              <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-outline-variant/30 bg-surface-container-lowest shadow-sm">
+                <div className="h-8 w-8 rounded-full bg-brand-100 flex items-center justify-center shrink-0">
+                  <span className="text-xs font-bold text-brand-600">
+                    {selectedCustomer.companyName.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-on-surface truncate">{selectedCustomer.companyName}</p>
+                  <p className="text-xs text-on-surface-variant truncate">{selectedCustomer.email}</p>
+                </div>
+                <button
+                  onClick={handleClear}
+                  className="p-1 rounded-lg hover:bg-surface-container-high transition-colors shrink-0"
+                >
+                  <X className="h-4 w-4 text-on-surface-variant" />
+                </button>
+              </div>
+            ) : (
+              <div className="relative">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-on-surface-variant pointer-events-none" />
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search customers by name or email..."
+                  className="w-full pl-10 pr-10 py-3 rounded-xl border border-outline-variant/30 bg-surface-container-lowest text-sm text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400 transition-all"
+                />
+                {searching && (
+                  <Loader2 className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-on-surface-variant animate-spin" />
+                )}
+              </div>
+            )}
+
+            <AnimatePresence>
+              {dropdownOpen && !selectedCustomer && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8, scale: 0.97 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -8, scale: 0.97 }}
+                  transition={SP_FAST}
+                  className="absolute top-full mt-1.5 left-0 right-0 z-50 rounded-xl border border-outline-variant/20 bg-surface-container-lowest shadow-xl overflow-hidden"
+                >
+                  {searching ? (
+                    <div className="flex items-center gap-2.5 px-4 py-3.5 text-sm text-on-surface-variant">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Searching...
+                    </div>
+                  ) : results.length === 0 ? (
+                    <div className="px-4 py-3.5 text-sm text-on-surface-variant">
+                      {query.trim() ? "No customers found." : "Type to search customers..."}
+                    </div>
+                  ) : (
+                    <ul className="max-h-60 overflow-y-auto divide-y divide-outline-variant/10">
+                      {results.map((customer) => (
+                        <li key={customer._id}>
+                          <button
+                            onClick={() => handleSelectCustomer(customer)}
+                            className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-surface-container-high transition-colors"
+                          >
+                            <div className="h-7 w-7 rounded-full bg-brand-100 flex items-center justify-center shrink-0">
+                              <span className="text-xs font-bold text-brand-600">
+                                {customer.companyName.charAt(0).toUpperCase()}
+                              </span>
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-on-surface truncate">{customer.companyName}</p>
+                              <p className="text-xs text-on-surface-variant truncate">{customer.email}</p>
+                            </div>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="company-search"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={SP_FAST}
+            ref={companyComboRef}
+            className="relative max-w-lg"
+          >
+            {selectedCompany ? (
+              <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-outline-variant/30 bg-surface-container-lowest shadow-sm">
+                <div className="h-8 w-8 rounded-full bg-violet-100 flex items-center justify-center shrink-0">
+                  <Building2 className="h-4 w-4 text-violet-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-on-surface truncate">{selectedCompany}</p>
+                  <p className="text-xs text-on-surface-variant">Company — all users included</p>
+                </div>
+                <button
+                  onClick={handleClear}
+                  className="p-1 rounded-lg hover:bg-surface-container-high transition-colors shrink-0"
+                >
+                  <X className="h-4 w-4 text-on-surface-variant" />
+                </button>
+              </div>
+            ) : (
+              <div className="relative">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-on-surface-variant pointer-events-none" />
+                <input
+                  type="text"
+                  value={companyQuery}
+                  onChange={(e) => setCompanyQuery(e.target.value)}
+                  placeholder="Search by company name..."
+                  className="w-full pl-10 pr-10 py-3 rounded-xl border border-outline-variant/30 bg-surface-container-lowest text-sm text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-400 transition-all"
+                />
+                {companySearching && (
+                  <Loader2 className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-on-surface-variant animate-spin" />
+                )}
+              </div>
+            )}
+
+            <AnimatePresence>
+              {companyDropdownOpen && !selectedCompany && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8, scale: 0.97 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -8, scale: 0.97 }}
+                  transition={SP_FAST}
+                  className="absolute top-full mt-1.5 left-0 right-0 z-50 rounded-xl border border-outline-variant/20 bg-surface-container-lowest shadow-xl overflow-hidden"
+                >
+                  {companySearching ? (
+                    <div className="flex items-center gap-2.5 px-4 py-3.5 text-sm text-on-surface-variant">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Searching...
+                    </div>
+                  ) : companyResults.length === 0 ? (
+                    <div className="px-4 py-3.5 text-sm text-on-surface-variant">
+                      {companyQuery.trim() ? "No companies found." : "Type to search companies..."}
+                    </div>
+                  ) : (
+                    <ul className="max-h-60 overflow-y-auto divide-y divide-outline-variant/10">
+                      {companyResults.map((name) => (
+                        <li key={name}>
+                          <button
+                            onClick={() => handleSelectCompany(name)}
+                            className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-surface-container-high transition-colors"
+                          >
+                            <div className="h-7 w-7 rounded-full bg-violet-100 flex items-center justify-center shrink-0">
+                              <Building2 className="h-3.5 w-3.5 text-violet-600" />
+                            </div>
+                            <p className="text-sm font-medium text-on-surface truncate">{name}</p>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Main content */}
       <AnimatePresence mode="wait">
-        {!selectedCustomer ? (
+        {!hasSelection ? (
           <motion.div
             key="empty"
             initial={{ opacity: 0 }}
@@ -428,52 +662,76 @@ export default function CustomerSummary() {
             className="flex flex-col items-center justify-center py-24 gap-4"
           >
             <div className="p-5 rounded-2xl bg-surface-container-low">
-              <Users className="h-10 w-10 text-on-surface-variant/50" />
+              {searchMode === 'company'
+                ? <Building2 className="h-10 w-10 text-on-surface-variant/50" />
+                : <Users className="h-10 w-10 text-on-surface-variant/50" />
+              }
             </div>
             <div className="text-center">
-              <p className="text-base font-semibold text-on-surface">Select a Customer</p>
+              <p className="text-base font-semibold text-on-surface">
+                {searchMode === 'company' ? 'Select a Company' : 'Select a Customer'}
+              </p>
               <p className="text-sm text-on-surface-variant mt-1">
-                Choose a customer above to view their ticket summary
+                {searchMode === 'company'
+                  ? 'Choose a company above to view all tickets from all users in that company'
+                  : 'Choose a customer above to view their ticket summary'}
               </p>
             </div>
           </motion.div>
         ) : (
           <motion.div
-            key={selectedCustomer._id}
+            key={searchMode === 'customer' ? selectedCustomer?._id : selectedCompany}
             initial="hidden"
             animate="visible"
             exit={{ opacity: 0 }}
             className="space-y-6"
           >
-            {/* Customer info strip */}
+            {/* Info strip */}
             <motion.div
               variants={sectionVariants}
               custom={0}
               className="flex flex-wrap items-center gap-4 p-4 rounded-2xl bg-surface-container-lowest border border-outline-variant/10 shadow-sm"
             >
-              <div className="h-12 w-12 rounded-2xl bg-brand-100 flex items-center justify-center shrink-0">
-                <span className="text-lg font-extrabold text-brand-600">
-                  {selectedCustomer.companyName.charAt(0).toUpperCase()}
-                </span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-base font-bold text-on-surface">{selectedCustomer.companyName}</p>
-                <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-0.5">
-                  <p className="text-xs text-on-surface-variant">{selectedCustomer.email}</p>
-                  {selectedCustomer.contactPerson && (
-                    <p className="text-xs text-on-surface-variant">{selectedCustomer.contactPerson}</p>
-                  )}
-                </div>
-              </div>
-              <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize ${
-                selectedCustomer.status === "active"
-                  ? "bg-emerald-500/12 text-emerald-700"
-                  : selectedCustomer.status === "inactive"
-                  ? "bg-slate-400/20 text-slate-600"
-                  : "bg-red-500/12 text-red-600"
-              }`}>
-                {selectedCustomer.status}
-              </span>
+              {searchMode === 'customer' && selectedCustomer ? (
+                <>
+                  <div className="h-12 w-12 rounded-2xl bg-brand-100 flex items-center justify-center shrink-0">
+                    <span className="text-lg font-extrabold text-brand-600">
+                      {selectedCustomer.companyName.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-base font-bold text-on-surface">{selectedCustomer.companyName}</p>
+                    <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-0.5">
+                      <p className="text-xs text-on-surface-variant">{selectedCustomer.email}</p>
+                      {selectedCustomer.contactPerson && (
+                        <p className="text-xs text-on-surface-variant">{selectedCustomer.contactPerson}</p>
+                      )}
+                    </div>
+                  </div>
+                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize ${
+                    selectedCustomer.status === "active"
+                      ? "bg-emerald-500/12 text-emerald-700"
+                      : selectedCustomer.status === "inactive"
+                      ? "bg-slate-400/20 text-slate-600"
+                      : "bg-red-500/12 text-red-600"
+                  }`}>
+                    {selectedCustomer.status}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <div className="h-12 w-12 rounded-2xl bg-violet-100 flex items-center justify-center shrink-0">
+                    <Building2 className="h-6 w-6 text-violet-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-base font-bold text-on-surface">{selectedCompany}</p>
+                    <p className="text-xs text-on-surface-variant mt-0.5">All users and admins in this company</p>
+                  </div>
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-violet-500/12 text-violet-700">
+                    Company View
+                  </span>
+                </>
+              )}
             </motion.div>
 
             {/* Stat cards */}
@@ -533,7 +791,6 @@ export default function CustomerSummary() {
                       </span>
                     </p>
                     <div className="flex items-center gap-2 flex-wrap">
-                      {/* Inline search */}
                       <div className="relative">
                         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-on-surface-variant pointer-events-none" />
                         <input
@@ -544,7 +801,6 @@ export default function CustomerSummary() {
                           className="pl-8 pr-3 py-1.5 rounded-lg border border-outline-variant/30 bg-surface text-xs text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-brand-500/30 w-44"
                         />
                       </div>
-                      {/* Status filter */}
                       <select
                         value={statusFilter}
                         onChange={(e) => { setStatusFilter(e.target.value); setTablePage(1); }}
@@ -571,7 +827,11 @@ export default function CustomerSummary() {
                   </div>
                 ) : filteredTickets.length === 0 ? (
                   <div className="flex items-center justify-center py-12 text-sm text-on-surface-variant">
-                    {stats.total === 0 ? "No tickets found for this customer." : "No tickets match your filters."}
+                    {stats.total === 0
+                      ? searchMode === 'company'
+                        ? "No tickets found for this company."
+                        : "No tickets found for this customer."
+                      : "No tickets match your filters."}
                   </div>
                 ) : (
                   <>
@@ -596,6 +856,11 @@ export default function CustomerSummary() {
                               {ticket.ticketNumber}
                             </span>
                             <p className="flex-1 text-sm text-on-surface truncate">{ticket.subject}</p>
+                            {searchMode === 'company' && (
+                              <span className="text-xs text-on-surface-variant shrink-0 hidden lg:inline truncate max-w-[120px]">
+                                {getCustomerName(ticket.customer)}
+                              </span>
+                            )}
                             <span className={`px-2 py-0.5 rounded-full text-xs font-semibold shrink-0 ${sc.pill}`}>
                               {sc.label}
                             </span>
@@ -610,7 +875,6 @@ export default function CustomerSummary() {
                       })}
                     </motion.ul>
 
-                    {/* Pagination */}
                     {totalPages > 1 && (
                       <div className="flex items-center justify-between px-5 py-3 border-t border-outline-variant/10 bg-surface-container-low/40">
                         <span className="text-xs text-on-surface-variant">

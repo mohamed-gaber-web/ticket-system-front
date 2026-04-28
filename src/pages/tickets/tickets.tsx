@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { MultiSelect } from '@/components/ui/custom-select';
 import { fetchSources } from '@/redux/slices/sourceSlice';
+import { fetchModules } from '@/redux/slices/moduleSlice';
 import { Plus, Search, Download, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, FileText, FileSpreadsheet, SlidersHorizontal, Calendar, X, MoreVertical } from 'lucide-react';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
@@ -35,6 +36,7 @@ export default function Tickets() {
   const { companies } = useAppSelector((state) => state.companies);
   const { departments } = useAppSelector((state) => state.departments);
   const { serviceTypes } = useAppSelector((state) => state.serviceTypes);
+  const { modules } = useAppSelector((state) => state.modules);
 
   // Returns the scoping params based on customer role:
   // - company_admin → filter by companyName (sees all company tickets)
@@ -65,6 +67,7 @@ export default function Tickets() {
   const serviceTypeFilter = spArray('serviceType');
   const customerFilter    = spArray('customer');
   const companyFilter     = spArray('company');
+  const moduleFilter      = spArray('module');
   const startDate         = sp('startDate');
   const createdDateFrom   = sp('createdFrom');
   const createdDateTo     = sp('createdTo');
@@ -104,6 +107,7 @@ export default function Tickets() {
     serviceTypeFilter.length > 0,
     customerFilter.length > 0,
     companyFilter.length > 0,
+    moduleFilter.length > 0,
     Boolean(startDate),
     Boolean(createdDateFrom),
     Boolean(createdDateTo),
@@ -117,11 +121,12 @@ export default function Tickets() {
   // Supporting data — fetch once on mount
   useEffect(() => {
     dispatch(fetchConsultants({ limit: 1000 }));
-    dispatch(fetchSources({ isActive: true }));
+    dispatch(fetchSources({ isActive: true, limit: 1000 }));
     dispatch(fetchCustomers({ limit: 1000 }));
     dispatch(fetchCompanies({ limit: 1000 }));
-    dispatch(fetchDepartments());
-    dispatch(fetchServiceTypes());
+    dispatch(fetchDepartments({ limit: 1000 }));
+    dispatch(fetchServiceTypes({ limit: 1000 }));
+    dispatch(fetchModules({ limit: 1000 }));
   }, []);
 
   // Fetch tickets whenever URL params or user identity changes
@@ -136,6 +141,7 @@ export default function Tickets() {
     if (serviceTypeFilter.length) params.serviceType       = serviceTypeFilter.join(',');
     if (customerFilter.length)   params.customer           = customerFilter.join(',');
     if (companyFilter.length)    params.companyName        = companyFilter.join(',');
+    if (moduleFilter.length)     params.scope              = moduleFilter.join(',');
     if (startDate)               params.startDate          = startDate;
     if (createdDateFrom)         params.createdDateFrom    = createdDateFrom;
     if (createdDateTo)           params.createdDateTo      = createdDateTo;
@@ -157,6 +163,7 @@ export default function Tickets() {
     if (serviceTypeFilter.length) params.serviceType       = serviceTypeFilter.join(',');
     if (customerFilter.length)   params.customer           = customerFilter.join(',');
     if (companyFilter.length)    params.companyName        = companyFilter.join(',');
+    if (moduleFilter.length)     params.scope              = moduleFilter.join(',');
     if (startDate)               params.startDate          = startDate;
     if (createdDateFrom)         params.createdDateFrom    = createdDateFrom;
     if (createdDateTo)           params.createdDateTo      = createdDateTo;
@@ -212,6 +219,7 @@ export default function Tickets() {
     serviceTypeFilter.length > 0,
     customerFilter.length > 0,
     companyFilter.length > 0,
+    moduleFilter.length > 0,
     Boolean(startDate),
     Boolean(createdDateFrom),
     Boolean(createdDateTo),
@@ -290,6 +298,7 @@ export default function Tickets() {
     if (serviceTypeFilter.length) params.serviceType       = serviceTypeFilter.join(',');
     if (customerFilter.length)   params.customer           = customerFilter.join(',');
     if (companyFilter.length)    params.companyName        = companyFilter.join(',');
+    if (moduleFilter.length)     params.scope              = moduleFilter.join(',');
     if (startDate)               params.startDate          = startDate;
     if (createdDateFrom)         params.createdDateFrom    = createdDateFrom;
     if (createdDateTo)           params.createdDateTo      = createdDateTo;
@@ -527,7 +536,7 @@ export default function Tickets() {
               {/* Dropdowns Row */}
               <div>
                 <p className="text-xs font-medium text-on-surface-variant mb-3">Filter by</p>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3">
                   <MultiSelect
                     values={sourceFilter}
                     onChange={(v) => updateFilters({ source: v })}
@@ -563,6 +572,12 @@ export default function Tickets() {
                     onChange={(v) => updateFilters({ company: v })}
                     label="Company"
                     options={companies?.map((c) => ({ value: c.name, label: c.name })) ?? []}
+                  />
+                  <MultiSelect
+                    values={moduleFilter}
+                    onChange={(v) => updateFilters({ module: v })}
+                    label="Module"
+                    options={modules?.map((m) => ({ value: m._id, label: m.name })) ?? []}
                   />
                 </div>
               </div>

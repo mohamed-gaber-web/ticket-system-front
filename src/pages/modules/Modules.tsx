@@ -10,40 +10,47 @@ import ModuleTable from './ModuleTable';
 import ModuleFormDialog from './ModuleFormDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, RefreshCw } from 'lucide-react';
+import { Plus, Search, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { CustomSelect } from '@/components/ui/custom-select';
 import type { Module, CreateModuleData, UpdateModuleData } from '@/types/module.types';
 
+const PAGE_LIMIT = 10;
+
 export default function Modules() {
   const dispatch = useAppDispatch();
-  const { modules, loading, total } = useAppSelector((state) => state.modules);
+  const { modules, loading, total, pages } = useAppSelector((state) => state.modules);
   const isAdmin = useAppSelector((state) => state.auth.consultantRole) === 'admin';
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
+  const [currentPage, setCurrentPage] = useState(1);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingModule, setEditingModule] = useState<Module | null>(null);
 
   useEffect(() => {
-    loadModules();
-  }, []);
+    loadModules(currentPage);
+  }, [currentPage]);
 
-  const loadModules = () => {
-    const params: any = {};
+  const loadModules = (page = 1) => {
+    const params: any = { page, limit: PAGE_LIMIT };
     if (searchTerm) params.search = searchTerm;
     if (statusFilter !== '') params.isActive = statusFilter === 'active';
-
     dispatch(fetchModules(params));
   };
 
   const handleSearch = () => {
-    loadModules();
+    setCurrentPage(1);
+    const params: any = { page: 1, limit: PAGE_LIMIT };
+    if (searchTerm) params.search = searchTerm;
+    if (statusFilter !== '') params.isActive = statusFilter === 'active';
+    dispatch(fetchModules(params));
   };
 
   const handleRefresh = () => {
     setSearchTerm('');
     setStatusFilter('');
-    dispatch(fetchModules());
+    setCurrentPage(1);
+    dispatch(fetchModules({ page: 1, limit: PAGE_LIMIT }));
   };
 
   const handleCreate = () => {
@@ -58,6 +65,7 @@ export default function Modules() {
 
   const handleDelete = async (id: string) => {
     await dispatch(deleteModule(id)).unwrap();
+    loadModules(currentPage);
   };
 
   const handleFormSubmit = async (data: CreateModuleData | UpdateModuleData) => {
@@ -69,6 +77,7 @@ export default function Modules() {
       }
       setIsDialogOpen(false);
       setEditingModule(null);
+      loadModules(currentPage);
     } catch (error) {
       // Error is handled in the slice with toast
     }
@@ -78,6 +87,19 @@ export default function Modules() {
     setIsDialogOpen(false);
     setEditingModule(null);
   };
+
+  const getPageNumbers = () => {
+    const pageNumbers: number[] = [];
+    const maxVisible = 5;
+    let start = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+    const end = Math.min(pages, start + maxVisible - 1);
+    start = Math.max(1, end - maxVisible + 1);
+    for (let i = start; i <= end; i++) pageNumbers.push(i);
+    return pageNumbers;
+  };
+
+  const startItem = (currentPage - 1) * PAGE_LIMIT + 1;
+  const endItem = Math.min(currentPage * PAGE_LIMIT, total);
 
   return (
     <div className="p-8 space-y-8">
@@ -137,8 +159,8 @@ export default function Modules() {
 
         {/* Results count */}
         <div className="mt-4 text-sm text-on-surface-variant">
-          Showing <span className="font-semibold">{modules.length}</span> of{' '}
-          <span className="font-semibold">{total}</span> modules
+          Showing <span className="font-semibold text-on-surface">{total === 0 ? 0 : startItem}–{endItem}</span> of{' '}
+          <span className="font-semibold text-on-surface">{total}</span> modules
         </div>
       </div>
 
@@ -149,6 +171,45 @@ export default function Modules() {
         onDelete={handleDelete}
         loading={loading}
       />
+
+      {/* Pagination */}
+      {total > 0 && pages > 1 && (
+        <div className="flex items-center justify-center gap-1.5">
+          <button
+            onClick={() => setCurrentPage((p) => p - 1)}
+            disabled={currentPage <= 1}
+            aria-label="Previous page"
+            className="p-2 rounded-[0.75rem] bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-high disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+
+          {getPageNumbers().map((pageNum) => (
+            <button
+              key={pageNum}
+              onClick={() => setCurrentPage(pageNum)}
+              aria-label={`Page ${pageNum}`}
+              aria-current={pageNum === currentPage ? 'page' : undefined}
+              className={`min-w-[36px] h-9 rounded-[0.75rem] text-sm font-semibold transition-colors ${
+                pageNum === currentPage
+                  ? 'bg-primary-fixed text-on-primary-fixed'
+                  : 'bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
+              }`}
+            >
+              {pageNum}
+            </button>
+          ))}
+
+          <button
+            onClick={() => setCurrentPage((p) => p + 1)}
+            disabled={currentPage >= pages}
+            aria-label="Next page"
+            className="p-2 rounded-[0.75rem] bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-high disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       {/* Form Dialog */}
       <ModuleFormDialog

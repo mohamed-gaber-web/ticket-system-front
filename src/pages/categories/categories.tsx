@@ -5,40 +5,43 @@ import { fetchCategories, deleteCategory } from '@/redux/slices/categorySlice';
 import CategoryTable from './components/CategoryTable';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, RefreshCw } from 'lucide-react';
+import { Plus, Search, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import './categories.css';
+
+const PAGE_LIMIT = 10;
 
 export default function CategoryList() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const { categories, loading, total } = useAppSelector((state) => state.categories);
+  const { categories, loading, total, pages } = useAppSelector((state) => state.categories);
   const isAdmin = useAppSelector((state) => state.auth.consultantRole) === 'admin';
 
   const [searchTerm, setSearchTerm] = useState('');
-
-  console.log('CategoryList render - categories:', categories);
-  console.log('CategoryList render - loading:', loading);
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
-    console.log('CategoryList useEffect - fetching categories');
-    loadCategories();
-  }, []);
+    loadCategories(currentPage);
+  }, [currentPage]);
 
-  const loadCategories = () => {
-    const params: any = {};
+  const loadCategories = (page = 1) => {
+    const params: any = { page, limit: PAGE_LIMIT };
     if (searchTerm) params.search = searchTerm;
     dispatch(fetchCategories(params));
   };
 
   const handleSearch = () => {
-    loadCategories();
+    setCurrentPage(1);
+    const params: any = { page: 1, limit: PAGE_LIMIT };
+    if (searchTerm) params.search = searchTerm;
+    dispatch(fetchCategories(params));
   };
 
   const handleDelete = async (id: string) => {
     try {
       await dispatch(deleteCategory(id)).unwrap();
       toast.success('Category deleted successfully!');
+      loadCategories(currentPage);
     } catch (error: any) {
       toast.error(error.message || 'Failed to delete category');
     }
@@ -46,8 +49,22 @@ export default function CategoryList() {
 
   const handleRefresh = () => {
     setSearchTerm('');
-    dispatch(fetchCategories({}));
+    setCurrentPage(1);
+    dispatch(fetchCategories({ page: 1, limit: PAGE_LIMIT }));
   };
+
+  const getPageNumbers = () => {
+    const pageNumbers: number[] = [];
+    const maxVisible = 5;
+    let start = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+    const end = Math.min(pages, start + maxVisible - 1);
+    start = Math.max(1, end - maxVisible + 1);
+    for (let i = start; i <= end; i++) pageNumbers.push(i);
+    return pageNumbers;
+  };
+
+  const startItem = (currentPage - 1) * PAGE_LIMIT + 1;
+  const endItem = Math.min(currentPage * PAGE_LIMIT, total);
 
   return (
     <div className="p-8 space-y-8">
@@ -95,13 +112,52 @@ export default function CategoryList() {
 
         {/* Results count */}
         <div className="mt-4 text-sm text-on-surface-variant">
-          Showing <span className="font-semibold">{categories.length}</span> of{' '}
-          <span className="font-semibold">{total}</span> categories
+          Showing <span className="font-semibold text-on-surface">{total === 0 ? 0 : startItem}–{endItem}</span> of{' '}
+          <span className="font-semibold text-on-surface">{total}</span> categories
         </div>
       </div>
 
       {/* Category Table */}
       <CategoryTable categories={categories} onDelete={handleDelete} loading={loading} />
+
+      {/* Pagination */}
+      {total > 0 && pages > 1 && (
+        <div className="flex items-center justify-center gap-1.5">
+          <button
+            onClick={() => setCurrentPage((p) => p - 1)}
+            disabled={currentPage <= 1}
+            aria-label="Previous page"
+            className="p-2 rounded-[0.75rem] bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-high disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+
+          {getPageNumbers().map((pageNum) => (
+            <button
+              key={pageNum}
+              onClick={() => setCurrentPage(pageNum)}
+              aria-label={`Page ${pageNum}`}
+              aria-current={pageNum === currentPage ? 'page' : undefined}
+              className={`min-w-[36px] h-9 rounded-[0.75rem] text-sm font-semibold transition-colors ${
+                pageNum === currentPage
+                  ? 'bg-primary-fixed text-on-primary-fixed'
+                  : 'bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
+              }`}
+            >
+              {pageNum}
+            </button>
+          ))}
+
+          <button
+            onClick={() => setCurrentPage((p) => p + 1)}
+            disabled={currentPage >= pages}
+            aria-label="Next page"
+            className="p-2 rounded-[0.75rem] bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-high disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -31,6 +31,7 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
   const { userType, user } = useAppSelector((state) => state.auth);
   const { loading: ticketLoading } = useAppSelector((state) => state.tickets);
   const { consultants } = useAppSelector((state) => state.consultants);
+  const { customers } = useAppSelector((state) => state.customers);
   const isConsultant = userType === 'consultant';
   const isCustomer = userType === 'customer';
 
@@ -149,6 +150,12 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
     if (!ticket.acceptedBy || !user) return false;
     const acceptedById = typeof ticket.acceptedBy === 'string' ? ticket.acceptedBy : ticket.acceptedBy._id;
     return acceptedById === user._id;
+  };
+
+  const resolveCustomer = (customer: Ticket['customer']) => {
+    if (!customer) return null;
+    if (typeof customer === 'object') return customer;
+    return customers.find((c) => c._id === customer) ?? null;
   };
 
   const getCategoryName = (category: string | Category | undefined): string | null => {
@@ -338,13 +345,12 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                   </TableCell>
                   {/* Customer (contact person) */}
                   <TableCell>
-                    {ticket.customer && typeof ticket.customer === 'object' ? (
-                      <span className="text-sm font-medium text-on-surface">
-                        {ticket.customer.contactPerson || <span className="text-on-surface-variant/40">&mdash;</span>}
-                      </span>
-                    ) : (
-                      <span className="text-on-surface-variant/40">&mdash;</span>
-                    )}
+                    {(() => {
+                      const c = resolveCustomer(ticket.customer);
+                      return c?.contactPerson
+                        ? <span className="text-sm font-medium text-on-surface">{c.contactPerson}</span>
+                        : <span className="text-on-surface-variant/40">&mdash;</span>;
+                    })()}
                   </TableCell>
                   {/* Assignee */}
                   <TableCell>
@@ -378,11 +384,12 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                   </TableCell>
                   {/* Company */}
                   <TableCell>
-                    {ticket.customer && typeof ticket.customer === 'object' ? (
-                      <span className="text-sm text-on-surface">{ticket.customer.companyName}</span>
-                    ) : (
-                      <span className="text-on-surface-variant/40">&mdash;</span>
-                    )}
+                    {(() => {
+                      const c = resolveCustomer(ticket.customer);
+                      return c?.companyName
+                        ? <span className="text-sm text-on-surface">{c.companyName}</span>
+                        : <span className="text-on-surface-variant/40">&mdash;</span>;
+                    })()}
                   </TableCell>
                   {/* Category */}
                   {isConsultant && (
@@ -510,11 +517,12 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                   </TableCell>
                   {/* Customer Email */}
                   <TableCell>
-                    {ticket.customer && typeof ticket.customer === 'object' && ticket.customer.email ? (
-                      <span className="text-sm text-on-surface">{ticket.customer.email}</span>
-                    ) : (
-                      <span className="text-on-surface-variant/40">&mdash;</span>
-                    )}
+                    {(() => {
+                      const c = resolveCustomer(ticket.customer);
+                      return c?.email
+                        ? <span className="text-sm text-on-surface">{c.email}</span>
+                        : <span className="text-on-surface-variant/40">&mdash;</span>;
+                    })()}
                   </TableCell>
                   {!isCustomer && (
                     <TableCell className={`sticky right-0 z-10 shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.08)] ${isSubTicket ? 'bg-primary-fixed/20' : 'bg-surface-container-lowest'}`}>

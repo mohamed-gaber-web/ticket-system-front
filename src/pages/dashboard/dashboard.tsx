@@ -191,24 +191,14 @@ function SkeletonRow({ delay = 0 }: { delay?: number }) {
 ───────────────────────────────────────────────────────────── */
 function getStatusCfg(status: string) {
   switch (status) {
-    case "closed":
-    case "resolved":
+    case "new":
       return {
-        Icon: CheckCircle2,
-        color: "text-emerald-600",
-        bg: "bg-emerald-500/10",
-        dot: "bg-emerald-500",
-        pill: "bg-emerald-500/12 text-emerald-700",
-        label: status === "resolved" ? "Resolved" : "Closed",
-      };
-    case "in_progress":
-      return {
-        Icon: Activity,
-        color: "text-brand-400",
-        bg: "bg-brand-100",
-        dot: "bg-brand-400",
-        pill: "bg-brand-100 text-brand-600",
-        label: "In Progress",
+        Icon: AlertTriangle,
+        color: "text-yellow-600",
+        bg: "bg-yellow-100",
+        dot: "bg-yellow-400",
+        pill: "bg-yellow-100 text-yellow-700",
+        label: "New",
       };
     case "assigned":
       return {
@@ -219,6 +209,69 @@ function getStatusCfg(status: string) {
         pill: "bg-accent-orange-100 text-accent-orange-600",
         label: "Assigned",
       };
+    case "in_progress":
+      return {
+        Icon: Activity,
+        color: "text-brand-400",
+        bg: "bg-brand-100",
+        dot: "bg-brand-400",
+        pill: "bg-brand-100 text-brand-600",
+        label: "In Progress",
+      };
+    case "customer_pending":
+      return {
+        Icon: Clock,
+        color: "text-purple-600",
+        bg: "bg-purple-100",
+        dot: "bg-purple-500",
+        pill: "bg-purple-100 text-purple-700",
+        label: "Cust. Pending",
+      };
+    case "resolved":
+      return {
+        Icon: CheckCircle2,
+        color: "text-emerald-600",
+        bg: "bg-emerald-500/10",
+        dot: "bg-emerald-400",
+        pill: "bg-emerald-500/12 text-emerald-700",
+        label: "Resolved",
+      };
+    case "tested":
+      return {
+        Icon: FlaskConical,
+        color: "text-cyan-600",
+        bg: "bg-cyan-100",
+        dot: "bg-cyan-500",
+        pill: "bg-cyan-100 text-cyan-700",
+        label: "Tested",
+      };
+    case "delivered":
+      return {
+        Icon: PackageCheck,
+        color: "text-teal-600",
+        bg: "bg-teal-100",
+        dot: "bg-teal-500",
+        pill: "bg-teal-100 text-teal-700",
+        label: "Delivered",
+      };
+    case "closed":
+      return {
+        Icon: CheckCircle2,
+        color: "text-emerald-700",
+        bg: "bg-emerald-500/10",
+        dot: "bg-emerald-600",
+        pill: "bg-emerald-500/12 text-emerald-800",
+        label: "Closed",
+      };
+    case "not_related":
+      return {
+        Icon: Ban,
+        color: "text-slate-500",
+        bg: "bg-slate-100",
+        dot: "bg-slate-400",
+        pill: "bg-slate-100 text-slate-600",
+        label: "Not Related",
+      };
     default:
       return {
         Icon: AlertTriangle,
@@ -226,7 +279,7 @@ function getStatusCfg(status: string) {
         bg: "bg-yellow-100",
         dot: "bg-yellow-400",
         pill: "bg-yellow-100 text-yellow-700",
-        label: "New",
+        label: status,
       };
   }
 }

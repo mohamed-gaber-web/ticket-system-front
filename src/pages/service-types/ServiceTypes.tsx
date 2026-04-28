@@ -10,41 +10,47 @@ import ServiceTypeTable from './ServiceTypeTable';
 import ServiceTypeFormDialog from './ServiceTypeFormDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, RefreshCw } from 'lucide-react';
+import { Plus, Search, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { CustomSelect } from '@/components/ui/custom-select';
 import type { ServiceType, CreateServiceTypeDto, UpdateServiceTypeDto } from '@/types/serviceType.types';
 
+const PAGE_LIMIT = 10;
+
 export default function ServiceTypes() {
   const dispatch = useAppDispatch();
-  const { serviceTypes, loading, total } = useAppSelector((state) => state.serviceTypes);
+  const { serviceTypes, loading, total, pages } = useAppSelector((state) => state.serviceTypes);
   const isAdmin = useAppSelector((state) => state.auth.consultantRole) === 'admin';
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
+  const [currentPage, setCurrentPage] = useState(1);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingServiceType, setEditingServiceType] = useState<ServiceType | null>(null);
 
   useEffect(() => {
-    loadServiceTypes();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    loadServiceTypes(currentPage);
+  }, [currentPage]);
 
-  const loadServiceTypes = () => {
-    const params: any = {};
+  const loadServiceTypes = (page = 1) => {
+    const params: any = { page, limit: PAGE_LIMIT };
     if (searchTerm) params.search = searchTerm;
     if (statusFilter !== '') params.isActive = statusFilter === 'active';
-
     dispatch(fetchServiceTypes(params));
   };
 
   const handleSearch = () => {
-    loadServiceTypes();
+    setCurrentPage(1);
+    const params: any = { page: 1, limit: PAGE_LIMIT };
+    if (searchTerm) params.search = searchTerm;
+    if (statusFilter !== '') params.isActive = statusFilter === 'active';
+    dispatch(fetchServiceTypes(params));
   };
 
   const handleRefresh = () => {
     setSearchTerm('');
     setStatusFilter('');
-    dispatch(fetchServiceTypes());
+    setCurrentPage(1);
+    dispatch(fetchServiceTypes({ page: 1, limit: PAGE_LIMIT }));
   };
 
   const handleCreate = () => {
@@ -59,6 +65,7 @@ export default function ServiceTypes() {
 
   const handleDelete = async (id: string) => {
     await dispatch(deleteServiceType(id)).unwrap();
+    loadServiceTypes(currentPage);
   };
 
   const handleFormSubmit = async (data: CreateServiceTypeDto | UpdateServiceTypeDto) => {
@@ -70,10 +77,8 @@ export default function ServiceTypes() {
       }
       setIsDialogOpen(false);
       setEditingServiceType(null);
-      // Reload the list to ensure we have the latest data
-      loadServiceTypes();
+      loadServiceTypes(currentPage);
     } catch (error) {
-      // Error is handled in the slice with toast
       console.error('Error submitting form:', error);
     }
   };
@@ -82,6 +87,19 @@ export default function ServiceTypes() {
     setIsDialogOpen(false);
     setEditingServiceType(null);
   };
+
+  const getPageNumbers = () => {
+    const pageNumbers: number[] = [];
+    const maxVisible = 5;
+    let start = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+    const end = Math.min(pages, start + maxVisible - 1);
+    start = Math.max(1, end - maxVisible + 1);
+    for (let i = start; i <= end; i++) pageNumbers.push(i);
+    return pageNumbers;
+  };
+
+  const startItem = (currentPage - 1) * PAGE_LIMIT + 1;
+  const endItem = Math.min(currentPage * PAGE_LIMIT, total);
 
   return (
     <div className="p-8 space-y-8">
@@ -141,8 +159,8 @@ export default function ServiceTypes() {
 
         {/* Results count */}
         <div className="mt-4 text-sm text-on-surface-variant">
-          Showing <span className="font-semibold">{serviceTypes?.length || 0}</span> of{' '}
-          <span className="font-semibold">{total}</span> service types
+          Showing <span className="font-semibold text-on-surface">{total === 0 ? 0 : startItem}–{endItem}</span> of{' '}
+          <span className="font-semibold text-on-surface">{total}</span> service types
         </div>
       </div>
 
@@ -153,6 +171,45 @@ export default function ServiceTypes() {
         onDelete={handleDelete}
         loading={loading}
       />
+
+      {/* Pagination */}
+      {total > 0 && pages > 1 && (
+        <div className="flex items-center justify-center gap-1.5">
+          <button
+            onClick={() => setCurrentPage((p) => p - 1)}
+            disabled={currentPage <= 1}
+            aria-label="Previous page"
+            className="p-2 rounded-[0.75rem] bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-high disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+
+          {getPageNumbers().map((pageNum) => (
+            <button
+              key={pageNum}
+              onClick={() => setCurrentPage(pageNum)}
+              aria-label={`Page ${pageNum}`}
+              aria-current={pageNum === currentPage ? 'page' : undefined}
+              className={`min-w-[36px] h-9 rounded-[0.75rem] text-sm font-semibold transition-colors ${
+                pageNum === currentPage
+                  ? 'bg-primary-fixed text-on-primary-fixed'
+                  : 'bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
+              }`}
+            >
+              {pageNum}
+            </button>
+          ))}
+
+          <button
+            onClick={() => setCurrentPage((p) => p + 1)}
+            disabled={currentPage >= pages}
+            aria-label="Next page"
+            className="p-2 rounded-[0.75rem] bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-high disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       {/* Form Dialog */}
       <ServiceTypeFormDialog

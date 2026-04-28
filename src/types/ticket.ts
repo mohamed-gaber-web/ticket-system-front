@@ -100,6 +100,8 @@ export interface Ticket {
   source?: string | Source;
   // END NEW PROPERTIES
 
+  createdByType?: 'customer' | 'consultant';
+  createdByConsultant?: string | Consultant;
   acceptedBy?: string | Consultant; // Consultant who accepted the ticket
   acceptedAt?: string; // When the ticket was accepted
   firstResponseAt?: string;
@@ -224,6 +226,7 @@ export interface TicketQueryParams {
   acceptedBy?: string;
   assignedConsultant?: string;
   customerName?: string;
+  companyName?: string;
   includeSubTickets?: boolean;
 }
 

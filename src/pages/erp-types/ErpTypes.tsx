@@ -10,41 +10,47 @@ import ErpTypeTable from './ErpTypeTable';
 import ErpTypeFormDialog from './ErpTypeFormDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, RefreshCw } from 'lucide-react';
+import { Plus, Search, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { CustomSelect } from '@/components/ui/custom-select';
 import type { ErpType, CreateErpTypeDto, UpdateErpTypeDto } from '@/types/erpType.types';
 
+const PAGE_LIMIT = 10;
+
 export default function ErpTypes() {
   const dispatch = useAppDispatch();
-  const { erpTypes, loading, total } = useAppSelector((state) => state.erpTypes);
+  const { erpTypes, loading, total, pages } = useAppSelector((state) => state.erpTypes);
   const isAdmin = useAppSelector((state) => state.auth.consultantRole) === 'admin';
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
+  const [currentPage, setCurrentPage] = useState(1);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingErpType, setEditingErpType] = useState<ErpType | null>(null);
 
   useEffect(() => {
-    loadErpTypes();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    loadErpTypes(currentPage);
+  }, [currentPage]);
 
-  const loadErpTypes = () => {
-    const params: any = {};
+  const loadErpTypes = (page = 1) => {
+    const params: any = { page, limit: PAGE_LIMIT };
     if (searchTerm) params.search = searchTerm;
     if (statusFilter !== '') params.isActive = statusFilter === 'active';
-
     dispatch(fetchErpTypes(params));
   };
 
   const handleSearch = () => {
-    loadErpTypes();
+    setCurrentPage(1);
+    const params: any = { page: 1, limit: PAGE_LIMIT };
+    if (searchTerm) params.search = searchTerm;
+    if (statusFilter !== '') params.isActive = statusFilter === 'active';
+    dispatch(fetchErpTypes(params));
   };
 
   const handleRefresh = () => {
     setSearchTerm('');
     setStatusFilter('');
-    dispatch(fetchErpTypes());
+    setCurrentPage(1);
+    dispatch(fetchErpTypes({ page: 1, limit: PAGE_LIMIT }));
   };
 
   const handleCreate = () => {
@@ -59,6 +65,7 @@ export default function ErpTypes() {
 
   const handleDelete = async (id: string) => {
     await dispatch(deleteErpType(id)).unwrap();
+    loadErpTypes(currentPage);
   };
 
   const handleFormSubmit = async (data: CreateErpTypeDto | UpdateErpTypeDto) => {
@@ -70,10 +77,8 @@ export default function ErpTypes() {
       }
       setIsDialogOpen(false);
       setEditingErpType(null);
-      // Reload the list to ensure we have the latest data
-      loadErpTypes();
+      loadErpTypes(currentPage);
     } catch (error) {
-      // Error is handled in the slice with toast
       console.error('Error submitting form:', error);
     }
   };
@@ -83,18 +88,31 @@ export default function ErpTypes() {
     setEditingErpType(null);
   };
 
+  const getPageNumbers = () => {
+    const pageNumbers: number[] = [];
+    const maxVisible = 5;
+    let start = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+    const end = Math.min(pages, start + maxVisible - 1);
+    start = Math.max(1, end - maxVisible + 1);
+    for (let i = start; i <= end; i++) pageNumbers.push(i);
+    return pageNumbers;
+  };
+
+  const startItem = (currentPage - 1) * PAGE_LIMIT + 1;
+  const endItem = Math.min(currentPage * PAGE_LIMIT, total);
+
   return (
     <div className="p-8 space-y-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="display-sm text-on-surface">Service Types</h1>
+          <h1 className="display-sm text-on-surface">ERP Types</h1>
           <p className="text-on-surface-variant mt-1">Manage ERP types</p>
         </div>
         {isAdmin && (
           <Button onClick={handleCreate} className="gap-2">
             <Plus className="h-4 w-4" />
-            Add Service Type
+            Add ERP Type
           </Button>
         )}
       </div>
@@ -141,18 +159,57 @@ export default function ErpTypes() {
 
         {/* Results count */}
         <div className="mt-4 text-sm text-on-surface-variant">
-          Showing <span className="font-semibold">{erpTypes?.length || 0}</span> of{' '}
-          <span className="font-semibold">{total}</span> ERP types
+          Showing <span className="font-semibold text-on-surface">{total === 0 ? 0 : startItem}–{endItem}</span> of{' '}
+          <span className="font-semibold text-on-surface">{total}</span> ERP types
         </div>
       </div>
 
-      {/* Service Type Table */}
+      {/* ERP Type Table */}
       <ErpTypeTable
         erpTypes={erpTypes || []}
         onEdit={handleEdit}
         onDelete={handleDelete}
         loading={loading}
       />
+
+      {/* Pagination */}
+      {total > 0 && pages > 1 && (
+        <div className="flex items-center justify-center gap-1.5">
+          <button
+            onClick={() => setCurrentPage((p) => p - 1)}
+            disabled={currentPage <= 1}
+            aria-label="Previous page"
+            className="p-2 rounded-[0.75rem] bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-high disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+
+          {getPageNumbers().map((pageNum) => (
+            <button
+              key={pageNum}
+              onClick={() => setCurrentPage(pageNum)}
+              aria-label={`Page ${pageNum}`}
+              aria-current={pageNum === currentPage ? 'page' : undefined}
+              className={`min-w-[36px] h-9 rounded-[0.75rem] text-sm font-semibold transition-colors ${
+                pageNum === currentPage
+                  ? 'bg-primary-fixed text-on-primary-fixed'
+                  : 'bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
+              }`}
+            >
+              {pageNum}
+            </button>
+          ))}
+
+          <button
+            onClick={() => setCurrentPage((p) => p + 1)}
+            disabled={currentPage >= pages}
+            aria-label="Next page"
+            className="p-2 rounded-[0.75rem] bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-high disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       {/* Form Dialog */}
       <ErpTypeFormDialog

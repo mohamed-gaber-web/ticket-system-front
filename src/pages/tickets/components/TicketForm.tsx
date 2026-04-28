@@ -41,10 +41,11 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
   const { serviceTypes } = useAppSelector((state) => state.serviceTypes);
   const { modules } = useAppSelector((state) => state.modules);
   const { sources } = useAppSelector((state) => state.sources);
-  const { user, userType } = useAppSelector((state) => state.auth);
+  const { user, userType, consultantRole } = useAppSelector((state) => state.auth);
 
   // Get customer ID - if consultant, leave empty for selection; if customer, use their ID
   const isConsultant = userType === 'consultant';
+  const isAdmin = isConsultant && consultantRole === 'admin';
   const customerId = isConsultant ? '' : (user?._id || '');
 
   const [formData, setFormData] = useState<CreateTicketData | UpdateTicketData>(
@@ -130,18 +131,18 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
 
   useEffect(() => {
     // Fetch categories
-    dispatch(fetchCategories());
+    dispatch(fetchCategories({ limit: 1000 }));
     // Fetch customers if user is a consultant
     if (isConsultant) {
       dispatch(fetchCustomers({ limit: 1000 }));
     }
     // Fetch all reference data for the new properties
-    dispatch(fetchEnvironments({ isActive: true }));
-    dispatch(fetchCustomizedSolutions({ isActive: true }));
-    dispatch(fetchDepartments({ isActive: true }));
-    dispatch(fetchServiceTypes({ isActive: true }));
-    dispatch(fetchModules({ isActive: true }));
-    dispatch(fetchSources({ isActive: true }));
+    dispatch(fetchEnvironments({ isActive: true, limit: 1000 }));
+    dispatch(fetchCustomizedSolutions({ isActive: true, limit: 1000 }));
+    dispatch(fetchDepartments({ isActive: true, limit: 1000 }));
+    dispatch(fetchServiceTypes({ isActive: true, limit: 1000 }));
+    dispatch(fetchModules({ isActive: true, limit: 1000 }));
+    dispatch(fetchSources({ isActive: true, limit: 1000 }));
   }, [dispatch, isConsultant]);
 
   // Update customer ID when user is loaded
@@ -184,6 +185,7 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
           category: categoryId,
           priority: initialData.priority,
           status: initialData.status,
+          customer: extractId(initialData.customer as string | { _id: string }),
           startDate: toDateInput(initialData.startDate),
           deliveryEstimationDate: toDateInput(initialData.deliveryEstimationDate),
           environment: extractId(initialData.environment),
@@ -316,27 +318,36 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
       <div className="space-y-4">
         <h3 className="form-section-title">Basic Information</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Customer Selection - Only for Consultants */}
-          {isConsultant && !isEdit && (
+          {/* Customer Selection - Consultants on create; Consultants & Admins on edit */}
+          {isConsultant && (
             <div className="md:col-span-2">
               <div className="flex items-center justify-between mb-2">
-                <label className="form-label">Customer *</label>
-                <Link
-                  to="/customers/create"
-                  onClick={() => sessionStorage.setItem('customerCreateReferrer', 'ticket-create')}
-                  className="text-sm text-brand-600 hover:text-brand-700 flex items-center gap-1"
-                >
-                  <UserPlus className="h-4 w-4" />
-                  Add New Customer
-                </Link>
+                <label className="form-label">Customer {!isEdit && '*'}</label>
+                {!isEdit && (
+                  <Link
+                    to="/customers/create"
+                    onClick={() => sessionStorage.setItem('customerCreateReferrer', 'ticket-create')}
+                    className="text-sm text-brand-600 hover:text-brand-700 flex items-center gap-1"
+                  >
+                    <UserPlus className="h-4 w-4" />
+                    Add New Customer
+                  </Link>
+                )}
               </div>
               <CustomSelect
-                value={(formData as CreateTicketData).customer || ''}
-                onChange={(val) => setFormData({ ...formData, customer: val } as CreateTicketData)}
+                value={
+                  isEdit
+                    ? (formData as UpdateTicketData).customer || ''
+                    : (formData as CreateTicketData).customer || ''
+                }
+                onChange={(val) => setFormData({ ...formData, customer: val })}
                 placeholder={customersLoading ? 'Loading customers...' : 'Select a customer'}
-                disabled={customersLoading}
+                disabled={customersLoading || (isEdit && !isAdmin)}
                 options={customerOptions}
               />
+              {isEdit && !isAdmin && (
+                <p className="mt-1 text-xs text-on-surface-variant">Only admins can change the customer on an existing ticket.</p>
+              )}
             </div>
           )}
 

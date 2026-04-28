@@ -10,41 +10,47 @@ import VersionNumberTable from './VersionNumberTable';
 import VersionNumberFormDialog from './VersionNumberFormDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, RefreshCw } from 'lucide-react';
+import { Plus, Search, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { CustomSelect } from '@/components/ui/custom-select';
 import type { VersionNumber, CreateVersionNumberDto, UpdateVersionNumberDto } from '@/types/versionNumber.types';
 
+const PAGE_LIMIT = 10;
+
 export default function VersionNumbers() {
   const dispatch = useAppDispatch();
-  const { versionNumbers, loading, total } = useAppSelector((state) => state.versionNumbers);
+  const { versionNumbers, loading, total, pages } = useAppSelector((state) => state.versionNumbers);
   const isAdmin = useAppSelector((state) => state.auth.consultantRole) === 'admin';
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
+  const [currentPage, setCurrentPage] = useState(1);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingVersionNumber, setEditingVersionNumber] = useState<VersionNumber | null>(null);
 
   useEffect(() => {
-    loadVersionNumbers();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    loadVersionNumbers(currentPage);
+  }, [currentPage]);
 
-  const loadVersionNumbers = () => {
-    const params: any = {};
+  const loadVersionNumbers = (page = 1) => {
+    const params: any = { page, limit: PAGE_LIMIT };
     if (searchTerm) params.search = searchTerm;
     if (statusFilter !== '') params.isActive = statusFilter === 'active';
-
     dispatch(fetchVersionNumbers(params));
   };
 
   const handleSearch = () => {
-    loadVersionNumbers();
+    setCurrentPage(1);
+    const params: any = { page: 1, limit: PAGE_LIMIT };
+    if (searchTerm) params.search = searchTerm;
+    if (statusFilter !== '') params.isActive = statusFilter === 'active';
+    dispatch(fetchVersionNumbers(params));
   };
 
   const handleRefresh = () => {
     setSearchTerm('');
     setStatusFilter('');
-    dispatch(fetchVersionNumbers());
+    setCurrentPage(1);
+    dispatch(fetchVersionNumbers({ page: 1, limit: PAGE_LIMIT }));
   };
 
   const handleCreate = () => {
@@ -59,6 +65,7 @@ export default function VersionNumbers() {
 
   const handleDelete = async (id: string) => {
     await dispatch(deleteVersionNumber(id)).unwrap();
+    loadVersionNumbers(currentPage);
   };
 
   const handleFormSubmit = async (data: CreateVersionNumberDto | UpdateVersionNumberDto) => {
@@ -70,7 +77,7 @@ export default function VersionNumbers() {
       }
       setIsDialogOpen(false);
       setEditingVersionNumber(null);
-      loadVersionNumbers();
+      loadVersionNumbers(currentPage);
     } catch (error) {
       console.error('Error submitting form:', error);
     }
@@ -80,6 +87,19 @@ export default function VersionNumbers() {
     setIsDialogOpen(false);
     setEditingVersionNumber(null);
   };
+
+  const getPageNumbers = () => {
+    const pageNumbers: number[] = [];
+    const maxVisible = 5;
+    let start = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+    const end = Math.min(pages, start + maxVisible - 1);
+    start = Math.max(1, end - maxVisible + 1);
+    for (let i = start; i <= end; i++) pageNumbers.push(i);
+    return pageNumbers;
+  };
+
+  const startItem = (currentPage - 1) * PAGE_LIMIT + 1;
+  const endItem = Math.min(currentPage * PAGE_LIMIT, total);
 
   return (
     <div className="p-8 space-y-8">
@@ -136,8 +156,8 @@ export default function VersionNumbers() {
         </div>
 
         <div className="mt-4 text-sm text-on-surface-variant">
-          Showing <span className="font-semibold">{versionNumbers?.length || 0}</span> of{' '}
-          <span className="font-semibold">{total}</span> version numbers
+          Showing <span className="font-semibold text-on-surface">{total === 0 ? 0 : startItem}–{endItem}</span> of{' '}
+          <span className="font-semibold text-on-surface">{total}</span> version numbers
         </div>
       </div>
 
@@ -147,6 +167,45 @@ export default function VersionNumbers() {
         onDelete={handleDelete}
         loading={loading}
       />
+
+      {/* Pagination */}
+      {total > 0 && pages > 1 && (
+        <div className="flex items-center justify-center gap-1.5">
+          <button
+            onClick={() => setCurrentPage((p) => p - 1)}
+            disabled={currentPage <= 1}
+            aria-label="Previous page"
+            className="p-2 rounded-[0.75rem] bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-high disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+
+          {getPageNumbers().map((pageNum) => (
+            <button
+              key={pageNum}
+              onClick={() => setCurrentPage(pageNum)}
+              aria-label={`Page ${pageNum}`}
+              aria-current={pageNum === currentPage ? 'page' : undefined}
+              className={`min-w-[36px] h-9 rounded-[0.75rem] text-sm font-semibold transition-colors ${
+                pageNum === currentPage
+                  ? 'bg-primary-fixed text-on-primary-fixed'
+                  : 'bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
+              }`}
+            >
+              {pageNum}
+            </button>
+          ))}
+
+          <button
+            onClick={() => setCurrentPage((p) => p + 1)}
+            disabled={currentPage >= pages}
+            aria-label="Next page"
+            className="p-2 rounded-[0.75rem] bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-high disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       <VersionNumberFormDialog
         isOpen={isDialogOpen}

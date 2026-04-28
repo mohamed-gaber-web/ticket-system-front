@@ -208,6 +208,8 @@ export default function ViewTicket() {
   // priorityDot, priorityText, statusStyle moved to module-level constants above
 
   const customer = typeof currentTicket.customer === 'string' ? null : currentTicket.customer;
+  const createdByConsultant = currentTicket.createdByConsultant && typeof currentTicket.createdByConsultant !== 'string'
+    ? currentTicket.createdByConsultant : null;
   const category = typeof currentTicket.category === 'string' ? null : currentTicket.category;
   const parentTicket = currentTicket.parentTicket && typeof currentTicket.parentTicket !== 'string' ? currentTicket.parentTicket : null;
   const environment = currentTicket.environment && typeof currentTicket.environment !== 'string' ? currentTicket.environment : null;
@@ -624,6 +626,16 @@ export default function ViewTicket() {
                     <p className="text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider">Created by</p>
                     <p className="text-sm font-semibold text-on-surface truncate mt-0.5">
                       {(() => {
+                        const cbt = currentTicket.createdByType;
+                        if (cbt === 'consultant') {
+                          return createdByConsultant
+                            ? `${createdByConsultant.firstName} ${createdByConsultant.lastName}`
+                            : 'Consultant';
+                        }
+                        if (cbt === 'customer') {
+                          return customer?.contactPerson || customer?.companyName || '—';
+                        }
+                        // Legacy tickets without createdByType
                         if (customer) return customer.contactPerson || customer.companyName;
                         const cb = currentTicket.assignedBy;
                         if (cb && typeof cb !== 'string') return `${cb.firstName} ${cb.lastName}`;

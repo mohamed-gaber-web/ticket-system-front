@@ -4,7 +4,7 @@ import { getProfile, updateProfile } from '@/redux/slices/authSlice';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { Save, Mail, Phone, Calendar, Clock, Ticket as TicketIcon, Building2, MapPin, GitBranch, Zap, CheckCircle2, ArchiveX, AlertTriangle } from 'lucide-react';
+import { Save, Mail, Phone, Calendar, Clock, Ticket as TicketIcon, Building2, MapPin, GitBranch, Zap, CheckCircle2, ArchiveX, AlertTriangle, FlaskConical, PackageCheck, Ban, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import * as ticketApi from '@/api/ticketApi';
 import type { Ticket } from '@/types/ticket';
@@ -41,11 +41,15 @@ const PRIORITY_TEXT: Record<string, string> = {
   low: 'text-green-600',
 };
 const STATUS_TICKET: Record<string, string> = {
-  new: 'bg-accent-orange-400 text-white',
-  assigned: 'bg-brand-400 text-white',
-  in_progress: 'bg-yellow-500 text-white',
-  resolved: 'bg-green-500 text-white',
-  closed: 'bg-surface-container-highest text-on-surface-variant',
+  new:              'bg-accent-orange-400 text-white',
+  assigned:         'bg-brand-400 text-white',
+  in_progress:      'bg-yellow-500 text-white',
+  customer_pending: 'bg-purple-500 text-white',
+  resolved:         'bg-green-500 text-white',
+  tested:           'bg-cyan-600 text-white',
+  delivered:        'bg-teal-500 text-white',
+  closed:           'bg-surface-container-highest text-on-surface-variant',
+  not_related:      'bg-slate-500 text-white',
 };
 const ROLE_BADGE: Record<string, string> = {
   admin: 'bg-emerald-100 text-emerald-800',
@@ -100,18 +104,28 @@ const ProfilePage = () => {
   const [ticketPages, setTicketPages] = useState(1);
 
   const [dashboardStats, setDashboardStats] = useState({
+    assigned: 0,
     inProgress: 0,
+    customerPending: 0,
     resolved: 0,
+    tested: 0,
+    delivered: 0,
     closed: 0,
+    notRelated: 0,
     critical: 0,
     statsLoading: true,
   });
 
   const [customerStats, setCustomerStats] = useState({
     open: 0,
+    assigned: 0,
     inProgress: 0,
+    customerPending: 0,
     resolved: 0,
+    tested: 0,
+    delivered: 0,
     closed: 0,
+    notRelated: 0,
     statsLoading: true,
   });
 
@@ -149,17 +163,27 @@ const ProfilePage = () => {
     if (isConsultant || !u?._id || userType !== 'customer') return;
     const fetchCustomerStats = async () => {
       try {
-        const [openRes, inProgressRes, resolvedRes, closedRes] = await Promise.all([
+        const [openRes, assignedRes, inProgressRes, customerPendingRes, resolvedRes, testedRes, deliveredRes, closedRes, notRelatedRes] = await Promise.all([
           ticketApi.getTickets({ customer: u._id, status: 'new', limit: 1 }),
+          ticketApi.getTickets({ customer: u._id, status: 'assigned', limit: 1 }),
           ticketApi.getTickets({ customer: u._id, status: 'in_progress', limit: 1 }),
+          ticketApi.getTickets({ customer: u._id, status: 'customer_pending', limit: 1 }),
           ticketApi.getTickets({ customer: u._id, status: 'resolved', limit: 1 }),
+          ticketApi.getTickets({ customer: u._id, status: 'tested', limit: 1 }),
+          ticketApi.getTickets({ customer: u._id, status: 'delivered', limit: 1 }),
           ticketApi.getTickets({ customer: u._id, status: 'closed', limit: 1 }),
+          ticketApi.getTickets({ customer: u._id, status: 'not_related', limit: 1 }),
         ]);
         setCustomerStats({
           open: openRes.total,
+          assigned: assignedRes.total,
           inProgress: inProgressRes.total,
+          customerPending: customerPendingRes.total,
           resolved: resolvedRes.total,
+          tested: testedRes.total,
+          delivered: deliveredRes.total,
           closed: closedRes.total,
+          notRelated: notRelatedRes.total,
           statsLoading: false,
         });
       } catch {
@@ -173,16 +197,26 @@ const ProfilePage = () => {
     if (!isConsultant || !u?._id) return;
     const fetchDashboardStats = async () => {
       try {
-        const [inProgressRes, resolvedRes, closedRes, criticalRes] = await Promise.all([
+        const [assignedRes, inProgressRes, customerPendingRes, resolvedRes, testedRes, deliveredRes, closedRes, notRelatedRes, criticalRes] = await Promise.all([
+          ticketApi.getTickets({ assignedConsultant: u._id, status: 'assigned', limit: 1 }),
           ticketApi.getTickets({ assignedConsultant: u._id, status: 'in_progress', limit: 1 }),
+          ticketApi.getTickets({ assignedConsultant: u._id, status: 'customer_pending', limit: 1 }),
           ticketApi.getTickets({ assignedConsultant: u._id, status: 'resolved', limit: 1 }),
+          ticketApi.getTickets({ assignedConsultant: u._id, status: 'tested', limit: 1 }),
+          ticketApi.getTickets({ assignedConsultant: u._id, status: 'delivered', limit: 1 }),
           ticketApi.getTickets({ assignedConsultant: u._id, status: 'closed', limit: 1 }),
+          ticketApi.getTickets({ assignedConsultant: u._id, status: 'not_related', limit: 1 }),
           ticketApi.getTickets({ assignedConsultant: u._id, priority: 'critical', limit: 1 }),
         ]);
         setDashboardStats({
+          assigned: assignedRes.total,
           inProgress: inProgressRes.total,
+          customerPending: customerPendingRes.total,
           resolved: resolvedRes.total,
+          tested: testedRes.total,
+          delivered: deliveredRes.total,
           closed: closedRes.total,
+          notRelated: notRelatedRes.total,
           critical: criticalRes.total,
           statsLoading: false,
         });
@@ -501,79 +535,33 @@ const ProfilePage = () => {
         </div>
 
         {/* Mini Dashboard */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-5 gap-4">
-          {/* Total Assigned */}
-          <div className="bg-surface-container-lowest rounded-[1rem] p-4 flex items-center gap-4">
-            <div className="w-10 h-10 rounded-lg bg-brand-100 flex items-center justify-center flex-shrink-0">
-              <TicketIcon className="w-5 h-5 text-brand-600" />
+        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-4">
+          {[
+            { label: 'Total Assigned',   value: ticketTotal,                    icon: TicketIcon,    iconBg: 'bg-brand-100',              iconColor: 'text-brand-600',         valueColor: 'text-on-surface',  always: true },
+            { label: 'Assigned',         value: dashboardStats.assigned,         icon: Users,         iconBg: 'bg-accent-orange-100',      iconColor: 'text-accent-orange-600', valueColor: 'text-on-surface',  always: false },
+            { label: 'In Progress',      value: dashboardStats.inProgress,       icon: Zap,           iconBg: 'bg-yellow-100',             iconColor: 'text-yellow-600',        valueColor: 'text-on-surface',  always: false },
+            { label: 'Cust. Pending',    value: dashboardStats.customerPending,  icon: Clock,         iconBg: 'bg-purple-100',             iconColor: 'text-purple-600',        valueColor: 'text-on-surface',  always: false },
+            { label: 'Resolved',         value: dashboardStats.resolved,         icon: CheckCircle2,  iconBg: 'bg-green-100',              iconColor: 'text-green-600',         valueColor: 'text-on-surface',  always: false },
+            { label: 'Tested',           value: dashboardStats.tested,           icon: FlaskConical,  iconBg: 'bg-cyan-100',               iconColor: 'text-cyan-600',          valueColor: 'text-on-surface',  always: false },
+            { label: 'Delivered',        value: dashboardStats.delivered,        icon: PackageCheck,  iconBg: 'bg-teal-100',               iconColor: 'text-teal-600',          valueColor: 'text-on-surface',  always: false },
+            { label: 'Closed',           value: dashboardStats.closed,           icon: ArchiveX,      iconBg: 'bg-surface-container-high', iconColor: 'text-on-surface-variant',valueColor: 'text-on-surface',  always: false },
+            { label: 'Not Related',      value: dashboardStats.notRelated,       icon: Ban,           iconBg: 'bg-slate-100',              iconColor: 'text-slate-500',         valueColor: 'text-on-surface',  always: false },
+            { label: 'Critical Priority',value: dashboardStats.critical,         icon: AlertTriangle, iconBg: 'bg-red-100',                iconColor: 'text-error',             valueColor: dashboardStats.critical > 0 ? 'text-error' : 'text-on-surface', always: false },
+          ].map(({ label, value, icon: Icon, iconBg, iconColor, valueColor, always }) => (
+            <div key={label} className="bg-surface-container-lowest rounded-[1rem] p-4 flex items-center gap-4">
+              <div className={cn('w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0', iconBg)}>
+                <Icon className={cn('w-5 h-5', iconColor)} />
+              </div>
+              <div className="min-w-0">
+                {!always && dashboardStats.statsLoading ? (
+                  <div className="h-7 w-8 bg-surface-container-high rounded animate-pulse" />
+                ) : (
+                  <p className={cn('text-2xl font-bold leading-none', valueColor)}>{value}</p>
+                )}
+                <p className="text-xs text-on-surface-variant mt-1 truncate">{label}</p>
+              </div>
             </div>
-            <div className="min-w-0">
-              <p className="text-2xl font-bold text-on-surface leading-none">{ticketTotal}</p>
-              <p className="text-xs text-on-surface-variant mt-1 truncate">Total Assigned</p>
-            </div>
-          </div>
-
-          {/* In Progress */}
-          <div className="bg-surface-container-lowest rounded-[1rem] p-4 flex items-center gap-4">
-            <div className="w-10 h-10 rounded-lg bg-yellow-100 flex items-center justify-center flex-shrink-0">
-              <Zap className="w-5 h-5 text-yellow-600" />
-            </div>
-            <div className="min-w-0">
-              {dashboardStats.statsLoading ? (
-                <div className="h-7 w-8 bg-surface-container-high rounded animate-pulse" />
-              ) : (
-                <p className="text-2xl font-bold text-on-surface leading-none">{dashboardStats.inProgress}</p>
-              )}
-              <p className="text-xs text-on-surface-variant mt-1 truncate">In Progress</p>
-            </div>
-          </div>
-
-          {/* Resolved */}
-          <div className="bg-surface-container-lowest rounded-[1rem] p-4 flex items-center gap-4">
-            <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
-              <CheckCircle2 className="w-5 h-5 text-green-600" />
-            </div>
-            <div className="min-w-0">
-              {dashboardStats.statsLoading ? (
-                <div className="h-7 w-8 bg-surface-container-high rounded animate-pulse" />
-              ) : (
-                <p className="text-2xl font-bold text-on-surface leading-none">{dashboardStats.resolved}</p>
-              )}
-              <p className="text-xs text-on-surface-variant mt-1 truncate">Resolved</p>
-            </div>
-          </div>
-
-          {/* Closed */}
-          <div className="bg-surface-container-lowest rounded-[1rem] p-4 flex items-center gap-4">
-            <div className="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center flex-shrink-0">
-              <ArchiveX className="w-5 h-5 text-on-surface-variant" />
-            </div>
-            <div className="min-w-0">
-              {dashboardStats.statsLoading ? (
-                <div className="h-7 w-8 bg-surface-container-high rounded animate-pulse" />
-              ) : (
-                <p className="text-2xl font-bold text-on-surface leading-none">{dashboardStats.closed}</p>
-              )}
-              <p className="text-xs text-on-surface-variant mt-1 truncate">Closed</p>
-            </div>
-          </div>
-
-          {/* Critical Priority */}
-          <div className="col-span-2 sm:col-span-4 xl:col-span-1 bg-surface-container-lowest rounded-[1rem] p-4 flex items-center gap-4">
-            <div className="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0">
-              <AlertTriangle className="w-5 h-5 text-error" />
-            </div>
-            <div className="min-w-0">
-              {dashboardStats.statsLoading ? (
-                <div className="h-7 w-8 bg-surface-container-high rounded animate-pulse" />
-              ) : (
-                <p className={cn('text-2xl font-bold leading-none', dashboardStats.critical > 0 ? 'text-error' : 'text-on-surface')}>
-                  {dashboardStats.critical}
-                </p>
-              )}
-              <p className="text-xs text-on-surface-variant mt-1 truncate">Critical Priority</p>
-            </div>
-          </div>
+          ))}
         </div>
 
         {/* Two-column: Edit Form + Assigned Tickets */}
@@ -861,62 +849,33 @@ const ProfilePage = () => {
       </div>
 
       {/* Mini Dashboard */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {/* Total */}
-        <div className="bg-surface-container-lowest rounded-[1rem] p-4 flex items-center gap-4">
-          <div className="w-10 h-10 rounded-lg bg-brand-100 flex items-center justify-center flex-shrink-0">
-            <TicketIcon className="w-5 h-5 text-brand-600" />
+      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-4">
+        {[
+          { label: 'Total Tickets',  value: ticketTotal,                   icon: TicketIcon,    iconBg: 'bg-brand-100',              iconColor: 'text-brand-600',          always: true },
+          { label: 'New',            value: customerStats.open,            icon: AlertTriangle, iconBg: 'bg-accent-orange-100',      iconColor: 'text-accent-orange-600',  always: false },
+          { label: 'Assigned',       value: customerStats.assigned,        icon: Users,         iconBg: 'bg-brand-50',               iconColor: 'text-brand-500',          always: false },
+          { label: 'In Progress',    value: customerStats.inProgress,      icon: Zap,           iconBg: 'bg-yellow-100',             iconColor: 'text-yellow-600',         always: false },
+          { label: 'Cust. Pending',  value: customerStats.customerPending, icon: Clock,         iconBg: 'bg-purple-100',             iconColor: 'text-purple-600',         always: false },
+          { label: 'Resolved',       value: customerStats.resolved,        icon: CheckCircle2,  iconBg: 'bg-green-100',              iconColor: 'text-green-600',          always: false },
+          { label: 'Tested',         value: customerStats.tested,          icon: FlaskConical,  iconBg: 'bg-cyan-100',               iconColor: 'text-cyan-600',           always: false },
+          { label: 'Delivered',      value: customerStats.delivered,       icon: PackageCheck,  iconBg: 'bg-teal-100',               iconColor: 'text-teal-600',           always: false },
+          { label: 'Closed',         value: customerStats.closed,          icon: ArchiveX,      iconBg: 'bg-surface-container-high', iconColor: 'text-on-surface-variant', always: false },
+          { label: 'Not Related',    value: customerStats.notRelated,      icon: Ban,           iconBg: 'bg-slate-100',              iconColor: 'text-slate-500',          always: false },
+        ].map(({ label, value, icon: Icon, iconBg, iconColor, always }) => (
+          <div key={label} className="bg-surface-container-lowest rounded-[1rem] p-4 flex items-center gap-4">
+            <div className={cn('w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0', iconBg)}>
+              <Icon className={cn('w-5 h-5', iconColor)} />
+            </div>
+            <div className="min-w-0">
+              {!always && customerStats.statsLoading ? (
+                <div className="h-7 w-8 bg-surface-container-high rounded animate-pulse" />
+              ) : (
+                <p className="text-2xl font-bold text-on-surface leading-none">{value}</p>
+              )}
+              <p className="text-xs text-on-surface-variant mt-1 truncate">{label}</p>
+            </div>
           </div>
-          <div className="min-w-0">
-            <p className="text-2xl font-bold text-on-surface leading-none">{ticketTotal}</p>
-            <p className="text-xs text-on-surface-variant mt-1 truncate">Total Tickets</p>
-          </div>
-        </div>
-
-        {/* Open / New */}
-        <div className="bg-surface-container-lowest rounded-[1rem] p-4 flex items-center gap-4">
-          <div className="w-10 h-10 rounded-lg bg-accent-orange-100 flex items-center justify-center flex-shrink-0">
-            <AlertTriangle className="w-5 h-5 text-accent-orange-600" />
-          </div>
-          <div className="min-w-0">
-            {customerStats.statsLoading ? (
-              <div className="h-7 w-8 bg-surface-container-high rounded animate-pulse" />
-            ) : (
-              <p className="text-2xl font-bold text-on-surface leading-none">{customerStats.open}</p>
-            )}
-            <p className="text-xs text-on-surface-variant mt-1 truncate">Open</p>
-          </div>
-        </div>
-
-        {/* In Progress */}
-        <div className="bg-surface-container-lowest rounded-[1rem] p-4 flex items-center gap-4">
-          <div className="w-10 h-10 rounded-lg bg-yellow-100 flex items-center justify-center flex-shrink-0">
-            <Zap className="w-5 h-5 text-yellow-600" />
-          </div>
-          <div className="min-w-0">
-            {customerStats.statsLoading ? (
-              <div className="h-7 w-8 bg-surface-container-high rounded animate-pulse" />
-            ) : (
-              <p className="text-2xl font-bold text-on-surface leading-none">{customerStats.inProgress}</p>
-            )}
-            <p className="text-xs text-on-surface-variant mt-1 truncate">In Progress</p>
-          </div>
-        </div>
-
-        {/* Resolved */}
-        <div className="bg-surface-container-lowest rounded-[1rem] p-4 flex items-center gap-4">
-          <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
-            <CheckCircle2 className="w-5 h-5 text-green-600" />
-          </div>
-          <div className="min-w-0">
-            {customerStats.statsLoading ? (
-              <div className="h-7 w-8 bg-surface-container-high rounded animate-pulse" />
-            ) : (
-              <p className="text-2xl font-bold text-on-surface leading-none">{customerStats.resolved}</p>
-            )}
-            <p className="text-xs text-on-surface-variant mt-1 truncate">Resolved</p>
-          </div>
-        </div>
+        ))}
       </div>
 
       {/* Two-column: Edit Form + Tickets */}

@@ -127,9 +127,11 @@ export const updateTicket = createAsyncThunk(
   'tickets/updateTicket',
   async ({ id, data }: { id: string; data: UpdateTicketData }, { rejectWithValue }) => {
     try {
-      const response = await ticketApi.updateTicket(id, data);
+      await ticketApi.updateTicket(id, data);
+      // Re-fetch by ID so the Redux state always has fully populated fields (customer, category, etc.)
+      const populated = await ticketApi.getTicketById(id);
       toast.success('Ticket updated successfully!');
-      return response.data;
+      return populated.data;
     } catch (error: any) {
       const message = error.response?.data?.message || 'Failed to update ticket';
       toast.error(message);
