@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { Pencil, Trash2, X, Check, ZoomIn } from 'lucide-react';
+import { Pencil, Trash2, X, Check, ZoomIn, FileText, FileSpreadsheet, Archive, Paperclip, Download } from 'lucide-react';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
 import type { TicketComment, CommentImage } from '@/types/comment.types';
@@ -185,24 +185,48 @@ const CommentItem: React.FC<CommentItemProps> = ({
 
         {!isEditing && comment.images && comment.images.length > 0 && (
           <div className="flex flex-wrap gap-2 pt-1">
-            {comment.images.map((img, i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={() => setLightboxImage(img)}
-                className="relative group block rounded-lg overflow-hidden border border-outline-variant/30 focus:outline-none focus:ring-2 focus:ring-brand-500"
-                title={img.fileName}
-              >
-                <img
-                  src={img.url}
-                  alt={img.fileName}
-                  className="h-20 w-20 object-cover transition-opacity group-hover:opacity-75"
-                />
-                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
-                  <ZoomIn className="h-5 w-5 text-white drop-shadow" />
-                </div>
-              </button>
-            ))}
+            {comment.images.map((img, i) => {
+              const isImage = !img.fileType || img.fileType.startsWith('image/');
+              if (isImage) {
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setLightboxImage(img)}
+                    className="relative group block rounded-lg overflow-hidden border border-outline-variant/30 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    title={img.fileName}
+                  >
+                    <img src={img.url} alt={img.fileName} className="h-20 w-20 object-cover transition-opacity group-hover:opacity-75" />
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
+                      <ZoomIn className="h-5 w-5 text-white drop-shadow" />
+                    </div>
+                  </button>
+                );
+              }
+              const Icon =
+                img.fileType === 'application/pdf' ? FileText :
+                img.fileType?.includes('excel') || img.fileType?.includes('spreadsheet') ? FileSpreadsheet :
+                img.fileType?.includes('zip') ? Archive : Paperclip;
+              const iconColor =
+                img.fileType === 'application/pdf' ? 'text-red-500' :
+                img.fileType?.includes('excel') || img.fileType?.includes('spreadsheet') ? 'text-emerald-600' :
+                img.fileType?.includes('zip') ? 'text-amber-500' : 'text-on-surface-variant';
+              return (
+                <a
+                  key={i}
+                  href={img.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  download={img.fileName}
+                  className="flex items-center gap-2 pl-2.5 pr-3 py-1.5 rounded-lg border border-outline-variant/30 bg-surface-container-low hover:bg-surface-container-high transition-colors group max-w-[220px]"
+                  title={img.fileName}
+                >
+                  <Icon className={`h-4 w-4 shrink-0 ${iconColor}`} />
+                  <span className="text-xs font-medium text-on-surface truncate flex-1">{img.fileName}</span>
+                  <Download className="h-3.5 w-3.5 text-on-surface-variant opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                </a>
+              );
+            })}
           </div>
         )}
 

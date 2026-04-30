@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Send, Loader2, Mail, X, Plus, ImagePlus } from 'lucide-react';
+import { Send, Loader2, Mail, X, Plus, Paperclip, FileText, FileSpreadsheet, Archive, Image } from 'lucide-react';
 import type { UserType } from '@/types/auth.types';
 
 interface AddCommentProps {
@@ -17,6 +17,30 @@ interface AddCommentProps {
 }
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const ACCEPTED_TYPES = [
+  'image/*',
+  'application/pdf',
+  'application/zip',
+  'application/x-zip-compressed',
+  'application/x-zip',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+].join(',');
+
+function getFileIcon(file: File) {
+  if (file.type.startsWith('image/')) return <Image className="h-4 w-4 text-brand-500" />;
+  if (file.type === 'application/pdf') return <FileText className="h-4 w-4 text-red-500" />;
+  if (file.type.includes('excel') || file.type.includes('spreadsheet')) return <FileSpreadsheet className="h-4 w-4 text-emerald-600" />;
+  if (file.type.includes('zip')) return <Archive className="h-4 w-4 text-amber-500" />;
+  return <Paperclip className="h-4 w-4 text-on-surface-variant" />;
+}
+
+function formatBytes(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 const AddComment: React.FC<AddCommentProps> = ({
   userType,
@@ -33,97 +57,91 @@ const AddComment: React.FC<AddCommentProps> = ({
   const [emailError, setEmailError] = useState<string | null>(null);
   const emailInputRef = useRef<HTMLInputElement>(null);
 
-  const [images, setImages] = useState<File[]>([]);
-  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
-  const imageInputRef = useRef<HTMLInputElement>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<Map<string, string>>(new Map());
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isStaff = userType === 'consultant' || userType === 'team_member';
 
-  const addImages = (files: FileList | null) => {
-    if (!files) return;
-    const newFiles = Array.from(files).filter((f) => f.type.startsWith('image/'));
-    const combined = [...images, ...newFiles].slice(0, 5);
-    setImages(combined);
-    const previews = combined.map((f) => URL.createObjectURL(f));
-    imagePreviews.forEach((p) => URL.revokeObjectURL(p));
-    setImagePreviews(previews);
+  const addFiles = (incoming: FileList | null) => {
+    if (!incoming) return;
+    const newFiles = Array.from(incoming);
+    const combined = [...files, ...newFiles].slice(0, 10);
+    setFiles(combined);
+
+    // Build image previews only for image files
+    const newPreviews = new Map(imagePreviews);
+    // Revoke old previews not in combined
+    newPreviews.forEach((url, name) => {
+      if (!combined.find((f) => f.name === name)) {
+        URL.revokeObjectURL(url);
+        newPreviews.delete(name);
+      }
+    });
+    combined.forEach((f) => {
+      if (f.type.startsWith('image/') && !newPreviews.has(f.name)) {
+        newPreviews.set(f.name, URL.createObjectURL(f));
+      }
+    });
+    setImagePreviews(newPreviews);
   };
 
-  const removeImage = (index: number) => {
-    URL.revokeObjectURL(imagePreviews[index]);
-    setImages((prev) => prev.filter((_, i) => i !== index));
-    setImagePreviews((prev) => prev.filter((_, i) => i !== index));
+  const removeFile = (index: number) => {
+    const file = files[index];
+    if (file.type.startsWith('image/')) {
+      const preview = imagePreviews.get(file.name);
+      if (preview) {
+        URL.revokeObjectURL(preview);
+        setImagePreviews((prev) => {
+          const next = new Map(prev);
+          next.delete(file.name);
+          return next;
+        });
+      }
+    }
+    setFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const addEmail = (raw: string) => {
     const value = raw.trim().toLowerCase();
     if (!value) return;
-    if (!EMAIL_REGEX.test(value)) {
-      setEmailError('Invalid email address');
-      return;
-    }
-    if (emails.includes(value)) {
-      setEmailError('Email already added');
-      return;
-    }
+    if (!EMAIL_REGEX.test(value)) { setEmailError('Invalid email address'); return; }
+    if (emails.includes(value)) { setEmailError('Email already added'); return; }
     setEmails((prev) => [...prev, value]);
     setEmailInput('');
     setEmailError(null);
   };
 
   const handleEmailKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' || e.key === ',') {
-      e.preventDefault();
-      addEmail(emailInput);
-    } else if (e.key === 'Backspace' && !emailInput && emails.length > 0) {
-      setEmails((prev) => prev.slice(0, -1));
-    }
+    if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addEmail(emailInput); }
+    else if (e.key === 'Backspace' && !emailInput && emails.length > 0) setEmails((prev) => prev.slice(0, -1));
   };
 
-  const removeEmail = (email: string) => {
-    setEmails((prev) => prev.filter((e) => e !== email));
-  };
+  const removeEmail = (email: string) => setEmails((prev) => prev.filter((e) => e !== email));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!commentText.trim()) { setError('Please enter a comment'); return; }
+    if (commentText.length > 5000) { setError('Comment is too long (max 5000 characters)'); return; }
 
-    if (!commentText.trim()) {
-      setError('Please enter a comment');
-      return;
-    }
-
-    if (commentText.length > 5000) {
-      setError('Comment is too long (max 5000 characters)');
-      return;
-    }
-
-    // Add any pending email in the input
     const pendingEmail = emailInput.trim().toLowerCase();
     let finalEmails = [...emails];
     if (pendingEmail) {
-      if (!EMAIL_REGEX.test(pendingEmail)) {
-        setEmailError('Invalid email address');
-        emailInputRef.current?.focus();
-        return;
-      }
-      if (!finalEmails.includes(pendingEmail)) {
-        finalEmails = [...finalEmails, pendingEmail];
-        setEmails(finalEmails);
-        setEmailInput('');
-      }
+      if (!EMAIL_REGEX.test(pendingEmail)) { setEmailError('Invalid email address'); emailInputRef.current?.focus(); return; }
+      if (!finalEmails.includes(pendingEmail)) { finalEmails = [...finalEmails, pendingEmail]; setEmails(finalEmails); setEmailInput(''); }
     }
 
     try {
       setError(null);
-      await onSubmit(commentText.trim(), isInternal, finalEmails, images);
+      await onSubmit(commentText.trim(), isInternal, finalEmails, files);
       setCommentText('');
       setIsInternal(false);
       setEmails([]);
       setEmailInput('');
       setShowEmailSection(false);
-      imagePreviews.forEach((p) => URL.revokeObjectURL(p));
-      setImages([]);
-      setImagePreviews([]);
+      imagePreviews.forEach((url) => URL.revokeObjectURL(url));
+      setFiles([]);
+      setImagePreviews(new Map());
     } catch (err: any) {
       setError(err.message || 'Failed to add comment');
     }
@@ -136,18 +154,13 @@ const AddComment: React.FC<AddCommentProps> = ({
           <Textarea
             placeholder="Add a comment..."
             value={commentText}
-            onChange={(e) => {
-              setCommentText(e.target.value);
-              if (error) setError(null);
-            }}
+            onChange={(e) => { setCommentText(e.target.value); if (error) setError(null); }}
             disabled={loading}
             className="min-h-[100px] resize-none"
             maxLength={5000}
           />
           <div className="flex justify-between items-center mt-1">
-            <p className="text-xs text-on-surface-variant">
-              {commentText.length} / 5000 characters
-            </p>
+            <p className="text-xs text-on-surface-variant">{commentText.length} / 5000 characters</p>
           </div>
         </div>
 
@@ -161,34 +174,21 @@ const AddComment: React.FC<AddCommentProps> = ({
             <Mail className="h-3.5 w-3.5" />
             {showEmailSection ? 'Hide' : 'Send to external emails'}
             {emails.length > 0 && !showEmailSection && (
-              <span className="ml-1 px-1.5 py-0.5 rounded-full bg-brand-500/10 text-brand-600 text-[10px] font-semibold">
-                {emails.length}
-              </span>
+              <span className="ml-1 px-1.5 py-0.5 rounded-full bg-brand-500/10 text-brand-600 text-[10px] font-semibold">{emails.length}</span>
             )}
           </button>
 
           {showEmailSection && (
             <div className="rounded-[0.75rem] border border-border bg-surface-container-low p-3 space-y-2">
-              <p className="text-xs text-on-surface-variant">
-                This comment will also be sent to the following email addresses.
-              </p>
-
-              {/* Tags + Input */}
+              <p className="text-xs text-on-surface-variant">This comment will also be sent to the following email addresses.</p>
               <div
                 className="flex flex-wrap gap-1.5 min-h-[2.25rem] p-2 rounded-[0.5rem] border border-border bg-surface focus-within:border-brand-500 transition-colors cursor-text"
                 onClick={() => emailInputRef.current?.focus()}
               >
                 {emails.map((email) => (
-                  <span
-                    key={email}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-600 text-xs font-medium"
-                  >
+                  <span key={email} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-600 text-xs font-medium">
                     {email}
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); removeEmail(email); }}
-                      className="text-brand-400 hover:text-brand-700 transition-colors"
-                    >
+                    <button type="button" onClick={(e) => { e.stopPropagation(); removeEmail(email); }} className="text-brand-400 hover:text-brand-700 transition-colors">
                       <X className="h-3 w-3" />
                     </button>
                   </span>
@@ -205,124 +205,100 @@ const AddComment: React.FC<AddCommentProps> = ({
                   className="flex-1 min-w-[160px] bg-transparent text-sm text-on-surface outline-none placeholder:text-on-surface-variant/50"
                 />
               </div>
-
-              {emailError && (
-                <p className="text-xs text-error">{emailError}</p>
-              )}
-
+              {emailError && <p className="text-xs text-error">{emailError}</p>}
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => addEmail(emailInput)}
-                  disabled={!emailInput.trim() || loading}
-                  className="inline-flex items-center gap-1 text-xs text-brand-500 hover:text-brand-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                >
-                  <Plus className="h-3 w-3" />
-                  Add
+                <button type="button" onClick={() => addEmail(emailInput)} disabled={!emailInput.trim() || loading} className="inline-flex items-center gap-1 text-xs text-brand-500 hover:text-brand-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                  <Plus className="h-3 w-3" />Add
                 </button>
                 {emails.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setEmails([])}
-                    className="text-xs text-on-surface-variant hover:text-error transition-colors"
-                  >
-                    Clear all
-                  </button>
+                  <button type="button" onClick={() => setEmails([])} className="text-xs text-on-surface-variant hover:text-error transition-colors">Clear all</button>
                 )}
               </div>
             </div>
           )}
         </div>
 
-        {/* Image attachment */}
+        {/* File attachments */}
         <div className="space-y-2">
           <input
-            ref={imageInputRef}
+            ref={fileInputRef}
             type="file"
-            accept="image/*"
+            accept={ACCEPTED_TYPES}
             multiple
             className="hidden"
-            onChange={(e) => addImages(e.target.files)}
+            onChange={(e) => { addFiles(e.target.files); e.target.value = ''; }}
           />
           <button
             type="button"
-            onClick={() => imageInputRef.current?.click()}
-            disabled={loading || images.length >= 5}
+            onClick={() => fileInputRef.current?.click()}
+            disabled={loading || files.length >= 10}
             className="flex items-center gap-1.5 text-xs font-medium text-on-surface-variant hover:text-on-surface disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
-            <ImagePlus className="h-3.5 w-3.5" />
-            Attach images
-            {images.length > 0 && (
-              <span className="ml-1 px-1.5 py-0.5 rounded-full bg-brand-500/10 text-brand-600 text-[10px] font-semibold">
-                {images.length}/5
-              </span>
+            <Paperclip className="h-3.5 w-3.5" />
+            Attach files
+            <span className="text-[10px] text-on-surface-variant/60">(images, PDF, Excel, ZIP)</span>
+            {files.length > 0 && (
+              <span className="ml-1 px-1.5 py-0.5 rounded-full bg-brand-500/10 text-brand-600 text-[10px] font-semibold">{files.length}/10</span>
             )}
           </button>
 
-          {imagePreviews.length > 0 && (
+          {files.length > 0 && (
             <div className="flex flex-wrap gap-2">
-              {imagePreviews.map((src, i) => (
-                <div key={i} className="relative group">
-                  <img
-                    src={src}
-                    alt={images[i]?.name}
-                    className="h-16 w-16 object-cover rounded-lg border border-outline-variant/30"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removeImage(i)}
-                    className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-error text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <X className="h-2.5 w-2.5" />
-                  </button>
-                </div>
-              ))}
+              {files.map((file, i) => {
+                const preview = imagePreviews.get(file.name);
+                return preview ? (
+                  <div key={i} className="relative group">
+                    <img src={preview} alt={file.name} className="h-16 w-16 object-cover rounded-lg border border-outline-variant/30" />
+                    <button
+                      type="button"
+                      onClick={() => removeFile(i)}
+                      className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-error text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="h-2.5 w-2.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <div key={i} className="relative group flex items-center gap-2 pl-2.5 pr-7 py-1.5 rounded-lg border border-outline-variant/30 bg-surface-container-low max-w-[200px]">
+                    {getFileIcon(file)}
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-on-surface truncate">{file.name}</p>
+                      <p className="text-[10px] text-on-surface-variant">{formatBytes(file.size)}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeFile(i)}
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 h-4 w-4 rounded-full text-on-surface-variant hover:text-error hover:bg-error/10 flex items-center justify-center transition-colors"
+                    >
+                      <X className="h-2.5 w-2.5" />
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
 
         {isStaff && (
           <div className="flex items-center space-x-2">
-            <Checkbox
-              id="isInternal"
-              checked={isInternal}
-              onCheckedChange={(checked) => setIsInternal(checked as boolean)}
-              disabled={loading}
-            />
-            <Label
-              htmlFor="isInternal"
-              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-            >
+            <Checkbox id="isInternal" checked={isInternal} onCheckedChange={(checked) => setIsInternal(checked as boolean)} disabled={loading} />
+            <Label htmlFor="isInternal" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer">
               Internal note (not visible to customers)
             </Label>
           </div>
         )}
 
-        {error && (
-          <div className="text-sm text-error bg-error/5 rounded-[0.5rem] p-2">
-            {error}
-          </div>
-        )}
+        {error && <div className="text-sm text-error bg-error/5 rounded-[0.5rem] p-2">{error}</div>}
 
         <div className="flex justify-end">
-          <Button
-            type="submit"
-            disabled={loading || !commentText.trim()}
-            className="min-w-[120px]"
-          >
+          <Button type="submit" disabled={loading || !commentText.trim()} className="min-w-[120px]">
             {loading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Posting...
-              </>
+              <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Posting...</>
             ) : (
               <>
                 <Send className="mr-2 h-4 w-4" />
                 Post Comment
                 {emails.length > 0 && (
-                  <span className="ml-1.5 px-1.5 py-0.5 rounded-full bg-white/20 text-[10px] font-bold">
-                    +{emails.length} email{emails.length > 1 ? 's' : ''}
-                  </span>
+                  <span className="ml-1.5 px-1.5 py-0.5 rounded-full bg-white/20 text-[10px] font-bold">+{emails.length} email{emails.length > 1 ? 's' : ''}</span>
                 )}
               </>
             )}

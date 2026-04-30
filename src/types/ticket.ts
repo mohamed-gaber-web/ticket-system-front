@@ -155,6 +155,8 @@ export interface CreateSubTicketData {
   assignedTeam?: string;
   assignedBy?: string;
   notifyEmails?: string[];
+  scope?: string[];
+  department?: string;
 }
 
 export interface SubTicketsQueryParams {

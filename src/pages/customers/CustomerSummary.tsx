@@ -26,6 +26,7 @@ import type { Customer } from "@/types/customer.types";
 import type { Ticket } from "@/types/ticket";
 import { getCustomers, getCustomerById } from "@/api/customerApi";
 import { getTickets } from "@/api/ticketApi";
+import TicketTable from "@/pages/tickets/components/TicketTable";
 
 /* ─────────────────────────────────────────────────────────────
    Spring presets & animation variants
@@ -49,15 +50,6 @@ const sectionVariants = {
     opacity: 1,
     y: 0,
     transition: { ...SP, stiffness: 200, damping: 20, delay: 0.25 + i * 0.1 },
-  }),
-};
-
-const rowVariants = {
-  hidden: { opacity: 0, x: -20 },
-  visible: (i: number) => ({
-    opacity: 1,
-    x: 0,
-    transition: { ...SP_FAST, delay: i * 0.055 },
   }),
 };
 
@@ -152,21 +144,15 @@ const PRIORITY_CFG = {
 } as const;
 
 const STATUS_PILL: Record<string, { label: string; pill: string }> = {
-  new:              { label: "New",         pill: "bg-yellow-500/12 text-yellow-700"  },
-  assigned:         { label: "Assigned",    pill: "bg-orange-500/12 text-orange-600"  },
-  in_progress:      { label: "In Progress", pill: "bg-blue-500/12 text-blue-600"      },
-  customer_pending: { label: "Pending",     pill: "bg-violet-500/12 text-violet-700"  },
-  resolved:         { label: "Resolved",    pill: "bg-emerald-500/12 text-emerald-700"},
-  tested:           { label: "Tested",      pill: "bg-teal-500/12 text-teal-700"      },
-  delivered:        { label: "Delivered",   pill: "bg-cyan-500/12 text-cyan-700"      },
-  closed:           { label: "Closed",      pill: "bg-slate-400/20 text-slate-600"    },
-};
-
-const PRIORITY_PILL: Record<string, { label: string; pill: string }> = {
-  low:      { label: "Low",      pill: "bg-emerald-500/12 text-emerald-700" },
-  medium:   { label: "Medium",   pill: "bg-amber-500/12 text-amber-700"     },
-  high:     { label: "High",     pill: "bg-orange-500/12 text-orange-700"   },
-  critical: { label: "Critical", pill: "bg-red-500/12 text-red-700"         },
+  new:              { label: "New",             pill: "bg-yellow-500/12 text-yellow-700"  },
+  assigned:         { label: "Assigned",        pill: "bg-orange-500/12 text-orange-600"  },
+  in_progress:      { label: "In Progress",     pill: "bg-blue-500/12 text-blue-600"      },
+  customer_pending: { label: "Customer Pending",pill: "bg-violet-500/12 text-violet-700"  },
+  resolved:         { label: "Resolved",        pill: "bg-emerald-500/12 text-emerald-700"},
+  tested:           { label: "Tested",          pill: "bg-teal-500/12 text-teal-700"      },
+  delivered:        { label: "Delivered",       pill: "bg-cyan-500/12 text-cyan-700"      },
+  closed:           { label: "Closed",          pill: "bg-slate-400/20 text-slate-600"    },
+  not_related:      { label: "Not Related",     pill: "bg-slate-500/12 text-slate-600"    },
 };
 
 type SearchMode = 'customer' | 'company';
@@ -327,21 +313,23 @@ export default function CustomerSummary() {
 
   /* ── Stats ── */
   const stats = useMemo(() => {
-    const counts = { newCount: 0, inProgressCount: 0, resolvedCount: 0, closedCount: 0, slaBreached: 0 };
+    const counts = { newCount: 0, inProgressCount: 0, resolvedCount: 0, closedCount: 0, testedCount: 0, deliveredCount: 0, notRelatedCount: 0 };
     const byPriority = { low: 0, medium: 0, high: 0, critical: 0 };
     for (const t of tickets) {
       if (t.status === "new")         counts.newCount++;
       if (t.status === "in_progress") counts.inProgressCount++;
       if (t.status === "resolved")    counts.resolvedCount++;
       if (t.status === "closed")      counts.closedCount++;
-      if (t.isSlaBreached)            counts.slaBreached++;
+      if (t.status === "tested")      counts.testedCount++;
+      if (t.status === "delivered")   counts.deliveredCount++;
+      if (t.status === "not_related") counts.notRelatedCount++;
       if (t.priority in byPriority)   byPriority[t.priority as keyof typeof byPriority]++;
     }
     const sorted = [...tickets].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
     return { total: tickets.length, ...counts, byPriority, sortedTickets: sorted };
   }, [tickets]);
 
-  /* ── Filtered + paginated ticket list ── */
+  /* ── Filtered ticket list ── */
   const filteredTickets = useMemo(() => {
     let list = stats.sortedTickets;
     if (statusFilter !== "all") list = list.filter((t) => t.status === statusFilter);
@@ -407,20 +395,15 @@ export default function CustomerSummary() {
   };
 
   const statCards: (StatCardProps & { key: string })[] = [
-    { key: "total",       label: "Total Tickets", value: stats.total,           icon: TicketIcon,     numberColor: "text-brand-500",   iconBg: "bg-brand-100",        iconColor: "text-brand-500",   bar: "bg-brand-500",    loading: ticketsLoading, idx: 0 },
-    { key: "new",         label: "New",            value: stats.newCount,        icon: BarChart2,      numberColor: "text-yellow-600",  iconBg: "bg-yellow-500/10",    iconColor: "text-yellow-500",  bar: "bg-yellow-400",   loading: ticketsLoading, idx: 1 },
-    { key: "in_progress", label: "In Progress",    value: stats.inProgressCount, icon: Activity,       numberColor: "text-blue-600",    iconBg: "bg-blue-500/10",      iconColor: "text-blue-500",    bar: "bg-blue-500",     loading: ticketsLoading, idx: 2 },
-    { key: "resolved",    label: "Resolved",       value: stats.resolvedCount,   icon: CheckCircle2,   numberColor: "text-emerald-600", iconBg: "bg-emerald-500/10",   iconColor: "text-emerald-500", bar: "bg-emerald-400",  loading: ticketsLoading, idx: 3 },
-    { key: "closed",      label: "Closed",         value: stats.closedCount,     icon: XCircle,        numberColor: "text-slate-500",   iconBg: "bg-slate-400/10",     iconColor: "text-slate-400",   bar: "bg-slate-400",    loading: ticketsLoading, idx: 4 },
-    { key: "sla",         label: "SLA Breached",   value: stats.slaBreached,     icon: AlertTriangle,  numberColor: "text-red-600",     iconBg: "bg-red-500/10",       iconColor: "text-red-500",     bar: "bg-red-500",      loading: ticketsLoading, idx: 5 },
+    { key: "total",       label: "Total Tickets", value: stats.total,              icon: TicketIcon,    numberColor: "text-brand-500",   iconBg: "bg-brand-100",       iconColor: "text-brand-500",   bar: "bg-brand-500",    loading: ticketsLoading, idx: 0 },
+    { key: "new",         label: "New",            value: stats.newCount,           icon: BarChart2,     numberColor: "text-yellow-600",  iconBg: "bg-yellow-500/10",   iconColor: "text-yellow-500",  bar: "bg-yellow-400",   loading: ticketsLoading, idx: 1 },
+    { key: "in_progress", label: "In Progress",    value: stats.inProgressCount,    icon: Activity,      numberColor: "text-blue-600",    iconBg: "bg-blue-500/10",     iconColor: "text-blue-500",    bar: "bg-blue-500",     loading: ticketsLoading, idx: 2 },
+    { key: "resolved",    label: "Resolved",       value: stats.resolvedCount,      icon: CheckCircle2,  numberColor: "text-emerald-600", iconBg: "bg-emerald-500/10",  iconColor: "text-emerald-500", bar: "bg-emerald-400",  loading: ticketsLoading, idx: 3 },
+    { key: "tested",      label: "Tested",         value: stats.testedCount,        icon: CheckCircle2,  numberColor: "text-teal-600",    iconBg: "bg-teal-500/10",     iconColor: "text-teal-500",    bar: "bg-teal-500",     loading: ticketsLoading, idx: 4 },
+    { key: "delivered",   label: "Delivered",      value: stats.deliveredCount,     icon: Activity,      numberColor: "text-cyan-600",    iconBg: "bg-cyan-500/10",     iconColor: "text-cyan-500",    bar: "bg-cyan-500",     loading: ticketsLoading, idx: 5 },
+    { key: "closed",      label: "Closed",         value: stats.closedCount,        icon: XCircle,       numberColor: "text-slate-500",   iconBg: "bg-slate-400/10",    iconColor: "text-slate-400",   bar: "bg-slate-400",    loading: ticketsLoading, idx: 6 },
+    { key: "not_related", label: "Not Related",    value: stats.notRelatedCount,    icon: AlertTriangle, numberColor: "text-slate-500",   iconBg: "bg-slate-400/10",    iconColor: "text-slate-400",   bar: "bg-slate-400",    loading: ticketsLoading, idx: 7 },
   ];
-
-  /* ── Customer name helper for company-mode ticket list ── */
-  const getCustomerName = (customer: Ticket['customer']) => {
-    if (!customer) return '—';
-    if (typeof customer === 'object') return customer.contactPerson || customer.companyName || '—';
-    return '—';
-  };
 
   return (
     <div className="p-6 md:p-8 space-y-6 min-h-screen">
@@ -735,7 +718,7 @@ export default function CustomerSummary() {
             </motion.div>
 
             {/* Stat cards */}
-            <motion.div variants={stagger} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+            <motion.div variants={stagger} className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4">
               {statCards.map(({ key, ...card }) => (
                 <StatCard key={key} {...card} />
               ))}
@@ -779,152 +762,94 @@ export default function CustomerSummary() {
             </motion.div>
 
             {/* All Tickets */}
-            <motion.div variants={sectionVariants} custom={2}>
-              <SectionBlock
-                bar="bg-brand-500"
-                header={
-                  <div className="flex items-center justify-between w-full gap-3 flex-wrap">
-                    <p className="text-sm font-semibold text-on-surface shrink-0">
-                      All Tickets
-                      <span className="ml-2 px-1.5 py-0.5 rounded-full bg-brand-500/10 text-brand-600 text-[11px] font-bold">
-                        {stats.total}
-                      </span>
-                    </p>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <div className="relative">
-                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-on-surface-variant pointer-events-none" />
-                        <input
-                          type="text"
-                          value={ticketSearch}
-                          onChange={(e) => { setTicketSearch(e.target.value); setTablePage(1); }}
-                          placeholder="Search tickets..."
-                          className="pl-8 pr-3 py-1.5 rounded-lg border border-outline-variant/30 bg-surface text-xs text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-brand-500/30 w-44"
-                        />
-                      </div>
-                      <select
-                        value={statusFilter}
-                        onChange={(e) => { setStatusFilter(e.target.value); setTablePage(1); }}
-                        className="py-1.5 px-2 rounded-lg border border-outline-variant/30 bg-surface text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-500/30"
-                      >
-                        <option value="all">All statuses</option>
-                        {Object.entries(STATUS_PILL).map(([val, { label }]) => (
-                          <option key={val} value={val}>{label}</option>
-                        ))}
-                      </select>
-                    </div>
+            <motion.div variants={sectionVariants} custom={2} className="space-y-3">
+              {/* Tickets header + filters */}
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-semibold text-on-surface">All Tickets</p>
+                  <span className="px-1.5 py-0.5 rounded-full bg-brand-500/10 text-brand-600 text-[11px] font-bold">
+                    {filteredTickets.length}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-on-surface-variant pointer-events-none" />
+                    <input
+                      type="text"
+                      value={ticketSearch}
+                      onChange={(e) => { setTicketSearch(e.target.value); setTablePage(1); }}
+                      placeholder="Search tickets..."
+                      className="pl-8 pr-3 py-1.5 rounded-lg border border-outline-variant/30 bg-surface-container-lowest text-xs text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-brand-500/30 w-44"
+                    />
                   </div>
-                }
-              >
-                {ticketsLoading ? (
-                  <div className="divide-y divide-outline-variant/10">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <div key={i} className="flex items-center gap-3 px-5 py-3.5">
-                        <div className="h-4 w-24 bg-surface-container-high animate-pulse rounded-full hidden sm:block" />
-                        <div className="flex-1 h-4 bg-surface-container-high animate-pulse rounded-full" />
-                        <div className="h-5 w-16 bg-surface-container-high animate-pulse rounded-full" />
-                      </div>
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => { setStatusFilter(e.target.value); setTablePage(1); }}
+                    className="py-1.5 px-2 rounded-lg border border-outline-variant/30 bg-surface-container-lowest text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+                  >
+                    <option value="all">All statuses</option>
+                    {Object.entries(STATUS_PILL).map(([val, { label }]) => (
+                      <option key={val} value={val}>{label}</option>
                     ))}
-                  </div>
-                ) : filteredTickets.length === 0 ? (
-                  <div className="flex items-center justify-center py-12 text-sm text-on-surface-variant">
-                    {stats.total === 0
-                      ? searchMode === 'company'
-                        ? "No tickets found for this company."
-                        : "No tickets found for this customer."
-                      : "No tickets match your filters."}
-                  </div>
-                ) : (
-                  <>
-                    <motion.ul
-                      variants={stagger}
-                      initial="hidden"
-                      animate="visible"
-                      className="divide-y divide-outline-variant/10"
-                    >
-                      {pagedTickets.map((ticket, idx) => {
-                        const sc = STATUS_PILL[ticket.status] ?? { label: ticket.status, pill: "bg-slate-400/20 text-slate-600" };
-                        const pc = PRIORITY_PILL[ticket.priority] ?? { label: ticket.priority, pill: "bg-slate-400/20 text-slate-600" };
-                        return (
-                          <motion.li
-                            key={ticket._id}
-                            variants={rowVariants}
-                            custom={idx}
-                            onClick={() => navigate(`/tickets/view/${ticket._id}`)}
-                            className="flex items-center gap-3 px-5 py-3.5 hover:bg-surface-container-low/60 cursor-pointer transition-colors"
-                          >
-                            <span className="font-mono text-xs text-on-surface-variant shrink-0 hidden sm:inline">
-                              {ticket.ticketNumber}
-                            </span>
-                            <p className="flex-1 text-sm text-on-surface truncate">{ticket.subject}</p>
-                            {searchMode === 'company' && (
-                              <span className="text-xs text-on-surface-variant shrink-0 hidden lg:inline truncate max-w-[120px]">
-                                {getCustomerName(ticket.customer)}
-                              </span>
-                            )}
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold shrink-0 ${sc.pill}`}>
-                              {sc.label}
-                            </span>
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold shrink-0 hidden sm:inline ${pc.pill}`}>
-                              {pc.label}
-                            </span>
-                            <span className="text-xs text-on-surface-variant shrink-0 hidden md:inline">
-                              {new Date(ticket.createdAt).toLocaleDateString()}
-                            </span>
-                          </motion.li>
-                        );
-                      })}
-                    </motion.ul>
+                  </select>
+                </div>
+              </div>
 
-                    {totalPages > 1 && (
-                      <div className="flex items-center justify-between px-5 py-3 border-t border-outline-variant/10 bg-surface-container-low/40">
-                        <span className="text-xs text-on-surface-variant">
-                          Showing {(tablePage - 1) * TABLE_PAGE_SIZE + 1}–{Math.min(tablePage * TABLE_PAGE_SIZE, filteredTickets.length)} of {filteredTickets.length}
-                        </span>
-                        <div className="flex items-center gap-1">
+              {/* Ticket table */}
+              <TicketTable
+                tickets={pagedTickets}
+                onDelete={() => {}}
+                loading={ticketsLoading}
+              />
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between px-2 py-2">
+                  <span className="text-xs text-on-surface-variant">
+                    Showing {(tablePage - 1) * TABLE_PAGE_SIZE + 1}–{Math.min(tablePage * TABLE_PAGE_SIZE, filteredTickets.length)} of {filteredTickets.length}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setTablePage((p) => Math.max(1, p - 1))}
+                      disabled={tablePage === 1}
+                      className="px-2.5 py-1 rounded-lg text-xs font-medium text-on-surface-variant hover:bg-surface-container-high disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      ← Prev
+                    </button>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter((p) => p === 1 || p === totalPages || Math.abs(p - tablePage) <= 1)
+                      .reduce<(number | "...")[]>((acc, p, i, arr) => {
+                        if (i > 0 && (p as number) - (arr[i - 1] as number) > 1) acc.push("...");
+                        acc.push(p);
+                        return acc;
+                      }, [])
+                      .map((p, i) =>
+                        p === "..." ? (
+                          <span key={`ellipsis-${i}`} className="px-1 text-xs text-on-surface-variant">…</span>
+                        ) : (
                           <button
-                            onClick={() => setTablePage((p) => Math.max(1, p - 1))}
-                            disabled={tablePage === 1}
-                            className="px-2.5 py-1 rounded-lg text-xs font-medium text-on-surface-variant hover:bg-surface-container-high disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                            key={p}
+                            onClick={() => setTablePage(p as number)}
+                            className={`w-7 h-7 rounded-lg text-xs font-medium transition-colors ${
+                              tablePage === p
+                                ? "bg-brand-500 text-white"
+                                : "text-on-surface-variant hover:bg-surface-container-high"
+                            }`}
                           >
-                            ← Prev
+                            {p}
                           </button>
-                          {Array.from({ length: totalPages }, (_, i) => i + 1)
-                            .filter((p) => p === 1 || p === totalPages || Math.abs(p - tablePage) <= 1)
-                            .reduce<(number | "...")[]>((acc, p, i, arr) => {
-                              if (i > 0 && (p as number) - (arr[i - 1] as number) > 1) acc.push("...");
-                              acc.push(p);
-                              return acc;
-                            }, [])
-                            .map((p, i) =>
-                              p === "..." ? (
-                                <span key={`ellipsis-${i}`} className="px-1 text-xs text-on-surface-variant">…</span>
-                              ) : (
-                                <button
-                                  key={p}
-                                  onClick={() => setTablePage(p as number)}
-                                  className={`w-7 h-7 rounded-lg text-xs font-medium transition-colors ${
-                                    tablePage === p
-                                      ? "bg-brand-500 text-white"
-                                      : "text-on-surface-variant hover:bg-surface-container-high"
-                                  }`}
-                                >
-                                  {p}
-                                </button>
-                              )
-                            )}
-                          <button
-                            onClick={() => setTablePage((p) => Math.min(totalPages, p + 1))}
-                            disabled={tablePage === totalPages}
-                            className="px-2.5 py-1 rounded-lg text-xs font-medium text-on-surface-variant hover:bg-surface-container-high disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                          >
-                            Next →
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
-              </SectionBlock>
+                        )
+                      )}
+                    <button
+                      onClick={() => setTablePage((p) => Math.min(totalPages, p + 1))}
+                      disabled={tablePage === totalPages}
+                      className="px-2.5 py-1 rounded-lg text-xs font-medium text-on-surface-variant hover:bg-surface-container-high disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Next →
+                    </button>
+                  </div>
+                </div>
+              )}
             </motion.div>
           </motion.div>
         )}

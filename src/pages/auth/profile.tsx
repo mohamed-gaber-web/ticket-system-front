@@ -694,7 +694,6 @@ const ProfilePage = () => {
                       <tr>
                         <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Ticket #</th>
                         <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Subject</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Parent</th>
                         <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Customer</th>
                         <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Priority</th>
                         <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Status</th>
@@ -705,9 +704,6 @@ const ProfilePage = () => {
                       {assignedTickets.map((ticket) => {
                         const customer = typeof ticket.customer === 'object' && ticket.customer
                           ? (ticket.customer as any)
-                          : null;
-                        const parent = ticket.isSubTicket && typeof ticket.parentTicket === 'object' && ticket.parentTicket
-                          ? (ticket.parentTicket as any)
                           : null;
                         return (
                           <tr
@@ -735,15 +731,6 @@ const ProfilePage = () => {
                             </td>
                             <td className="px-4 py-3 max-w-[180px]">
                               <p className="text-sm font-medium text-on-surface truncate">{ticket.subject}</p>
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap">
-                              {parent ? (
-                                <span className="inline-flex items-center gap-1 text-xs font-medium text-brand-600 bg-brand-50 px-2 py-0.5 rounded-md">
-                                  #{parent.ticketNumber}
-                                </span>
-                              ) : (
-                                <span className="text-on-surface-variant/40 text-sm">—</span>
-                              )}
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap">
                               <span className="text-sm text-on-surface-variant">{customer?.companyName || '—'}</span>

@@ -7,6 +7,8 @@ import { fetchCustomers } from '@/redux/slices/customerSlice';
 import { fetchCompanies } from '@/redux/slices/companySlice';
 import { fetchDepartments } from '@/redux/slices/departmentSlice';
 import { fetchServiceTypes } from '@/redux/slices/serviceTypeSlice';
+import { fetchCategories } from '@/redux/slices/categorySlice';
+import { fetchCustomizedSolutions } from '@/redux/slices/customizedSolutionSlice';
 import TicketTable from './components/TicketTable';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,6 +39,8 @@ export default function Tickets() {
   const { departments } = useAppSelector((state) => state.departments);
   const { serviceTypes } = useAppSelector((state) => state.serviceTypes);
   const { modules } = useAppSelector((state) => state.modules);
+  const { categories } = useAppSelector((state) => state.categories);
+  const { customizedSolutions } = useAppSelector((state) => state.customizedSolutions);
 
   // Returns the scoping params based on customer role:
   // - company_admin → filter by companyName (sees all company tickets)
@@ -67,13 +71,22 @@ export default function Tickets() {
   const serviceTypeFilter = spArray('serviceType');
   const customerFilter    = spArray('customer');
   const companyFilter     = spArray('company');
-  const moduleFilter      = spArray('module');
-  const startDate         = sp('startDate');
-  const createdDateFrom   = sp('createdFrom');
-  const createdDateTo     = sp('createdTo');
-  const closedDateFrom    = sp('closedFrom');
-  const closedDateTo      = sp('closedTo');
-  const currentPage       = Math.max(1, Number(sp('page', '1')));
+  const moduleFilter           = spArray('module');
+  const categoryFilter         = spArray('category');
+  const featureFilter          = spArray('feature');
+  const createdDateFrom    = sp('createdFrom');
+  const createdDateTo      = sp('createdTo');
+  const closedDateFrom     = sp('closedFrom');
+  const closedDateTo       = sp('closedTo');
+  const resolvedDateFrom   = sp('resolvedFrom');
+  const resolvedDateTo     = sp('resolvedTo');
+  const deliveryDateFrom   = sp('deliveryFrom');
+  const deliveryDateTo     = sp('deliveryTo');
+  const acceptedDateFrom   = sp('acceptedFrom');
+  const acceptedDateTo     = sp('acceptedTo');
+  const updatedDateFrom    = sp('updatedFrom');
+  const updatedDateTo      = sp('updatedTo');
+  const currentPage        = Math.max(1, Number(sp('page', '1')));
 
   // Local buffer for the search input — committed to URL on Enter / Search button
   const [searchInput, setSearchInput] = useState(searchTerm);
@@ -108,11 +121,20 @@ export default function Tickets() {
     customerFilter.length > 0,
     companyFilter.length > 0,
     moduleFilter.length > 0,
-    Boolean(startDate),
+    categoryFilter.length > 0,
+    featureFilter.length > 0,
     Boolean(createdDateFrom),
     Boolean(createdDateTo),
     Boolean(closedDateFrom),
     Boolean(closedDateTo),
+    Boolean(resolvedDateFrom),
+    Boolean(resolvedDateTo),
+    Boolean(deliveryDateFrom),
+    Boolean(deliveryDateTo),
+    Boolean(acceptedDateFrom),
+    Boolean(acceptedDateTo),
+    Boolean(updatedDateFrom),
+    Boolean(updatedDateTo),
   ].filter(Boolean).length;
 
   // Auto-expand advanced panel if filters are present (e.g. on back-navigation)
@@ -127,6 +149,8 @@ export default function Tickets() {
     dispatch(fetchDepartments({ limit: 1000 }));
     dispatch(fetchServiceTypes({ limit: 1000 }));
     dispatch(fetchModules({ limit: 1000 }));
+    dispatch(fetchCategories({ limit: 9999 }));
+    dispatch(fetchCustomizedSolutions({ limit: 9999 }));
   }, []);
 
   // Fetch tickets whenever URL params or user identity changes
@@ -142,11 +166,20 @@ export default function Tickets() {
     if (customerFilter.length)   params.customer           = customerFilter.join(',');
     if (companyFilter.length)    params.companyName        = companyFilter.join(',');
     if (moduleFilter.length)     params.scope              = moduleFilter.join(',');
-    if (startDate)               params.startDate          = startDate;
+    if (categoryFilter.length)   params.category           = categoryFilter.join(',');
+    if (featureFilter.length)    params.feature            = featureFilter.join(',');
     if (createdDateFrom)         params.createdDateFrom    = createdDateFrom;
     if (createdDateTo)           params.createdDateTo      = createdDateTo;
     if (closedDateFrom)          params.closedDateFrom     = closedDateFrom;
     if (closedDateTo)            params.closedDateTo       = closedDateTo;
+    if (resolvedDateFrom)        params.resolvedDateFrom   = resolvedDateFrom;
+    if (resolvedDateTo)          params.resolvedDateTo     = resolvedDateTo;
+    if (deliveryDateFrom)        params.deliveryDateFrom   = deliveryDateFrom;
+    if (deliveryDateTo)          params.deliveryDateTo     = deliveryDateTo;
+    if (acceptedDateFrom)        params.acceptedDateFrom   = acceptedDateFrom;
+    if (acceptedDateTo)          params.acceptedDateTo     = acceptedDateTo;
+    if (updatedDateFrom)         params.updatedDateFrom    = updatedDateFrom;
+    if (updatedDateTo)           params.updatedDateTo      = updatedDateTo;
     Object.assign(params, getCustomerScopeParams());
     dispatch(fetchTickets(params));
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -164,11 +197,20 @@ export default function Tickets() {
     if (customerFilter.length)   params.customer           = customerFilter.join(',');
     if (companyFilter.length)    params.companyName        = companyFilter.join(',');
     if (moduleFilter.length)     params.scope              = moduleFilter.join(',');
-    if (startDate)               params.startDate          = startDate;
+    if (categoryFilter.length)   params.category           = categoryFilter.join(',');
+    if (featureFilter.length)    params.feature            = featureFilter.join(',');
     if (createdDateFrom)         params.createdDateFrom    = createdDateFrom;
     if (createdDateTo)           params.createdDateTo      = createdDateTo;
     if (closedDateFrom)          params.closedDateFrom     = closedDateFrom;
     if (closedDateTo)            params.closedDateTo       = closedDateTo;
+    if (resolvedDateFrom)        params.resolvedDateFrom   = resolvedDateFrom;
+    if (resolvedDateTo)          params.resolvedDateTo     = resolvedDateTo;
+    if (deliveryDateFrom)        params.deliveryDateFrom   = deliveryDateFrom;
+    if (deliveryDateTo)          params.deliveryDateTo     = deliveryDateTo;
+    if (acceptedDateFrom)        params.acceptedDateFrom   = acceptedDateFrom;
+    if (acceptedDateTo)          params.acceptedDateTo     = acceptedDateTo;
+    if (updatedDateFrom)         params.updatedDateFrom    = updatedDateFrom;
+    if (updatedDateTo)           params.updatedDateTo      = updatedDateTo;
     Object.assign(params, getCustomerScopeParams());
     return params;
   };
@@ -220,11 +262,20 @@ export default function Tickets() {
     customerFilter.length > 0,
     companyFilter.length > 0,
     moduleFilter.length > 0,
-    Boolean(startDate),
+    categoryFilter.length > 0,
+    featureFilter.length > 0,
     Boolean(createdDateFrom),
     Boolean(createdDateTo),
     Boolean(closedDateFrom),
     Boolean(closedDateTo),
+    Boolean(resolvedDateFrom),
+    Boolean(resolvedDateTo),
+    Boolean(deliveryDateFrom),
+    Boolean(deliveryDateTo),
+    Boolean(acceptedDateFrom),
+    Boolean(acceptedDateTo),
+    Boolean(updatedDateFrom),
+    Boolean(updatedDateTo),
   ].filter(Boolean).length;
 
   const EXPORT_HEADERS = [
@@ -299,11 +350,20 @@ export default function Tickets() {
     if (customerFilter.length)   params.customer           = customerFilter.join(',');
     if (companyFilter.length)    params.companyName        = companyFilter.join(',');
     if (moduleFilter.length)     params.scope              = moduleFilter.join(',');
-    if (startDate)               params.startDate          = startDate;
+    if (categoryFilter.length)   params.category           = categoryFilter.join(',');
+    if (featureFilter.length)    params.feature            = featureFilter.join(',');
     if (createdDateFrom)         params.createdDateFrom    = createdDateFrom;
     if (createdDateTo)           params.createdDateTo      = createdDateTo;
     if (closedDateFrom)          params.closedDateFrom     = closedDateFrom;
     if (closedDateTo)            params.closedDateTo       = closedDateTo;
+    if (resolvedDateFrom)        params.resolvedDateFrom   = resolvedDateFrom;
+    if (resolvedDateTo)          params.resolvedDateTo     = resolvedDateTo;
+    if (deliveryDateFrom)        params.deliveryDateFrom   = deliveryDateFrom;
+    if (deliveryDateTo)          params.deliveryDateTo     = deliveryDateTo;
+    if (acceptedDateFrom)        params.acceptedDateFrom   = acceptedDateFrom;
+    if (acceptedDateTo)          params.acceptedDateTo     = acceptedDateTo;
+    if (updatedDateFrom)         params.updatedDateFrom    = updatedDateFrom;
+    if (updatedDateTo)           params.updatedDateTo      = updatedDateTo;
     Object.assign(params, getCustomerScopeParams());
     return params;
   };
@@ -536,7 +596,7 @@ export default function Tickets() {
               {/* Dropdowns Row */}
               <div>
                 <p className="text-xs font-medium text-on-surface-variant mb-3">Filter by</p>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
                   <MultiSelect
                     values={sourceFilter}
                     onChange={(v) => updateFilters({ source: v })}
@@ -579,6 +639,18 @@ export default function Tickets() {
                     label="Module"
                     options={modules?.map((m) => ({ value: m._id, label: m.name })) ?? []}
                   />
+                  <MultiSelect
+                    values={categoryFilter}
+                    onChange={(v) => updateFilters({ category: v })}
+                    label="Category"
+                    options={categories?.map((c) => ({ value: c._id, label: c.name })) ?? []}
+                  />
+                  <MultiSelect
+                    values={featureFilter}
+                    onChange={(v) => updateFilters({ feature: v })}
+                    label="Customized Solution"
+                    options={customizedSolutions?.map((f) => ({ value: f._id, label: f.name })) ?? []}
+                  />
                 </div>
               </div>
 
@@ -588,49 +660,90 @@ export default function Tickets() {
                   <Calendar className="h-3 w-3" />
                   Date range
                 </p>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3">
-                  {/* Start / Due Date */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-on-surface-variant">Start Date</label>
-                    <Input
-                      type="date"
-                      value={startDate}
-                      onChange={(e) => updateFilters({ startDate: e.target.value })}
-                    />
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4">
+                  {/* Created */}
+                  <div className="space-y-2">
+                    <p className="text-[11px] font-semibold text-on-surface-variant uppercase tracking-wide">Created</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <label className="text-xs text-on-surface-variant">From</label>
+                        <Input type="date" value={createdDateFrom} onChange={(e) => updateFilters({ createdFrom: e.target.value })} />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs text-on-surface-variant">To</label>
+                        <Input type="date" value={createdDateTo} onChange={(e) => updateFilters({ createdTo: e.target.value })} />
+                      </div>
+                    </div>
                   </div>
-                  {/* Created Date Range */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-on-surface-variant">Created From</label>
-                    <Input
-                      type="date"
-                      value={createdDateFrom}
-                      onChange={(e) => updateFilters({ createdFrom: e.target.value })}
-                    />
+                  {/* Last Updated */}
+                  <div className="space-y-2">
+                    <p className="text-[11px] font-semibold text-on-surface-variant uppercase tracking-wide">Last Updated</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <label className="text-xs text-on-surface-variant">From</label>
+                        <Input type="date" value={updatedDateFrom} onChange={(e) => updateFilters({ updatedFrom: e.target.value })} />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs text-on-surface-variant">To</label>
+                        <Input type="date" value={updatedDateTo} onChange={(e) => updateFilters({ updatedTo: e.target.value })} />
+                      </div>
+                    </div>
                   </div>
-                  {/* Closed Date Range */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-on-surface-variant">Closed From</label>
-                    <Input
-                      type="date"
-                      value={closedDateFrom}
-                      onChange={(e) => updateFilters({ closedFrom: e.target.value })}
-                    />
+                  {/* Resolved */}
+                  <div className="space-y-2">
+                    <p className="text-[11px] font-semibold text-on-surface-variant uppercase tracking-wide">Resolved</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <label className="text-xs text-on-surface-variant">From</label>
+                        <Input type="date" value={resolvedDateFrom} onChange={(e) => updateFilters({ resolvedFrom: e.target.value })} />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs text-on-surface-variant">To</label>
+                        <Input type="date" value={resolvedDateTo} onChange={(e) => updateFilters({ resolvedTo: e.target.value })} />
+                      </div>
+                    </div>
                   </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-on-surface-variant">Created To</label>
-                    <Input
-                      type="date"
-                      value={createdDateTo}
-                      onChange={(e) => updateFilters({ createdTo: e.target.value })}
-                    />
+                  {/* Closed */}
+                  <div className="space-y-2">
+                    <p className="text-[11px] font-semibold text-on-surface-variant uppercase tracking-wide">Closed</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <label className="text-xs text-on-surface-variant">From</label>
+                        <Input type="date" value={closedDateFrom} onChange={(e) => updateFilters({ closedFrom: e.target.value })} />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs text-on-surface-variant">To</label>
+                        <Input type="date" value={closedDateTo} onChange={(e) => updateFilters({ closedTo: e.target.value })} />
+                      </div>
+                    </div>
                   </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-on-surface-variant">Closed To</label>
-                    <Input
-                      type="date"
-                      value={closedDateTo}
-                      onChange={(e) => updateFilters({ closedTo: e.target.value })}
-                    />
+                  {/* Delivery */}
+                  <div className="space-y-2">
+                    <p className="text-[11px] font-semibold text-on-surface-variant uppercase tracking-wide">Delivery Date</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <label className="text-xs text-on-surface-variant">From</label>
+                        <Input type="date" value={deliveryDateFrom} onChange={(e) => updateFilters({ deliveryFrom: e.target.value })} />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs text-on-surface-variant">To</label>
+                        <Input type="date" value={deliveryDateTo} onChange={(e) => updateFilters({ deliveryTo: e.target.value })} />
+                      </div>
+                    </div>
+                  </div>
+                  {/* Accepted */}
+                  <div className="space-y-2">
+                    <p className="text-[11px] font-semibold text-on-surface-variant uppercase tracking-wide">Accepted Date</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <label className="text-xs text-on-surface-variant">From</label>
+                        <Input type="date" value={acceptedDateFrom} onChange={(e) => updateFilters({ acceptedFrom: e.target.value })} />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs text-on-surface-variant">To</label>
+                        <Input type="date" value={acceptedDateTo} onChange={(e) => updateFilters({ acceptedTo: e.target.value })} />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

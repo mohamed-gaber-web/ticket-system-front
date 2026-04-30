@@ -285,6 +285,62 @@ function getStatusCfg(status: string) {
 }
 
 /* ─────────────────────────────────────────────────────────────
+   Breakdown list (shared by main & sub ticket breakdowns)
+───────────────────────────────────────────────────────────── */
+interface BreakdownItem {
+  label: string;
+  value: number;
+  bar: string;
+  dot: string;
+  text: string;
+}
+
+function BreakdownList({
+  items,
+  total,
+  loading,
+}: {
+  items: BreakdownItem[];
+  total: number;
+  loading: boolean;
+}) {
+  return (
+    <div className="px-5 py-4 space-y-4">
+      {items.map((item, i) => {
+        const pct = total > 0 ? (item.value / total) * 100 : 0;
+        return (
+          <div key={item.label} className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className={`h-2 w-2 rounded-full ${item.dot}`} />
+                <span className={`text-xs font-semibold ${item.text}`}>
+                  {item.label}
+                </span>
+              </div>
+              {loading ? (
+                <div className="h-4 w-7 bg-surface-container-highest animate-pulse rounded" />
+              ) : (
+                <span className="text-sm font-bold text-on-surface tabular-nums">
+                  {item.value}
+                </span>
+              )}
+            </div>
+            <div className="h-2.5 rounded-full bg-surface-container-highest overflow-hidden">
+              <motion.div
+                className={`h-full ${item.bar} rounded-full`}
+                initial={{ width: 0 }}
+                animate={{ width: loading ? "0%" : `${pct}%` }}
+                transition={{ duration: 1, ease: [0.23, 1, 0.32, 1], delay: 0.5 + i * 0.1 }}
+              />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────
    Main Dashboard
 ───────────────────────────────────────────────────────────── */
 export default function Dashboard() {
@@ -297,25 +353,41 @@ export default function Dashboard() {
     useAppSelector((s) => s.customers);
 
   useEffect(() => {
-    dispatch(fetchTickets({ limit: 10000 }));
+    dispatch(fetchTickets({ limit: 10000, includeSubTickets: true }));
     dispatch(fetchCustomers());
   }, [dispatch]);
 
   /* ── Derived data ── */
   const stats = useMemo(() => {
-    const closed = tickets.filter((t) => t.status === "closed").length;
-    const resolved = tickets.filter((t) => t.status === "resolved").length;
-    const inProgress = tickets.filter((t) => t.status === "in_progress").length;
-    const newT = tickets.filter((t) => t.status === "new").length;
-    const assigned = tickets.filter((t) => t.status === "assigned").length;
-    const customerPending = tickets.filter((t) => t.status === "customer_pending").length;
-    const tested = tickets.filter((t) => t.status === "tested").length;
-    const delivered = tickets.filter((t) => t.status === "delivered").length;
-    const notRelated = tickets.filter((t) => t.status === "not_related").length;
-    const mainTickets = tickets.length;
-    const subTicketsCount = tickets.reduce((acc, t) => acc + (t.subTickets?.length ?? 0), 0);
-    const total = mainTickets + subTicketsCount;
-    return { total, closed, resolved, inProgress, new: newT, assigned, customerPending, tested, delivered, notRelated, mainTickets, subTicketsCount };
+    const main = tickets.filter((t) => !t.isSubTicket);
+    const subs = tickets.filter((t) => t.isSubTicket);
+
+    const byStatus = (arr: typeof tickets, status: string) =>
+      arr.filter((t) => t.status === status).length;
+
+    return {
+      total: tickets.length,
+      mainTickets: main.length,
+      subTicketsCount: subs.length,
+      closed:          byStatus(main, "closed"),
+      resolved:        byStatus(main, "resolved"),
+      inProgress:      byStatus(main, "in_progress"),
+      new:             byStatus(main, "new"),
+      assigned:        byStatus(main, "assigned"),
+      customerPending: byStatus(main, "customer_pending"),
+      tested:          byStatus(main, "tested"),
+      delivered:       byStatus(main, "delivered"),
+      notRelated:      byStatus(main, "not_related"),
+      subNew:             byStatus(subs, "new"),
+      subAssigned:        byStatus(subs, "assigned"),
+      subInProgress:      byStatus(subs, "in_progress"),
+      subCustomerPending: byStatus(subs, "customer_pending"),
+      subResolved:        byStatus(subs, "resolved"),
+      subTested:          byStatus(subs, "tested"),
+      subDelivered:       byStatus(subs, "delivered"),
+      subClosed:          byStatus(subs, "closed"),
+      subNotRelated:      byStatus(subs, "not_related"),
+    };
   }, [tickets]);
 
   const metrics = useMemo(() => {
@@ -362,11 +434,6 @@ export default function Dashboard() {
         .slice(0, 5),
     [tickets]
   );
-
-  const resolutionRate =
-    stats.mainTickets > 0
-      ? Math.round(((stats.closed + stats.resolved) / stats.mainTickets) * 100)
-      : 0;
 
   const today = new Date().toLocaleDateString("en-US", {
     weekday: "long",
@@ -418,36 +485,6 @@ export default function Dashboard() {
         <StatCard label="Delivered"        value={stats.delivered}       icon={PackageCheck}  numberColor="text-teal-600"         iconBg="bg-teal-100"                iconColor="text-teal-600"            bar="bg-teal-500"           loading={ticketsLoading}   idx={12} />
         <StatCard label="Not Related"      value={stats.notRelated}      icon={Ban}           numberColor="text-slate-600"        iconBg="bg-slate-100"               iconColor="text-slate-600"           bar="bg-slate-500"          loading={ticketsLoading}   idx={13} />
 
-        {/* Resolution rate — inline highlight card */}
-        <motion.div
-          variants={cardVariants}
-          custom={9}
-          whileHover={{ y: -5, transition: SP_FAST }}
-          className="relative flex flex-col gap-4 p-5 rounded-2xl overflow-hidden cursor-default shadow-sm hover:shadow-xl transition-shadow duration-300"
-          style={{
-            background: "linear-gradient(135deg, #003A8F 0%, #001F4D 100%)",
-          }}
-        >
-          <div className="absolute inset-x-0 top-0 h-[3px] bg-white/30" />
-          <div className="flex items-start justify-between gap-2">
-            <p className="text-xs font-semibold uppercase tracking-wider text-white/60 mt-0.5">
-              Resolution Rate
-            </p>
-            <div className="p-2.5 rounded-xl bg-white/10 shrink-0">
-              <TrendingUp className="h-4 w-4 text-white" />
-            </div>
-          </div>
-          {ticketsLoading ? (
-            <div className="h-10 w-20 bg-white/10 animate-pulse rounded-lg" />
-          ) : (
-            <div className="flex items-end gap-1">
-              <p className="text-4xl font-extrabold tabular-nums leading-none tracking-tight text-white">
-                {resolutionRate}
-              </p>
-              <span className="text-xl font-bold text-white/60 mb-0.5">%</span>
-            </div>
-          )}
-        </motion.div>
       </motion.div>
 
       {/* ── Main 2-col layout ── */}
@@ -711,52 +748,6 @@ export default function Dashboard() {
           animate="visible"
         >
 
-          {/* Resolution Rate */}
-          <motion.div variants={sectionVariants} custom={0}>
-            <SectionBlock
-              bar="bg-emerald-500"
-              header={
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4 text-emerald-600" />
-                  <span className="text-sm font-semibold text-on-surface">
-                    Resolution Rate
-                  </span>
-                </div>
-              }
-            >
-              <div className="px-5 py-5 space-y-4">
-                {ticketsLoading ? (
-                  <>
-                    <div className="h-14 w-32 bg-surface-container-high animate-pulse rounded-xl" />
-                    <div className="h-3 w-full bg-surface-container-high animate-pulse rounded-full" />
-                  </>
-                ) : (
-                  <>
-                    <div className="flex items-end gap-2">
-                      <span className="text-5xl font-extrabold text-emerald-600 tabular-nums leading-none tracking-tight">
-                        <AnimatedNumber to={resolutionRate} />
-                      </span>
-                      <span className="text-2xl font-bold text-emerald-600/50 mb-1">%</span>
-                    </div>
-                    <div className="h-3 rounded-full bg-surface-container-highest overflow-hidden">
-                      <motion.div
-                        className="h-full bg-emerald-500 rounded-full"
-                        initial={{ width: 0 }}
-                        animate={{ width: `${resolutionRate}%` }}
-                        transition={{ duration: 1.2, ease: [0.23, 1, 0.32, 1], delay: 0.5 }}
-                      />
-                    </div>
-                    <p className="text-xs text-on-surface-variant">
-                      <span className="font-bold text-on-surface">{stats.closed}</span> of{" "}
-                      <span className="font-bold text-on-surface">{stats.mainTickets}</span>{" "}
-                      tickets resolved
-                    </p>
-                  </>
-                )}
-              </div>
-            </SectionBlock>
-          </motion.div>
-
           {/* Performance */}
           <motion.div variants={sectionVariants} custom={1}>
             <SectionBlock
@@ -807,111 +798,79 @@ export default function Dashboard() {
             </SectionBlock>
           </motion.div>
 
-          {/* Active Breakdown */}
+          {/* Main Tickets Breakdown */}
           <motion.div variants={sectionVariants} custom={2}>
             <SectionBlock
-              bar="bg-accent-orange-500"
+              bar="bg-brand-500"
               header={
-                <div className="flex items-center gap-2">
-                  <Activity className="h-4 w-4 text-accent-orange-500" />
-                  <span className="text-sm font-semibold text-on-surface">
-                    Active Breakdown
-                  </span>
-                </div>
+                <>
+                  <div className="flex items-center gap-2">
+                    <Ticket className="h-4 w-4 text-brand-500" />
+                    <span className="text-sm font-semibold text-on-surface">
+                      Main Tickets
+                    </span>
+                  </div>
+                  {!ticketsLoading && (
+                    <span className="label-technical bg-surface-container px-2.5 py-1 rounded-full border border-outline-variant/20">
+                      {stats.mainTickets} total
+                    </span>
+                  )}
+                </>
               }
             >
-              <div className="px-5 py-4 space-y-4">
-                {[
-                  {
-                    label: "New",
-                    value: stats.new,
-                    bar: "bg-yellow-400",
-                    dot: "bg-yellow-400",
-                    text: "text-yellow-700",
-                  },
-                  {
-                    label: "Assigned",
-                    value: stats.assigned,
-                    bar: "bg-accent-orange-500",
-                    dot: "bg-accent-orange-500",
-                    text: "text-accent-orange-600",
-                  },
-                  {
-                    label: "In Progress",
-                    value: stats.inProgress,
-                    bar: "bg-brand-400",
-                    dot: "bg-brand-400",
-                    text: "text-brand-600",
-                  },
-                  {
-                    label: "Cust. Pending",
-                    value: stats.customerPending,
-                    bar: "bg-purple-500",
-                    dot: "bg-purple-500",
-                    text: "text-purple-600",
-                  },
-                  {
-                    label: "Tested",
-                    value: stats.tested,
-                    bar: "bg-cyan-500",
-                    dot: "bg-cyan-500",
-                    text: "text-cyan-600",
-                  },
-                  {
-                    label: "Delivered",
-                    value: stats.delivered,
-                    bar: "bg-teal-500",
-                    dot: "bg-teal-500",
-                    text: "text-teal-600",
-                  },
-                  {
-                    label: "Not Related",
-                    value: stats.notRelated,
-                    bar: "bg-slate-500",
-                    dot: "bg-slate-500",
-                    text: "text-slate-600",
-                  },
-                ].map((item, i) => {
-                  const activeTotal =
-                    stats.new + stats.assigned + stats.inProgress +
-                    stats.customerPending + stats.tested + stats.delivered + stats.notRelated;
-                  const pct =
-                    activeTotal > 0 ? (item.value / activeTotal) * 100 : 0;
-                  return (
-                    <div key={item.label} className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className={`h-2 w-2 rounded-full ${item.dot}`} />
-                          <span className={`text-xs font-semibold ${item.text}`}>
-                            {item.label}
-                          </span>
-                        </div>
-                        {ticketsLoading ? (
-                          <div className="h-4 w-7 bg-surface-container-highest animate-pulse rounded" />
-                        ) : (
-                          <span className="text-sm font-bold text-on-surface tabular-nums">
-                            {item.value}
-                          </span>
-                        )}
-                      </div>
-                      <div className="h-2.5 rounded-full bg-surface-container-highest overflow-hidden">
-                        <motion.div
-                          className={`h-full ${item.bar} rounded-full`}
-                          initial={{ width: 0 }}
-                          animate={{
-                            width: ticketsLoading ? "0%" : `${pct}%`,
-                          }}
-                          transition={{
-                            duration: 1,
-                            ease: [0.23, 1, 0.32, 1],
-                            delay: 0.5 + i * 0.1,
-                          }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              <BreakdownList
+                items={[
+                  { label: "New",           value: stats.new,             bar: "bg-yellow-400",        dot: "bg-yellow-400",        text: "text-yellow-700" },
+                  { label: "Assigned",      value: stats.assigned,        bar: "bg-accent-orange-500", dot: "bg-accent-orange-500", text: "text-accent-orange-600" },
+                  { label: "In Progress",   value: stats.inProgress,      bar: "bg-brand-400",         dot: "bg-brand-400",         text: "text-brand-600" },
+                  { label: "Cust. Pending", value: stats.customerPending, bar: "bg-purple-500",        dot: "bg-purple-500",        text: "text-purple-600" },
+                  { label: "Resolved",      value: stats.resolved,        bar: "bg-emerald-400",       dot: "bg-emerald-400",       text: "text-emerald-600" },
+                  { label: "Tested",        value: stats.tested,          bar: "bg-cyan-500",          dot: "bg-cyan-500",          text: "text-cyan-600" },
+                  { label: "Delivered",     value: stats.delivered,       bar: "bg-teal-500",          dot: "bg-teal-500",          text: "text-teal-600" },
+                  { label: "Closed",        value: stats.closed,          bar: "bg-emerald-600",       dot: "bg-emerald-600",       text: "text-emerald-700" },
+                  { label: "Not Related",   value: stats.notRelated,      bar: "bg-slate-500",         dot: "bg-slate-500",         text: "text-slate-600" },
+                ]}
+                total={stats.mainTickets}
+                loading={ticketsLoading}
+              />
+            </SectionBlock>
+          </motion.div>
+
+          {/* Sub Tickets Breakdown */}
+          <motion.div variants={sectionVariants} custom={3}>
+            <SectionBlock
+              bar="bg-violet-500"
+              header={
+                <>
+                  <div className="flex items-center gap-2">
+                    <GitBranch className="h-4 w-4 text-violet-500" />
+                    <span className="text-sm font-semibold text-on-surface">
+                      Sub Tickets
+                    </span>
+                  </div>
+                  {!ticketsLoading && (
+                    <span className="label-technical bg-surface-container px-2.5 py-1 rounded-full border border-outline-variant/20">
+                      {stats.subTicketsCount} total
+                    </span>
+                  )}
+                </>
+              }
+            >
+              <BreakdownList
+                items={[
+                  { label: "New",           value: stats.subNew,             bar: "bg-yellow-400",        dot: "bg-yellow-400",        text: "text-yellow-700" },
+                  { label: "Assigned",      value: stats.subAssigned,        bar: "bg-accent-orange-500", dot: "bg-accent-orange-500", text: "text-accent-orange-600" },
+                  { label: "In Progress",   value: stats.subInProgress,      bar: "bg-brand-400",         dot: "bg-brand-400",         text: "text-brand-600" },
+                  { label: "Cust. Pending", value: stats.subCustomerPending, bar: "bg-purple-500",        dot: "bg-purple-500",        text: "text-purple-600" },
+                  { label: "Resolved",      value: stats.subResolved,        bar: "bg-emerald-400",       dot: "bg-emerald-400",       text: "text-emerald-600" },
+                  { label: "Tested",        value: stats.subTested,          bar: "bg-cyan-500",          dot: "bg-cyan-500",          text: "text-cyan-600" },
+                  { label: "Delivered",     value: stats.subDelivered,       bar: "bg-teal-500",          dot: "bg-teal-500",          text: "text-teal-600" },
+                  { label: "Closed",        value: stats.subClosed,          bar: "bg-emerald-600",       dot: "bg-emerald-600",       text: "text-emerald-700" },
+                  { label: "Not Related",   value: stats.subNotRelated,      bar: "bg-slate-500",         dot: "bg-slate-500",         text: "text-slate-600" },
+                ]}
+                total={stats.subTicketsCount}
+                loading={ticketsLoading}
+              />
             </SectionBlock>
           </motion.div>
         </motion.div>

@@ -218,6 +218,15 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
   const getSubTicketCount = (ticket: Ticket): number =>
     (ticket.subTickets as unknown as { _id: string }[])?.length ?? 0;
 
+  // Map sub-ticket ID → parent ticket for field inheritance
+  const subToParent = new Map<string, Ticket>();
+  tickets.forEach((ticket) => {
+    if (expandedParents.has(ticket._id)) {
+      const subs = subTicketsByParent.get(ticket._id) || [];
+      subs.forEach((sub) => subToParent.set(sub._id, ticket));
+    }
+  });
+
   const organizeTickets = () => {
     const organized: Ticket[] = [];
     tickets.forEach((ticket) => {
@@ -231,6 +240,33 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
   };
 
   const organizedTickets = organizeTickets();
+
+  const getEffectiveCustomer = (ticket: Ticket) => {
+    if (ticket.isSubTicket) {
+      const parent = subToParent.get(ticket._id);
+      if (parent) return resolveCustomer(parent.customer);
+    }
+    return resolveCustomer(ticket.customer);
+  };
+
+  const getEffectiveScope = (ticket: Ticket): any[] => {
+    if (ticket.isSubTicket) {
+      const parent = subToParent.get(ticket._id);
+      if (parent && Array.isArray(parent.scope) && (parent.scope as any[]).length > 0) {
+        return parent.scope as any[];
+      }
+    }
+    return Array.isArray(ticket.scope) && (ticket.scope as any[]).length > 0 ? ticket.scope as any[] : [];
+  };
+
+  const getEffectiveAcceptedAt = (ticket: Ticket): string | null => {
+    if (ticket.acceptedAt) return ticket.acceptedAt as string;
+    if (ticket.isSubTicket) {
+      const parent = subToParent.get(ticket._id);
+      return (parent?.acceptedAt as string) ?? null;
+    }
+    return null;
+  };
 
   if (loading) {
     return (
@@ -346,7 +382,7 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                   {/* Customer (contact person) */}
                   <TableCell>
                     {(() => {
-                      const c = resolveCustomer(ticket.customer);
+                      const c = getEffectiveCustomer(ticket);
                       return c?.contactPerson
                         ? <span className="text-sm font-medium text-on-surface">{c.contactPerson}</span>
                         : <span className="text-on-surface-variant/40">&mdash;</span>;
@@ -385,7 +421,7 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                   {/* Company */}
                   <TableCell>
                     {(() => {
-                      const c = resolveCustomer(ticket.customer);
+                      const c = getEffectiveCustomer(ticket);
                       return c?.companyName
                         ? <span className="text-sm text-on-surface">{c.companyName}</span>
                         : <span className="text-on-surface-variant/40">&mdash;</span>;
@@ -404,22 +440,25 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                   {/* Module (scope — multi-value) */}
                   {isConsultant && (
                     <TableCell>
-                      {Array.isArray(ticket.scope) && ticket.scope.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {(ticket.scope as any[]).map((s, i) =>
-                            s && typeof s === 'object' ? (
-                              <span
-                                key={s._id ?? i}
-                                className="inline-block px-2 py-0.5 rounded-md text-xs font-medium bg-surface-container text-on-surface"
-                              >
-                                {s.name}
-                              </span>
-                            ) : null
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-on-surface-variant/40">&mdash;</span>
-                      )}
+                      {(() => {
+                        const scope = getEffectiveScope(ticket);
+                        return scope.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {scope.map((s, i) =>
+                              s && typeof s === 'object' ? (
+                                <span
+                                  key={s._id ?? i}
+                                  className="inline-block px-2 py-0.5 rounded-md text-xs font-medium bg-surface-container text-on-surface"
+                                >
+                                  {s.name}
+                                </span>
+                              ) : null
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-on-surface-variant/40">&mdash;</span>
+                        );
+                      })()}
                     </TableCell>
                   )}
                   <TableCell>{getPriorityDisplay(ticket.priority)}</TableCell>
@@ -440,13 +479,16 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                   </TableCell>
                   {/* Assigned Date */}
                   <TableCell>
-                    {ticket.acceptedAt ? (
-                      <span className="text-sm text-on-surface">
-                        {new Date(ticket.acceptedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </span>
-                    ) : (
-                      <span className="text-on-surface-variant/40">&mdash;</span>
-                    )}
+                    {(() => {
+                      const at = getEffectiveAcceptedAt(ticket);
+                      return at ? (
+                        <span className="text-sm text-on-surface">
+                          {new Date(at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </span>
+                      ) : (
+                        <span className="text-on-surface-variant/40">&mdash;</span>
+                      );
+                    })()}
                   </TableCell>
                   {/* Delivery Date (deliveryEstimationDate) */}
                   <TableCell>
@@ -518,7 +560,7 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                   {/* Customer Email */}
                   <TableCell>
                     {(() => {
-                      const c = resolveCustomer(ticket.customer);
+                      const c = getEffectiveCustomer(ticket);
                       return c?.email
                         ? <span className="text-sm text-on-surface">{c.email}</span>
                         : <span className="text-on-surface-variant/40">&mdash;</span>;

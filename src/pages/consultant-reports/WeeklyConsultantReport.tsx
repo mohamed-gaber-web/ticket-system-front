@@ -145,8 +145,10 @@ function StatCard({
 function ConsultantCard({ summary, idx }: { summary: ConsultantWeeklySummary; idx: number }) {
   const navigate = useNavigate();
   const [expanded, setExpanded] = useState(false);
-  const { consultant, tickets, totalTickets, resolvedCount, pendingCount,
+  const { consultant, tickets: allTickets, totalTickets, resolvedCount, pendingCount,
           totalEstimatedDays, totalActualDays, availableDaysInWeek } = summary;
+
+  const tickets = allTickets.filter((t) => ['assigned', 'in_progress', 'tested'].includes(t.status));
 
   const allDone = pendingCount === 0 && totalTickets > 0;
 

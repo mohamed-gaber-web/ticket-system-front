@@ -3,6 +3,7 @@ import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { createSubTicket } from '@/redux/slices/ticketSlice';
 import { uploadAttachment } from '@/redux/slices/attachmentSlice';
 import { fetchConsultants } from '@/redux/slices/consultantSlice';
+import { fetchDepartments } from '@/redux/slices/departmentSlice';
 import { createAssignment, assignConsultants } from '@/redux/slices/assignmentSlice';
 import { Button } from '@/components/ui/button';
 import {
@@ -17,10 +18,12 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, UserCheck, Mail, X, Paperclip, Upload, File, ImageIcon } from 'lucide-react';
+import { Plus, UserCheck, Mail, X, Paperclip, Upload, File, ImageIcon, Layers, Building } from 'lucide-react';
 import { ConsultantSelect } from '@/components/ui/consultant-select';
 import { CustomSelect } from '@/components/ui/custom-select';
 import { validateFile, formatFileSize } from '@/api/attachmentApi';
+import { getModules } from '@/api/moduleApi';
+import type { Module } from '@/types/module.types';
 import type { CreateSubTicketData } from '@/types/ticket';
 
 interface CreateSubTicketDialogProps {
@@ -54,10 +57,14 @@ export function CreateSubTicketDialog({
   const { loading } = useAppSelector((state) => state.tickets);
   const { user, userType } = useAppSelector((state) => state.auth);
   const { consultants, loading: consultantsLoading } = useAppSelector((state) => state.consultants);
+  const { departments } = useAppSelector((state) => state.departments);
+  const [modules, setModules] = useState<Module[]>([]);
 
   useEffect(() => {
     if (open) {
       dispatch(fetchConsultants({ limit: 500 }));
+      dispatch(fetchDepartments({ limit: 9999 }));
+      getModules({ limit: 9999 }).then((res) => setModules(res.data)).catch(() => {});
     }
   }, [dispatch, open]);
 
@@ -150,7 +157,7 @@ export function CreateSubTicketDialog({
       }
 
       setOpen(false);
-      setFormData({ subject: '', description: '', priority: 'medium' });
+      setFormData({ subject: '', description: '', priority: 'medium', scope: [], department: undefined });
       setSelectedConsultants([]);
       setNotifyEmails([]);
       setNotifyEmailInput('');
@@ -231,6 +238,62 @@ export function CreateSubTicketDialog({
                   { value: 'medium', label: 'Medium' },
                   { value: 'high', label: 'High' },
                   { value: 'critical', label: 'Critical' },
+                ]}
+              />
+            </div>
+
+            {/* Module (scope) — multi-select */}
+            <div className="grid gap-2">
+              <Label className="flex items-center gap-1.5">
+                <Layers className="h-4 w-4 text-on-surface-variant" />
+                Module
+              </Label>
+              <div className="flex flex-wrap gap-1.5 min-h-[2.5rem] p-2 rounded-[0.5rem] border border-border bg-surface focus-within:border-brand-500 transition-colors">
+                {(formData.scope ?? []).map((id) => {
+                  const mod = modules.find((m) => m._id === id);
+                  return mod ? (
+                    <span key={id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-600 text-xs font-medium">
+                      {mod.name}
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, scope: (formData.scope ?? []).filter((s) => s !== id) })}
+                        className="text-brand-400 hover:text-brand-700 transition-colors"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ) : null;
+                })}
+                <select
+                  className="flex-1 min-w-[120px] bg-transparent text-sm text-on-surface outline-none"
+                  value=""
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val && !(formData.scope ?? []).includes(val)) {
+                      setFormData({ ...formData, scope: [...(formData.scope ?? []), val] });
+                    }
+                  }}
+                >
+                  <option value="">{(formData.scope ?? []).length === 0 ? 'Select modules...' : 'Add more...'}</option>
+                  {modules.filter((m) => !(formData.scope ?? []).includes(m._id)).map((m) => (
+                    <option key={m._id} value={m._id}>{m.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Department */}
+            <div className="grid gap-2">
+              <Label className="flex items-center gap-1.5">
+                <Building className="h-4 w-4 text-on-surface-variant" />
+                Department
+              </Label>
+              <CustomSelect
+                value={formData.department || ''}
+                onChange={(value) => setFormData({ ...formData, department: value || undefined })}
+                options={[
+                  { value: '', label: 'Select department...' },
+                  ...departments.map((d) => ({ value: d._id, label: d.name })),
                 ]}
               />
             </div>
