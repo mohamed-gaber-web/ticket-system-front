@@ -116,6 +116,10 @@ export interface Ticket {
   estimationStartDate?: string;
   deliveryEstimationDate?: string;
   estimationDays?: number;
+  // Consultant-only planning fields
+  internalDeliveryDate?: string;
+  scheduledWeek?: number;
+  durationHours?: number;
   // Sub-ticket fields
   parentTicket?: string | Ticket;
   isSubTicket: boolean;
@@ -145,6 +149,10 @@ export interface CreateTicketData {
   serviceType?: string;
   scope?: string[];
   source?: string;
+  // Consultant-only planning fields
+  internalDeliveryDate?: string;
+  scheduledWeek?: number;
+  durationHours?: number;
 }
 
 export interface CreateSubTicketData {
@@ -202,6 +210,10 @@ export interface UpdateTicketData {
   serviceType?: string;
   scope?: string[];
   source?: string;
+  // Consultant-only planning fields
+  internalDeliveryDate?: string;
+  scheduledWeek?: number;
+  durationHours?: number;
 }
 
 export interface TicketQueryParams {

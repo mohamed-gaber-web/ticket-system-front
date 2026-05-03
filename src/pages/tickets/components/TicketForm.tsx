@@ -23,6 +23,29 @@ interface Props {
   isEdit?: boolean;
 }
 
+// Generate week options for the current year (ISO-style Monday-based weeks)
+const generateWeekOptions = () => {
+  const year = new Date().getFullYear();
+  const options: { value: string; label: string }[] = [
+    { value: '', label: '-- Select Week --' },
+  ];
+  const d = new Date(year, 0, 1);
+  // Advance to first Monday
+  while (d.getDay() !== 1) d.setDate(d.getDate() + 1);
+  let week = 1;
+  while (d.getFullYear() === year && week <= 53) {
+    const start = new Date(d);
+    const end = new Date(d);
+    end.setDate(end.getDate() + 6);
+    const fmt = (dt: Date) => dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    options.push({ value: String(week), label: `Week ${week} — ${fmt(start)} to ${fmt(end)}` });
+    d.setDate(d.getDate() + 7);
+    week++;
+  }
+  return options;
+};
+const WEEK_OPTIONS = generateWeekOptions();
+
 // Generate a unique ticket number
 const generateTicketNumber = () => {
   const prefix = 'TKT';
@@ -64,6 +87,9 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
           serviceType: '',
           scope: [],
           source: '',
+          internalDeliveryDate: '',
+          scheduledWeek: undefined,
+          durationHours: undefined,
         }
       : {
           ticketNumber: generateTicketNumber(),
@@ -79,6 +105,9 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
           serviceType: '',
           scope: [],
           source: '',
+          internalDeliveryDate: '',
+          scheduledWeek: undefined,
+          durationHours: undefined,
         }
   );
 
@@ -194,6 +223,9 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
           serviceType: extractId(initialData.serviceType),
           scope: extractScopeIds(initialData.scope),
           source: extractId(initialData.source),
+          internalDeliveryDate: toDateInput(initialData.internalDeliveryDate),
+          scheduledWeek: initialData.scheduledWeek,
+          durationHours: initialData.durationHours,
         });
       } else {
         setFormData({
@@ -210,6 +242,9 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
           serviceType: extractId(initialData.serviceType),
           scope: extractScopeIds(initialData.scope),
           source: extractId(initialData.source),
+          internalDeliveryDate: toDateInput(initialData.internalDeliveryDate),
+          scheduledWeek: initialData.scheduledWeek,
+          durationHours: initialData.durationHours,
         });
       }
     }
@@ -517,6 +552,42 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
                 />
               </div>
             )}
+
+            <div>
+              <label className="form-label">Internal Delivery Date</label>
+              <Input
+                type="date"
+                name="internalDeliveryDate"
+                value={(formData as CreateTicketData | UpdateTicketData).internalDeliveryDate || ''}
+                onChange={handleChange}
+              />
+              <p className="mt-1 text-xs text-on-surface-variant">Internal deadline — not visible to customers.</p>
+            </div>
+
+            <div>
+              <label className="form-label">Scheduled Week</label>
+              <CustomSelect
+                value={String((formData as CreateTicketData | UpdateTicketData).scheduledWeek ?? '')}
+                onChange={(val) => setFormData({ ...formData, scheduledWeek: val ? Number(val) : undefined })}
+                placeholder="-- Select Week --"
+                options={WEEK_OPTIONS}
+              />
+              <p className="mt-1 text-xs text-on-surface-variant">Which week of the year this ticket is scheduled for.</p>
+            </div>
+
+            <div>
+              <label className="form-label">Actual Duration (hours)</label>
+              <Input
+                type="number"
+                name="durationHours"
+                min={0}
+                step={0.5}
+                value={(formData as CreateTicketData | UpdateTicketData).durationHours ?? ''}
+                onChange={(e) => setFormData({ ...formData, durationHours: e.target.value ? Number(e.target.value) : undefined })}
+                placeholder="e.g. 4"
+              />
+              <p className="mt-1 text-xs text-on-surface-variant">Total hours actually spent working on this ticket.</p>
+            </div>
           </div>
         </div>
       )}

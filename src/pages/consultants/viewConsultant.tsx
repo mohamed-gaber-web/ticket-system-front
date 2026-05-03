@@ -5,10 +5,11 @@ import { fetchConsultantById, updateConsultant, clearCurrentConsultant } from '@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { CustomSelect } from '@/components/ui/custom-select';
-import { ArrowLeft, Save, Ticket as TicketIcon, Mail, Phone, Calendar, Clock, Zap, CheckCircle2, ArchiveX, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Save, Ticket as TicketIcon, Mail, Phone, Calendar, Clock, Zap, CheckCircle2, ArchiveX, AlertTriangle, Timer, ChevronLeft, ChevronRight, Pencil, X, Check } from 'lucide-react';
 import type { UpdateConsultantData, ConsultantRole, ConsultantStatus } from '@/types/consultant.types';
 import type { Ticket } from '@/types/ticket';
 import * as ticketApi from '@/api/ticketApi';
+import * as consultantApi from '@/api/consultantApi';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -68,6 +69,7 @@ export default function ViewConsultant() {
     position: '',
     role: 'consultant',
     status: 'active',
+    monthlyTargetHours: null,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -76,6 +78,7 @@ export default function ViewConsultant() {
   const [ticketPage, setTicketPage] = useState(1);
   const [ticketTotal, setTicketTotal] = useState(0);
   const [ticketPages, setTicketPages] = useState(1);
+  const [totalAllTimeHours, setTotalAllTimeHours] = useState<number | null>(null);
 
   const [dashboardStats, setDashboardStats] = useState({
     inProgress: 0,
@@ -84,6 +87,16 @@ export default function ViewConsultant() {
     critical: 0,
     statsLoading: true,
   });
+
+  const [monthlyHoursData, setMonthlyHoursData] = useState<{ totalHours: number; ticketCount: number }>({ totalHours: 0, ticketCount: 0 });
+  const [monthlyHoursLoading, setMonthlyHoursLoading] = useState(true);
+  const [hoursMonth, setHoursMonth] = useState<{ year: number; month: number }>(() => {
+    const now = new Date();
+    return { year: now.getFullYear(), month: now.getMonth() };
+  });
+  const [targetEditMode, setTargetEditMode] = useState(false);
+  const [targetEditValue, setTargetEditValue] = useState<string>('');
+  const [targetSaving, setTargetSaving] = useState(false);
 
   useEffect(() => {
     if (id) dispatch(fetchConsultantById(id));
@@ -100,12 +113,17 @@ export default function ViewConsultant() {
         position: currentConsultant.position || '',
         role: currentConsultant.role,
         status: currentConsultant.status,
+        monthlyTargetHours: currentConsultant.monthlyTargetHours ?? null,
       });
     }
   }, [currentConsultant]);
 
   useEffect(() => {
-    if (id) loadTickets(1);
+    if (!id) return;
+    loadTickets(1);
+    consultantApi.getConsultantTotalHours(id)
+      .then((res) => setTotalAllTimeHours(res.data.totalHours))
+      .catch(() => setTotalAllTimeHours(0));
   }, [id]);
 
   useEffect(() => {
@@ -131,6 +149,15 @@ export default function ViewConsultant() {
     };
     fetchDashboardStats();
   }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
+    setMonthlyHoursLoading(true);
+    consultantApi.getConsultantMonthlyHours(id, hoursMonth.year, hoursMonth.month)
+      .then((res) => setMonthlyHoursData({ totalHours: res.data.totalHours, ticketCount: res.data.ticketCount }))
+      .catch(() => {})
+      .finally(() => setMonthlyHoursLoading(false));
+  }, [id, hoursMonth]);
 
   const loadTickets = async (page: number) => {
     if (!id) return;
@@ -170,6 +197,18 @@ export default function ViewConsultant() {
     if (updateConsultant.fulfilled.match(result)) {
       toast.success('Consultant updated successfully');
     }
+  };
+
+  const handleSaveTarget = async () => {
+    if (!id) return;
+    setTargetSaving(true);
+    const value = targetEditValue === '' ? null : Number(targetEditValue);
+    const result = await dispatch(updateConsultant({ id, data: { ...formData, monthlyTargetHours: value } }));
+    if (updateConsultant.fulfilled.match(result)) {
+      toast.success('Monthly target updated');
+      setTargetEditMode(false);
+    }
+    setTargetSaving(false);
   };
 
   if (loading && !currentConsultant) {
@@ -252,15 +291,40 @@ export default function ViewConsultant() {
           )}
         </div>
 
-        {/* Ticket Count */}
-        <div className="flex flex-col items-center px-6 border-l border-surface-container-high self-stretch justify-center min-w-[90px]">
-          <span className="text-3xl font-bold text-on-surface">{ticketTotal}</span>
-          <span className="text-xs text-on-surface-variant mt-1 text-center">Assigned Tickets</span>
+        {/* Ticket Count + Hours */}
+        <div className="flex flex-col items-center px-6 border-l border-surface-container-high self-stretch justify-center min-w-[130px] gap-2">
+          <div className="text-center">
+            <span className="text-3xl font-bold text-on-surface">{ticketTotal}</span>
+            <p className="text-xs text-on-surface-variant mt-0.5">Assigned Tickets</p>
+          </div>
+          <div className="w-full border-t border-surface-container-high pt-2 flex flex-col items-center gap-1">
+            <p className="text-xs text-on-surface-variant font-medium uppercase tracking-wide">
+              {new Date(hoursMonth.year, hoursMonth.month).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+            </p>
+            {monthlyHoursLoading ? (
+              <div className="h-5 w-16 bg-surface-container-high rounded-full animate-pulse" />
+            ) : (
+              <span className="inline-flex items-center gap-1 text-xs font-semibold text-brand-600 bg-brand-50 px-2 py-0.5 rounded-full">
+                <Timer className="w-3 h-3" />
+                {monthlyHoursData.totalHours}h
+                {currentConsultant.monthlyTargetHours != null && (
+                  <span className="font-normal text-on-surface-variant">
+                    {' '}/ {currentConsultant.monthlyTargetHours}h
+                  </span>
+                )}
+              </span>
+            )}
+            {totalAllTimeHours !== null ? (
+              <span className="text-xs text-on-surface-variant">{totalAllTimeHours}h total</span>
+            ) : (
+              <div className="h-3.5 w-12 bg-surface-container-high rounded animate-pulse" />
+            )}
+          </div>
         </div>
       </div>
 
       {/* Mini Dashboard */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-6 gap-4 auto-rows-fr">
         {/* Total Assigned */}
         <div className="bg-surface-container-lowest rounded-[1rem] p-4 flex items-center gap-4">
           <div className="w-10 h-10 rounded-lg bg-brand-100 flex items-center justify-center flex-shrink-0">
@@ -314,6 +378,122 @@ export default function ViewConsultant() {
               <p className="text-2xl font-bold text-on-surface leading-none">{dashboardStats.closed}</p>
             )}
             <p className="text-xs text-on-surface-variant mt-1 truncate">Closed</p>
+          </div>
+        </div>
+
+        {/* Monthly Actual vs Target Hours */}
+        <div className="col-span-2 sm:col-span-4 xl:col-span-2 bg-surface-container-lowest rounded-[1rem] p-4">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-lg bg-brand-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <Timer className="w-5 h-5 text-brand-600" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-baseline gap-2 flex-wrap">
+                {monthlyHoursLoading ? (
+                  <div className="h-7 w-12 bg-surface-container-high rounded animate-pulse" />
+                ) : (
+                  <span className="text-2xl font-bold text-on-surface leading-none">
+                    {monthlyHoursData.totalHours}h
+                  </span>
+                )}
+                {!targetEditMode && (
+                  <span className="flex items-center gap-1">
+                    <span className="text-sm text-on-surface-variant">
+                      {currentConsultant.monthlyTargetHours != null
+                        ? `/ ${currentConsultant.monthlyTargetHours}h target`
+                        : 'no target set'}
+                    </span>
+                    {isAdmin && (
+                      <button
+                        onClick={() => {
+                          setTargetEditValue(currentConsultant.monthlyTargetHours?.toString() ?? '');
+                          setTargetEditMode(true);
+                        }}
+                        className="w-5 h-5 flex items-center justify-center rounded hover:bg-surface-container-high transition-colors"
+                        title="Set monthly target"
+                      >
+                        <Pencil className="w-3 h-3 text-on-surface-variant" />
+                      </button>
+                    )}
+                  </span>
+                )}
+              </div>
+              {targetEditMode && (
+                <div className="flex items-center gap-1.5 mt-1">
+                  <input
+                    type="number"
+                    min={0}
+                    step={1}
+                    autoFocus
+                    value={targetEditValue}
+                    onChange={(e) => setTargetEditValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleSaveTarget();
+                      if (e.key === 'Escape') setTargetEditMode(false);
+                    }}
+                    placeholder="e.g. 160"
+                    className="w-24 h-7 px-2 text-sm rounded border border-surface-container-high bg-surface-container focus:outline-none focus:ring-1 focus:ring-brand-500"
+                  />
+                  <span className="text-xs text-on-surface-variant">h / month</span>
+                  <button
+                    onClick={handleSaveTarget}
+                    disabled={targetSaving}
+                    className="w-6 h-6 flex items-center justify-center rounded bg-brand-500 hover:bg-brand-600 text-white transition-colors disabled:opacity-50"
+                    title="Save"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => setTargetEditMode(false)}
+                    className="w-6 h-6 flex items-center justify-center rounded hover:bg-surface-container-high transition-colors"
+                    title="Cancel"
+                  >
+                    <X className="w-3.5 h-3.5 text-on-surface-variant" />
+                  </button>
+                </div>
+              )}
+              {!monthlyHoursLoading && !targetEditMode && currentConsultant.monthlyTargetHours != null && (
+                <div className="mt-1.5 h-1.5 rounded-full bg-surface-container-high overflow-hidden">
+                  <div
+                    className={cn(
+                      'h-full rounded-full transition-all',
+                      monthlyHoursData.totalHours >= currentConsultant.monthlyTargetHours
+                        ? 'bg-green-500'
+                        : 'bg-brand-500',
+                    )}
+                    style={{
+                      width: `${Math.min(100, (monthlyHoursData.totalHours / currentConsultant.monthlyTargetHours) * 100)}%`,
+                    }}
+                  />
+                </div>
+              )}
+              <p className="text-xs text-on-surface-variant mt-1">
+                Actual Hours — {new Date(hoursMonth.year, hoursMonth.month).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                {' '}·{' '}{monthlyHoursData.ticketCount} ticket{monthlyHoursData.ticketCount !== 1 ? 's' : ''}
+              </p>
+            </div>
+            <div className="flex items-center gap-0.5 shrink-0">
+              <button
+                onClick={() => setHoursMonth((prev) => {
+                  const d = new Date(prev.year, prev.month - 1, 1);
+                  return { year: d.getFullYear(), month: d.getMonth() };
+                })}
+                className="w-6 h-6 flex items-center justify-center rounded hover:bg-surface-container-high transition-colors"
+                title="Previous month"
+              >
+                <ChevronLeft className="w-3.5 h-3.5 text-on-surface-variant" />
+              </button>
+              <button
+                onClick={() => setHoursMonth((prev) => {
+                  const d = new Date(prev.year, prev.month + 1, 1);
+                  return { year: d.getFullYear(), month: d.getMonth() };
+                })}
+                className="w-6 h-6 flex items-center justify-center rounded hover:bg-surface-container-high transition-colors"
+                title="Next month"
+              >
+                <ChevronRight className="w-3.5 h-3.5 text-on-surface-variant" />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -396,6 +576,23 @@ export default function ViewConsultant() {
               />
             </div>
 
+            <div>
+              <label className="form-label">Monthly Target Hours</label>
+              <Input
+                type="number"
+                min={0}
+                step={1}
+                value={formData.monthlyTargetHours ?? ''}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    monthlyTargetHours: e.target.value ? Number(e.target.value) : null,
+                  }))
+                }
+                placeholder="e.g. 160"
+              />
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="form-label">Role</label>
@@ -443,12 +640,49 @@ export default function ViewConsultant() {
 
         {/* Assigned Tickets */}
         <div className={`${isAdmin ? 'xl:col-span-3' : 'xl:col-span-5'} bg-surface-container-lowest rounded-[1rem] overflow-hidden flex flex-col`}>
-          <div className="px-6 py-4 border-b border-surface-container-high flex items-center gap-2">
+          <div className="px-6 py-4 border-b border-surface-container-high flex items-center gap-2 flex-wrap">
             <TicketIcon className="w-4 h-4 text-on-surface-variant" />
             <h3 className="text-base font-semibold text-on-surface">Assigned Tickets</h3>
             <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-brand-100 text-brand-700 text-xs font-bold">
               {ticketTotal}
             </span>
+            <div className="ml-auto flex items-center gap-3 flex-wrap justify-end">
+              {/* Monthly hours */}
+              <span className="inline-flex items-center gap-1.5 text-xs text-on-surface-variant">
+                <Timer className="w-3.5 h-3.5 text-brand-500" />
+                {monthlyHoursLoading ? (
+                  <span className="inline-block h-3 w-10 bg-surface-container-high rounded animate-pulse" />
+                ) : (
+                  <span className="font-semibold text-on-surface">
+                    {monthlyHoursData.totalHours}h
+                  </span>
+                )}
+                <span>
+                  {new Date(hoursMonth.year, hoursMonth.month).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                </span>
+                {currentConsultant.monthlyTargetHours != null && !monthlyHoursLoading && (
+                  <span className={cn(
+                    'font-medium',
+                    monthlyHoursData.totalHours >= currentConsultant.monthlyTargetHours
+                      ? 'text-green-600'
+                      : 'text-on-surface-variant',
+                  )}>
+                    / {currentConsultant.monthlyTargetHours}h target
+                  </span>
+                )}
+              </span>
+              {/* Separator */}
+              <span className="text-surface-container-high">|</span>
+              {/* All-time hours */}
+              {totalAllTimeHours !== null ? (
+                <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-600">
+                  <Timer className="w-3.5 h-3.5" />
+                  {totalAllTimeHours}h total
+                </span>
+              ) : (
+                <div className="h-4 w-16 bg-surface-container-high rounded animate-pulse" />
+              )}
+            </div>
           </div>
 
           {ticketsLoading ? (
@@ -471,6 +705,9 @@ export default function ViewConsultant() {
                       <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Customer</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Priority</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Status</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Internal Delivery</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Hours</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Delayed</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Created</th>
                     </tr>
                   </thead>
@@ -506,6 +743,31 @@ export default function ViewConsultant() {
                             <span className={cn('inline-block px-2.5 py-0.5 rounded-md text-xs font-bold uppercase tracking-wide', STATUS_TICKET[ticket.status] ?? STATUS_TICKET.new)}>
                               {ticket.status.replace('_', ' ')}
                             </span>
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <span className="text-sm text-on-surface-variant">
+                              {ticket.internalDeliveryDate ? fmtDate(ticket.internalDeliveryDate) : '—'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <span className="text-sm text-on-surface-variant">
+                              {ticket.durationHours != null ? `${ticket.durationHours}h` : '—'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            {(() => {
+                              if (!ticket.internalDeliveryDate) return <span className="text-sm text-on-surface-variant/50">—</span>;
+                              const deliveryDate = new Date(ticket.internalDeliveryDate);
+                              const compareDate = ticket.resolvedAt || ticket.closedAt
+                                ? new Date(ticket.resolvedAt || ticket.closedAt!)
+                                : new Date();
+                              const delayed = Math.max(0, Math.floor((compareDate.getTime() - deliveryDate.getTime()) / 86400000));
+                              return delayed > 0 ? (
+                                <span className="text-sm font-semibold text-error">+{delayed}d</span>
+                              ) : (
+                                <span className="text-sm font-semibold text-green-600">On time</span>
+                              );
+                            })()}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap">
                             <span className="text-sm text-on-surface-variant">{fmtDate(ticket.createdAt)}</span>

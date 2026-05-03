@@ -27,6 +27,7 @@ export default function EditConsultant() {
     position: '',
     role: 'consultant',
     status: 'active',
+    monthlyTargetHours: null,
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -51,6 +52,7 @@ export default function EditConsultant() {
         position: currentConsultant.position || '',
         role: currentConsultant.role,
         status: currentConsultant.status,
+        monthlyTargetHours: currentConsultant.monthlyTargetHours ?? null,
       });
     }
   }, [currentConsultant]);
@@ -191,6 +193,26 @@ export default function EditConsultant() {
               onChange={(e) => handleChange('position', e.target.value)}
               placeholder="e.g. Senior ERP Consultant"
             />
+          </div>
+
+          <div>
+            <label className="form-label">Monthly Target Hours</label>
+            <Input
+              type="number"
+              min={0}
+              step={1}
+              value={formData.monthlyTargetHours ?? ''}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  monthlyTargetHours: e.target.value ? Number(e.target.value) : null,
+                }))
+              }
+              placeholder="e.g. 160"
+            />
+            <p className="text-xs text-on-surface-variant mt-1">
+              Expected number of working hours per month for this consultant.
+            </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

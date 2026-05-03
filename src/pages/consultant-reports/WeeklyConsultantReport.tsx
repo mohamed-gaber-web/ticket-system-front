@@ -146,7 +146,7 @@ function ConsultantCard({ summary, idx }: { summary: ConsultantWeeklySummary; id
   const navigate = useNavigate();
   const [expanded, setExpanded] = useState(false);
   const { consultant, tickets: allTickets, totalTickets, resolvedCount, pendingCount,
-          totalEstimatedDays, totalActualDays, availableDaysInWeek } = summary;
+          totalEstimatedDays, totalActualDays, totalActualHours, availableDaysInWeek } = summary;
 
   const tickets = allTickets.filter((t) => ['assigned', 'in_progress', 'tested'].includes(t.status));
 
@@ -225,6 +225,12 @@ function ConsultantCard({ summary, idx }: { summary: ConsultantWeeklySummary; id
               <span>Actual <span className="font-semibold text-on-surface">{totalActualDays.toFixed(1)}d</span></span>
             </div>
           )}
+          {totalActualHours > 0 && (
+            <div className="flex items-center gap-1.5 text-xs text-on-surface-variant">
+              <Clock className="w-3.5 h-3.5 text-brand-400" />
+              <span><span className="font-semibold text-on-surface">{totalActualHours.toFixed(1)}h</span> duration</span>
+            </div>
+          )}
         </div>
 
         {/* Spillover badge */}
@@ -267,7 +273,10 @@ function ConsultantCard({ summary, idx }: { summary: ConsultantWeeklySummary; id
                     <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider">Status</th>
                     <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider">Priority</th>
                     <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider">Est Days</th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider">Delivery Date</th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider">Duration</th>
                     <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider">Actual</th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider">Delayed</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-surface-container-high">
@@ -305,10 +314,35 @@ function ConsultantCard({ summary, idx }: { summary: ConsultantWeeklySummary; id
                           </span>
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
+                          {ticket.deliveryEstimationDate ? (
+                            <span className="text-sm text-on-surface-variant">
+                              {new Date(ticket.deliveryEstimationDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                            </span>
+                          ) : (
+                            <span className="text-on-surface-variant/40 text-sm">—</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <span className="text-sm text-on-surface-variant">
+                            {ticket.durationHours != null ? `${ticket.durationHours}h` : '—'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
                           {actual ? (
                             <span className={cn('text-sm font-semibold', DONE.has(ticket.status) ? 'text-green-600' : 'text-on-surface-variant')}>
                               {actual}
                             </span>
+                          ) : (
+                            <span className="text-sm text-on-surface-variant/50">—</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          {ticket.delayedDays != null && ticket.delayedDays > 0 ? (
+                            <span className="text-sm font-semibold text-error">
+                              +{ticket.delayedDays}d
+                            </span>
+                          ) : ticket.deliveryEstimationDate ? (
+                            <span className="text-sm text-green-600 font-semibold">On time</span>
                           ) : (
                             <span className="text-sm text-on-surface-variant/50">—</span>
                           )}
@@ -351,7 +385,7 @@ export default function WeeklyConsultantReport() {
   // Summary stats
   const totalTickets = weeklySummary.reduce((s, c) => s + c.totalTickets, 0);
   const activeConsultants = weeklySummary.filter((c) => c.totalTickets > 0).length;
-  const avgTickets = activeConsultants > 0 ? Math.round((totalTickets / activeConsultants) * 10) / 10 : 0;
+  const avgTickets = activeConsultants > 0 ? Math.round(totalTickets / activeConsultants) : 0;
   const totalResolved = weeklySummary.reduce((s, c) => s + c.resolvedCount, 0);
 
   return (

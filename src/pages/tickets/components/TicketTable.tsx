@@ -9,7 +9,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Edit, Trash2, Ticket as TicketIcon, Eye, CheckCircle, GitBranch, MoreVertical, ChevronRight, ChevronDown } from 'lucide-react';
+import { Edit, Trash2, Ticket as TicketIcon, Eye, CheckCircle, GitBranch, MoreVertical, ChevronRight, ChevronDown, Timer } from 'lucide-react';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
 import type { Ticket, Consultant, Category } from '@/types/ticket';
@@ -303,6 +303,10 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
               <TableHead className="min-w-[140px]">Company</TableHead>
               {isConsultant && <TableHead className="min-w-[120px]">Category</TableHead>}
               {isConsultant && <TableHead className="min-w-[120px]">Module</TableHead>}
+              {isConsultant && <TableHead className="min-w-[130px]">Internal Delivery</TableHead>}
+              {isConsultant && <TableHead className="min-w-[100px]">Duration</TableHead>}
+              {isConsultant && <TableHead className="min-w-[90px]">Delayed</TableHead>}
+              {isConsultant && <TableHead className="min-w-[80px]">Week</TableHead>}
               <TableHead className="min-w-[100px]">Priority</TableHead>
               <TableHead className="min-w-[120px]">Created Date</TableHead>
               <TableHead className="min-w-[120px]">Assigned Date</TableHead>
@@ -459,6 +463,59 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                           <span className="text-on-surface-variant/40">&mdash;</span>
                         );
                       })()}
+                    </TableCell>
+                  )}
+                  {/* Internal Delivery Date */}
+                  {isConsultant && (
+                    <TableCell>
+                      {ticket.internalDeliveryDate ? (
+                        <span className="text-sm text-on-surface">
+                          {new Date(ticket.internalDeliveryDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </span>
+                      ) : (
+                        <span className="text-on-surface-variant/40">&mdash;</span>
+                      )}
+                    </TableCell>
+                  )}
+                  {/* Duration */}
+                  {isConsultant && (
+                    <TableCell>
+                      {ticket.durationHours != null ? (
+                        <span className="inline-flex items-center gap-1 text-sm font-semibold text-on-surface">
+                          <Timer className="w-3.5 h-3.5 text-brand-500 flex-shrink-0" />
+                          {ticket.durationHours}h
+                        </span>
+                      ) : (
+                        <span className="text-on-surface-variant/40">&mdash;</span>
+                      )}
+                    </TableCell>
+                  )}
+                  {/* Delayed */}
+                  {isConsultant && (
+                    <TableCell>
+                      {(() => {
+                        if (!ticket.deliveryEstimationDate) return <span className="text-on-surface-variant/40">&mdash;</span>;
+                        const delivery = new Date(ticket.deliveryEstimationDate);
+                        const end = ticket.resolvedAt || ticket.closedAt
+                          ? new Date((ticket.resolvedAt || ticket.closedAt)!)
+                          : new Date();
+                        const days = Math.max(0, Math.floor((end.getTime() - delivery.getTime()) / 86400000));
+                        return days > 0
+                          ? <span className="text-sm font-semibold text-error">+{days}d</span>
+                          : <span className="text-sm font-semibold text-green-600">On time</span>;
+                      })()}
+                    </TableCell>
+                  )}
+                  {/* Scheduled Week */}
+                  {isConsultant && (
+                    <TableCell>
+                      {ticket.scheduledWeek != null ? (
+                        <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-md bg-brand-50 text-brand-700 text-xs font-bold">
+                          W{ticket.scheduledWeek}
+                        </span>
+                      ) : (
+                        <span className="text-on-surface-variant/40">&mdash;</span>
+                      )}
                     </TableCell>
                   )}
                   <TableCell>{getPriorityDisplay(ticket.priority)}</TableCell>

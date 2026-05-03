@@ -32,6 +32,7 @@ export default function Tickets() {
   const dispatch = useAppDispatch();
   const { tickets, loading, total, page, pages } = useAppSelector((state) => state.tickets);
   const { user, userType, customerRole } = useAppSelector((state) => state.auth);
+  const isConsultant = userType === 'consultant';
   const { sources } = useAppSelector((state) => state.sources);
   const { consultants } = useAppSelector((state) => state.consultants);
   const { customers } = useAppSelector((state) => state.customers);
@@ -74,6 +75,7 @@ export default function Tickets() {
   const moduleFilter           = spArray('module');
   const categoryFilter         = spArray('category');
   const featureFilter          = spArray('feature');
+  const weekFilter             = spArray('week');
   const createdDateFrom    = sp('createdFrom');
   const createdDateTo      = sp('createdTo');
   const closedDateFrom     = sp('closedFrom');
@@ -123,6 +125,7 @@ export default function Tickets() {
     moduleFilter.length > 0,
     categoryFilter.length > 0,
     featureFilter.length > 0,
+    weekFilter.length > 0,
     Boolean(createdDateFrom),
     Boolean(createdDateTo),
     Boolean(closedDateFrom),
@@ -168,6 +171,7 @@ export default function Tickets() {
     if (moduleFilter.length)     params.scope              = moduleFilter.join(',');
     if (categoryFilter.length)   params.category           = categoryFilter.join(',');
     if (featureFilter.length)    params.feature            = featureFilter.join(',');
+    if (weekFilter.length)       params.scheduledWeek      = weekFilter.join(',');
     if (createdDateFrom)         params.createdDateFrom    = createdDateFrom;
     if (createdDateTo)           params.createdDateTo      = createdDateTo;
     if (closedDateFrom)          params.closedDateFrom     = closedDateFrom;
@@ -199,6 +203,7 @@ export default function Tickets() {
     if (moduleFilter.length)     params.scope              = moduleFilter.join(',');
     if (categoryFilter.length)   params.category           = categoryFilter.join(',');
     if (featureFilter.length)    params.feature            = featureFilter.join(',');
+    if (weekFilter.length)       params.scheduledWeek      = weekFilter.join(',');
     if (createdDateFrom)         params.createdDateFrom    = createdDateFrom;
     if (createdDateTo)           params.createdDateTo      = createdDateTo;
     if (closedDateFrom)          params.closedDateFrom     = closedDateFrom;
@@ -264,6 +269,7 @@ export default function Tickets() {
     moduleFilter.length > 0,
     categoryFilter.length > 0,
     featureFilter.length > 0,
+    weekFilter.length > 0,
     Boolean(createdDateFrom),
     Boolean(createdDateTo),
     Boolean(closedDateFrom),
@@ -352,6 +358,7 @@ export default function Tickets() {
     if (moduleFilter.length)     params.scope              = moduleFilter.join(',');
     if (categoryFilter.length)   params.category           = categoryFilter.join(',');
     if (featureFilter.length)    params.feature            = featureFilter.join(',');
+    if (weekFilter.length)       params.scheduledWeek      = weekFilter.join(',');
     if (createdDateFrom)         params.createdDateFrom    = createdDateFrom;
     if (createdDateTo)           params.createdDateTo      = createdDateTo;
     if (closedDateFrom)          params.closedDateFrom     = closedDateFrom;
@@ -651,6 +658,14 @@ export default function Tickets() {
                     label="Customized Solution"
                     options={customizedSolutions?.map((f) => ({ value: f._id, label: f.name })) ?? []}
                   />
+                  {isConsultant && (
+                    <MultiSelect
+                      values={weekFilter}
+                      onChange={(v) => updateFilters({ week: v })}
+                      label="Scheduled Week"
+                      options={Array.from({ length: 52 }, (_, i) => ({ value: String(i + 1), label: `Week ${i + 1}` }))}
+                    />
+                  )}
                 </div>
               </div>
 

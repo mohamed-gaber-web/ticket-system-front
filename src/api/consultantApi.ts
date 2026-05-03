@@ -50,3 +50,24 @@ export const resetConsultantPassword = async (id: string, newPassword: string): 
   const response = await api.put(`/consultants/${id}/password`, { newPassword });
   return response.data;
 };
+
+// Get consultant total actual hours (all time, across all related tickets)
+export const getConsultantTotalHours = async (
+  id: string,
+): Promise<{ success: boolean; data: { totalHours: number; ticketCount: number } }> => {
+  const response = await api.get(`/consultants/${id}/total-hours`);
+  return response.data;
+};
+
+// Get consultant total actual hours for a given month
+// month is 0-indexed (0 = January)
+export const getConsultantMonthlyHours = async (
+  id: string,
+  year?: number,
+  month?: number,
+): Promise<{ success: boolean; data: { year: number; month: number; totalHours: number; ticketCount: number } }> => {
+  const response = await api.get(`/consultants/${id}/monthly-hours`, {
+    params: { year, month },
+  });
+  return response.data;
+};

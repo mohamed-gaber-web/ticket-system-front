@@ -11,6 +11,7 @@ export interface Consultant {
   role: ConsultantRole;
   status: ConsultantStatus;
   fullName: string;
+  monthlyTargetHours?: number | null;
   lastLogin?: string;
   createdAt: string;
   updatedAt: string;
@@ -66,6 +67,7 @@ export interface CreateConsultantData {
   position?: string;
   role: ConsultantRole;
   status: ConsultantStatus;
+  monthlyTargetHours?: number | null;
 }
 
 export interface UpdateConsultantData {
@@ -76,6 +78,7 @@ export interface UpdateConsultantData {
   position?: string;
   role?: ConsultantRole;
   status?: ConsultantStatus;
+  monthlyTargetHours?: number | null;
 }
 
 export interface DeleteResponse {

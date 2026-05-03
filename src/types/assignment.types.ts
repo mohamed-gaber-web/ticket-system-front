@@ -158,6 +158,11 @@ export interface WeeklyTicketItem {
   assignedAt: string;
   completedAt?: string;
   assignmentStatus: 'pending' | 'accepted' | 'declined' | 'completed';
+  // Consultant-only planning fields
+  internalDeliveryDate?: string;
+  durationHours?: number;
+  scheduledWeek?: number;
+  delayedDays?: number;
 }
 
 export interface ConsultantWeeklySummary {
@@ -173,6 +178,7 @@ export interface ConsultantWeeklySummary {
   pendingCount: number;
   totalEstimatedDays: number;
   totalActualDays: number;
+  totalActualHours: number;
   availableDaysInWeek: number;
   tickets: WeeklyTicketItem[];
 }

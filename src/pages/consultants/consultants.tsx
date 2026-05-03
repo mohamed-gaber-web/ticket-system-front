@@ -4,11 +4,12 @@ import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchConsultants, deleteConsultant, adminResetConsultantPassword } from '@/redux/slices/consultantSlice';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, RefreshCw, Edit, Trash2, ChevronLeft, ChevronRight, KeyRound } from 'lucide-react';
+import { Plus, Search, RefreshCw, Edit, Trash2, ChevronLeft, ChevronRight, KeyRound, Timer } from 'lucide-react';
 import { CustomSelect } from '@/components/ui/custom-select';
 import { cn } from '@/lib/utils';
 import Swal from 'sweetalert2';
 import AdminChangePasswordDialog from '@/components/admin/AdminChangePasswordDialog';
+import * as consultantApi from '@/api/consultantApi';
 
 const PAGE_SIZE = 10;
 
@@ -24,10 +25,24 @@ export default function Consultants() {
   const [roleFilter, setRoleFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [passwordTarget, setPasswordTarget] = useState<{ id: string; name: string } | null>(null);
+  const [actualHoursMap, setActualHoursMap] = useState<Record<string, number>>({});
 
   useEffect(() => {
     loadConsultants(1);
   }, []);
+
+  useEffect(() => {
+    if (consultants.length === 0) return;
+    Promise.all(
+      consultants.map((c) =>
+        consultantApi.getConsultantTotalHours(c._id)
+          .then((res) => ({ id: c._id, hours: res.data.totalHours }))
+          .catch(() => ({ id: c._id, hours: 0 }))
+      )
+    ).then((results) => {
+      setActualHoursMap(Object.fromEntries(results.map((r) => [r.id, r.hours])));
+    });
+  }, [consultants]);
 
   const loadConsultants = (page = currentPage) => {
     const params: any = { page, limit: PAGE_SIZE };
@@ -185,6 +200,12 @@ export default function Consultants() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase tracking-wider">
                       Status
                     </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase tracking-wider">
+                      Actual Hours
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase tracking-wider">
+                      Target / Month
+                    </th>
                     {isAdmin && (
                       <th className="px-6 py-3 text-center text-xs font-medium text-on-surface-variant uppercase tracking-wider">
                         Actions
@@ -232,6 +253,27 @@ export default function Consultants() {
                         >
                           {formatStatus(consultant.status)}
                         </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {consultant._id in actualHoursMap ? (
+                          <div className="flex items-center gap-1.5">
+                            <Timer className="w-3.5 h-3.5 text-brand-500 shrink-0" />
+                            <span className="text-sm font-semibold text-on-surface">
+                              {actualHoursMap[consultant._id]}h
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="h-4 w-12 bg-surface-container-high rounded animate-pulse" />
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {consultant.monthlyTargetHours != null ? (
+                          <span className="text-sm text-on-surface-variant">
+                            {consultant.monthlyTargetHours}h / month
+                          </span>
+                        ) : (
+                          <span className="text-on-surface-variant/40 text-sm">&mdash;</span>
+                        )}
                       </td>
                       {isAdmin && (
                         <td className="px-6 py-4 whitespace-nowrap text-center">

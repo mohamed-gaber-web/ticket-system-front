@@ -4,7 +4,8 @@ import { getProfile, updateProfile } from '@/redux/slices/authSlice';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { Save, Mail, Phone, Calendar, Clock, Ticket as TicketIcon, Building2, MapPin, GitBranch, Zap, CheckCircle2, ArchiveX, AlertTriangle, FlaskConical, PackageCheck, Ban, Users } from 'lucide-react';
+import { Save, Mail, Phone, Calendar, Clock, Ticket as TicketIcon, Building2, MapPin, GitBranch, Zap, CheckCircle2, ArchiveX, AlertTriangle, FlaskConical, PackageCheck, Ban, Users, Timer, ChevronLeft, ChevronRight } from 'lucide-react';
+import * as consultantApi from '@/api/consultantApi';
 import { cn } from '@/lib/utils';
 import * as ticketApi from '@/api/ticketApi';
 import type { Ticket } from '@/types/ticket';
@@ -116,6 +117,13 @@ const ProfilePage = () => {
     statsLoading: true,
   });
 
+  const [monthlyHoursData, setMonthlyHoursData] = useState<{ totalHours: number; ticketCount: number }>({ totalHours: 0, ticketCount: 0 });
+  const [monthlyHoursLoading, setMonthlyHoursLoading] = useState(true);
+  const [hoursMonth, setHoursMonth] = useState<{ year: number; month: number }>(() => {
+    const now = new Date();
+    return { year: now.getFullYear(), month: now.getMonth() };
+  });
+
   const [customerStats, setCustomerStats] = useState({
     open: 0,
     assigned: 0,
@@ -157,7 +165,7 @@ const ProfilePage = () => {
     if (!isTeleSales) {
       loadTickets(1, userType ?? undefined);
     }
-  }, [user, userType]);
+  }, [user, userType, isTasksView]);
 
   useEffect(() => {
     if (isConsultant || !u?._id || userType !== 'customer') return;
@@ -227,13 +235,25 @@ const ProfilePage = () => {
     fetchDashboardStats();
   }, [user, isConsultant]);
 
+  useEffect(() => {
+    if (!isConsultant || !u?._id) return;
+    setMonthlyHoursLoading(true);
+    consultantApi.getConsultantMonthlyHours(u._id, hoursMonth.year, hoursMonth.month)
+      .then((res) => setMonthlyHoursData({ totalHours: res.data.totalHours, ticketCount: res.data.ticketCount }))
+      .catch(() => {})
+      .finally(() => setMonthlyHoursLoading(false));
+  }, [u?._id, isConsultant, hoursMonth]);
+
   const loadTickets = async (page: number, role = userType) => {
     if (!u?._id) return;
     setTicketsLoading(true);
     try {
-      const params = role === 'customer'
+      const params: Record<string, any> = role === 'customer'
         ? { customer: u._id, page, limit: TICKET_LIMIT }
         : { assignedConsultant: u._id, page, limit: TICKET_LIMIT };
+      if (isTasksView && role !== 'customer') {
+        params.status = 'resolved,tested,delivered';
+      }
       const res = await ticketApi.getTickets(params);
       setAssignedTickets(res.data);
       setTicketTotal(res.total);
@@ -532,6 +552,58 @@ const ProfilePage = () => {
             <span className="text-3xl font-bold text-on-surface">{ticketTotal}</span>
             <span className="text-xs text-on-surface-variant mt-1 text-center">Assigned Tickets</span>
           </div>
+
+          {/* Monthly hours vs target */}
+          <div className="flex flex-col px-6 border-l border-surface-container-high self-stretch justify-center min-w-[160px] gap-1.5">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs text-on-surface-variant font-medium uppercase tracking-wide">
+                {new Date(hoursMonth.year, hoursMonth.month).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+              </p>
+              <div className="flex items-center gap-0.5">
+                <button
+                  onClick={() => setHoursMonth((prev) => { const d = new Date(prev.year, prev.month - 1, 1); return { year: d.getFullYear(), month: d.getMonth() }; })}
+                  className="w-5 h-5 flex items-center justify-center rounded hover:bg-surface-container-high transition-colors"
+                  title="Previous month"
+                >
+                  <ChevronLeft className="w-3 h-3 text-on-surface-variant" />
+                </button>
+                <button
+                  onClick={() => setHoursMonth((prev) => { const d = new Date(prev.year, prev.month + 1, 1); return { year: d.getFullYear(), month: d.getMonth() }; })}
+                  className="w-5 h-5 flex items-center justify-center rounded hover:bg-surface-container-high transition-colors"
+                  title="Next month"
+                >
+                  <ChevronRight className="w-3 h-3 text-on-surface-variant" />
+                </button>
+              </div>
+            </div>
+            <div className="flex items-baseline gap-1.5 flex-wrap">
+              <Timer className="w-4 h-4 text-brand-500 flex-shrink-0 self-center" />
+              {monthlyHoursLoading ? (
+                <div className="h-7 w-10 bg-surface-container-high rounded animate-pulse" />
+              ) : (
+                <span className="text-2xl font-bold text-on-surface leading-none">
+                  {monthlyHoursData.totalHours}h
+                </span>
+              )}
+              {u.monthlyTargetHours != null && (
+                <span className="text-sm text-on-surface-variant">/ {u.monthlyTargetHours}h target</span>
+              )}
+            </div>
+            {u.monthlyTargetHours != null && !monthlyHoursLoading && (
+              <div className="h-1.5 rounded-full bg-surface-container-high overflow-hidden">
+                <div
+                  className={cn(
+                    'h-full rounded-full transition-all',
+                    monthlyHoursData.totalHours >= u.monthlyTargetHours ? 'bg-green-500' : 'bg-brand-500',
+                  )}
+                  style={{ width: `${Math.min(100, (monthlyHoursData.totalHours / u.monthlyTargetHours) * 100)}%` }}
+                />
+              </div>
+            )}
+            <p className="text-xs text-on-surface-variant">
+              {monthlyHoursData.ticketCount} ticket{monthlyHoursData.ticketCount !== 1 ? 's' : ''} this month
+            </p>
+          </div>
         </div>
 
         {/* Mini Dashboard */}
@@ -697,6 +769,11 @@ const ProfilePage = () => {
                         <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Customer</th>
                         <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Priority</th>
                         <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Status</th>
+                        {isTasksView && <>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Delivery Date</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Duration</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Delayed</th>
+                        </>}
                         <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Created</th>
                       </tr>
                     </thead>
@@ -745,9 +822,43 @@ const ProfilePage = () => {
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap">
                               <span className={cn('inline-block px-2.5 py-0.5 rounded-md text-xs font-bold uppercase tracking-wide', STATUS_TICKET[ticket.status] ?? STATUS_TICKET.new)}>
-                                {ticket.status.replace('_', ' ')}
+                                {ticket.status.replace(/_/g, ' ')}
                               </span>
                             </td>
+                            {isTasksView && (() => {
+                              const delivery = ticket.deliveryEstimationDate ? new Date(ticket.deliveryEstimationDate) : null;
+                              const endDate = ticket.resolvedAt || ticket.closedAt
+                                ? new Date((ticket.resolvedAt || ticket.closedAt)!)
+                                : new Date();
+                              const delayedDays = delivery
+                                ? Math.max(0, Math.floor((endDate.getTime() - delivery.getTime()) / 86400000))
+                                : null;
+                              return <>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <span className="text-sm text-on-surface-variant">
+                                    {delivery ? fmtDate(ticket.deliveryEstimationDate) : <span className="text-on-surface-variant/40">—</span>}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  {ticket.durationHours != null ? (
+                                    <span className="inline-flex items-center gap-1 text-sm font-semibold text-on-surface">
+                                      <Timer className="w-3.5 h-3.5 text-brand-500" />
+                                      {ticket.durationHours}h
+                                    </span>
+                                  ) : (
+                                    <span className="text-on-surface-variant/40 text-sm">—</span>
+                                  )}
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  {delayedDays === null
+                                    ? <span className="text-on-surface-variant/40 text-sm">—</span>
+                                    : delayedDays > 0
+                                      ? <span className="text-sm font-semibold text-error">+{delayedDays}d</span>
+                                      : <span className="text-sm font-semibold text-green-600">On time</span>
+                                  }
+                                </td>
+                              </>;
+                            })()}
                             <td className="px-4 py-3 whitespace-nowrap">
                               <span className="text-sm text-on-surface-variant">{fmtDate(ticket.createdAt)}</span>
                             </td>

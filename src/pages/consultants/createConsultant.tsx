@@ -27,6 +27,7 @@ export default function CreateConsultant() {
     position: '',
     role: 'consultant',
     status: 'active',
+    monthlyTargetHours: null,
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -185,6 +186,27 @@ export default function CreateConsultant() {
                 onChange={(e) => handleChange('position', e.target.value)}
                 placeholder="e.g. Senior Support Engineer"
               />
+            </div>
+
+            {/* Monthly Target Hours */}
+            <div>
+              <label className="form-label">Monthly Target Hours</label>
+              <Input
+                type="number"
+                min={0}
+                step={1}
+                value={formData.monthlyTargetHours ?? ''}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    monthlyTargetHours: e.target.value ? Number(e.target.value) : null,
+                  }))
+                }
+                placeholder="e.g. 160"
+              />
+              <p className="text-xs text-on-surface-variant mt-1">
+                Expected number of working hours per month for this consultant.
+              </p>
             </div>
 
             {/* Password */}
