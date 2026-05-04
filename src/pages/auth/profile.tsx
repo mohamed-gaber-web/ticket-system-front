@@ -103,6 +103,7 @@ const ProfilePage = () => {
   const [ticketPage, setTicketPage] = useState(1);
   const [ticketTotal, setTicketTotal] = useState(0);
   const [ticketPages, setTicketPages] = useState(1);
+  const [taskWeekFilter, setTaskWeekFilter] = useState<string>('');
 
   const [dashboardStats, setDashboardStats] = useState({
     assigned: 0,
@@ -165,7 +166,7 @@ const ProfilePage = () => {
     if (!isTeleSales) {
       loadTickets(1, userType ?? undefined);
     }
-  }, [user, userType, isTasksView]);
+  }, [user, userType, isTasksView, taskWeekFilter]);
 
   useEffect(() => {
     if (isConsultant || !u?._id || userType !== 'customer') return;
@@ -244,7 +245,7 @@ const ProfilePage = () => {
       .finally(() => setMonthlyHoursLoading(false));
   }, [u?._id, isConsultant, hoursMonth]);
 
-  const loadTickets = async (page: number, role = userType) => {
+  const loadTickets = async (page: number, role = userType, weekFilter = taskWeekFilter) => {
     if (!u?._id) return;
     setTicketsLoading(true);
     try {
@@ -253,6 +254,9 @@ const ProfilePage = () => {
         : { assignedConsultant: u._id, page, limit: TICKET_LIMIT };
       if (isTasksView && role !== 'customer') {
         params.status = 'resolved,tested,delivered';
+      }
+      if (isTasksView && weekFilter) {
+        params.scheduledWeek = weekFilter;
       }
       const res = await ticketApi.getTickets(params);
       setAssignedTickets(res.data);
@@ -741,12 +745,27 @@ const ProfilePage = () => {
 
           {/* Assigned Tickets */}
           <div className={cn('bg-surface-container-lowest rounded-[1rem] overflow-hidden flex flex-col', isTasksView ? 'xl:col-span-5' : 'xl:col-span-3')}>
-            <div className="px-6 py-4 border-b border-surface-container-high flex items-center gap-2">
+            <div className="px-6 py-4 border-b border-surface-container-high flex items-center gap-2 flex-wrap">
               <TicketIcon className="w-4 h-4 text-on-surface-variant" />
               <h3 className="text-base font-semibold text-on-surface">Assigned Tickets</h3>
               <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-brand-100 text-brand-700 text-xs font-bold">
                 {ticketTotal}
               </span>
+              {isTasksView && (
+                <div className="ml-auto flex items-center gap-2">
+                  <label className="text-xs font-medium text-on-surface-variant">Week</label>
+                  <select
+                    value={taskWeekFilter}
+                    onChange={(e) => { setTaskWeekFilter(e.target.value); loadTickets(1, userType ?? undefined, e.target.value); }}
+                    className="h-7 rounded-md border border-border bg-surface-container-low text-sm text-on-surface px-2 pr-6 appearance-none focus:outline-none focus:ring-1 focus:ring-brand-500"
+                  >
+                    <option value="">All weeks</option>
+                    {Array.from({ length: 52 }, (_, i) => (
+                      <option key={i + 1} value={String(i + 1)}>Week {i + 1}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
 
             {ticketsLoading ? (
@@ -771,6 +790,8 @@ const ProfilePage = () => {
                         <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Status</th>
                         {isTasksView && <>
                           <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Delivery Date</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Internal Date</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Week</th>
                           <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Duration</th>
                           <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Delayed</th>
                         </>}
@@ -838,6 +859,22 @@ const ProfilePage = () => {
                                   <span className="text-sm text-on-surface-variant">
                                     {delivery ? fmtDate(ticket.deliveryEstimationDate) : <span className="text-on-surface-variant/40">—</span>}
                                   </span>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  {ticket.internalDeliveryDate ? (
+                                    <span className="text-sm text-on-surface-variant">{fmtDate(ticket.internalDeliveryDate)}</span>
+                                  ) : (
+                                    <span className="text-on-surface-variant/40 text-sm">—</span>
+                                  )}
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  {ticket.scheduledWeek != null ? (
+                                    <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-md bg-brand-50 text-brand-700 text-xs font-bold">
+                                      W{ticket.scheduledWeek}
+                                    </span>
+                                  ) : (
+                                    <span className="text-on-surface-variant/40 text-sm">—</span>
+                                  )}
                                 </td>
                                 <td className="px-4 py-3 whitespace-nowrap">
                                   {ticket.durationHours != null ? (
