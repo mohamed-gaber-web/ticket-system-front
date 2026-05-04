@@ -26,6 +26,12 @@ import {
 } from "framer-motion";
 
 /* ─────────────────────────────────────────────────────────────
+   Skeleton key constants (stable, module-level)
+───────────────────────────────────────────────────────────── */
+const SKELETON_KEYS_6 = Array.from({ length: 6 }, (_, i) => i);
+const SKELETON_KEYS_4 = Array.from({ length: 4 }, (_, i) => i);
+
+/* ─────────────────────────────────────────────────────────────
    Spring presets
 ───────────────────────────────────────────────────────────── */
 const SP = { type: "spring" as const, stiffness: 260, damping: 22 };
@@ -426,7 +432,7 @@ export default function Dashboard() {
     () =>
       tickets
         .filter((t) => t.status === "closed" || t.status === "resolved")
-        .sort(
+        .toSorted(
           (a, b) =>
             new Date(b.resolvedAt || b.closedAt || b.updatedAt).getTime() -
             new Date(a.resolvedAt || a.closedAt || a.updatedAt).getTime()
@@ -546,7 +552,7 @@ export default function Dashboard() {
                         .filter((s) => s.v > 0)
                         .map((seg, i) => (
                           <motion.div
-                            key={i}
+                            key={seg.color}
                             className={`${seg.color} first:rounded-l-full last:rounded-r-full`}
                             initial={{ width: 0 }}
                             animate={{
@@ -620,8 +626,8 @@ export default function Dashboard() {
                 className="divide-y divide-outline-variant/8"
               >
                 {ticketsLoading
-                  ? Array.from({ length: 6 }).map((_, i) => (
-                      <SkeletonRow key={i} delay={i * 0.05} />
+                  ? SKELETON_KEYS_6.map((k) => (
+                      <SkeletonRow key={k} delay={k * 0.05} />
                     ))
                   : tickets.length === 0
                   ? (
@@ -698,8 +704,8 @@ export default function Dashboard() {
                 className="divide-y divide-outline-variant/8"
               >
                 {ticketsLoading
-                  ? Array.from({ length: 4 }).map((_, i) => (
-                      <SkeletonRow key={i} delay={i * 0.05} />
+                  ? SKELETON_KEYS_4.map((k) => (
+                      <SkeletonRow key={k} delay={k * 0.05} />
                     ))
                   : recentlyClosed.length === 0
                   ? (

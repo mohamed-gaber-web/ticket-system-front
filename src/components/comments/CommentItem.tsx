@@ -190,7 +190,7 @@ const CommentItem: React.FC<CommentItemProps> = ({
               if (isImage) {
                 return (
                   <button
-                    key={i}
+                    key={img.url || img.fileName || i}
                     type="button"
                     onClick={() => setLightboxImage(img)}
                     className="relative group block rounded-lg overflow-hidden border border-outline-variant/30 focus:outline-none focus:ring-2 focus:ring-brand-500"
@@ -213,7 +213,7 @@ const CommentItem: React.FC<CommentItemProps> = ({
                 img.fileType?.includes('zip') ? 'text-amber-500' : 'text-on-surface-variant';
               return (
                 <a
-                  key={i}
+                  key={img.url || img.fileName || i}
                   href={img.url}
                   target="_blank"
                   rel="noopener noreferrer"

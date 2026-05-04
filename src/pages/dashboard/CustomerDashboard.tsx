@@ -24,6 +24,8 @@ import { Button } from '@/components/ui/button';
 import { useAppSelector } from '@/redux/hooks/hooks';
 import { getMyStats, type CustomerDashboardStats } from '@/api/customerApi';
 
+const SKELETON_KEYS = Array.from({ length: 4 }, (_, i) => i);
+
 const STATUS_COLORS: Record<string, string> = {
   new: '#6366f1',
   assigned: '#8b5cf6',
@@ -139,8 +141,8 @@ export default function CustomerDashboard() {
       {/* Stat Cards */}
       {loading ? (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-28 rounded-xl bg-surface-container-lowest border border-outline-variant/20 animate-pulse" />
+          {SKELETON_KEYS.map((k) => (
+            <div key={k} className="h-28 rounded-xl bg-surface-container-lowest border border-outline-variant/20 animate-pulse" />
           ))}
         </div>
       ) : (

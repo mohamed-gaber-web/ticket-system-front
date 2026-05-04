@@ -244,8 +244,8 @@ export default function LeadDetail() {
             <InfoRow icon={<Building2 className="w-4 h-4" />} label="Company" value={lead.companyName} />
             <InfoRow icon={<User className="w-4 h-4" />} label="Contact Person" value={lead.contactPersonName} />
             {lead.email && <InfoRow icon={<Mail className="w-4 h-4" />} label="Email" value={lead.email} />}
-            {lead.phones.map((p, i) => (
-              <InfoRow key={i} icon={<Phone className="w-4 h-4" />} label={p.label || 'Phone'} value={p.number} />
+            {lead.phones.map((p) => (
+              <InfoRow key={p.number} icon={<Phone className="w-4 h-4" />} label={p.label || 'Phone'} value={p.number} />
             ))}
             {lead.jobTitle && <InfoRow icon={<Briefcase className="w-4 h-4" />} label="Job Title" value={lead.jobTitle} />}
             {lead.industry && <InfoRow icon={<Building2 className="w-4 h-4" />} label="Industry" value={lead.industry} />}

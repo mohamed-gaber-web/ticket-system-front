@@ -11,7 +11,7 @@ const COLORS = ['#3b82f6', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444'
 
 export default function TopConsultantsChart({ data, limit = 10 }: TopConsultantsChartProps) {
   const sortedData = [...data]
-    .sort((a, b) => b.count - a.count)
+    .toSorted((a, b) => b.count - a.count)
     .slice(0, limit)
     .map((item) => ({
       name: item.consultantName,

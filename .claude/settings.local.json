@@ -22,7 +22,9 @@
       "Bash(node node_modules/typescript/bin/tsc --noEmit)",
       "Bash(grep -r \"status\" src/utils/*.js)",
       "Bash(node -e \"const l = require\\('lucide-react'\\); console.log\\('UserClock:', !!l.UserClock, 'FlaskConical:', !!l.FlaskConical, 'PackageCheck:', !!l.PackageCheck, 'Ban:', !!l.Ban\\)\")",
-      "Bash(npm audit *)"
+      "Bash(npm audit *)",
+      "Bash(xargs -I {} bash -c 'echo \"File: {}\"')",
+      "Bash(del *)"
     ]
   }
 }

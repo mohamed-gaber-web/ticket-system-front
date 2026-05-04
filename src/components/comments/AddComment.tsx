@@ -247,7 +247,7 @@ const AddComment: React.FC<AddCommentProps> = ({
               {files.map((file, i) => {
                 const preview = imagePreviews.get(file.name);
                 return preview ? (
-                  <div key={i} className="relative group">
+                  <div key={file.name} className="relative group">
                     <img src={preview} alt={file.name} className="h-16 w-16 object-cover rounded-lg border border-outline-variant/30" />
                     <button
                       type="button"
@@ -258,7 +258,7 @@ const AddComment: React.FC<AddCommentProps> = ({
                     </button>
                   </div>
                 ) : (
-                  <div key={i} className="relative group flex items-center gap-2 pl-2.5 pr-7 py-1.5 rounded-lg border border-outline-variant/30 bg-surface-container-low max-w-[200px]">
+                  <div key={file.name} className="relative group flex items-center gap-2 pl-2.5 pr-7 py-1.5 rounded-lg border border-outline-variant/30 bg-surface-container-low max-w-[200px]">
                     {getFileIcon(file)}
                     <div className="min-w-0">
                       <p className="text-xs font-medium text-on-surface truncate">{file.name}</p>

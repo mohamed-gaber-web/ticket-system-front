@@ -216,7 +216,7 @@ export function SubTicketsList({ parentTicketId, parentTicketNumber, isSubTicket
       ) : (
         <div className="space-y-1">
           {[...filteredSubTickets]
-            .sort((a, b) => {
+            .toSorted((a, b) => {
               const isDoneA = ['resolved', 'closed', 'delivered'].includes(a.status);
               const isDoneB = ['resolved', 'closed', 'delivered'].includes(b.status);
               if (isDoneA === isDoneB) return 0;

@@ -318,10 +318,10 @@ export default function Leads() {
           <div className="flex items-center justify-between px-4 py-3 border-t border-outline-variant/20">
             <span className="text-sm text-on-surface-variant">Page {page} of {pages}</span>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage(page - 1)}>
+              <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage(p => p - 1)}>
                 <ChevronLeft className="w-4 h-4" />
               </Button>
-              <Button variant="outline" size="sm" disabled={page === pages} onClick={() => setPage(page + 1)}>
+              <Button variant="outline" size="sm" disabled={page === pages} onClick={() => setPage(p => p + 1)}>
                 <ChevronRight className="w-4 h-4" />
               </Button>
             </div>
@@ -379,7 +379,7 @@ export default function Leads() {
                 </div>
                 <div className="space-y-2">
                   {form.phones.map((ph, i) => (
-                    <div key={i} className="flex gap-2">
+                    <div key={`${i}-${ph.number}`} className="flex gap-2">
                       <Input value={ph.number} onChange={(e) => updatePhone(i, 'number', e.target.value)} placeholder="Phone number" className="flex-1" />
                       <Input value={ph.label || ''} onChange={(e) => updatePhone(i, 'label', e.target.value)} placeholder="Label" className="w-28" />
                       {form.phones.length > 1 && (
