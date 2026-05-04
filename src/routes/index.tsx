@@ -23,6 +23,7 @@ function Lazy({ children }: { children: ReactNode }) {
 // Routes to correct dashboard based on userType
 function DashboardRouter() {
   const { userType } = useAppSelector((state) => state.auth);
+  if (!userType) return <PageLoader />;
   if (userType === "customer") {
     return <Lazy><CustomerDashboard /></Lazy>;
   }

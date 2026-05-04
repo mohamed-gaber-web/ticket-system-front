@@ -143,18 +143,22 @@ export default function Tickets() {
   // Auto-expand advanced panel if filters are present (e.g. on back-navigation)
   const [showAdvanced, setShowAdvanced] = useState(() => activeAdvancedFilterCount > 0);
 
-  // Supporting data — fetch once on mount
+  const isCustomer = userType === 'customer';
+
+  // Supporting data — fetch once on mount (restricted calls skipped for customers)
   useEffect(() => {
-    dispatch(fetchConsultants({ limit: 1000 }));
+    if (!isCustomer) {
+      dispatch(fetchConsultants({ limit: 1000 }));
+      dispatch(fetchCustomers({ limit: 1000 }));
+      dispatch(fetchCompanies({ limit: 1000 }));
+      dispatch(fetchDepartments({ limit: 1000 }));
+      dispatch(fetchServiceTypes({ limit: 1000 }));
+      dispatch(fetchModules({ limit: 1000 }));
+    }
     dispatch(fetchSources({ isActive: true, limit: 1000 }));
-    dispatch(fetchCustomers({ limit: 1000 }));
-    dispatch(fetchCompanies({ limit: 1000 }));
-    dispatch(fetchDepartments({ limit: 1000 }));
-    dispatch(fetchServiceTypes({ limit: 1000 }));
-    dispatch(fetchModules({ limit: 1000 }));
     dispatch(fetchCategories({ limit: 9999 }));
     dispatch(fetchCustomizedSolutions({ limit: 9999 }));
-  }, []);
+  }, [isCustomer]);
 
   // Fetch tickets whenever URL params or user identity changes
   useEffect(() => {

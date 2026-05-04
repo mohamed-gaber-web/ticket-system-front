@@ -112,12 +112,17 @@ export const validateFile = (file: File): { valid: boolean; error?: string } => 
     'application/vnd.ms-powerpoint',
     'application/vnd.openxmlformats-officedocument.presentationml.presentation',
     'text/plain',
+    'application/zip',
+    'application/x-zip-compressed',
+    'application/x-zip',
   ];
 
-  if (!allowedTypes.includes(file.type)) {
+  const extension = file.name.split('.').pop()?.toLowerCase();
+
+  if (extension !== 'zip' && !allowedTypes.includes(file.type)) {
     return {
       valid: false,
-      error: 'Invalid file type. Please upload an image or document (PDF, Word, Excel, PowerPoint, TXT).',
+      error: 'Invalid file type. Please upload an image or document (PDF, Word, Excel, PowerPoint, TXT, ZIP).',
     };
   }
 

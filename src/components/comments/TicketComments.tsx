@@ -20,6 +20,7 @@ import { uploadFile } from '@/api/attachmentApi';
 import type { AppDispatch, RootState } from '@/redux/store';
 import type { UserType } from '@/types/auth.types';
 import type { CommentImage } from '@/types/comment.types';
+import type { Consultant } from '@/types/consultant.types';
 
 interface TicketCommentsProps {
   ticketId: string;
@@ -32,6 +33,7 @@ const TicketComments: React.FC<TicketCommentsProps> = ({ ticketId }) => {
   const { user, userType } = useSelector((state: RootState) => state.auth);
   const { comments, loading, total } = useSelector((state: RootState) => state.comments);
   const { currentTicket } = useSelector((state: RootState) => state.tickets);
+  const { currentAssignment } = useSelector((state: RootState) => state.assignments);
 
   const isStaff = userType === 'consultant' || userType === 'team_member';
   const isCustomer = userType === 'customer';
@@ -90,21 +92,45 @@ const TicketComments: React.FC<TicketCommentsProps> = ({ ticketId }) => {
       })
     ).unwrap();
 
-    if (emails.length > 0) {
-      const senderName =
-        (user as any).firstName
-          ? `${(user as any).firstName} ${(user as any).lastName ?? ''}`.trim()
-          : (user as any).companyName ?? (user as any).contactPerson ?? 'Support Team';
+    const senderName =
+      (user as any).firstName
+        ? `${(user as any).firstName} ${(user as any).lastName ?? ''}`.trim()
+        : (user as any).companyName ?? (user as any).contactPerson ?? 'Support Team';
 
+    // Derive assigned consultant emails (used for both internal notes and customer comments)
+    const assignedConsultantEmails: string[] = currentAssignment
+      ? (currentAssignment.assignedToConsultants ?? [])
+          .map((ca: any) => {
+            const c: Consultant | null = ca.consultant && typeof ca.consultant !== 'string' ? ca.consultant : null;
+            return c?.email ?? null;
+          })
+          .filter((email: string | null): email is string => !!email && email !== (user as any).email)
+      : [];
+
+    // Auto-notify assigned consultants on internal notes or customer comments
+    const autoRecipients =
+      (isInternal || isCustomer) && assignedConsultantEmails.length > 0
+        ? assignedConsultantEmails
+        : [];
+
+    const allRecipients = [...new Set([...emails, ...autoRecipients])];
+
+    if (allRecipients.length > 0) {
       try {
         await sendCommentEmail({
           ticketId,
           ticketNumber: currentTicket?.ticketNumber ?? ticketId,
           commentText,
-          recipients: emails,
+          recipients: allRecipients,
           senderName,
         });
-        toast.success(`Comment emailed to ${emails.length} recipient${emails.length > 1 ? 's' : ''}`);
+        if (isCustomer && !isInternal) {
+          toast.success(`Consultants notified of your comment`);
+        } else if (isInternal && autoRecipients.length > 0) {
+          toast.success(`Internal note emailed to ${autoRecipients.length} consultant${autoRecipients.length > 1 ? 's' : ''}`);
+        } else {
+          toast.success(`Comment emailed to ${emails.length} recipient${emails.length > 1 ? 's' : ''}`);
+        }
       } catch {
         toast.error('Comment posted but failed to send emails');
       }

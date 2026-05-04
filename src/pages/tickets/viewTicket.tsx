@@ -131,10 +131,12 @@ export default function ViewTicket() {
     if (id) {
       dispatch(fetchTicketById(id));
       dispatch(fetchCurrentAssignment(id));
-      dispatch(fetchConsultants({ limit: 500 }));
+      if (!isCustomer) {
+        dispatch(fetchConsultants({ limit: 500 }));
+      }
     }
     return () => { dispatch(clearCurrentTicket()); };
-  }, [dispatch, id]);
+  }, [dispatch, id, isCustomer]);
 
   const handleRefreshAssignment = () => {
     if (id) {
