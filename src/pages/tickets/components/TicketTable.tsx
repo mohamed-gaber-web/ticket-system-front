@@ -46,18 +46,19 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
   const topDummyRef = useRef<HTMLDivElement>(null);
   const syncingRef = useRef(false);
 
-  // Keep top mirror scrollbar width in sync with table scroll width
+  // Keep top mirror scrollbar width in sync with table scroll width.
+  // Depends on `tickets` so it re-runs after the early loading/empty returns
+  // are cleared and the table div is actually mounted.
   useEffect(() => {
     const table = tableScrollRef.current;
-    if (!table) return;
-    const update = () => {
-      if (topDummyRef.current) topDummyRef.current.style.width = `${table.scrollWidth}px`;
-    };
+    const dummy = topDummyRef.current;
+    if (!table || !dummy) return;
+    const update = () => { dummy.style.width = `${table.scrollWidth}px`; };
     update();
     const ro = new ResizeObserver(update);
     ro.observe(table);
     return () => ro.disconnect();
-  }, []);
+  }, [tickets]);
 
   const onTopScroll = () => {
     if (syncingRef.current) return;
