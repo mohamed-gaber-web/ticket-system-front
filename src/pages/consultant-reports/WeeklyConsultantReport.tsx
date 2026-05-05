@@ -15,6 +15,7 @@ import {
   Loader2,
   CalendarCheck,
   AlertCircle,
+  X,
 } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchWeeklySummary } from '@/redux/slices/assignmentSlice';
@@ -67,29 +68,29 @@ const STATUS_STYLE: Record<string, string> = {
 const DONE = new Set(['resolved', 'closed', 'delivered', 'tested']);
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-function getMondayOfWeek(date: Date): Date {
+function getFridayOfWeek(date: Date): Date {
   const d = new Date(date);
-  const day = d.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
+  const day = d.getDay(); // 0=Sun … 5=Fri … 6=Sat
+  const diff = -((day + 2) % 7); // go back to the most-recent Friday
   d.setDate(d.getDate() + diff);
   d.setHours(0, 0, 0, 0);
   return d;
 }
 
-function getWeekBounds(monday: Date) {
-  const start = new Date(monday);
+function getWeekBounds(friday: Date) {
+  const start = new Date(friday);
   start.setHours(0, 0, 0, 0);
-  const end = new Date(monday);
-  end.setDate(end.getDate() + 6);
+  const end = new Date(friday);
+  end.setDate(end.getDate() + 6); // Friday + 6 = Thursday
   end.setHours(23, 59, 59, 999);
   return { weekStart: start.toISOString(), weekEnd: end.toISOString() };
 }
 
-function fmtRange(monday: Date): string {
-  const sunday = new Date(monday);
-  sunday.setDate(sunday.getDate() + 6);
+function fmtRange(friday: Date): string {
+  const thursday = new Date(friday);
+  thursday.setDate(thursday.getDate() + 6);
   const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
-  return `${monday.toLocaleDateString('en-US', opts)} – ${sunday.toLocaleDateString('en-US', { ...opts, year: 'numeric' })}`;
+  return `${friday.toLocaleDateString('en-US', opts)} – ${thursday.toLocaleDateString('en-US', { ...opts, year: 'numeric' })}`;
 }
 
 function fmtDuration(ms: number): string {
@@ -144,11 +145,16 @@ function StatCard({
 // ─── Consultant card ──────────────────────────────────────────────────────────
 function ConsultantCard({ summary, idx }: { summary: ConsultantWeeklySummary; idx: number }) {
   const navigate = useNavigate();
-  const [expanded, setExpanded] = useState(false);
   const { consultant, tickets: allTickets, totalTickets, resolvedCount, pendingCount,
           totalEstimatedDays, totalActualDays, totalActualHours, availableDaysInWeek } = summary;
 
-  const tickets = allTickets.filter((t) => ['assigned', 'in_progress', 'tested'].includes(t.status));
+  const [expanded, setExpanded] = useState(false);
+  const [internalDateFilter, setInternalDateFilter] = useState('');
+
+  const baseTickets = allTickets.filter((t) => ['assigned', 'in_progress', 'tested'].includes(t.status));
+  const tickets = internalDateFilter
+    ? allTickets.filter((t) => t.internalDeliveryDate?.startsWith(internalDateFilter))
+    : baseTickets;
 
   const allDone = pendingCount === 0 && totalTickets > 0;
 
@@ -192,7 +198,7 @@ function ConsultantCard({ summary, idx }: { summary: ConsultantWeeklySummary; id
           <div className="flex items-center gap-2 shrink-0">
             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-brand-100 text-brand-700 text-xs font-bold">
               <TicketIcon className="w-3 h-3" />
-              {totalTickets} ticket{totalTickets !== 1 ? 's' : ''}
+              {internalDateFilter ? tickets.length : totalTickets} ticket{(internalDateFilter ? tickets.length : totalTickets) !== 1 ? 's' : ''}
             </span>
             <button
               onClick={() => setExpanded(!expanded)}
@@ -254,6 +260,33 @@ function ConsultantCard({ summary, idx }: { summary: ConsultantWeeklySummary; id
         )}
       </div>
 
+      {/* Internal date filter — shown only when expanded */}
+      {expanded && (
+        <div className="px-5 pb-3 flex items-center gap-2 border-t border-surface-container-high pt-3">
+          <CalendarDays className="w-3.5 h-3.5 text-on-surface-variant shrink-0" />
+          <span className="text-[11px] font-semibold text-on-surface-variant uppercase tracking-wider shrink-0">Internal Date</span>
+          <div className="relative flex items-center">
+            <input
+              type="date"
+              value={internalDateFilter}
+              onChange={(e) => setInternalDateFilter(e.target.value)}
+              className="h-7 pl-2.5 pr-7 rounded-md border border-border bg-surface-container-low text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400 transition-colors"
+            />
+            {internalDateFilter && (
+              <button
+                onClick={() => setInternalDateFilter('')}
+                className="absolute right-1.5 text-on-surface-variant hover:text-on-surface transition-colors"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+          {internalDateFilter && tickets.length === 0 && (
+            <span className="text-[11px] text-on-surface-variant/60">No tickets for this date</span>
+          )}
+        </div>
+      )}
+
       {/* Ticket list */}
       <AnimatePresence>
         {expanded && tickets.length > 0 && (
@@ -273,6 +306,7 @@ function ConsultantCard({ summary, idx }: { summary: ConsultantWeeklySummary; id
                     <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider">Status</th>
                     <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider">Priority</th>
                     <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider">Est Days</th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider">Internal Date</th>
                     <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider">Delivery Date</th>
                     <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider">Duration</th>
                     <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider">Actual</th>
@@ -312,6 +346,15 @@ function ConsultantCard({ summary, idx }: { summary: ConsultantWeeklySummary; id
                           <span className="text-sm text-on-surface-variant">
                             {ticket.estimationDays != null ? `${ticket.estimationDays}d` : '—'}
                           </span>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          {ticket.internalDeliveryDate ? (
+                            <span className={cn('text-sm font-medium', internalDateFilter && ticket.internalDeliveryDate.startsWith(internalDateFilter) ? 'text-brand-600' : 'text-on-surface-variant')}>
+                              {new Date(ticket.internalDeliveryDate + (ticket.internalDeliveryDate.length === 10 ? 'T00:00:00' : '')).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                            </span>
+                          ) : (
+                            <span className="text-on-surface-variant/40 text-sm">—</span>
+                          )}
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
                           {ticket.deliveryEstimationDate ? (
@@ -365,22 +408,22 @@ export default function WeeklyConsultantReport() {
   const dispatch = useAppDispatch();
   const { weeklySummary, weeklyLoading } = useAppSelector((state) => state.assignments);
 
-  const [currentMonday, setCurrentMonday] = useState<Date>(() => getMondayOfWeek(new Date()));
+  const [currentFriday, setCurrentFriday] = useState<Date>(() => getFridayOfWeek(new Date()));
 
   useEffect(() => {
-    const { weekStart, weekEnd } = getWeekBounds(currentMonday);
+    const { weekStart, weekEnd } = getWeekBounds(currentFriday);
     dispatch(fetchWeeklySummary({ weekStart, weekEnd }));
-  }, [dispatch, currentMonday]);
+  }, [dispatch, currentFriday]);
 
   const shiftWeek = (delta: number) => {
-    setCurrentMonday((prev) => {
+    setCurrentFriday((prev) => {
       const d = new Date(prev);
       d.setDate(d.getDate() + delta * 7);
       return d;
     });
   };
 
-  const isCurrentWeek = getMondayOfWeek(new Date()).toDateString() === currentMonday.toDateString();
+  const isCurrentWeek = getFridayOfWeek(new Date()).toDateString() === currentFriday.toDateString();
 
   // Summary stats
   const totalTickets = weeklySummary.reduce((s, c) => s + c.totalTickets, 0);
@@ -395,7 +438,7 @@ export default function WeeklyConsultantReport() {
         <div>
           <h1 className="display-sm text-on-surface">Weekly Consultant Report</h1>
           <p className="text-on-surface-variant mt-1">
-            Week of <span className="font-semibold text-on-surface">{fmtRange(currentMonday)}</span>
+            Week of <span className="font-semibold text-on-surface">{fmtRange(currentFriday)}</span>
             {isCurrentWeek && (
               <span className="ml-2 text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand-100 text-brand-700 uppercase tracking-wide">
                 Current Week
@@ -415,7 +458,7 @@ export default function WeeklyConsultantReport() {
           </button>
           {!isCurrentWeek && (
             <button
-              onClick={() => setCurrentMonday(getMondayOfWeek(new Date()))}
+              onClick={() => setCurrentFriday(getFridayOfWeek(new Date()))}
               className="h-8 px-3 rounded-[0.5rem] border border-brand-200 text-sm font-medium text-brand-600 hover:bg-brand-50 transition-colors"
             >
               Today

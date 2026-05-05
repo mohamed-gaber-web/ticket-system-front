@@ -41,6 +41,38 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [menuPos, setMenuPos] = useState<{ top: number; right: number }>({ top: 0, right: 0 });
   const menuRef = useRef<HTMLDivElement>(null);
+  const tableScrollRef = useRef<HTMLDivElement>(null);
+  const topScrollRef = useRef<HTMLDivElement>(null);
+  const syncingRef = useRef(false);
+
+  // Keep top mirror scrollbar in sync with table width via ResizeObserver
+  useEffect(() => {
+    const table = tableScrollRef.current;
+    const top = topScrollRef.current;
+    if (!table || !top) return;
+    const ro = new ResizeObserver(() => {
+      const dummy = top.firstElementChild as HTMLElement | null;
+      if (dummy) dummy.style.width = `${table.scrollWidth}px`;
+    });
+    ro.observe(table);
+    return () => ro.disconnect();
+  }, []);
+
+  const onTopScroll = () => {
+    if (syncingRef.current) return;
+    syncingRef.current = true;
+    if (tableScrollRef.current && topScrollRef.current)
+      tableScrollRef.current.scrollLeft = topScrollRef.current.scrollLeft;
+    syncingRef.current = false;
+  };
+
+  const onTableScroll = () => {
+    if (syncingRef.current) return;
+    syncingRef.current = true;
+    if (tableScrollRef.current && topScrollRef.current)
+      topScrollRef.current.scrollLeft = tableScrollRef.current.scrollLeft;
+    syncingRef.current = false;
+  };
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -290,10 +322,26 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
   }
 
   return (
-    <div className="rounded-[1rem] bg-surface-container-lowest overflow-hidden w-full [&_td]:py-5">
-      <div className="w-full overflow-x-auto">
+    <div className="rounded-[1rem] bg-surface-container-lowest w-full [&_td]:py-5">
+      {/* Top mirror scrollbar — synced with the table container below */}
+      <div
+        ref={topScrollRef}
+        onScroll={onTopScroll}
+        className="overflow-x-auto overflow-y-hidden"
+        style={{ scrollbarWidth: 'thin' }}
+      >
+        <div style={{ height: 1 }} />
+      </div>
+
+      {/* Single scroll container — both axes. Neutralise Table's own overflow-x-auto so
+          the scrollbar always appears at the bottom of the visible area, not all rows. */}
+      <div
+        ref={tableScrollRef}
+        onScroll={onTableScroll}
+        className="w-full overflow-auto max-h-[calc(100vh-280px)] [&_[data-slot=table-container]]:overflow-visible"
+      >
         <Table className="w-full">
-          <TableHeader>
+          <TableHeader className="sticky top-0 z-20">
             <TableRow>
               <TableHead className="min-w-[100px]">Ticket #</TableHead>
               <TableHead className="min-w-[120px]">Status</TableHead>
@@ -317,7 +365,7 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
               <TableHead className="min-w-[100px]">Sub Tickets</TableHead>
               <TableHead className="min-w-[160px]">Customer Email</TableHead>
               {!isCustomer && (
-                <TableHead className="text-right min-w-[60px] sticky right-0 z-20 bg-surface-container-lowest shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.08)]">
+                <TableHead className="text-right min-w-[60px] sticky right-0 z-[21] bg-surface-container-low shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.08)]">
                   Actions
                 </TableHead>
               )}

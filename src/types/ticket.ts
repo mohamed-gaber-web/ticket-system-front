@@ -153,6 +153,10 @@ export interface CreateTicketData {
   internalDeliveryDate?: string;
   scheduledWeek?: number;
   durationHours?: number;
+  // Manual date overrides
+  createdAt?: string;
+  resolvedAt?: string;
+  closedAt?: string;
 }
 
 export interface CreateSubTicketData {
@@ -214,6 +218,10 @@ export interface UpdateTicketData {
   internalDeliveryDate?: string;
   scheduledWeek?: number;
   durationHours?: number;
+  // Manual date overrides
+  createdAt?: string;
+  resolvedAt?: string;
+  closedAt?: string;
 }
 
 export interface TicketQueryParams {

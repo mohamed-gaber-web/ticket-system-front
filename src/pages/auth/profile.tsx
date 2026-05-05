@@ -104,6 +104,7 @@ const ProfilePage = () => {
   const [ticketTotal, setTicketTotal] = useState(0);
   const [ticketPages, setTicketPages] = useState(1);
   const [taskWeekFilter, setTaskWeekFilter] = useState<string>('');
+  const [taskStatusFilter, setTaskStatusFilter] = useState<string>('');
 
   const [dashboardStats, setDashboardStats] = useState({
     assigned: 0,
@@ -166,7 +167,7 @@ const ProfilePage = () => {
     if (!isTeleSales) {
       loadTickets(1, userType ?? undefined);
     }
-  }, [user, userType, isTasksView, taskWeekFilter]);
+  }, [user, userType, isTasksView, taskWeekFilter, taskStatusFilter]);
 
   useEffect(() => {
     if (isConsultant || !u?._id || userType !== 'customer') return;
@@ -245,18 +246,23 @@ const ProfilePage = () => {
       .finally(() => setMonthlyHoursLoading(false));
   }, [u?._id, isConsultant, hoursMonth]);
 
-  const loadTickets = async (page: number, role = userType, weekFilter = taskWeekFilter) => {
+  const loadTickets = async (
+    page: number,
+    role = userType,
+    weekFilter = taskWeekFilter,
+    statusFilter = taskStatusFilter,
+  ) => {
     if (!u?._id) return;
     setTicketsLoading(true);
     try {
       const params: Record<string, any> = role === 'customer'
         ? { customer: u._id, page, limit: TICKET_LIMIT }
         : { assignedConsultant: u._id, page, limit: TICKET_LIMIT };
-      if (isTasksView && role !== 'customer') {
-        params.status = 'resolved,tested,delivered';
-      }
       if (isTasksView && weekFilter) {
         params.scheduledWeek = weekFilter;
+      }
+      if (isTasksView && statusFilter) {
+        params.status = statusFilter;
       }
       const res = await ticketApi.getTickets(params);
       setAssignedTickets(res.data);
@@ -752,18 +758,47 @@ const ProfilePage = () => {
                 {ticketTotal}
               </span>
               {isTasksView && (
-                <div className="ml-auto flex items-center gap-2">
-                  <label className="text-xs font-medium text-on-surface-variant">Week</label>
-                  <select
-                    value={taskWeekFilter}
-                    onChange={(e) => { setTaskWeekFilter(e.target.value); loadTickets(1, userType ?? undefined, e.target.value); }}
-                    className="h-7 rounded-md border border-border bg-surface-container-low text-sm text-on-surface px-2 pr-6 appearance-none focus:outline-none focus:ring-1 focus:ring-brand-500"
-                  >
-                    <option value="">All weeks</option>
-                    {Array.from({ length: 52 }, (_, i) => (
-                      <option key={i + 1} value={String(i + 1)}>Week {i + 1}</option>
-                    ))}
-                  </select>
+                <div className="ml-auto flex items-center gap-3 flex-wrap">
+                  {/* Status filter */}
+                  <div className="flex items-center gap-1.5">
+                    <label className="text-xs font-medium text-on-surface-variant">Status</label>
+                    <select
+                      value={taskStatusFilter}
+                      onChange={(e) => {
+                        setTaskStatusFilter(e.target.value);
+                        loadTickets(1, userType ?? undefined, taskWeekFilter, e.target.value);
+                      }}
+                      className="h-7 rounded-md border border-border bg-surface-container-low text-sm text-on-surface px-2 pr-6 appearance-none focus:outline-none focus:ring-1 focus:ring-brand-500"
+                    >
+                      <option value="">All statuses</option>
+                      <option value="new">New</option>
+                      <option value="assigned">Assigned</option>
+                      <option value="in_progress">In Progress</option>
+                      <option value="customer_pending">Customer Pending</option>
+                      <option value="resolved">Resolved</option>
+                      <option value="tested">Tested</option>
+                      <option value="delivered">Delivered</option>
+                      <option value="closed">Closed</option>
+                      <option value="not_related">Not Related</option>
+                    </select>
+                  </div>
+                  {/* Week filter */}
+                  <div className="flex items-center gap-1.5">
+                    <label className="text-xs font-medium text-on-surface-variant">Week</label>
+                    <select
+                      value={taskWeekFilter}
+                      onChange={(e) => {
+                        setTaskWeekFilter(e.target.value);
+                        loadTickets(1, userType ?? undefined, e.target.value, taskStatusFilter);
+                      }}
+                      className="h-7 rounded-md border border-border bg-surface-container-low text-sm text-on-surface px-2 pr-6 appearance-none focus:outline-none focus:ring-1 focus:ring-brand-500"
+                    >
+                      <option value="">All weeks</option>
+                      {Array.from({ length: 52 }, (_, i) => (
+                        <option key={i + 1} value={String(i + 1)}>Week {i + 1}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               )}
             </div>
