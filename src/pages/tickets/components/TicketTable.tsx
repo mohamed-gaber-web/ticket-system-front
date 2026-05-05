@@ -43,17 +43,18 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
   const menuRef = useRef<HTMLDivElement>(null);
   const tableScrollRef = useRef<HTMLDivElement>(null);
   const topScrollRef = useRef<HTMLDivElement>(null);
+  const topDummyRef = useRef<HTMLDivElement>(null);
   const syncingRef = useRef(false);
 
-  // Keep top mirror scrollbar in sync with table width via ResizeObserver
+  // Keep top mirror scrollbar width in sync with table scroll width
   useEffect(() => {
     const table = tableScrollRef.current;
-    const top = topScrollRef.current;
-    if (!table || !top) return;
-    const ro = new ResizeObserver(() => {
-      const dummy = top.firstElementChild as HTMLElement | null;
-      if (dummy) dummy.style.width = `${table.scrollWidth}px`;
-    });
+    if (!table) return;
+    const update = () => {
+      if (topDummyRef.current) topDummyRef.current.style.width = `${table.scrollWidth}px`;
+    };
+    update();
+    const ro = new ResizeObserver(update);
     ro.observe(table);
     return () => ro.disconnect();
   }, []);
@@ -327,10 +328,10 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
       <div
         ref={topScrollRef}
         onScroll={onTopScroll}
-        className="overflow-x-auto overflow-y-hidden"
-        style={{ scrollbarWidth: 'thin' }}
+        className="overflow-x-scroll overflow-y-hidden w-full"
+        style={{ height: 16 }}
       >
-        <div style={{ height: 1 }} />
+        <div ref={topDummyRef} style={{ height: 1 }} />
       </div>
 
       {/* Single scroll container — both axes. Neutralise Table's own overflow-x-auto so
@@ -338,7 +339,7 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
       <div
         ref={tableScrollRef}
         onScroll={onTableScroll}
-        className="w-full overflow-auto max-h-[calc(100vh-280px)] [&_[data-slot=table-container]]:overflow-visible"
+        className="w-full overflow-auto max-h-[calc(100vh-280px)] [&_[data-slot=table-container]]:overflow-visible [&::-webkit-scrollbar]:h-0 [scrollbar-width:none]"
       >
         <Table className="w-full">
           <TableHeader className="sticky top-0 z-20">
