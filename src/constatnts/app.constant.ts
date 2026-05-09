@@ -48,6 +48,17 @@ const MODULES_GROUP = {
   ],
 };
 
+const TICKETS_GROUP = {
+  name: "Tickets",
+  icon: Ticket,
+  isGroup: true as const,
+  children: [
+    { name: "All Tickets", path: "/tickets", icon: Ticket },
+    { name: "Project", path: "/tickets?categoryName=Project", icon: FolderKanban },
+    { name: "Meeting", path: "/tickets?categoryName=Meeting", icon: CalendarDays },
+  ],
+};
+
 export const ROUTERLINKS = [
   { name: "Dashboard", path: "/", icon: LayoutDashboard },
   {
@@ -59,7 +70,7 @@ export const ROUTERLINKS = [
       { name: "Customer Summary", path: "/customers/summary", icon: BarChart2 },
     ],
   },
-  { name: "Tickets", path: "/tickets", icon: Ticket },
+  TICKETS_GROUP,
   {
     name: "Consultants",
     icon: UserCog,
@@ -75,9 +86,9 @@ export const ROUTERLINKS = [
 
 // Customer links — built dynamically based on role
 const buildCustomerLinks = (customerRole?: string | null) => {
-  const links = [
+  const links: any[] = [
     { name: "Dashboard", path: "/", icon: LayoutDashboard },
-    { name: "Tickets", path: "/tickets", icon: Ticket },
+    TICKETS_GROUP,
   ];
   if (customerRole === "company_admin") {
     links.push({ name: "Manage Users", path: "/company-users", icon: Users });
@@ -97,7 +108,7 @@ const CONSULTANT_LINKS = [
       { name: "Customer Summary", path: "/customers/summary", icon: BarChart2 },
     ],
   },
-  { name: "Tickets", path: "/tickets", icon: Ticket },
+  TICKETS_GROUP,
   {
     name: "Consultants",
     icon: UserCog,
@@ -122,7 +133,7 @@ const CONSULTANT_ADMIN_LINKS = [
       { name: "Customer Summary", path: "/customers/summary", icon: BarChart2 },
     ],
   },
-  { name: "Tickets", path: "/tickets", icon: Ticket },
+  TICKETS_GROUP,
   {
     name: "Consultants",
     icon: UserCog,

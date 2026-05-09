@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Menu, ChevronLeft, ChevronDown } from "lucide-react";
 import logo from "@/assets/logo_extracted.png";
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
 
@@ -32,6 +32,13 @@ function isGroup(item: NavigationItem): item is NavGroup {
 
 export function SidebarDesktop({ links, isOpen, setIsOpen }: SidebarDesktopProps) {
   const [expandedGroups, setExpandedGroups] = useState<string[]>([]);
+  const location = useLocation();
+
+  const isChildActive = (path: string) => {
+    if (!path.includes('?')) return location.pathname === path;
+    const [pathname, search] = path.split('?');
+    return location.pathname === pathname && location.search === `?${search}`;
+  };
 
   const toggleGroup = (name: string) =>
     setExpandedGroups((prev) =>
@@ -173,29 +180,28 @@ export function SidebarDesktop({ links, isOpen, setIsOpen }: SidebarDesktopProps
                         className="overflow-hidden"
                       >
                         <div className="ml-3 pl-3 border-l border-outline-variant/25 mt-0.5 space-y-0.5 pb-1">
-                          {item.children.map((child, ci) => (
-                            <NavLink
-                              key={child.path}
-                              to={child.path}
-                              title={!isOpen ? child.name : undefined}
-                              className={({ isActive }) =>
-                                `relative flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-colors duration-150 overflow-hidden ${
-                                  isActive
+                          {item.children.map((child, ci) => {
+                            const active = isChildActive(child.path);
+                            return (
+                              <NavLink
+                                key={child.path}
+                                to={child.path}
+                                title={!isOpen ? child.name : undefined}
+                                className={`relative flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-colors duration-150 overflow-hidden ${
+                                  active
                                     ? "text-brand-500 font-semibold"
                                     : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
-                                }`
-                              }
-                            >
-                              {({ isActive }) => (
+                                }`}
+                              >
                                 <>
-                                  {isActive && (
+                                  {active && (
                                     <motion.div
                                       layoutId="activeChildBg"
                                       className="absolute inset-0 bg-brand-500/[0.08] rounded-xl"
                                       transition={{ type: "spring", stiffness: 320, damping: 30 }}
                                     />
                                   )}
-                                  {isActive && (
+                                  {active && (
                                     <div className="absolute left-0 inset-y-1.5 w-[3px] bg-brand-500 rounded-r-full z-20" />
                                   )}
                                   <motion.div
@@ -210,9 +216,9 @@ export function SidebarDesktop({ links, isOpen, setIsOpen }: SidebarDesktopProps
                                     {child.name}
                                   </span>
                                 </>
-                              )}
-                            </NavLink>
-                          ))}
+                              </NavLink>
+                            );
+                          })}
                         </div>
                       </motion.div>
                     )}
