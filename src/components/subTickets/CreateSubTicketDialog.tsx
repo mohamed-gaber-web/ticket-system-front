@@ -19,6 +19,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Plus, UserCheck, Mail, X, Paperclip, Upload, File, ImageIcon, Layers, Building } from 'lucide-react';
+import { toast } from 'sonner';
 import { ConsultantSelect } from '@/components/ui/consultant-select';
 import { CustomSelect } from '@/components/ui/custom-select';
 import { validateFile, formatFileSize } from '@/api/attachmentApi';
@@ -109,6 +110,15 @@ export function CreateSubTicketDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!formData.scope || (formData.scope as string[]).length === 0) {
+      toast.error('Module is required. Please select at least one module.');
+      return;
+    }
+    if (!formData.department) {
+      toast.error('Department is required.');
+      return;
+    }
 
     const dataToSend: CreateSubTicketData = {
       ...formData,
@@ -246,7 +256,7 @@ export function CreateSubTicketDialog({
             <div className="grid gap-2">
               <Label className="flex items-center gap-1.5">
                 <Layers className="h-4 w-4 text-on-surface-variant" />
-                Module
+                Module *
               </Label>
               <div className="flex flex-wrap gap-1.5 min-h-[2.5rem] p-2 rounded-[0.5rem] border border-border bg-surface focus-within:border-brand-500 transition-colors">
                 {(formData.scope ?? []).map((id) => {
@@ -286,7 +296,7 @@ export function CreateSubTicketDialog({
             <div className="grid gap-2">
               <Label className="flex items-center gap-1.5">
                 <Building className="h-4 w-4 text-on-surface-variant" />
-                Department
+                Department *
               </Label>
               <CustomSelect
                 value={formData.department || ''}

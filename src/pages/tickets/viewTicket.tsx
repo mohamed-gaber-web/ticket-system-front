@@ -338,6 +338,11 @@ export default function ViewTicket() {
                 <span className={`text-xs font-bold uppercase tracking-[0.05em] ${PRIORITY_TEXT[currentTicket.priority] || PRIORITY_TEXT.medium}`}>
                   {currentTicket.priority}
                 </span>
+                {currentTicket.priorityNumber != null && (
+                  <span className="ml-1 px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant text-xs font-semibold">
+                    #{currentTicket.priorityNumber}
+                  </span>
+                )}
               </div>
               {parentTicket && (
                 <Badge className="bg-primary-fixed text-on-primary-fixed text-xs">Sub-ticket</Badge>

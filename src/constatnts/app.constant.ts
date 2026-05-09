@@ -56,7 +56,7 @@ const SERVICES_GROUP = {
   children: [
     { name: "Tickets", path: "/tickets", icon: Ticket },
     { name: "Projects", path: "/projects", icon: FolderKanban },
-    { name: "Meetings", path: "/meetings", icon: CalendarDays },
+    { name: "Meetings/Visit report", path: "/meetings", icon: CalendarDays },
   ],
 };
 
@@ -68,7 +68,7 @@ const SERVICES_GROUP_CUSTOMER = {
   children: [
     { name: "Tickets", path: "/tickets?excludeServiceTypeNames=Project&excludeCategoryNames=Online Meeting,On Site Meeting", icon: Ticket },
     { name: "Projects", path: "/projects", icon: FolderKanban },
-    { name: "Meetings", path: "/meetings", icon: CalendarDays },
+    { name: "Meetings/Visit report", path: "/meetings", icon: CalendarDays },
   ],
 };
 

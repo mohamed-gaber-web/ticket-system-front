@@ -252,8 +252,9 @@ const ProfilePage = () => {
     }).then((res) => {
       const totalHours = res.data.reduce((sum: number, t: any) => {
         const end = t.resolvedAt || t.closedAt;
-        if (!end || !t.acceptedAt) return sum;
-        const ms = new Date(end).getTime() - new Date(t.acceptedAt).getTime();
+        const start = t.acceptedAt || t.createdAt;
+        if (!end || !start) return sum;
+        const ms = new Date(end).getTime() - new Date(start).getTime();
         return ms > 0 ? sum + ms / (1000 * 60 * 60) : sum;
       }, 0);
       setMonthlyHoursData({ totalHours: Math.round(totalHours * 10) / 10, ticketCount: res.total });
@@ -276,8 +277,8 @@ const ProfilePage = () => {
       if (isTasksView && weekFilter) {
         params.scheduledWeek = weekFilter;
       }
-      if (isTasksView && statusFilter) {
-        params.status = statusFilter;
+      if (isTasksView) {
+        params.status = statusFilter || 'new,assigned,in_progress,customer_pending,tested';
       }
       const res = await ticketApi.getTickets(params);
       setAssignedTickets(res.data);
@@ -785,16 +786,12 @@ const ProfilePage = () => {
                       }}
                       className="h-7 rounded-md border border-border bg-surface-container-low text-sm text-on-surface px-2 pr-6 appearance-none focus:outline-none focus:ring-1 focus:ring-brand-500"
                     >
-                      <option value="">All statuses</option>
+                      <option value="">All active</option>
                       <option value="new">New</option>
                       <option value="assigned">Assigned</option>
                       <option value="in_progress">In Progress</option>
                       <option value="customer_pending">Customer Pending</option>
-                      <option value="resolved">Resolved</option>
                       <option value="tested">Tested</option>
-                      <option value="delivered">Delivered</option>
-                      <option value="closed">Closed</option>
-                      <option value="not_related">Not Related</option>
                     </select>
                   </div>
                   {/* Week filter */}

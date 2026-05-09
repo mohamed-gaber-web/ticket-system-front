@@ -84,6 +84,7 @@ export interface Ticket {
   description: string;
   category: string | Category;
   priority: 'low' | 'medium' | 'high' | 'critical';
+  priorityNumber?: number | null;
   status: 'new' | 'assigned' | 'in_progress' | 'resolved' | 'closed' | 'customer_pending' | 'delivered' | 'tested' | 'not_related';
   notifyEmails?: string[];
   sla?: string | SLA;
@@ -139,6 +140,7 @@ export interface CreateTicketData {
   description: string;
   category: string;
   priority: 'low' | 'medium' | 'high' | 'critical';
+  priorityNumber?: number | null;
   startDate?: string;
   notifyEmails?: string[];
   // New optional properties
@@ -198,6 +200,7 @@ export interface UpdateTicketData {
   customer?: string;
   category?: string;
   priority?: 'low' | 'medium' | 'high' | 'critical';
+  priorityNumber?: number | null;
   status?: 'new' | 'assigned' | 'in_progress' | 'resolved' | 'closed' | 'customer_pending' | 'reopened' | 'delivered' | 'tested' | 'not_related';
   sla?: string;
   assignedTeam?: string;

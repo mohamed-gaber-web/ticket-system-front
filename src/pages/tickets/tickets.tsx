@@ -242,7 +242,7 @@ export default function Tickets() {
   }, [searchParams.toString(), user?._id, serviceTypes, categories]);
 
   const buildCurrentParams = (pageNum: number) => {
-    const params: any = { page: pageNum, limit: itemsPerPage };
+    const params: any = { page: pageNum, limit: itemsPerPage, includeSubTickets: true };
     if (searchTerm)              params.search             = searchTerm;
     if (statusFilter.length)     params.status             = statusFilter.join(',');
     if (priorityFilter.length)   params.priority           = priorityFilter.join(',');
@@ -343,12 +343,12 @@ export default function Tickets() {
   ].filter(Boolean).length;
 
   const EXPORT_HEADERS = [
-    'Type', 'Ticket #', 'Parent Ticket #', 'Subject', 'Customer', 'Contact Person',
-    'Assignee', 'Assigned By', 'Company',
-    'Category', 'Module', 'Priority', 'Status',
+    'Sub Tickets', 'Ticket #', 'Parent Ticket #', 'Status', 'Subject',
+    'Company', 'Created By', 'Assignee', 'Assigned By', 'Category',
+    'Service Type', 'Priority', 'Priority #', 'Duration (hrs)', 'Week', 'Module',
     'Created Date', 'Assigned Date', 'Delivery Date',
     'Last Updated', 'Resolved Date', 'Closed Date',
-    'Sub Tickets', 'Customer Email',
+    'Customer Name', 'Type',
   ];
 
   const fmtDate = (date?: string) =>
@@ -357,32 +357,39 @@ export default function Tickets() {
   const getExportValues = (ticket: Ticket): string[] => {
     const customerObj = typeof ticket.customer === 'object' && ticket.customer ? ticket.customer as any : null;
     const categoryObj = typeof ticket.category === 'object' && ticket.category ? (ticket.category as Category) : null;
-    const environmentObj = typeof ticket.environment === 'object' && ticket.environment ? ticket.environment as any : null;
+    const serviceTypeObj = typeof ticket.serviceType === 'object' && ticket.serviceType ? ticket.serviceType as any : null;
     const assigneeObj = typeof ticket.acceptedBy === 'object' && ticket.acceptedBy ? (ticket.acceptedBy as TicketConsultant) : null;
     const assignedByObj = typeof ticket.assignedBy === 'object' && ticket.assignedBy ? (ticket.assignedBy as TicketConsultant) : null;
+    const createdByObj = typeof ticket.createdByConsultant === 'object' && ticket.createdByConsultant ? (ticket.createdByConsultant as TicketConsultant) : null;
     const parentObj = typeof ticket.parentTicket === 'object' && ticket.parentTicket ? (ticket.parentTicket as Ticket) : null;
+    const scopeNames = Array.isArray(ticket.scope)
+      ? (ticket.scope as any[]).filter((s) => s && typeof s === 'object').map((s) => s.name).join(', ')
+      : '';
     return [
-      ticket.isSubTicket ? 'Sub-ticket' : 'Main Ticket',
+      ticket.isSubTicket ? '' : String((ticket.subTickets as any[])?.length ?? 0),
       ticket.ticketNumber,
       parentObj?.ticketNumber ?? '',
+      ticket.status.replace(/_/g, ' '),
       ticket.subject,
       customerObj?.companyName ?? '',
-      customerObj?.contactPerson ?? '',
+      createdByObj ? `${createdByObj.firstName} ${createdByObj.lastName}` : '',
       assigneeObj ? `${assigneeObj.firstName} ${assigneeObj.lastName}` : '',
       assignedByObj ? `${assignedByObj.firstName} ${assignedByObj.lastName}` : '',
-      customerObj?.companyName ?? '',
       categoryObj?.name ?? '',
-      environmentObj?.name ?? '',
+      serviceTypeObj?.name ?? '',
       ticket.priority,
-      ticket.status.replace(/_/g, ' '),
+      ticket.priorityNumber != null ? String(ticket.priorityNumber) : '',
+      ticket.durationHours != null ? String(ticket.durationHours) : '',
+      ticket.scheduledWeek != null ? String(ticket.scheduledWeek) : '',
+      scopeNames,
       fmtDate(ticket.createdAt),
       fmtDate(ticket.acceptedAt),
       fmtDate(ticket.deliveryEstimationDate),
       fmtDate(ticket.updatedAt),
       fmtDate(ticket.resolvedAt),
       fmtDate(ticket.closedAt),
-      ticket.isSubTicket ? '' : String((ticket.subTickets as any[])?.length ?? 0),
-      customerObj?.email ?? '',
+      customerObj?.contactPerson ?? '',
+      ticket.isSubTicket ? 'Sub-ticket' : 'Main Ticket',
     ];
   };
 

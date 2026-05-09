@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import {
   Table,
   TableBody,
@@ -8,10 +8,11 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Edit, Trash2, Ticket as TicketIcon, Eye, CheckCircle, GitBranch, MoreVertical, ChevronRight, ChevronDown, Timer } from 'lucide-react';
+import { Edit, Trash2, Ticket as TicketIcon, Eye, CheckCircle, GitBranch, MoreVertical, ChevronRight, ChevronDown, Timer, ChevronsUpDown, ChevronUp } from 'lucide-react';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
-import type { Ticket, Consultant, Category } from '@/types/ticket';
+import type { Ticket, Consultant } from '@/types/ticket';
+import type { ServiceType } from '@/types/serviceType.types';
 import { useAppSelector, useAppDispatch } from '@/redux/hooks/hooks';
 import { acceptTicket, fetchSubTickets } from '@/redux/slices/ticketSlice';
 
@@ -21,10 +22,13 @@ interface TicketTableProps {
   tickets: Ticket[];
   onDelete: (id: string) => void;
   loading: boolean;
+  hideCustomerColumns?: boolean;
 }
 
 
-const TERMINAL_STATUSES = new Set(['resolved', 'closed', 'delivered', 'tested', 'not_related']);
+const PRIORITY_ORDER: Record<string, number> = { low: 1, medium: 2, high: 3, critical: 4 };
+type SortKey = 'ticketNumber' | 'status' | 'priority' | 'priorityNumber' | 'createdAt' | 'acceptedAt' | 'deliveryEstimationDate' | 'updatedAt' | 'resolvedAt' | 'closedAt' | 'scheduledWeek';
+type SortDir = 'asc' | 'desc';
 
 export default function TicketTable({ tickets, onDelete, loading }: TicketTableProps) {
   const dispatch = useAppDispatch();
@@ -34,6 +38,30 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
   const { customers } = useAppSelector((state) => state.customers);
   const isConsultant = userType === 'consultant';
   const isCustomer = userType === 'customer';
+  const { serviceTypes } = useAppSelector((state) => state.serviceTypes);
+
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
+
+  const handleSort = (key: SortKey) => {
+    setSortDir((d) => sortKey === key ? (d === 'asc' ? 'desc' : 'asc') : 'asc');
+    setSortKey(key);
+  };
+
+  const sortedTickets = useMemo(() => {
+    if (!sortKey) return tickets;
+    return [...tickets].sort((a, b) => {
+      let valA: any = sortKey === 'priority' ? PRIORITY_ORDER[a.priority] ?? 0 : (a as any)[sortKey];
+      let valB: any = sortKey === 'priority' ? PRIORITY_ORDER[b.priority] ?? 0 : (b as any)[sortKey];
+      if (valA == null && valB == null) return 0;
+      if (valA == null) return 1;
+      if (valB == null) return -1;
+      const cmp = typeof valA === 'string' && typeof valB === 'string'
+        ? valA.localeCompare(valB)
+        : valA < valB ? -1 : valA > valB ? 1 : 0;
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+  }, [tickets, sortKey, sortDir]);
 
   const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set());
   const [subTicketsByParent, setSubTicketsByParent] = useState<Map<string, Ticket[]>>(new Map());
@@ -192,10 +220,10 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
     return customers.find((c) => c._id === customer) ?? null;
   };
 
-  const getCategoryName = (category: string | Category | undefined): string | null => {
-    if (!category) return null;
-    if (typeof category === 'string') return null;
-    return category.name;
+  const getServiceTypeName = (st: Ticket['serviceType']): string | null => {
+    if (!st) return null;
+    if (typeof st === 'object') return (st as ServiceType).name;
+    return serviceTypes?.find((s) => s._id === st)?.name ?? null;
   };
 
   const getPriorityDisplay = (priority: string) => {
@@ -254,7 +282,7 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
 
   // Map sub-ticket ID → parent ticket for field inheritance
   const subToParent = new Map<string, Ticket>();
-  tickets.forEach((ticket) => {
+  sortedTickets.forEach((ticket) => {
     if (expandedParents.has(ticket._id)) {
       const subs = subTicketsByParent.get(ticket._id) || [];
       subs.forEach((sub) => subToParent.set(sub._id, ticket));
@@ -263,7 +291,7 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
 
   const organizeTickets = () => {
     const organized: Ticket[] = [];
-    tickets.forEach((ticket) => {
+    sortedTickets.forEach((ticket) => {
       organized.push(ticket);
       if (expandedParents.has(ticket._id)) {
         const subs = subTicketsByParent.get(ticket._id) || [];
@@ -345,47 +373,93 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
         <Table className="w-full">
           <TableHeader className="sticky top-0 z-20">
             <TableRow>
-              <TableHead className="min-w-[100px]">Ticket #</TableHead>
-              <TableHead className="min-w-[120px]">Status</TableHead>
-              <TableHead className="min-w-[200px]">Subject</TableHead>
-              <TableHead className="min-w-[140px]">Customer</TableHead>
-              <TableHead className="min-w-[140px]">Assignee</TableHead>
-              <TableHead className="min-w-[140px]">Company</TableHead>
-              {isConsultant && <TableHead className="min-w-[120px]">Category</TableHead>}
-              {isConsultant && <TableHead className="min-w-[120px]">Module</TableHead>}
-              {isConsultant && <TableHead className="min-w-[130px]">Internal Delivery</TableHead>}
-              {isConsultant && <TableHead className="min-w-[100px]">Duration</TableHead>}
-              {isConsultant && <TableHead className="min-w-[90px]">Delayed</TableHead>}
-              {isConsultant && <TableHead className="min-w-[80px]">Week</TableHead>}
-              <TableHead className="min-w-[100px]">Priority</TableHead>
-              <TableHead className="min-w-[120px]">Created Date</TableHead>
-              <TableHead className="min-w-[120px]">Assigned Date</TableHead>
-              <TableHead className="min-w-[120px]">Delivery Date</TableHead>
-              <TableHead className="min-w-[120px]">Last Updated</TableHead>
-              <TableHead className="min-w-[120px]">Resolved Date</TableHead>
-              <TableHead className="min-w-[120px]">Closed Date</TableHead>
-              <TableHead className="min-w-[100px]">Sub Tickets</TableHead>
-              <TableHead className="min-w-[160px]">Customer Email</TableHead>
-              {!isCustomer && (
-                <TableHead className="text-right min-w-[60px] sticky right-0 z-[21] bg-surface-container-low shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.08)]">
-                  Actions
-                </TableHead>
-              )}
+              {(() => {
+                const SH = ({ col, label, className }: { col: SortKey; label: string; className?: string }) => (
+                  <TableHead
+                    className={`cursor-pointer select-none group ${className ?? ''}`}
+                    onClick={() => handleSort(col)}
+                  >
+                    <div className="flex items-center gap-1">
+                      {label}
+                      {sortKey === col
+                        ? <ChevronUp className={`h-3.5 w-3.5 text-brand-500 transition-transform ${sortDir === 'desc' ? 'rotate-180' : ''}`} />
+                        : <ChevronsUpDown className="h-3.5 w-3.5 text-on-surface-variant/40 group-hover:text-on-surface-variant transition-colors" />
+                      }
+                    </div>
+                  </TableHead>
+                );
+                return (
+                  <>
+                    <TableHead className="min-w-[80px]">Sub Tickets</TableHead>
+                    <SH col="ticketNumber" label="Ticket #" className="min-w-[100px]" />
+                    <SH col="status" label="Status" className="min-w-[120px]" />
+                    <TableHead className="min-w-[200px]">Subject</TableHead>
+                    <TableHead className="min-w-[140px]">Company</TableHead>
+                    <TableHead className="min-w-[140px]">Created By</TableHead>
+                    <TableHead className="min-w-[140px]">Assignee</TableHead>
+                    {isConsultant && <TableHead className="min-w-[120px]">Category</TableHead>}
+                    <TableHead className="min-w-[130px]">Service Type</TableHead>
+                    <SH col="priority" label="Priority" className="min-w-[100px]" />
+                    <SH col="priorityNumber" label="Priority #" className="min-w-[90px]" />
+                    {isConsultant && <TableHead className="min-w-[100px]">Duration</TableHead>}
+                    {isConsultant && <SH col="scheduledWeek" label="Week" className="min-w-[80px]" />}
+                    {isConsultant && <TableHead className="min-w-[120px]">Module</TableHead>}
+                    <SH col="createdAt" label="Created Date" className="min-w-[120px]" />
+                    <SH col="acceptedAt" label="Assigned Date" className="min-w-[120px]" />
+                    <SH col="deliveryEstimationDate" label="Delivery Date" className="min-w-[120px]" />
+                    <SH col="updatedAt" label="Last Updated" className="min-w-[120px]" />
+                    <SH col="resolvedAt" label="Resolved Date" className="min-w-[120px]" />
+                    <SH col="closedAt" label="Closed Date" className="min-w-[120px]" />
+                    <TableHead className="min-w-[140px]">Customer Name</TableHead>
+                    {!isCustomer && (
+                      <TableHead className="text-right min-w-[60px] sticky right-0 z-[21] bg-surface-container-low shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.08)]">
+                        Actions
+                      </TableHead>
+                    )}
+                  </>
+                );
+              })()}
             </TableRow>
           </TableHeader>
           <TableBody>
             {organizedTickets.map((ticket) => {
               const isSubTicket = ticket.isSubTicket;
-              const categoryName = getCategoryName(ticket.category);
 
               return (
                 <TableRow
                   key={ticket._id}
                   className={isSubTicket ? 'bg-primary-fixed/20' : ''}
                 >
+                  {/* Sub Tickets — clickable badge on main tickets */}
+                  <TableCell>
+                    {!isSubTicket ? (
+                      (() => {
+                        const count = getSubTicketCount(ticket);
+                        const isExpanded = expandedParents.has(ticket._id);
+                        return count > 0 ? (
+                          <button
+                            type="button"
+                            onClick={() => toggleParent(ticket._id)}
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold transition-colors ${
+                              isExpanded
+                                ? 'bg-primary text-white'
+                                : 'bg-brand-100 text-brand-700 hover:bg-primary hover:text-white'
+                            }`}
+                          >
+                            <GitBranch className="w-3 h-3" />
+                            {count}
+                          </button>
+                        ) : (
+                          <span className="text-on-surface-variant/40">&mdash;</span>
+                        );
+                      })()
+                    ) : (
+                      <span className="text-on-surface-variant/40">&mdash;</span>
+                    )}
+                  </TableCell>
+                  {/* Ticket # */}
                   <TableCell>
                     <div className="flex items-center gap-1.5">
-                      {/* Expand/collapse toggle for parent tickets with sub-tickets */}
                       {!isSubTicket && getSubTicketCount(ticket) > 0 ? (
                         <button
                           type="button"
@@ -418,16 +492,15 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                       </a>
                     </div>
                   </TableCell>
+                  {/* Status */}
                   <TableCell>{getStatusBadge(ticket.status)}</TableCell>
+                  {/* Subject */}
                   <TableCell>
                     <div>
                       <p className={`font-medium text-sm ${isSubTicket ? 'text-brand-500' : 'text-on-surface'}`}>
                         {ticket.subject}
                       </p>
-                      {categoryName && (
-                        <p className="text-xs text-on-surface-variant mt-0.5">{categoryName}</p>
-                      )}
-                      {isSubTicket && !categoryName && (
+                      {isSubTicket && (
                         <span className="inline-flex items-center gap-1 mt-0.5 text-xs text-brand-400">
                           <GitBranch className="h-3 w-3" />
                           Sub-ticket
@@ -435,12 +508,21 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                       )}
                     </div>
                   </TableCell>
-                  {/* Customer (contact person) */}
+                  {/* Company */}
                   <TableCell>
                     {(() => {
                       const c = getEffectiveCustomer(ticket);
-                      return c?.contactPerson
-                        ? <span className="text-sm font-medium text-on-surface">{c.contactPerson}</span>
+                      return c?.companyName
+                        ? <span className="text-sm text-on-surface">{c.companyName}</span>
+                        : <span className="text-on-surface-variant/40">&mdash;</span>;
+                    })()}
+                  </TableCell>
+                  {/* Created By */}
+                  <TableCell>
+                    {(() => {
+                      const name = getConsultantName(ticket.createdByConsultant as any);
+                      return name
+                        ? <span className="text-sm text-on-surface">{name}</span>
                         : <span className="text-on-surface-variant/40">&mdash;</span>;
                     })()}
                   </TableCell>
@@ -474,20 +556,53 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                       return <span className="text-on-surface-variant/40">&mdash;</span>;
                     })()}
                   </TableCell>
-                  {/* Company */}
-                  <TableCell>
-                    {(() => {
-                      const c = getEffectiveCustomer(ticket);
-                      return c?.companyName
-                        ? <span className="text-sm text-on-surface">{c.companyName}</span>
-                        : <span className="text-on-surface-variant/40">&mdash;</span>;
-                    })()}
-                  </TableCell>
                   {/* Category */}
                   {isConsultant && (
                     <TableCell>
                       {ticket.category && typeof ticket.category === 'object' ? (
                         <span className="text-sm text-on-surface">{ticket.category.name}</span>
+                      ) : (
+                        <span className="text-on-surface-variant/40">&mdash;</span>
+                      )}
+                    </TableCell>
+                  )}
+                  {/* Service Type */}
+                  <TableCell>
+                    {(() => {
+                      const stName = getServiceTypeName(ticket.serviceType);
+                      return stName
+                        ? <span className="text-sm text-on-surface">{stName}</span>
+                        : <span className="text-on-surface-variant/40">&mdash;</span>;
+                    })()}
+                  </TableCell>
+                  {/* Priority */}
+                  <TableCell>{getPriorityDisplay(ticket.priority)}</TableCell>
+                  {/* Priority # */}
+                  <TableCell>
+                    {ticket.priorityNumber != null
+                      ? <span className="text-sm font-semibold text-on-surface">{ticket.priorityNumber}</span>
+                      : <span className="text-on-surface-variant/40">&mdash;</span>}
+                  </TableCell>
+                  {/* Duration */}
+                  {isConsultant && (
+                    <TableCell>
+                      {ticket.durationHours != null ? (
+                        <span className="inline-flex items-center gap-1 text-sm font-semibold text-on-surface">
+                          <Timer className="w-3.5 h-3.5 text-brand-500 flex-shrink-0" />
+                          {ticket.durationHours}h
+                        </span>
+                      ) : (
+                        <span className="text-on-surface-variant/40">&mdash;</span>
+                      )}
+                    </TableCell>
+                  )}
+                  {/* Scheduled Week */}
+                  {isConsultant && (
+                    <TableCell>
+                      {ticket.scheduledWeek != null ? (
+                        <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-md bg-brand-50 text-brand-700 text-xs font-bold">
+                          W{ticket.scheduledWeek}
+                        </span>
                       ) : (
                         <span className="text-on-surface-variant/40">&mdash;</span>
                       )}
@@ -517,61 +632,6 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                       })()}
                     </TableCell>
                   )}
-                  {/* Internal Delivery Date */}
-                  {isConsultant && (
-                    <TableCell>
-                      {ticket.internalDeliveryDate ? (
-                        <span className="text-sm text-on-surface">
-                          {new Date(ticket.internalDeliveryDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                        </span>
-                      ) : (
-                        <span className="text-on-surface-variant/40">&mdash;</span>
-                      )}
-                    </TableCell>
-                  )}
-                  {/* Duration */}
-                  {isConsultant && (
-                    <TableCell>
-                      {ticket.durationHours != null ? (
-                        <span className="inline-flex items-center gap-1 text-sm font-semibold text-on-surface">
-                          <Timer className="w-3.5 h-3.5 text-brand-500 flex-shrink-0" />
-                          {ticket.durationHours}h
-                        </span>
-                      ) : (
-                        <span className="text-on-surface-variant/40">&mdash;</span>
-                      )}
-                    </TableCell>
-                  )}
-                  {/* Delayed */}
-                  {isConsultant && (
-                    <TableCell>
-                      {(() => {
-                        if (!ticket.deliveryEstimationDate) return <span className="text-on-surface-variant/40">&mdash;</span>;
-                        const delivery = new Date(ticket.deliveryEstimationDate);
-                        const endDate = ticket.resolvedAt ? new Date(ticket.resolvedAt)
-                          : ticket.closedAt ? new Date(ticket.closedAt)
-                          : TERMINAL_STATUSES.has(ticket.status) ? null : new Date();
-                        if (!endDate) return <span className="text-sm font-semibold text-green-600">On time</span>;
-                        const days = Math.max(0, Math.floor((endDate.getTime() - delivery.getTime()) / 86400000));
-                        return days > 0
-                          ? <span className="text-sm font-semibold text-error">+{days}d</span>
-                          : <span className="text-sm font-semibold text-green-600">On time</span>;
-                      })()}
-                    </TableCell>
-                  )}
-                  {/* Scheduled Week */}
-                  {isConsultant && (
-                    <TableCell>
-                      {ticket.scheduledWeek != null ? (
-                        <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-md bg-brand-50 text-brand-700 text-xs font-bold">
-                          W{ticket.scheduledWeek}
-                        </span>
-                      ) : (
-                        <span className="text-on-surface-variant/40">&mdash;</span>
-                      )}
-                    </TableCell>
-                  )}
-                  <TableCell>{getPriorityDisplay(ticket.priority)}</TableCell>
                   {/* Created Date */}
                   <TableCell>
                     {ticket.createdAt ? (
@@ -600,7 +660,7 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                       );
                     })()}
                   </TableCell>
-                  {/* Delivery Date (deliveryEstimationDate) */}
+                  {/* Delivery Date */}
                   <TableCell>
                     {ticket.deliveryEstimationDate ? (
                       <span className="text-sm text-on-surface">
@@ -640,39 +700,12 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                       <span className="text-on-surface-variant/40">&mdash;</span>
                     )}
                   </TableCell>
-                  {/* Sub Tickets — clickable badge on main tickets */}
-                  <TableCell>
-                    {!isSubTicket ? (
-                      (() => {
-                        const count = getSubTicketCount(ticket);
-                        const isExpanded = expandedParents.has(ticket._id);
-                        return count > 0 ? (
-                          <button
-                            type="button"
-                            onClick={() => toggleParent(ticket._id)}
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold transition-colors ${
-                              isExpanded
-                                ? 'bg-primary text-white'
-                                : 'bg-brand-100 text-brand-700 hover:bg-primary hover:text-white'
-                            }`}
-                          >
-                            <GitBranch className="w-3 h-3" />
-                            {count}
-                          </button>
-                        ) : (
-                          <span className="text-on-surface-variant/40">&mdash;</span>
-                        );
-                      })()
-                    ) : (
-                      <span className="text-on-surface-variant/40">&mdash;</span>
-                    )}
-                  </TableCell>
-                  {/* Customer Email */}
+                  {/* Customer Name */}
                   <TableCell>
                     {(() => {
                       const c = getEffectiveCustomer(ticket);
-                      return c?.email
-                        ? <span className="text-sm text-on-surface">{c.email}</span>
+                      return c?.contactPerson
+                        ? <span className="text-sm font-medium text-on-surface">{c.contactPerson}</span>
                         : <span className="text-on-surface-variant/40">&mdash;</span>;
                     })()}
                   </TableCell>

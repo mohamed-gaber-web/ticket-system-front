@@ -15,6 +15,7 @@ import { fetchServiceTypes } from '@/redux/slices/serviceTypeSlice';
 import { fetchModules } from '@/redux/slices/moduleSlice';
 import { fetchSources } from '@/redux/slices/sourceSlice';
 import { UserPlus, Upload, X, File, Image as ImageIcon, Mail, Plus } from 'lucide-react';
+import { toast } from 'sonner';
 import { validateFile, formatFileSize } from '@/api/attachmentApi';
 
 interface Props {
@@ -23,20 +24,20 @@ interface Props {
   isEdit?: boolean;
 }
 
-// Generate week options for the current year (ISO-style Monday-based weeks)
+// Generate week options for the current year (Saturday–Friday, Egypt calendar)
 const generateWeekOptions = () => {
   const year = new Date().getFullYear();
   const options: { value: string; label: string }[] = [
     { value: '', label: '-- Select Week --' },
   ];
   const d = new Date(year, 0, 1);
-  // Advance to first Monday
-  while (d.getDay() !== 1) d.setDate(d.getDate() + 1);
+  // Advance to first Saturday (getDay() === 6)
+  while (d.getDay() !== 6) d.setDate(d.getDate() + 1);
   let week = 1;
   while (d.getFullYear() === year && week <= 53) {
     const start = new Date(d);
     const end = new Date(d);
-    end.setDate(end.getDate() + 6);
+    end.setDate(end.getDate() + 6); // Saturday + 6 = Friday
     const fmt = (dt: Date) => dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     options.push({ value: String(week), label: `Week ${week} — ${fmt(start)} to ${fmt(end)}` });
     d.setDate(d.getDate() + 7);
@@ -340,9 +341,18 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
     if (!isEdit) {
       const createData = formData as CreateTicketData;
       if (!createData.customer) {
-        alert('Customer information is missing. Please refresh the page and try again.');
+        toast.error('Customer information is missing. Please refresh the page and try again.');
         return;
       }
+    }
+
+    if (!formData.serviceType) {
+      toast.error('Service Type is required.');
+      return;
+    }
+    if (!formData.scope || (formData.scope as string[]).length === 0) {
+      toast.error('Module is required. Please select at least one module.');
+      return;
     }
 
     // Clean up empty optional fields before submitting
@@ -430,7 +440,7 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
         <h3 className="form-section-title">Categorization</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="form-label">Service Type</label>
+            <label className="form-label">Service Type *</label>
             <CustomSelect
               value={formData.serviceType || ''}
               onChange={(val) => setFormData({ ...formData, serviceType: val })}
@@ -451,7 +461,7 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
           </div>
 
           <div>
-            <label className="form-label">Module</label>
+            <label className="form-label">Module *</label>
             <MultiSelect
               items={moduleItems}
               value={(formData.scope as string[]) ?? []}
@@ -482,6 +492,20 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
                 { value: 'high', label: 'High' },
                 { value: 'critical', label: 'Critical' },
               ]}
+            />
+          </div>
+
+          <div>
+            <label className="form-label">Priority Number</label>
+            <Input
+              type="number"
+              min={1}
+              placeholder="e.g. 1"
+              value={formData.priorityNumber ?? ''}
+              onChange={(e) => setFormData({
+                ...formData,
+                priorityNumber: e.target.value === '' ? null : Number(e.target.value),
+              })}
             />
           </div>
 

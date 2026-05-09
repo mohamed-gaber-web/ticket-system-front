@@ -274,7 +274,7 @@ export default function CustomerSummary() {
       let page = 1;
       const all: Ticket[] = [];
       while (true) {
-        const res = await getTickets({ customer: selectedCustomer._id, limit: 200, page });
+        const res = await getTickets({ customer: selectedCustomer._id, limit: 200, page, includeSubTickets: true });
         all.push(...res.data);
         if (all.length >= res.total || res.data.length === 0) break;
         page++;
@@ -297,7 +297,7 @@ export default function CustomerSummary() {
       let page = 1;
       const all: Ticket[] = [];
       while (true) {
-        const res = await getTickets({ companyName: selectedCompany, limit: 200, page });
+        const res = await getTickets({ companyName: selectedCompany, limit: 200, page, includeSubTickets: true });
         all.push(...res.data);
         if (all.length >= res.total || res.data.length === 0) break;
         page++;
@@ -800,6 +800,7 @@ export default function CustomerSummary() {
                 tickets={pagedTickets}
                 onDelete={() => {}}
                 loading={ticketsLoading}
+                hideCustomerColumns
               />
 
               {/* Pagination */}

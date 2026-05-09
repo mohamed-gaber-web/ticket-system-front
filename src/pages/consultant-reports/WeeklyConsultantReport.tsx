@@ -313,7 +313,7 @@ function ConsultantCard({ summary, idx }: { summary: ConsultantWeeklySummary; id
                     <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider">Subject</th>
                     <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider">Status</th>
                     <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider">Priority</th>
-                    <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider">Est Days</th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider">Week</th>
                     <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider">Internal Date</th>
                     <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider">Delivery Date</th>
                     <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider">Duration</th>
@@ -352,7 +352,7 @@ function ConsultantCard({ summary, idx }: { summary: ConsultantWeeklySummary; id
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
                           <span className="text-sm text-on-surface-variant">
-                            {ticket.estimationDays != null ? `${ticket.estimationDays}d` : '—'}
+                            {ticket.scheduledWeek != null ? `W${ticket.scheduledWeek}` : '—'}
                           </span>
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
