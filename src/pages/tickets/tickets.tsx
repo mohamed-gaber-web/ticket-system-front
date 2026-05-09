@@ -75,6 +75,7 @@ export default function Tickets() {
   const moduleFilter           = spArray('module');
   const categoryFilter         = spArray('category');
   const serviceTypeNameFilter  = sp('serviceTypeName');
+  const categoryNamesFilter    = spArray('categoryNames');
   const featureFilter          = spArray('feature');
   const weekFilter             = spArray('week');
   const createdDateFrom    = sp('createdFrom');
@@ -173,6 +174,18 @@ export default function Tickets() {
     return ids;
   };
 
+  // Resolve categoryNames param (comma-separated names) to category IDs (used by sidebar shortcut links)
+  const resolveCategoryIds = () => {
+    const ids = [...categoryFilter];
+    if (categoryNamesFilter.length && categories?.length) {
+      categoryNamesFilter.forEach(name => {
+        const match = categories.find(c => c.name.toLowerCase() === name.toLowerCase());
+        if (match && !ids.includes(match._id)) ids.push(match._id);
+      });
+    }
+    return ids;
+  };
+
   // Fetch tickets whenever URL params, user identity, or loaded categories change
   useEffect(() => {
     const params: any = { page: currentPage, limit: itemsPerPage };
@@ -187,7 +200,8 @@ export default function Tickets() {
     if (customerFilter.length)   params.customer           = customerFilter.join(',');
     if (companyFilter.length)    params.companyName        = companyFilter.join(',');
     if (moduleFilter.length)     params.scope              = moduleFilter.join(',');
-    if (categoryFilter.length)   params.category           = categoryFilter.join(',');
+    const resolvedCategories = resolveCategoryIds();
+    if (resolvedCategories.length) params.category         = resolvedCategories.join(',');
     if (featureFilter.length)    params.feature            = featureFilter.join(',');
     if (weekFilter.length)       params.scheduledWeek      = weekFilter.join(',');
     if (createdDateFrom)         params.createdDateFrom    = createdDateFrom;
@@ -205,7 +219,7 @@ export default function Tickets() {
     Object.assign(params, getCustomerScopeParams());
     dispatch(fetchTickets(params));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams.toString(), user?._id, serviceTypes]);
+  }, [searchParams.toString(), user?._id, serviceTypes, categories]);
 
   const buildCurrentParams = (pageNum: number) => {
     const params: any = { page: pageNum, limit: itemsPerPage };
@@ -220,7 +234,8 @@ export default function Tickets() {
     if (customerFilter.length)   params.customer           = customerFilter.join(',');
     if (companyFilter.length)    params.companyName        = companyFilter.join(',');
     if (moduleFilter.length)     params.scope              = moduleFilter.join(',');
-    if (categoryFilter.length)   params.category           = categoryFilter.join(',');
+    const resolvedCats = resolveCategoryIds();
+    if (resolvedCats.length)     params.category           = resolvedCats.join(',');
     if (featureFilter.length)    params.feature            = featureFilter.join(',');
     if (weekFilter.length)       params.scheduledWeek      = weekFilter.join(',');
     if (createdDateFrom)         params.createdDateFrom    = createdDateFrom;
@@ -376,7 +391,8 @@ export default function Tickets() {
     if (customerFilter.length)   params.customer           = customerFilter.join(',');
     if (companyFilter.length)    params.companyName        = companyFilter.join(',');
     if (moduleFilter.length)     params.scope              = moduleFilter.join(',');
-    if (categoryFilter.length)   params.category           = categoryFilter.join(',');
+    const resolvedCats = resolveCategoryIds();
+    if (resolvedCats.length)     params.category           = resolvedCats.join(',');
     if (featureFilter.length)    params.feature            = featureFilter.join(',');
     if (weekFilter.length)       params.scheduledWeek      = weekFilter.join(',');
     if (createdDateFrom)         params.createdDateFrom    = createdDateFrom;
@@ -489,7 +505,11 @@ export default function Tickets() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="display-sm text-on-surface">
-            {serviceTypeNameFilter ? `${serviceTypeNameFilter} Tickets` : 'Tickets'}
+            {serviceTypeNameFilter
+              ? `${serviceTypeNameFilter} Tickets`
+              : categoryNamesFilter.length
+              ? 'Meeting Tickets'
+              : 'Tickets'}
           </h1>
           <p className="text-on-surface-variant mt-1">Manage your support tickets</p>
         </div>

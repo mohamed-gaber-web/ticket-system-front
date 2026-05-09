@@ -55,7 +55,7 @@ const TICKETS_GROUP = {
   children: [
     { name: "All Tickets", path: "/tickets", icon: Ticket },
     { name: "Project", path: "/tickets?serviceTypeName=Project", icon: FolderKanban },
-    { name: "Meeting", path: "/tickets?serviceTypeName=Meeting", icon: CalendarDays },
+    { name: "Meeting", path: "/tickets?categoryNames=Online Meeting,On Site Meeting", icon: CalendarDays },
   ],
 };
 

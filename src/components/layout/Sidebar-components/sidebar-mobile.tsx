@@ -35,9 +35,17 @@ export function SidebarMobile({ links, isMobileOpen, setIsMobileOpen }: SidebarM
   const location = useLocation();
 
   const isChildActive = (path: string) => {
-    if (!path.includes('?')) return location.pathname === path;
-    const [pathname, search] = path.split('?');
-    return location.pathname === pathname && location.search === `?${search}`;
+    const [pathname, search = ''] = path.split('?');
+    if (location.pathname !== pathname) return false;
+    const linkParams = new URLSearchParams(search);
+    const currentParams = new URLSearchParams(location.search);
+    if (!search) {
+      return !currentParams.has('serviceTypeName') && !currentParams.has('categoryNames');
+    }
+    for (const [key, value] of linkParams.entries()) {
+      if (currentParams.get(key) !== value) return false;
+    }
+    return true;
   };
 
   const toggleGroup = (name: string) =>
