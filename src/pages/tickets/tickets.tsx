@@ -74,7 +74,7 @@ export default function Tickets() {
   const companyFilter     = spArray('company');
   const moduleFilter           = spArray('module');
   const categoryFilter         = spArray('category');
-  const categoryNameFilter     = sp('categoryName');
+  const serviceTypeNameFilter  = sp('serviceTypeName');
   const featureFilter          = spArray('feature');
   const weekFilter             = spArray('week');
   const createdDateFrom    = sp('createdFrom');
@@ -161,13 +161,13 @@ export default function Tickets() {
     dispatch(fetchCustomizedSolutions({ limit: 9999 }));
   }, [isCustomer]);
 
-  // Resolve categoryName param to category IDs (used by sidebar shortcut links)
-  const resolveCategoryIds = () => {
-    const ids = [...categoryFilter];
-    if (categoryNameFilter && categories?.length) {
-      const matched = categories
-        .filter(c => c.name.toLowerCase() === categoryNameFilter.toLowerCase())
-        .map(c => c._id);
+  // Resolve serviceTypeName param to service type IDs (used by sidebar shortcut links)
+  const resolveServiceTypeIds = () => {
+    const ids = [...serviceTypeFilter];
+    if (serviceTypeNameFilter && serviceTypes?.length) {
+      const matched = serviceTypes
+        .filter(s => s.name.toLowerCase() === serviceTypeNameFilter.toLowerCase())
+        .map(s => s._id);
       matched.forEach(id => { if (!ids.includes(id)) ids.push(id); });
     }
     return ids;
@@ -182,12 +182,12 @@ export default function Tickets() {
     if (sourceFilter.length)     params.source             = sourceFilter.join(',');
     if (departmentFilter.length) params.department         = departmentFilter.join(',');
     if (assignedByFilter.length) params.assignedConsultant = assignedByFilter.join(',');
-    if (serviceTypeFilter.length) params.serviceType       = serviceTypeFilter.join(',');
+    const resolvedServiceTypes = resolveServiceTypeIds();
+    if (resolvedServiceTypes.length) params.serviceType    = resolvedServiceTypes.join(',');
     if (customerFilter.length)   params.customer           = customerFilter.join(',');
     if (companyFilter.length)    params.companyName        = companyFilter.join(',');
     if (moduleFilter.length)     params.scope              = moduleFilter.join(',');
-    const resolvedCategories = resolveCategoryIds();
-    if (resolvedCategories.length) params.category         = resolvedCategories.join(',');
+    if (categoryFilter.length)   params.category           = categoryFilter.join(',');
     if (featureFilter.length)    params.feature            = featureFilter.join(',');
     if (weekFilter.length)       params.scheduledWeek      = weekFilter.join(',');
     if (createdDateFrom)         params.createdDateFrom    = createdDateFrom;
@@ -205,7 +205,7 @@ export default function Tickets() {
     Object.assign(params, getCustomerScopeParams());
     dispatch(fetchTickets(params));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams.toString(), user?._id, categories]);
+  }, [searchParams.toString(), user?._id, serviceTypes]);
 
   const buildCurrentParams = (pageNum: number) => {
     const params: any = { page: pageNum, limit: itemsPerPage };
@@ -215,12 +215,12 @@ export default function Tickets() {
     if (sourceFilter.length)     params.source             = sourceFilter.join(',');
     if (departmentFilter.length) params.department         = departmentFilter.join(',');
     if (assignedByFilter.length) params.assignedConsultant = assignedByFilter.join(',');
-    if (serviceTypeFilter.length) params.serviceType       = serviceTypeFilter.join(',');
+    const resolvedST = resolveServiceTypeIds();
+    if (resolvedST.length)       params.serviceType        = resolvedST.join(',');
     if (customerFilter.length)   params.customer           = customerFilter.join(',');
     if (companyFilter.length)    params.companyName        = companyFilter.join(',');
     if (moduleFilter.length)     params.scope              = moduleFilter.join(',');
-    const resolvedCats = resolveCategoryIds();
-    if (resolvedCats.length)     params.category           = resolvedCats.join(',');
+    if (categoryFilter.length)   params.category           = categoryFilter.join(',');
     if (featureFilter.length)    params.feature            = featureFilter.join(',');
     if (weekFilter.length)       params.scheduledWeek      = weekFilter.join(',');
     if (createdDateFrom)         params.createdDateFrom    = createdDateFrom;
@@ -371,12 +371,12 @@ export default function Tickets() {
     if (sourceFilter.length)     params.source             = sourceFilter.join(',');
     if (departmentFilter.length) params.department         = departmentFilter.join(',');
     if (assignedByFilter.length) params.assignedConsultant = assignedByFilter.join(',');
-    if (serviceTypeFilter.length) params.serviceType       = serviceTypeFilter.join(',');
+    const resolvedST = resolveServiceTypeIds();
+    if (resolvedST.length)       params.serviceType        = resolvedST.join(',');
     if (customerFilter.length)   params.customer           = customerFilter.join(',');
     if (companyFilter.length)    params.companyName        = companyFilter.join(',');
     if (moduleFilter.length)     params.scope              = moduleFilter.join(',');
-    const resolvedCats = resolveCategoryIds();
-    if (resolvedCats.length)     params.category           = resolvedCats.join(',');
+    if (categoryFilter.length)   params.category           = categoryFilter.join(',');
     if (featureFilter.length)    params.feature            = featureFilter.join(',');
     if (weekFilter.length)       params.scheduledWeek      = weekFilter.join(',');
     if (createdDateFrom)         params.createdDateFrom    = createdDateFrom;
@@ -489,7 +489,7 @@ export default function Tickets() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="display-sm text-on-surface">
-            {categoryNameFilter ? `${categoryNameFilter} Tickets` : 'Tickets'}
+            {serviceTypeNameFilter ? `${serviceTypeNameFilter} Tickets` : 'Tickets'}
           </h1>
           <p className="text-on-surface-variant mt-1">Manage your support tickets</p>
         </div>

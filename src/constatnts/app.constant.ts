@@ -54,8 +54,8 @@ const TICKETS_GROUP = {
   isGroup: true as const,
   children: [
     { name: "All Tickets", path: "/tickets", icon: Ticket },
-    { name: "Project", path: "/tickets?categoryName=Project", icon: FolderKanban },
-    { name: "Meeting", path: "/tickets?categoryName=Meeting", icon: CalendarDays },
+    { name: "Project", path: "/tickets?serviceTypeName=Project", icon: FolderKanban },
+    { name: "Meeting", path: "/tickets?serviceTypeName=Meeting", icon: CalendarDays },
   ],
 };
 
