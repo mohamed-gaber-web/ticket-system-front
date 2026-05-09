@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   Table,
   TableBody,
@@ -25,8 +24,9 @@ interface TicketTableProps {
 }
 
 
+const TERMINAL_STATUSES = new Set(['resolved', 'closed', 'delivered', 'tested', 'not_related']);
+
 export default function TicketTable({ tickets, onDelete, loading }: TicketTableProps) {
-  const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { userType, user } = useAppSelector((state) => state.auth);
   const { loading: ticketLoading } = useAppSelector((state) => state.tickets);
@@ -340,7 +340,7 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
       <div
         ref={tableScrollRef}
         onScroll={onTableScroll}
-        className="w-full overflow-auto max-h-[calc(100vh-280px)] [&_[data-slot=table-container]]:overflow-visible [&::-webkit-scrollbar]:h-0 [scrollbar-width:none]"
+        className="w-full overflow-auto max-h-[calc(100vh-280px)] [&_[data-slot=table-container]]:overflow-visible"
       >
         <Table className="w-full">
           <TableHeader className="sticky top-0 z-20">
@@ -408,12 +408,14 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                           <GitBranch className="h-3 w-3 text-brand-400" />
                         </div>
                       )}
-                      <button
-                        onClick={() => navigate(`/tickets/view/${ticket._id}`)}
+                      <a
+                        href={`/tickets/view/${ticket._id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         className="font-semibold text-brand-600 text-sm whitespace-nowrap hover:underline cursor-pointer"
                       >
                         #{ticket.ticketNumber}
-                      </button>
+                      </a>
                     </div>
                   </TableCell>
                   <TableCell>{getStatusBadge(ticket.status)}</TableCell>
@@ -546,10 +548,11 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                       {(() => {
                         if (!ticket.deliveryEstimationDate) return <span className="text-on-surface-variant/40">&mdash;</span>;
                         const delivery = new Date(ticket.deliveryEstimationDate);
-                        const end = ticket.resolvedAt || ticket.closedAt
-                          ? new Date((ticket.resolvedAt || ticket.closedAt)!)
-                          : new Date();
-                        const days = Math.max(0, Math.floor((end.getTime() - delivery.getTime()) / 86400000));
+                        const endDate = ticket.resolvedAt ? new Date(ticket.resolvedAt)
+                          : ticket.closedAt ? new Date(ticket.closedAt)
+                          : TERMINAL_STATUSES.has(ticket.status) ? null : new Date();
+                        if (!endDate) return <span className="text-sm font-semibold text-green-600">On time</span>;
+                        const days = Math.max(0, Math.floor((endDate.getTime() - delivery.getTime()) / 86400000));
                         return days > 0
                           ? <span className="text-sm font-semibold text-error">+{days}d</span>
                           : <span className="text-sm font-semibold text-green-600">On time</span>;
@@ -709,7 +712,7 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
         >
           <button
             role="menuitem"
-            onClick={() => { navigate(`/tickets/view/${openMenuId}`); setOpenMenuId(null); }}
+            onClick={() => { window.open(`/tickets/view/${openMenuId}`, '_blank'); setOpenMenuId(null); }}
             className="flex items-center gap-2.5 w-full px-3.5 py-2 text-sm font-medium text-on-surface hover:bg-surface-container-highest transition-colors"
           >
             <Eye className="w-4 h-4 text-on-surface-variant" />
@@ -717,7 +720,7 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
           </button>
           <button
             role="menuitem"
-            onClick={() => { navigate(`/tickets/edit/${openMenuId}`); setOpenMenuId(null); }}
+            onClick={() => { window.open(`/tickets/edit/${openMenuId}`, '_blank'); setOpenMenuId(null); }}
             className="flex items-center gap-2.5 w-full px-3.5 py-2 text-sm font-medium text-on-surface hover:bg-surface-container-highest transition-colors"
           >
             <Edit className="w-4 h-4 text-on-surface-variant" />

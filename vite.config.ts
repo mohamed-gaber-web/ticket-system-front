@@ -5,6 +5,15 @@ import * as path from 'path';
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  server: {
+    proxy: {
+      '/api': {
+        target: 'https://ticket-system-back-en-production.up.railway.app',
+        changeOrigin: true,
+        secure: true,
+      },
+    },
+  },
   resolve: {
       alias: {
         '@': path.resolve(__dirname, './src'),

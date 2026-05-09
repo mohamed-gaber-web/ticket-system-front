@@ -68,29 +68,30 @@ const STATUS_STYLE: Record<string, string> = {
 const DONE = new Set(['resolved', 'closed', 'delivered', 'tested']);
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-function getFridayOfWeek(date: Date): Date {
+// Week starts Saturday (Egypt calendar)
+function getSaturdayOfWeek(date: Date): Date {
   const d = new Date(date);
-  const day = d.getDay(); // 0=Sun … 5=Fri … 6=Sat
-  const diff = -((day + 2) % 7); // go back to the most-recent Friday
+  const day = d.getDay(); // 0=Sun … 6=Sat
+  const diff = -((day + 1) % 7); // go back to the most-recent Saturday
   d.setDate(d.getDate() + diff);
   d.setHours(0, 0, 0, 0);
   return d;
 }
 
-function getWeekBounds(friday: Date) {
-  const start = new Date(friday);
+function getWeekBounds(saturday: Date) {
+  const start = new Date(saturday);
   start.setHours(0, 0, 0, 0);
-  const end = new Date(friday);
-  end.setDate(end.getDate() + 6); // Friday + 6 = Thursday
+  const end = new Date(saturday);
+  end.setDate(end.getDate() + 6); // Saturday + 6 = Friday
   end.setHours(23, 59, 59, 999);
   return { weekStart: start.toISOString(), weekEnd: end.toISOString() };
 }
 
-function fmtRange(friday: Date): string {
-  const thursday = new Date(friday);
-  thursday.setDate(thursday.getDate() + 6);
+function fmtRange(saturday: Date): string {
+  const friday = new Date(saturday);
+  friday.setDate(friday.getDate() + 6);
   const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
-  return `${friday.toLocaleDateString('en-US', opts)} – ${thursday.toLocaleDateString('en-US', { ...opts, year: 'numeric' })}`;
+  return `${saturday.toLocaleDateString('en-US', opts)} – ${friday.toLocaleDateString('en-US', { ...opts, year: 'numeric' })}`;
 }
 
 function fmtDuration(ms: number): string {
@@ -146,12 +147,21 @@ function StatCard({
 function ConsultantCard({ summary, idx }: { summary: ConsultantWeeklySummary; idx: number }) {
   const navigate = useNavigate();
   const { consultant, tickets: allTickets, totalTickets, resolvedCount, pendingCount,
-          totalEstimatedDays, totalActualDays, totalActualHours, availableDaysInWeek } = summary;
+          totalEstimatedDays, totalActualDays, availableDaysInWeek } = summary;
+
+  // Calculate actual hours from ticket dates on the frontend
+  const computedActualHours = allTickets.reduce((sum, t) => {
+    const end = t.resolvedAt || t.closedAt;
+    if (!end || !t.acceptedAt) return sum;
+    const ms = new Date(end).getTime() - new Date(t.acceptedAt).getTime();
+    return ms > 0 ? sum + ms / (1000 * 60 * 60) : sum;
+  }, 0);
 
   const [expanded, setExpanded] = useState(false);
   const [internalDateFilter, setInternalDateFilter] = useState('');
 
-  const baseTickets = allTickets.filter((t) => ['assigned', 'in_progress', 'tested'].includes(t.status));
+  // Show all tickets (including resolved/closed) so actual hours are visible
+  const baseTickets = allTickets.filter((t) => t.status !== 'not_related');
   const tickets = internalDateFilter
     ? allTickets.filter((t) => t.internalDeliveryDate?.startsWith(internalDateFilter))
     : baseTickets;
@@ -231,10 +241,10 @@ function ConsultantCard({ summary, idx }: { summary: ConsultantWeeklySummary; id
               <span>Actual <span className="font-semibold text-on-surface">{totalActualDays.toFixed(1)}d</span></span>
             </div>
           )}
-          {totalActualHours > 0 && (
+          {computedActualHours > 0 && (
             <div className="flex items-center gap-1.5 text-xs text-on-surface-variant">
               <Clock className="w-3.5 h-3.5 text-brand-400" />
-              <span><span className="font-semibold text-on-surface">{totalActualHours.toFixed(1)}h</span> duration</span>
+              <span><span className="font-semibold text-on-surface">{computedActualHours.toFixed(1)}h</span> actual</span>
             </div>
           )}
         </div>
@@ -324,7 +334,7 @@ function ConsultantCard({ summary, idx }: { summary: ConsultantWeeklySummary; id
                         initial="hidden"
                         animate="visible"
                         className="hover:bg-surface-container-low transition-colors cursor-pointer"
-                        onClick={() => navigate(`/tickets/view/${ticket._id}`)}
+                        onClick={() => window.open(`/tickets/view/${ticket._id}`, '_blank')}
                       >
                         <td className="px-4 py-3 whitespace-nowrap">
                           <span className="text-xs font-bold text-brand-600">#{ticket.ticketNumber}</span>
@@ -408,22 +418,22 @@ export default function WeeklyConsultantReport() {
   const dispatch = useAppDispatch();
   const { weeklySummary, weeklyLoading } = useAppSelector((state) => state.assignments);
 
-  const [currentFriday, setCurrentFriday] = useState<Date>(() => getFridayOfWeek(new Date()));
+  const [currentSaturday, setCurrentSaturday] = useState<Date>(() => getSaturdayOfWeek(new Date()));
 
   useEffect(() => {
-    const { weekStart, weekEnd } = getWeekBounds(currentFriday);
+    const { weekStart, weekEnd } = getWeekBounds(currentSaturday);
     dispatch(fetchWeeklySummary({ weekStart, weekEnd }));
-  }, [dispatch, currentFriday]);
+  }, [dispatch, currentSaturday]);
 
   const shiftWeek = (delta: number) => {
-    setCurrentFriday((prev) => {
+    setCurrentSaturday((prev) => {
       const d = new Date(prev);
       d.setDate(d.getDate() + delta * 7);
       return d;
     });
   };
 
-  const isCurrentWeek = getFridayOfWeek(new Date()).toDateString() === currentFriday.toDateString();
+  const isCurrentWeek = getSaturdayOfWeek(new Date()).toDateString() === currentSaturday.toDateString();
 
   // Summary stats
   const totalTickets = weeklySummary.reduce((s, c) => s + c.totalTickets, 0);
@@ -438,7 +448,7 @@ export default function WeeklyConsultantReport() {
         <div>
           <h1 className="display-sm text-on-surface">Weekly Consultant Report</h1>
           <p className="text-on-surface-variant mt-1">
-            Week of <span className="font-semibold text-on-surface">{fmtRange(currentFriday)}</span>
+            Week of <span className="font-semibold text-on-surface">{fmtRange(currentSaturday)}</span>
             {isCurrentWeek && (
               <span className="ml-2 text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand-100 text-brand-700 uppercase tracking-wide">
                 Current Week

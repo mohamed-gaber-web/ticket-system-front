@@ -48,14 +48,27 @@ const MODULES_GROUP = {
   ],
 };
 
-const TICKETS_GROUP = {
-  name: "Tickets",
+// Consultant/Admin: plain /tickets — all tickets visible, no exclusions
+const SERVICES_GROUP = {
+  name: "Services",
   icon: Ticket,
   isGroup: true as const,
   children: [
-    { name: "All Tickets", path: "/tickets", icon: Ticket },
-    { name: "Project", path: "/tickets?serviceTypeName=Project", icon: FolderKanban },
-    { name: "Meeting", path: "/tickets?categoryNames=Online Meeting,On Site Meeting", icon: CalendarDays },
+    { name: "Tickets", path: "/tickets", icon: Ticket },
+    { name: "Projects", path: "/projects", icon: FolderKanban },
+    { name: "Meetings", path: "/meetings", icon: CalendarDays },
+  ],
+};
+
+// Customer: /tickets excludes project & meeting tickets
+const SERVICES_GROUP_CUSTOMER = {
+  name: "Services",
+  icon: Ticket,
+  isGroup: true as const,
+  children: [
+    { name: "Tickets", path: "/tickets?excludeServiceTypeNames=Project&excludeCategoryNames=Online Meeting,On Site Meeting", icon: Ticket },
+    { name: "Projects", path: "/projects", icon: FolderKanban },
+    { name: "Meetings", path: "/meetings", icon: CalendarDays },
   ],
 };
 
@@ -70,7 +83,7 @@ export const ROUTERLINKS = [
       { name: "Customer Summary", path: "/customers/summary", icon: BarChart2 },
     ],
   },
-  TICKETS_GROUP,
+  SERVICES_GROUP,
   {
     name: "Consultants",
     icon: UserCog,
@@ -88,7 +101,7 @@ export const ROUTERLINKS = [
 const buildCustomerLinks = (customerRole?: string | null) => {
   const links: any[] = [
     { name: "Dashboard", path: "/", icon: LayoutDashboard },
-    TICKETS_GROUP,
+    SERVICES_GROUP_CUSTOMER,
   ];
   if (customerRole === "company_admin") {
     links.push({ name: "Manage Users", path: "/company-users", icon: Users });
@@ -108,7 +121,7 @@ const CONSULTANT_LINKS = [
       { name: "Customer Summary", path: "/customers/summary", icon: BarChart2 },
     ],
   },
-  TICKETS_GROUP,
+  SERVICES_GROUP,
   {
     name: "Consultants",
     icon: UserCog,
@@ -133,7 +146,7 @@ const CONSULTANT_ADMIN_LINKS = [
       { name: "Customer Summary", path: "/customers/summary", icon: BarChart2 },
     ],
   },
-  TICKETS_GROUP,
+  SERVICES_GROUP,
   {
     name: "Consultants",
     icon: UserCog,

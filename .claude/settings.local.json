@@ -24,7 +24,8 @@
       "Bash(node -e \"const l = require\\('lucide-react'\\); console.log\\('UserClock:', !!l.UserClock, 'FlaskConical:', !!l.FlaskConical, 'PackageCheck:', !!l.PackageCheck, 'Ban:', !!l.Ban\\)\")",
       "Bash(npm audit *)",
       "Bash(xargs -I {} bash -c 'echo \"File: {}\"')",
-      "Bash(del *)"
+      "Bash(del *)",
+      "WebFetch(domain:ticket-system-back-en-production.up.railway.app)"
     ]
   }
 }

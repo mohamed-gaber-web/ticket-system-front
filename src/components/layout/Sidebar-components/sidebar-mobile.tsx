@@ -40,7 +40,7 @@ export function SidebarMobile({ links, isMobileOpen, setIsMobileOpen }: SidebarM
     const linkParams = new URLSearchParams(search);
     const currentParams = new URLSearchParams(location.search);
     if (!search) {
-      return !currentParams.has('serviceTypeName') && !currentParams.has('categoryNames');
+      return location.pathname === pathname;
     }
     for (const [key, value] of linkParams.entries()) {
       if (currentParams.get(key) !== value) return false;

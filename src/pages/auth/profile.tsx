@@ -14,6 +14,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const TICKET_LIMIT = 10;
+const TERMINAL_STATUSES = new Set(['resolved', 'closed', 'delivered', 'tested', 'not_related']);
 
 const fmtDate = (d?: string) =>
   d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
@@ -240,9 +241,24 @@ const ProfilePage = () => {
   useEffect(() => {
     if (!isConsultant || !u?._id) return;
     setMonthlyHoursLoading(true);
-    consultantApi.getConsultantMonthlyHours(u._id, hoursMonth.year, hoursMonth.month)
-      .then((res) => setMonthlyHoursData({ totalHours: res.data.totalHours, ticketCount: res.data.ticketCount }))
-      .catch(() => {})
+    const { year, month } = hoursMonth;
+    const from = new Date(year, month, 1).toISOString().split('T')[0];
+    const to = new Date(year, month + 1, 0).toISOString().split('T')[0];
+    ticketApi.getTickets({
+      assignedConsultant: u._id,
+      status: 'resolved,closed',
+      resolvedDateFrom: from,
+      resolvedDateTo: to,
+      limit: 9999,
+    }).then((res) => {
+      const totalHours = res.data.reduce((sum: number, t: any) => {
+        const end = t.resolvedAt || t.closedAt;
+        if (!end || !t.acceptedAt) return sum;
+        const ms = new Date(end).getTime() - new Date(t.acceptedAt).getTime();
+        return ms > 0 ? sum + ms / (1000 * 60 * 60) : sum;
+      }, 0);
+      setMonthlyHoursData({ totalHours: Math.round(totalHours * 10) / 10, ticketCount: res.total });
+    }).catch(() => {})
       .finally(() => setMonthlyHoursLoading(false));
   }, [u?._id, isConsultant, hoursMonth]);
 
@@ -847,7 +863,7 @@ const ProfilePage = () => {
                                 ? 'bg-primary-fixed/20 hover:bg-primary-fixed/30'
                                 : 'hover:bg-surface-container-low'
                             )}
-                            onClick={() => navigate(`/tickets/view/${ticket._id}`)}
+                            onClick={() => window.open(`/tickets/view/${ticket._id}`, '_blank')}
                           >
                             <td className="px-4 py-3 whitespace-nowrap">
                               <div className="flex items-center gap-1.5">
@@ -883,11 +899,11 @@ const ProfilePage = () => {
                             </td>
                             {isTasksView && (() => {
                               const delivery = ticket.deliveryEstimationDate ? new Date(ticket.deliveryEstimationDate) : null;
-                              const endDate = ticket.resolvedAt || ticket.closedAt
-                                ? new Date((ticket.resolvedAt || ticket.closedAt)!)
-                                : new Date();
-                              const delayedDays = delivery
-                                ? Math.max(0, Math.floor((endDate.getTime() - delivery.getTime()) / 86400000))
+                              const rawEnd = ticket.resolvedAt ? new Date(ticket.resolvedAt)
+                                : ticket.closedAt ? new Date(ticket.closedAt)
+                                : TERMINAL_STATUSES.has(ticket.status) ? null : new Date();
+                              const delayedDays = delivery && rawEnd
+                                ? Math.max(0, Math.floor((rawEnd.getTime() - delivery.getTime()) / 86400000))
                                 : null;
                               return <>
                                 <td className="px-4 py-3 whitespace-nowrap">

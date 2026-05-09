@@ -74,8 +74,10 @@ export default function Tickets() {
   const companyFilter     = spArray('company');
   const moduleFilter           = spArray('module');
   const categoryFilter         = spArray('category');
-  const serviceTypeNameFilter  = sp('serviceTypeName');
-  const categoryNamesFilter    = spArray('categoryNames');
+  const serviceTypeNameFilter       = sp('serviceTypeName');
+  const categoryNamesFilter         = spArray('categoryNames');
+  const excludeServiceTypeNames     = spArray('excludeServiceTypeNames');
+  const excludeCategoryNames        = spArray('excludeCategoryNames');
   const featureFilter          = spArray('feature');
   const weekFilter             = spArray('week');
   const createdDateFrom    = sp('createdFrom');
@@ -162,6 +164,20 @@ export default function Tickets() {
     dispatch(fetchCustomizedSolutions({ limit: 9999 }));
   }, [isCustomer]);
 
+  const resolveExcludeServiceTypeIds = () => {
+    if (!excludeServiceTypeNames.length || !serviceTypes?.length) return [];
+    return serviceTypes
+      .filter(s => excludeServiceTypeNames.some(n => s.name.toLowerCase() === n.toLowerCase()))
+      .map(s => s._id);
+  };
+
+  const resolveExcludeCategoryIds = () => {
+    if (!excludeCategoryNames.length || !categories?.length) return [];
+    return categories
+      .filter(c => excludeCategoryNames.some(n => c.name.toLowerCase() === n.toLowerCase()))
+      .map(c => c._id);
+  };
+
   // Resolve serviceTypeName param to service type IDs (used by sidebar shortcut links)
   const resolveServiceTypeIds = () => {
     const ids = [...serviceTypeFilter];
@@ -202,6 +218,10 @@ export default function Tickets() {
     if (moduleFilter.length)     params.scope              = moduleFilter.join(',');
     const resolvedCategories = resolveCategoryIds();
     if (resolvedCategories.length) params.category         = resolvedCategories.join(',');
+    const excludedST = resolveExcludeServiceTypeIds();
+    if (excludedST.length)       params.excludeServiceType = excludedST.join(',');
+    const excludedCat = resolveExcludeCategoryIds();
+    if (excludedCat.length)      params.excludeCategory    = excludedCat.join(',');
     if (featureFilter.length)    params.feature            = featureFilter.join(',');
     if (weekFilter.length)       params.scheduledWeek      = weekFilter.join(',');
     if (createdDateFrom)         params.createdDateFrom    = createdDateFrom;
@@ -236,6 +256,10 @@ export default function Tickets() {
     if (moduleFilter.length)     params.scope              = moduleFilter.join(',');
     const resolvedCats = resolveCategoryIds();
     if (resolvedCats.length)     params.category           = resolvedCats.join(',');
+    const excST = resolveExcludeServiceTypeIds();
+    if (excST.length)            params.excludeServiceType = excST.join(',');
+    const excCat = resolveExcludeCategoryIds();
+    if (excCat.length)           params.excludeCategory    = excCat.join(',');
     if (featureFilter.length)    params.feature            = featureFilter.join(',');
     if (weekFilter.length)       params.scheduledWeek      = weekFilter.join(',');
     if (createdDateFrom)         params.createdDateFrom    = createdDateFrom;
@@ -393,6 +417,10 @@ export default function Tickets() {
     if (moduleFilter.length)     params.scope              = moduleFilter.join(',');
     const resolvedCats = resolveCategoryIds();
     if (resolvedCats.length)     params.category           = resolvedCats.join(',');
+    const excST = resolveExcludeServiceTypeIds();
+    if (excST.length)            params.excludeServiceType = excST.join(',');
+    const excCat = resolveExcludeCategoryIds();
+    if (excCat.length)           params.excludeCategory    = excCat.join(',');
     if (featureFilter.length)    params.feature            = featureFilter.join(',');
     if (weekFilter.length)       params.scheduledWeek      = weekFilter.join(',');
     if (createdDateFrom)         params.createdDateFrom    = createdDateFrom;

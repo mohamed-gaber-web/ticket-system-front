@@ -251,6 +251,18 @@ export interface TicketQueryParams {
   customerName?: string;
   companyName?: string;
   includeSubTickets?: boolean;
+  excludeServiceType?: string;
+  excludeCategory?: string;
+  category?: string;
+  resolvedDateFrom?: string;
+  resolvedDateTo?: string;
+  deliveryDateFrom?: string;
+  deliveryDateTo?: string;
+  acceptedDateFrom?: string;
+  acceptedDateTo?: string;
+  updatedDateFrom?: string;
+  updatedDateTo?: string;
+  scheduledWeek?: string | number;
 }
 
 export interface TicketResponse {

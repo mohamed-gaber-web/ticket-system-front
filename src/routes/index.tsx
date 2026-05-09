@@ -58,6 +58,10 @@ const CreateTicket = lazy(() => import("@/pages/tickets/createTicket"));
 const EditTicket = lazy(() => import("@/pages/tickets/editTicket"));
 const ViewTicket = lazy(() => import("@/pages/tickets/viewTicket"));
 
+// Services — dedicated category pages
+const ProjectTickets = lazy(() => import("@/pages/projects/ProjectTickets"));
+const MeetingTickets = lazy(() => import("@/pages/meetings/MeetingTickets"));
+
 // Consultant Module
 const Consultants = lazy(() => import("@/pages/consultants/consultants"));
 const CreateConsultant = lazy(() => import("@/pages/consultants/createConsultant"));
@@ -182,6 +186,10 @@ export const routes: RouteObject[] = [
       { path: "/tickets/create", element: <Lazy><CreateTicket /></Lazy> },
       { path: "/tickets/edit/:id", element: <Lazy><EditTicket /></Lazy> },
       { path: "/tickets/view/:id", element: <Lazy><ViewTicket /></Lazy> },
+
+      // Services — dedicated pages
+      { path: "/projects", element: <Lazy><ProjectTickets /></Lazy> },
+      { path: "/meetings", element: <Lazy><MeetingTickets /></Lazy> },
 
       // Consultant Routes
       { path: "/consultants", element: <Lazy><Consultants /></Lazy> },

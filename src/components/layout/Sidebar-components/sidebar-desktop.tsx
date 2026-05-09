@@ -40,8 +40,7 @@ export function SidebarDesktop({ links, isOpen, setIsOpen }: SidebarDesktopProps
     const linkParams = new URLSearchParams(search);
     const currentParams = new URLSearchParams(location.search);
     if (!search) {
-      // "All Tickets" — active only when no sidebar shortcut params are present
-      return !currentParams.has('serviceTypeName') && !currentParams.has('categoryNames');
+      return location.pathname === pathname;
     }
     for (const [key, value] of linkParams.entries()) {
       if (currentParams.get(key) !== value) return false;
