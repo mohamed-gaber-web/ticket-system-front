@@ -316,7 +316,7 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
         <TicketIcon className="mx-auto h-12 w-12 text-on-surface-variant/40 mb-4" />
         <p className="text-on-surface text-lg font-semibold">No tickets found</p>
         <p className="text-on-surface-variant text-sm mt-2">Create your first ticket to get started</p>
-        <Button onClick={() => navigate('/tickets/create')} className="mt-6">
+        <Button onClick={() => window.location.href = '/tickets/create'} className="mt-6">
           Create Ticket
         </Button>
       </div>

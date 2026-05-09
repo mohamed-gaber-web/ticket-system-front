@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from 'framer-motion';
 
 import {
@@ -145,7 +144,6 @@ function StatCard({
 
 // ─── Consultant card ──────────────────────────────────────────────────────────
 function ConsultantCard({ summary, idx }: { summary: ConsultantWeeklySummary; idx: number }) {
-  const navigate = useNavigate();
   const { consultant, tickets: allTickets, totalTickets, resolvedCount, pendingCount,
           totalEstimatedDays, totalActualDays, availableDaysInWeek } = summary;
 
@@ -468,7 +466,7 @@ export default function WeeklyConsultantReport() {
           </button>
           {!isCurrentWeek && (
             <button
-              onClick={() => setCurrentFriday(getFridayOfWeek(new Date()))}
+              onClick={() => setCurrentSaturday(getSaturdayOfWeek(new Date()))}
               className="h-8 px-3 rounded-[0.5rem] border border-brand-200 text-sm font-medium text-brand-600 hover:bg-brand-50 transition-colors"
             >
               Today
