@@ -168,6 +168,7 @@ export interface CreateSubTicketData {
   category?: string;
   assignedTeam?: string;
   assignedBy?: string;
+  createdByConsultant?: string;
   notifyEmails?: string[];
   scope?: string[];
   department?: string;

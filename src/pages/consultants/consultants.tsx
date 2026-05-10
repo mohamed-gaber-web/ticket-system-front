@@ -9,7 +9,7 @@ import { CustomSelect } from '@/components/ui/custom-select';
 import { cn } from '@/lib/utils';
 import Swal from 'sweetalert2';
 import AdminChangePasswordDialog from '@/components/admin/AdminChangePasswordDialog';
-import * as consultantApi from '@/api/consultantApi';
+import { getTickets } from '@/api/ticketApi';
 
 const PAGE_SIZE = 10;
 
@@ -35,8 +35,12 @@ export default function Consultants() {
     if (consultants.length === 0) return;
     Promise.all(
       consultants.map((c) =>
-        consultantApi.getConsultantTotalHours(c._id)
-          .then((res) => ({ id: c._id, hours: res.data.totalHours }))
+        getTickets({ assignedConsultant: c._id, limit: 9999 })
+          .then((res) => {
+            const hours = res.data.reduce((sum: number, t: any) =>
+              typeof t.durationHours === 'number' ? sum + t.durationHours : sum, 0);
+            return { id: c._id, hours: Math.round(hours * 10) / 10 };
+          })
           .catch(() => ({ id: c._id, hours: 0 }))
       )
     ).then((results) => {

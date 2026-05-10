@@ -123,7 +123,7 @@ export function CreateSubTicketDialog({
     const dataToSend: CreateSubTicketData = {
       ...formData,
       notifyEmails,
-      ...(user && userType !== 'customer' ? { assignedBy: user._id } : {}),
+      ...(user && userType !== 'customer' ? { assignedBy: user._id, createdByConsultant: user._id } : {}),
     };
 
     const result = await dispatch(createSubTicket({

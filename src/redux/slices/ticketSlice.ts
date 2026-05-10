@@ -153,9 +153,14 @@ export const deleteTicket = createAsyncThunk(
 
 export const createSubTicket = createAsyncThunk(
   'tickets/createSubTicket',
-  async ({ parentId, data }: { parentId: string; data: CreateSubTicketData }, { rejectWithValue }) => {
+  async ({ parentId, data }: { parentId: string; data: CreateSubTicketData }, { rejectWithValue, getState }) => {
     try {
       const response = await ticketApi.createSubTicket(parentId, data);
+      // Backend may not populate createdByConsultant on sub-tickets — inject from auth state
+      if (!response.data.createdByConsultant) {
+        const user = (getState() as any).auth.user;
+        if (user) response.data = { ...response.data, createdByConsultant: user };
+      }
       toast.success('Sub-ticket created successfully!');
       return response.data;
     } catch (error: any) {

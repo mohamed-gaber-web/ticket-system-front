@@ -360,7 +360,8 @@ export default function Tickets() {
     const serviceTypeObj = typeof ticket.serviceType === 'object' && ticket.serviceType ? ticket.serviceType as any : null;
     const assigneeObj = typeof ticket.acceptedBy === 'object' && ticket.acceptedBy ? (ticket.acceptedBy as TicketConsultant) : null;
     const assignedByObj = typeof ticket.assignedBy === 'object' && ticket.assignedBy ? (ticket.assignedBy as TicketConsultant) : null;
-    const createdByObj = typeof ticket.createdByConsultant === 'object' && ticket.createdByConsultant ? (ticket.createdByConsultant as TicketConsultant) : null;
+    const createdByRaw = ticket.createdByConsultant ?? (ticket.isSubTicket ? ticket.assignedBy : undefined);
+    const createdByObj = typeof createdByRaw === 'object' && createdByRaw ? (createdByRaw as TicketConsultant) : null;
     const parentObj = typeof ticket.parentTicket === 'object' && ticket.parentTicket ? (ticket.parentTicket as Ticket) : null;
     const scopeNames = Array.isArray(ticket.scope)
       ? (ticket.scope as any[]).filter((s) => s && typeof s === 'object').map((s) => s.name).join(', ')

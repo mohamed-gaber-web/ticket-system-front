@@ -240,27 +240,18 @@ const ProfilePage = () => {
   useEffect(() => {
     if (!isConsultant || !u?._id) return;
     setMonthlyHoursLoading(true);
-    const { year, month } = hoursMonth;
-    const from = new Date(year, month, 1).toISOString().split('T')[0];
-    const to = new Date(year, month + 1, 0).toISOString().split('T')[0];
     ticketApi.getTickets({
       assignedConsultant: u._id,
-      status: 'resolved,closed',
-      resolvedDateFrom: from,
-      resolvedDateTo: to,
       limit: 9999,
     }).then((res) => {
       const totalHours = res.data.reduce((sum: number, t: any) => {
-        const end = t.resolvedAt || t.closedAt;
-        const start = t.acceptedAt || t.createdAt;
-        if (!end || !start) return sum;
-        const ms = new Date(end).getTime() - new Date(start).getTime();
-        return ms > 0 ? sum + ms / (1000 * 60 * 60) : sum;
+        const h = parseFloat(t.durationHours);
+        return isNaN(h) ? sum : sum + h;
       }, 0);
-      setMonthlyHoursData({ totalHours: Math.round(totalHours * 10) / 10, ticketCount: res.total });
+      setMonthlyHoursData({ totalHours: Math.round(totalHours * 10) / 10, ticketCount: res.data.length });
     }).catch(() => {})
       .finally(() => setMonthlyHoursLoading(false));
-  }, [u?._id, isConsultant, hoursMonth]);
+  }, [u?._id, isConsultant]);
 
   const loadTickets = async (
     page: number,

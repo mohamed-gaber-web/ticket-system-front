@@ -25,7 +25,9 @@
       "Bash(npm audit *)",
       "Bash(xargs -I {} bash -c 'echo \"File: {}\"')",
       "Bash(del *)",
-      "WebFetch(domain:ticket-system-back-en-production.up.railway.app)"
+      "WebFetch(domain:ticket-system-back-en-production.up.railway.app)",
+      "Bash(Get-ChildItem -Path \"D:\\\\Real Project\\\\Ticketing System\\\\front-end\\\\my-react-ts-app\\\\src\" -Recurse -Name)",
+      "PowerShell(head *)"
     ]
   }
 }

@@ -520,7 +520,10 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                   {/* Created By */}
                   <TableCell>
                     {(() => {
-                      const name = getConsultantName(ticket.createdByConsultant as any);
+                      // For sub-tickets the backend may not populate createdByConsultant;
+                      // fall back to assignedBy since the creator is always the assignedBy on sub-tickets.
+                      const person = ticket.createdByConsultant ?? (ticket.isSubTicket ? ticket.assignedBy : undefined);
+                      const name = getConsultantName(person as any);
                       return name
                         ? <span className="text-sm text-on-surface">{name}</span>
                         : <span className="text-on-surface-variant/40">&mdash;</span>;
