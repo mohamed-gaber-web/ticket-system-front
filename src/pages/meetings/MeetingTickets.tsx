@@ -45,8 +45,6 @@ export default function MeetingTickets() {
   const { modules }      = useAppSelector((s) => s.modules);
   const { categories }   = useAppSelector((s) => s.categories);
   const { customizedSolutions } = useAppSelector((s) => s.customizedSolutions);
-  const { serviceTypes } = useAppSelector((s) => s.serviceTypes);
-
   const isConsultant = userType === 'consultant';
   const isCustomer   = userType === 'customer';
 
