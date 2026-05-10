@@ -633,6 +633,13 @@ export default function ViewTicket() {
                     <p className="text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider">Created by</p>
                     <p className="text-sm font-semibold text-on-surface truncate mt-0.5">
                       {(() => {
+                        // Sub-tickets are always created by a consultant
+                        if (currentTicket.isSubTicket) {
+                          if (createdByConsultant) return `${createdByConsultant.firstName} ${createdByConsultant.lastName}`;
+                          const ab = currentTicket.assignedBy;
+                          if (ab && typeof ab !== 'string') return `${ab.firstName} ${ab.lastName}`;
+                          return 'Consultant';
+                        }
                         const cbt = currentTicket.createdByType;
                         if (cbt === 'consultant') {
                           return createdByConsultant
