@@ -38,7 +38,6 @@ export default function TaskForm() {
   const { departments } = useAppSelector((state) => state.departments);
   const { consultants } = useAppSelector((state) => state.consultants);
   const { consultantDepartment, consultantRole, user } = useAppSelector((state) => state.auth);
-  const isAdmin = consultantRole === 'admin';
 
   const [form, setForm] = useState({
     name: '',
@@ -64,7 +63,9 @@ export default function TaskForm() {
       setForm({
         name: currentTask.name,
         description: currentTask.description ?? '',
-        department: currentTask.department,
+        department: typeof currentTask.department === 'object'
+          ? (currentTask.department as { _id: string })._id
+          : currentTask.department,
         startDate: currentTask.startDate ? currentTask.startDate.split('T')[0] : '',
         endDate: currentTask.endDate ? currentTask.endDate.split('T')[0] : '',
         assignedTo: typeof currentTask.assignedTo === 'object' && currentTask.assignedTo

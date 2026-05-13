@@ -31,10 +31,10 @@ const getConsultantRoleFromStorage = (): AuthState['consultantRole'] => {
   return (role as AuthState['consultantRole']) ?? null;
 };
 
-const extractDeptName = (dept: any): string | null => {
+const extractDeptName = (dept: any): AuthState['consultantDepartment'] => {
   if (!dept) return null;
   const name = typeof dept === 'object' ? dept.name : dept;
-  return name ? String(name).toLowerCase() : null;
+  return name ? (String(name).toLowerCase() as AuthState['consultantDepartment']) : null;
 };
 
 const getConsultantDepartmentFromStorage = (): AuthState['consultantDepartment'] => {
@@ -375,7 +375,7 @@ const authSlice = createSlice({
         state.user = action.payload.data;
         state.customerRole = state.userType === 'customer' ? ((action.payload.data as any)?.role ?? null) : null;
         state.consultantRole = state.userType === 'consultant' ? ((action.payload.data as any)?.role ?? null) : null;
-        state.consultantDepartment = state.userType === 'consultant' ? ((action.payload.data as any)?.department ?? null) : null;
+        state.consultantDepartment = state.userType === 'consultant' ? extractDeptName((action.payload.data as any)?.department) : null;
         state.error = null;
 
         // Update user data in localStorage when profile is updated
