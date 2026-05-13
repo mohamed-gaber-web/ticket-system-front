@@ -37,7 +37,7 @@ export default function TaskForm() {
   const { currentTask, loading } = useAppSelector((state) => state.tasks);
   const { departments } = useAppSelector((state) => state.departments);
   const { consultants } = useAppSelector((state) => state.consultants);
-  const { consultantDepartment, consultantRole, user } = useAppSelector((state) => state.auth);
+  const { consultantDepartment, user } = useAppSelector((state) => state.auth);
 
   const [form, setForm] = useState({
     name: '',
