@@ -8,13 +8,11 @@ interface RoleDistributionChartProps {
 
 const COLORS = {
   admin: '#8b5cf6',
-  senior_consultant: '#3b82f6',
   consultant: '#6b7280',
 };
 
 const ROLE_LABELS = {
   admin: 'Admin',
-  senior_consultant: 'Senior Consultant',
   consultant: 'Consultant',
 };
 

@@ -36,7 +36,6 @@ const STATUS_TICKET: Record<string, string> = {
 };
 const ROLE_BADGE: Record<string, string> = {
   admin: 'bg-accent-orange-100 text-purple-800',
-  senior_consultant: 'bg-brand-100 text-brand-800',
   consultant: 'bg-surface-container-high text-on-surface',
 };
 const STATUS_BADGE: Record<string, string> = {
@@ -601,7 +600,6 @@ export default function ViewConsultant() {
                   onChange={(val) => handleChange('role', val as ConsultantRole)}
                   options={[
                     { value: 'consultant', label: 'Consultant' },
-                    { value: 'senior_consultant', label: 'Senior Consultant' },
                     { value: 'admin', label: 'Admin' },
                   ]}
                 />

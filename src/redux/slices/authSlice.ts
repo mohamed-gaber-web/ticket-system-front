@@ -31,6 +31,18 @@ const getConsultantRoleFromStorage = (): AuthState['consultantRole'] => {
   return (role as AuthState['consultantRole']) ?? null;
 };
 
+const extractDeptName = (dept: any): string | null => {
+  if (!dept) return null;
+  const name = typeof dept === 'object' ? dept.name : dept;
+  return name ? String(name).toLowerCase() : null;
+};
+
+const getConsultantDepartmentFromStorage = (): AuthState['consultantDepartment'] => {
+  const userType = localStorage.getItem('userType');
+  if (userType !== 'consultant') return null;
+  return extractDeptName(getUserFromLocalStorage()?.department);
+};
+
 // Initial state
 const initialState: AuthState = {
   user: getUserFromLocalStorage(),
@@ -39,6 +51,7 @@ const initialState: AuthState = {
   userType: (localStorage.getItem('userType') as AuthState['userType']) || null,
   customerRole: (getUserFromLocalStorage()?.role as AuthState['customerRole']) ?? null,
   consultantRole: getConsultantRoleFromStorage(),
+  consultantDepartment: getConsultantDepartmentFromStorage(),
   isAuthenticated: !!localStorage.getItem('token'),
   isLoading: false,
   error: null,
@@ -240,6 +253,7 @@ const authSlice = createSlice({
       state.userType = null;
       state.customerRole = null;
       state.consultantRole = null;
+      state.consultantDepartment = null;
       state.isAuthenticated = false;
       state.error = null;
       localStorage.removeItem('token');
@@ -264,6 +278,7 @@ const authSlice = createSlice({
         state.userType = action.payload.userType;
         state.customerRole = action.payload.userType === 'customer' ? ((action.payload.data as any)?.role ?? null) : null;
         state.consultantRole = action.payload.userType === 'consultant' ? ((action.payload.data as any)?.role ?? null) : null;
+        state.consultantDepartment = action.payload.userType === 'consultant' ? extractDeptName((action.payload.data as any)?.department) : null;
         state.isAuthenticated = true;
         state.error = null;
       })
@@ -286,6 +301,7 @@ const authSlice = createSlice({
         state.userType = action.payload.userType;
         state.customerRole = action.payload.userType === 'customer' ? ((action.payload.data as any)?.role ?? null) : null;
         state.consultantRole = action.payload.userType === 'consultant' ? ((action.payload.data as any)?.role ?? null) : null;
+        state.consultantDepartment = action.payload.userType === 'consultant' ? extractDeptName((action.payload.data as any)?.department) : null;
         state.isAuthenticated = true;
         state.error = null;
       })
@@ -307,6 +323,7 @@ const authSlice = createSlice({
         state.userType = null;
         state.customerRole = null;
         state.consultantRole = null;
+        state.consultantDepartment = null;
         state.isAuthenticated = false;
         state.error = null;
       })
@@ -318,6 +335,7 @@ const authSlice = createSlice({
         state.userType = null;
         state.customerRole = null;
         state.consultantRole = null;
+        state.consultantDepartment = null;
         state.isAuthenticated = false;
         state.error = action.payload as string;
       });
@@ -334,6 +352,7 @@ const authSlice = createSlice({
         state.userType = action.payload.userType;
         state.customerRole = action.payload.userType === 'customer' ? ((action.payload.data as any)?.role ?? null) : null;
         state.consultantRole = action.payload.userType === 'consultant' ? ((action.payload.data as any)?.role ?? null) : null;
+        state.consultantDepartment = action.payload.userType === 'consultant' ? extractDeptName((action.payload.data as any)?.department) : null;
         state.error = null;
 
         // Update user data in localStorage when profile is fetched
@@ -356,6 +375,7 @@ const authSlice = createSlice({
         state.user = action.payload.data;
         state.customerRole = state.userType === 'customer' ? ((action.payload.data as any)?.role ?? null) : null;
         state.consultantRole = state.userType === 'consultant' ? ((action.payload.data as any)?.role ?? null) : null;
+        state.consultantDepartment = state.userType === 'consultant' ? ((action.payload.data as any)?.department ?? null) : null;
         state.error = null;
 
         // Update user data in localStorage when profile is updated

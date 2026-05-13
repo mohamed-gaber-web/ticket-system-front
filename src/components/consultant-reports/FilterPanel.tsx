@@ -71,7 +71,6 @@ export default function FilterPanel({
             options={[
               { value: '', label: 'All' },
               { value: 'consultant', label: 'Consultant' },
-              { value: 'senior_consultant', label: 'Senior Consultant' },
               { value: 'admin', label: 'Admin' },
             ]}
           />

@@ -27,7 +27,10 @@
       "Bash(del *)",
       "WebFetch(domain:ticket-system-back-en-production.up.railway.app)",
       "Bash(Get-ChildItem -Path \"D:\\\\Real Project\\\\Ticketing System\\\\front-end\\\\my-react-ts-app\\\\src\" -Recurse -Name)",
-      "PowerShell(head *)"
+      "PowerShell(head *)",
+      "Bash(Get-ChildItem -Path \"D:\\\\Real Project\\\\Ticketing System\\\\back-en-and-api\" -Recurse -Directory)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(Sort-Object)"
     ]
   }
 }

@@ -18,8 +18,8 @@ const TERMINAL_STATUSES = new Set(['resolved', 'closed', 'delivered', 'tested', 
 const fmtDate = (d?: string) =>
   d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
 
-const formatLabel = (s: string) =>
-  s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+const formatLabel = (s: string | null | undefined) =>
+  String(s ?? '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
 const getInitials = (name: string) =>
   name
@@ -55,7 +55,6 @@ const STATUS_TICKET: Record<string, string> = {
 const ROLE_BADGE: Record<string, string> = {
   admin: 'bg-emerald-100 text-emerald-800',
   user: 'bg-surface-container-high text-on-surface',
-  senior_consultant: 'bg-brand-100 text-brand-800',
   consultant: 'bg-surface-container-high text-on-surface',
 };
 const STATUS_BADGE: Record<string, string> = {
@@ -71,11 +70,13 @@ const ProfilePage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const isTasksView = searchParams.get('view') === 'tasks';
-  const { user, userType, isLoading } = useAppSelector((state) => state.auth);
+  const { user, userType, isLoading, consultantDepartment, consultantRole } = useAppSelector((state) => state.auth);
 
   const u = user as any;
   const isConsultant = userType === 'consultant';
   const isTeleSales = userType === 'tele_sales';
+  const TASK_DEPTS = ['sales', 'marketing', 'administration'];
+  const isTasksDeptConsultant = isConsultant && consultantRole !== 'admin' && TASK_DEPTS.includes(consultantDepartment ?? '');
 
   // ── Consultant / TeleSales form state ──
   const [consultantForm, setConsultantForm] = useState({
@@ -163,8 +164,8 @@ const ProfilePage = () => {
         country: u.country || '',
       });
     }
-    // Only load tickets for ticket-system users
-    if (!isTeleSales) {
+    // Only load tickets for ticket-system users (not tele_sales or tasks-dept consultants)
+    if (!isTeleSales && !isTasksDeptConsultant) {
       loadTickets(1, userType ?? undefined);
     }
   }, [user, userType, isTasksView, taskWeekFilter, taskStatusFilter]);
@@ -204,7 +205,7 @@ const ProfilePage = () => {
   }, [user, userType]);
 
   useEffect(() => {
-    if (!isConsultant || !u?._id) return;
+    if (!isConsultant || !u?._id || isTasksDeptConsultant) return;
     const fetchDashboardStats = async () => {
       try {
         const [assignedRes, inProgressRes, customerPendingRes, resolvedRes, testedRes, deliveredRes, closedRes, notRelatedRes, criticalRes] = await Promise.all([
@@ -238,7 +239,7 @@ const ProfilePage = () => {
   }, [user, isConsultant]);
 
   useEffect(() => {
-    if (!isConsultant || !u?._id) return;
+    if (!isConsultant || !u?._id || isTasksDeptConsultant) return;
     setMonthlyHoursLoading(true);
     ticketApi.getTickets({
       assignedConsultant: u._id,
@@ -496,6 +497,146 @@ const ProfilePage = () => {
                     <Save className="w-4 h-4 mr-2" />
                     Save Changes
                   </>
+                )}
+              </Button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // TASKS-DEPT CONSULTANT PROFILE — no tickets, no dashboard stats
+  // ─────────────────────────────────────────────────────────────────────────
+  if (isTasksDeptConsultant) {
+    return (
+      <div className="p-8 space-y-6">
+        <div>
+          <h1 className="display-sm text-on-surface">My Profile</h1>
+          <p className="text-on-surface-variant mt-1">View and manage your account information</p>
+        </div>
+
+        {/* Profile Summary Card */}
+        <div className="bg-surface-container-lowest rounded-[1rem] p-6 flex flex-col sm:flex-row items-start sm:items-center gap-5">
+          <div className="w-20 h-20 rounded-full bg-brand-100 flex items-center justify-center flex-shrink-0">
+            <span className="text-2xl font-bold text-brand-700">{getInitials(displayName)}</span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-xl font-bold text-on-surface">{displayName}</h2>
+            <p className="text-sm text-on-surface-variant mt-0.5">
+              {u.position || <span className="italic">No position set</span>}
+            </p>
+            <div className="flex flex-wrap items-center gap-2 mt-2">
+              {u.role && (
+                <span className={cn('px-2.5 py-0.5 rounded-md text-xs font-semibold', ROLE_BADGE[u.role] ?? ROLE_BADGE.consultant)}>
+                  {formatLabel(u.role)}
+                </span>
+              )}
+              {u.department && (
+                <span className="px-2.5 py-0.5 rounded-md text-xs font-semibold bg-indigo-100 text-indigo-800">
+                  {formatLabel(u.department)}
+                </span>
+              )}
+              {u.status && (
+                <span className={cn('px-2.5 py-0.5 rounded-md text-xs font-semibold', STATUS_BADGE[u.status] ?? STATUS_BADGE.active)}>
+                  {formatLabel(u.status)}
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="flex flex-col gap-2 text-sm text-on-surface-variant">
+            <div className="flex items-center gap-2">
+              <Mail className="w-3.5 h-3.5 flex-shrink-0" />
+              <span>{u.email}</span>
+            </div>
+            {u.phone && (
+              <div className="flex items-center gap-2">
+                <Phone className="w-3.5 h-3.5 flex-shrink-0" />
+                <span>{u.phone}</span>
+              </div>
+            )}
+            <div className="flex items-center gap-2">
+              <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
+              <span>Joined {fmtDate(u.createdAt)}</span>
+            </div>
+            {u.lastLogin && (
+              <div className="flex items-center gap-2">
+                <Clock className="w-3.5 h-3.5 flex-shrink-0" />
+                <span>Last login {fmtDate(u.lastLogin)}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Edit Profile Form — full width */}
+        <div className="max-w-2xl bg-surface-container-lowest rounded-[1rem] p-6">
+          <h3 className="text-base font-semibold text-on-surface mb-5">Edit Profile</h3>
+          <form onSubmit={handleConsultantSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="form-label">First Name</label>
+                <Input
+                  value={consultantForm.firstName}
+                  onChange={(e) => handleConsultantChange('firstName', e.target.value)}
+                  className={consultantErrors.firstName ? 'border-error' : ''}
+                />
+                {consultantErrors.firstName && <p className="text-error text-xs mt-1">{consultantErrors.firstName}</p>}
+              </div>
+              <div>
+                <label className="form-label">Last Name</label>
+                <Input
+                  value={consultantForm.lastName}
+                  onChange={(e) => handleConsultantChange('lastName', e.target.value)}
+                  className={consultantErrors.lastName ? 'border-error' : ''}
+                />
+                {consultantErrors.lastName && <p className="text-error text-xs mt-1">{consultantErrors.lastName}</p>}
+              </div>
+            </div>
+            <div>
+              <label className="form-label">Email</label>
+              <Input value={consultantForm.email} disabled className="opacity-60" />
+              <p className="text-xs text-on-surface-variant mt-1">Email cannot be changed</p>
+            </div>
+            <div>
+              <label className="form-label">Phone</label>
+              <Input
+                type="tel"
+                value={consultantForm.phone}
+                onChange={(e) => handleConsultantChange('phone', e.target.value)}
+                placeholder="e.g. 01012345678"
+                className={consultantErrors.phone ? 'border-error' : ''}
+              />
+              {consultantErrors.phone && <p className="text-error text-xs mt-1">{consultantErrors.phone}</p>}
+            </div>
+            <div>
+              <label className="form-label">Position</label>
+              <Input
+                value={consultantForm.position}
+                onChange={(e) => handleConsultantChange('position', e.target.value)}
+                placeholder="e.g. Sales Executive"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="form-label">Role</label>
+                <div className="mt-1 px-3 py-2 rounded-[0.75rem] bg-surface-container-low text-sm text-on-surface-variant border border-surface-container-high">
+                  {u.role ? formatLabel(u.role) : '—'}
+                </div>
+              </div>
+              <div>
+                <label className="form-label">Status</label>
+                <div className="mt-1 px-3 py-2 rounded-[0.75rem] bg-surface-container-low text-sm text-on-surface-variant border border-surface-container-high">
+                  {u.status ? formatLabel(u.status) : '—'}
+                </div>
+              </div>
+            </div>
+            <div className="pt-2">
+              <Button type="submit" disabled={isLoading} className="w-full">
+                {isLoading ? (
+                  <><div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />Updating...</>
+                ) : (
+                  <><Save className="w-4 h-4 mr-2" />Save Changes</>
                 )}
               </Button>
             </div>

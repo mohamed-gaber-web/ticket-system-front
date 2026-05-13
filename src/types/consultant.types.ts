@@ -1,4 +1,11 @@
-export type ConsultantRole = 'consultant' | 'senior_consultant' | 'admin';
+export type ConsultantRole = 'consultant' | 'admin';
+export type ConsultantDepartment = string;
+
+export interface ConsultantDepartmentObject {
+  _id: string;
+  name: string;
+  isActive?: boolean;
+}
 export type ConsultantStatus = 'active' | 'inactive' | 'on_leave';
 
 export interface Consultant {
@@ -9,6 +16,7 @@ export interface Consultant {
   phone?: string;
   position?: string;
   role: ConsultantRole;
+  department?: ConsultantDepartmentObject | string | null;
   status: ConsultantStatus;
   fullName: string;
   monthlyTargetHours?: number | null;
@@ -66,6 +74,7 @@ export interface CreateConsultantData {
   phone?: string;
   position?: string;
   role: ConsultantRole;
+  department?: string | null;
   status: ConsultantStatus;
   monthlyTargetHours?: number | null;
 }
@@ -77,6 +86,7 @@ export interface UpdateConsultantData {
   phone?: string;
   position?: string;
   role?: ConsultantRole;
+  department?: string | null;
   status?: ConsultantStatus;
   monthlyTargetHours?: number | null;
 }

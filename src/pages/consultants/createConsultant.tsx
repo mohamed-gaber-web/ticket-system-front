@@ -1,18 +1,25 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { createConsultant } from '@/redux/slices/consultantSlice';
+import { fetchDepartments } from '@/redux/slices/departmentSlice';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CustomSelect } from '@/components/ui/custom-select';
 import { ArrowLeft, Save } from 'lucide-react';
-import type { CreateConsultantData } from '@/types/consultant.types';
+import type { CreateConsultantData, ConsultantRole } from '@/types/consultant.types';
 
 export default function CreateConsultant() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { loading } = useAppSelector((state) => state.consultants);
+  const { departments } = useAppSelector((state) => state.departments);
   const isAdmin = useAppSelector((state) => state.auth.consultantRole) === 'admin';
+
+  useEffect(() => {
+    dispatch(fetchDepartments({ isActive: true, limit: 999 } as any));
+  }, []);
 
   if (!isAdmin) {
     return <Navigate to="/unauthorized" replace />;
@@ -26,6 +33,7 @@ export default function CreateConsultant() {
     phone: '',
     position: '',
     role: 'consultant',
+    department: undefined,
     status: 'active',
     monthlyTargetHours: null,
   });
@@ -186,6 +194,44 @@ export default function CreateConsultant() {
                 onChange={(e) => handleChange('position', e.target.value)}
                 placeholder="e.g. Senior Support Engineer"
               />
+            </div>
+
+            {/* Role & Status */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="form-label">Role</label>
+                <CustomSelect
+                  value={formData.role}
+                  onChange={(val) => setFormData((prev) => ({ ...prev, role: val as ConsultantRole }))}
+                  options={[
+                    { value: 'consultant', label: 'Consultant' },
+                    { value: 'admin', label: 'Admin' },
+                  ]}
+                />
+              </div>
+              <div>
+                <label className="form-label">Department</label>
+                <CustomSelect
+                  value={formData.department ?? ''}
+                  onChange={(val) => setFormData((prev) => ({ ...prev, department: val || undefined }))}
+                  options={[
+                    { value: '', label: 'None' },
+                    ...departments.map((d) => ({ value: d._id, label: d.name })),
+                  ]}
+                />
+              </div>
+              <div>
+                <label className="form-label">Status</label>
+                <CustomSelect
+                  value={formData.status}
+                  onChange={(val) => setFormData((prev) => ({ ...prev, status: val as any }))}
+                  options={[
+                    { value: 'active', label: 'Active' },
+                    { value: 'inactive', label: 'Inactive' },
+                    { value: 'on_leave', label: 'On Leave' },
+                  ]}
+                />
+              </div>
             </div>
 
             {/* Monthly Target Hours */}

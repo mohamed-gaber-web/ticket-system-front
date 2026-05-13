@@ -11,14 +11,26 @@ interface NavLinkItem {
   icon: React.ElementType;
 }
 
+interface NavSubGroup {
+  name: string;
+  icon: React.ElementType;
+  isSubGroup: true;
+  children: NavLinkItem[];
+}
+
 interface NavGroup {
   name: string;
   icon: React.ElementType;
   isGroup: true;
-  children: NavLinkItem[];
+  children: (NavLinkItem | NavSubGroup)[];
 }
 
-type NavigationItem = NavLinkItem | NavGroup;
+interface NavSection {
+  isSection: true;
+  name: string;
+}
+
+type NavigationItem = NavLinkItem | NavGroup | NavSection;
 
 interface SidebarMobileProps {
   links: NavigationItem[];
@@ -28,6 +40,14 @@ interface SidebarMobileProps {
 
 function isGroup(item: NavigationItem): item is NavGroup {
   return "isGroup" in item && item.isGroup === true;
+}
+
+function isSubGroup(item: NavLinkItem | NavSubGroup): item is NavSubGroup {
+  return "isSubGroup" in item && item.isSubGroup === true;
+}
+
+function isSection(item: NavigationItem): item is NavSection {
+  return "isSection" in item && item.isSection === true;
 }
 
 export function SidebarMobile({ links, isMobileOpen, setIsMobileOpen }: SidebarMobileProps) {
@@ -102,6 +122,19 @@ export function SidebarMobile({ links, isMobileOpen, setIsMobileOpen }: SidebarM
             {/* ── Navigation ── */}
             <nav className="flex-1 px-2 space-y-0.5 pb-4" aria-label="Main navigation">
               {links.map((item, index) => {
+                if (isSection(item)) {
+                  return (
+                    <div key={`section-${item.name}`} className="px-1 pt-4 pb-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant/40 shrink-0">
+                          {item.name}
+                        </span>
+                        <div className="flex-1 h-px bg-outline-variant/20" />
+                      </div>
+                    </div>
+                  );
+                }
+
                 if (isGroup(item)) {
                   const expanded = expandedGroups.includes(item.name);
                   return (
@@ -142,6 +175,54 @@ export function SidebarMobile({ links, isMobileOpen, setIsMobileOpen }: SidebarM
                           >
                             <div className="ml-3 pl-3 border-l border-outline-variant/25 mt-0.5 space-y-0.5 pb-1">
                               {item.children.map((child, ci) => {
+                                if (isSubGroup(child)) {
+                                  const subExpanded = expandedGroups.includes(`${item.name}__${child.name}`);
+                                  return (
+                                    <div key={child.name}>
+                                      <button
+                                        onClick={() => toggleGroup(`${item.name}__${child.name}`)}
+                                        className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-colors duration-150 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
+                                      >
+                                        <child.icon className="h-4 w-4 shrink-0" />
+                                        <span className="flex-1 text-left whitespace-nowrap">{child.name}</span>
+                                        <motion.div animate={{ rotate: subExpanded ? 0 : -90 }} transition={{ duration: 0.2 }} className="shrink-0">
+                                          <ChevronDown className="h-3 w-3" />
+                                        </motion.div>
+                                      </button>
+                                      <AnimatePresence>
+                                        {subExpanded && (
+                                          <motion.div
+                                            initial={{ height: 0, opacity: 0 }}
+                                            animate={{ height: "auto", opacity: 1 }}
+                                            exit={{ height: 0, opacity: 0 }}
+                                            transition={{ duration: 0.2 }}
+                                            className="overflow-hidden"
+                                          >
+                                            <div className="ml-3 pl-3 border-l border-outline-variant/20 mt-0.5 space-y-0.5 pb-1">
+                                              {child.children.map((leaf) => {
+                                                const active = isChildActive(leaf.path);
+                                                return (
+                                                  <NavLink
+                                                    key={leaf.path}
+                                                    to={leaf.path}
+                                                    onClick={close}
+                                                    className={`relative flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-colors duration-150 overflow-hidden ${active ? "text-brand-500 font-semibold" : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"}`}
+                                                  >
+                                                    {active && <motion.div layoutId={`activeMobileLeaf-${leaf.path}`} className="absolute inset-0 bg-brand-500/[0.08] rounded-xl" transition={{ type: "spring", stiffness: 320, damping: 30 }} />}
+                                                    {active && <div className="absolute left-0 inset-y-1.5 w-[3px] bg-brand-500 rounded-r-full z-20" />}
+                                                    <leaf.icon className="relative z-10 h-4 w-4 shrink-0" />
+                                                    <span className="relative z-10 whitespace-nowrap">{leaf.name}</span>
+                                                  </NavLink>
+                                                );
+                                              })}
+                                            </div>
+                                          </motion.div>
+                                        )}
+                                      </AnimatePresence>
+                                    </div>
+                                  );
+                                }
+
                                 const active = isChildActive(child.path);
                                 return (
                                   <NavLink

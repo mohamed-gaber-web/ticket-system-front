@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
-import { fetchConsultants, deleteConsultant, adminResetConsultantPassword } from '@/redux/slices/consultantSlice';
+import { fetchConsultants, deleteConsultant, adminResetConsultantPassword, updateConsultant } from '@/redux/slices/consultantSlice';
+import { fetchDepartments } from '@/redux/slices/departmentSlice';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Search, RefreshCw, Edit, Trash2, ChevronLeft, ChevronRight, KeyRound, Timer } from 'lucide-react';
@@ -17,17 +18,20 @@ export default function Consultants() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { consultants, loading, total, pages } = useAppSelector((state) => state.consultants);
+  const { departments } = useAppSelector((state) => state.departments);
   const { consultantRole } = useAppSelector((state) => state.auth);
   const isAdmin = consultantRole === 'admin';
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
+  const [deptFilter, setDeptFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [passwordTarget, setPasswordTarget] = useState<{ id: string; name: string } | null>(null);
   const [actualHoursMap, setActualHoursMap] = useState<Record<string, number>>({});
 
   useEffect(() => {
+    dispatch(fetchDepartments({ isActive: true, limit: 999 } as any));
     loadConsultants(1);
   }, []);
 
@@ -53,6 +57,7 @@ export default function Consultants() {
     if (searchTerm) params.search = searchTerm;
     if (statusFilter) params.status = statusFilter;
     if (roleFilter) params.role = roleFilter;
+    if (deptFilter) params.department = deptFilter;
     setCurrentPage(page);
     dispatch(fetchConsultants(params));
   };
@@ -82,6 +87,7 @@ export default function Consultants() {
     setSearchTerm('');
     setStatusFilter('');
     setRoleFilter('');
+    setDeptFilter('');
     setCurrentPage(1);
     dispatch(fetchConsultants({ page: 1, limit: PAGE_SIZE }));
   };
@@ -94,9 +100,21 @@ export default function Consultants() {
 
   const ROLE_STYLES = {
     admin: 'bg-accent-orange-100 text-purple-800 border-accent-orange-200',
-    senior_consultant: 'bg-brand-100 text-brand-800 border-brand-200',
     consultant: 'bg-surface-container-high text-on-surface border-surface-container-high',
   };
+
+  const DEPT_STYLES: Record<string, string> = {
+    sales: 'bg-violet-100 text-violet-800 border-violet-200',
+    marketing: 'bg-pink-100 text-pink-800 border-pink-200',
+    administration: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+  };
+
+  const getDeptId = (dept: any): string =>
+    typeof dept === 'object' && dept !== null ? dept._id : dept ?? '';
+  const getDeptName = (dept: any): string =>
+    typeof dept === 'object' && dept !== null ? dept.name : '';
+  const getDeptStyle = (dept: any): string =>
+    DEPT_STYLES[(getDeptName(dept) || '').toLowerCase()] ?? 'bg-surface-container text-on-surface-variant border-outline-variant';
 
   const formatRole = (role: string) => {
     return role.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase());
@@ -124,7 +142,7 @@ export default function Consultants() {
 
       {/* Filters */}
       <div className="bg-surface-container-lowest rounded-[1rem] p-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <div className="md:col-span-2">
             <Input
               placeholder="Search by name or email..."
@@ -153,8 +171,17 @@ export default function Consultants() {
             options={[
               { value: '', label: 'All' },
               { value: 'consultant', label: 'Consultant' },
-              { value: 'senior_consultant', label: 'Senior Consultant' },
               { value: 'admin', label: 'Admin' },
+            ]}
+          />
+          <CustomSelect
+            variant="filter"
+            value={deptFilter}
+            onChange={setDeptFilter}
+            label="Department"
+            options={[
+              { value: '', label: 'All' },
+              ...departments.map((d) => ({ value: d._id, label: d.name })),
             ]}
           />
         </div>
@@ -202,6 +229,9 @@ export default function Consultants() {
                       Role
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase tracking-wider">
+                      Department
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase tracking-wider">
                       Status
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase tracking-wider">
@@ -239,14 +269,60 @@ export default function Consultants() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={cn(
-                            'px-2 py-1 text-xs font-medium rounded-md border',
-                            ROLE_STYLES[consultant.role as keyof typeof ROLE_STYLES]
-                          )}
-                        >
-                          {formatRole(consultant.role)}
-                        </span>
+                        {isAdmin ? (
+                          <select
+                            value={consultant.role}
+                            onChange={async (e) => {
+                              const newRole = e.target.value as 'consultant' | 'admin';
+                              await dispatch(updateConsultant({ id: consultant._id, data: { role: newRole } }));
+                              loadConsultants(currentPage);
+                            }}
+                            className={cn(
+                              'px-2 py-1 text-xs font-medium rounded-md border cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-500/30 transition-colors',
+                              ROLE_STYLES[consultant.role as keyof typeof ROLE_STYLES]
+                            )}
+                          >
+                            <option value="consultant">Consultant</option>
+                            <option value="admin">Admin</option>
+                          </select>
+                        ) : (
+                          <span
+                            className={cn(
+                              'px-2 py-1 text-xs font-medium rounded-md border',
+                              ROLE_STYLES[consultant.role as keyof typeof ROLE_STYLES]
+                            )}
+                          >
+                            {formatRole(consultant.role)}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {consultant.department ? (
+                          isAdmin ? (
+                            <select
+                              value={getDeptId(consultant.department)}
+                              onChange={async (e) => {
+                                await dispatch(updateConsultant({ id: consultant._id, data: { department: e.target.value || null } }));
+                                loadConsultants(currentPage);
+                              }}
+                              className={cn(
+                                'px-2 py-1 text-xs font-medium rounded-md border cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-500/30 transition-colors',
+                                getDeptStyle(consultant.department)
+                              )}
+                            >
+                              <option value="">None</option>
+                              {departments.map((d) => (
+                                <option key={d._id} value={d._id}>{d.name}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <span className={cn('px-2 py-1 text-xs font-medium rounded-md border', getDeptStyle(consultant.department))}>
+                              {getDeptName(consultant.department)}
+                            </span>
+                          )
+                        ) : (
+                          <span className="text-on-surface-variant/40 text-sm">&mdash;</span>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span

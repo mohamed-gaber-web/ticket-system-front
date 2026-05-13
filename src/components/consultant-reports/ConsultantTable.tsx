@@ -23,7 +23,6 @@ const STATUS_STYLES = {
 
 const ROLE_STYLES = {
   admin: 'bg-accent-orange-100 text-purple-800 border-accent-orange-200',
-  senior_consultant: 'bg-brand-100 text-brand-800 border-brand-200',
   consultant: 'bg-surface-container text-on-surface border-outline-variant/20',
 };
 

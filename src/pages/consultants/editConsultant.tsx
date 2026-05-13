@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams, Navigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchConsultantById, updateConsultant, clearCurrentConsultant } from '@/redux/slices/consultantSlice';
+import { fetchDepartments } from '@/redux/slices/departmentSlice';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { CustomSelect } from '@/components/ui/custom-select';
@@ -13,6 +14,7 @@ export default function EditConsultant() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { currentConsultant, loading } = useAppSelector((state) => state.consultants);
+  const { departments } = useAppSelector((state) => state.departments);
   const isAdmin = useAppSelector((state) => state.auth.consultantRole) === 'admin';
 
   if (!isAdmin) {
@@ -26,6 +28,7 @@ export default function EditConsultant() {
     phone: '',
     position: '',
     role: 'consultant',
+    department: undefined,
     status: 'active',
     monthlyTargetHours: null,
   });
@@ -33,14 +36,10 @@ export default function EditConsultant() {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    if (id) {
-      dispatch(fetchConsultantById(id));
-    }
-
-    return () => {
-      dispatch(clearCurrentConsultant());
-    };
-  }, [id, dispatch]);
+    dispatch(fetchDepartments({ isActive: true, limit: 999 } as any));
+    if (id) dispatch(fetchConsultantById(id));
+    return () => { dispatch(clearCurrentConsultant()); };
+  }, [id]);
 
   useEffect(() => {
     if (currentConsultant) {
@@ -51,6 +50,9 @@ export default function EditConsultant() {
         phone: currentConsultant.phone || '',
         position: currentConsultant.position || '',
         role: currentConsultant.role,
+        department: typeof currentConsultant.department === 'object' && currentConsultant.department
+          ? (currentConsultant.department as any)._id
+          : (currentConsultant.department as string | undefined),
         status: currentConsultant.status,
         monthlyTargetHours: currentConsultant.monthlyTargetHours ?? null,
       });
@@ -223,8 +225,19 @@ export default function EditConsultant() {
                 onChange={(val) => handleChange('role', val as ConsultantRole)}
                 options={[
                   { value: 'consultant', label: 'Consultant' },
-                  { value: 'senior_consultant', label: 'Senior Consultant' },
                   { value: 'admin', label: 'Admin' },
+                ]}
+              />
+            </div>
+
+            <div>
+              <label className="form-label">Department</label>
+              <CustomSelect
+                value={formData.department ?? ''}
+                onChange={(val) => setFormData((prev) => ({ ...prev, department: val || undefined }))}
+                options={[
+                  { value: '', label: 'None' },
+                  ...departments.map((d) => ({ value: d._id, label: d.name })),
                 ]}
               />
             </div>

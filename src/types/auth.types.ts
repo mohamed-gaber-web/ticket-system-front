@@ -34,7 +34,8 @@ export interface Consultant extends User {
   userType: 'consultant';
   expertise?: string[];
   availabilityStatus?: string;
-  role?: 'consultant' | 'senior_consultant' | 'admin';
+  role?: 'consultant' | 'admin';
+  department?: 'sales' | 'marketing' | 'administration';
 }
 
 // Team Member specific fields
@@ -109,7 +110,8 @@ export interface RefreshTokenRequest {
   userType: UserType;
 }
 
-export type ConsultantRole = 'consultant' | 'senior_consultant' | 'admin';
+export type ConsultantRole = 'consultant' | 'admin';
+export type ConsultantDepartment = 'sales' | 'marketing' | 'administration';
 
 // Auth State Interface
 export interface AuthState {
@@ -119,6 +121,7 @@ export interface AuthState {
   userType: UserType | null;
   customerRole: import('./customer.types').CustomerRole | null;
   consultantRole: ConsultantRole | null;
+  consultantDepartment: ConsultantDepartment | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;

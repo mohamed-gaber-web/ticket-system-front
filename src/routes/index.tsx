@@ -1,5 +1,6 @@
 import { lazy, Suspense, type ReactNode } from "react";
 import { useAppSelector } from "@/redux/hooks/hooks";
+import { Navigate, useLocation } from "react-router-dom";
 import type { RouteObject } from "react-router-dom";
 import Layout from "@/components/layout/layout";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
@@ -20,16 +21,56 @@ function Lazy({ children }: { children: ReactNode }) {
   return <Suspense fallback={<PageLoader />}>{children}</Suspense>;
 }
 
-// Routes to correct dashboard based on userType
+const TELE_SALES_DEPARTMENTS = ['sales', 'marketing'];
+const TASK_DEPARTMENTS = ['administration'];
+
+// Guard: tele_sales userType OR consultant admin OR consultant in Sales/Marketing
+function TeleSalesRoute({ children }: { children: ReactNode }) {
+  const { isAuthenticated, userType, consultantRole, consultantDepartment } = useAppSelector((state) => state.auth);
+  const location = useLocation();
+  if (!isAuthenticated) {
+    const storedType = localStorage.getItem('userType');
+    const loginPath = storedType === 'tele_sales' ? '/tele-sales/login' : '/signin';
+    return <Navigate to={loginPath} state={{ from: location }} replace />;
+  }
+  const allowed =
+    userType === 'tele_sales' ||
+    (userType === 'consultant' && (
+      consultantRole === 'admin' ||
+      TELE_SALES_DEPARTMENTS.includes(consultantDepartment ?? '')
+    ));
+  if (!allowed) return <Navigate to="/unauthorized" replace />;
+  return <>{children}</>;
+}
+
+// Guard: consultant admin OR consultant with Administration department
+function TasksRoute({ children }: { children: ReactNode }) {
+  const { isAuthenticated, userType, consultantDepartment, consultantRole } = useAppSelector((state) => state.auth);
+  const location = useLocation();
+  if (!isAuthenticated) return <Navigate to="/signin" state={{ from: location }} replace />;
+  const allowed =
+    userType === 'consultant' &&
+    (consultantRole === 'admin' || TASK_DEPARTMENTS.includes(consultantDepartment ?? ''));
+  if (!allowed) return <Navigate to="/unauthorized" replace />;
+  return <>{children}</>;
+}
+
+// Routes to correct dashboard based on userType / department
 function DashboardRouter() {
-  const { userType } = useAppSelector((state) => state.auth);
+  const { userType, consultantDepartment, consultantRole } = useAppSelector((state) => state.auth);
   if (!userType) return <PageLoader />;
-  if (userType === "customer") {
-    return <Lazy><CustomerDashboard /></Lazy>;
-  }
-  if (userType === "tele_sales") {
-    return <Lazy><TeleSalesDashboard /></Lazy>;
-  }
+  if (userType === "customer") return <Lazy><CustomerDashboard /></Lazy>;
+  if (userType === "tele_sales") return <Lazy><TeleSalesDashboard /></Lazy>;
+  if (
+    userType === "consultant" &&
+    consultantRole !== "admin" &&
+    TASK_DEPARTMENTS.includes(consultantDepartment ?? '')
+  ) return <Lazy><TasksDashboard /></Lazy>;
+  if (
+    userType === "consultant" &&
+    consultantRole !== "admin" &&
+    TELE_SALES_DEPARTMENTS.includes(consultantDepartment ?? '')
+  ) return <Navigate to="/tele-sales" replace />;
   return <Dashboard />;
 }
 
@@ -116,6 +157,12 @@ const Leads = lazy(() => import("@/pages/tele-sales/leads/Leads"));
 const LeadDetail = lazy(() => import("@/pages/tele-sales/leads/LeadDetail"));
 const TeleSalesAgents = lazy(() => import("@/pages/tele-sales/agents/Agents"));
 
+// Tasks Module
+const Tasks = lazy(() => import("@/pages/tasks/Tasks"));
+const TaskForm = lazy(() => import("@/pages/tasks/components/TaskForm"));
+const ViewTask = lazy(() => import("@/pages/tasks/ViewTask"));
+const TasksDashboard = lazy(() => import("@/pages/tasks/TasksDashboard"));
+
 export const routes: RouteObject[] = [
   // Public Routes (Authentication — Ticket System)
   { path: "/signin", element: <Lazy><SigninPage /></Lazy> },
@@ -127,13 +174,13 @@ export const routes: RouteObject[] = [
   // Public Routes (Authentication — TeleSales Portal)
   { path: "/tele-sales/login", element: <Lazy><TeleSalesSignin /></Lazy> },
 
-  // TeleSales Protected Routes — outside the main ProtectedRoute so loginPath is correct
+  // TeleSales Protected Routes — accessible to tele_sales users AND consultants with sales department
   {
     path: "/tele-sales",
     element: (
-      <ProtectedRoute allowedUserTypes={["tele_sales"]} loginPath="/tele-sales/login">
+      <TeleSalesRoute>
         <Layout />
-      </ProtectedRoute>
+      </TeleSalesRoute>
     ),
     children: [
       { index: true, element: <Lazy><TeleSalesDashboard /></Lazy> },
@@ -257,6 +304,24 @@ export const routes: RouteObject[] = [
             <Lazy><CompanyUsers /></Lazy>
           </ProtectedRoute>
         ),
+      },
+
+      // Tasks Module — admin or tasks-department consultants only
+      {
+        path: "/tasks",
+        element: <TasksRoute><Lazy><Tasks /></Lazy></TasksRoute>,
+      },
+      {
+        path: "/tasks/create",
+        element: <TasksRoute><Lazy><TaskForm /></Lazy></TasksRoute>,
+      },
+      {
+        path: "/tasks/edit/:id",
+        element: <TasksRoute><Lazy><TaskForm /></Lazy></TasksRoute>,
+      },
+      {
+        path: "/tasks/:id",
+        element: <TasksRoute><Lazy><ViewTask /></Lazy></TasksRoute>,
       },
 
     ],

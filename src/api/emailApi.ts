@@ -23,3 +23,21 @@ export interface SendTicketCreatedEmailPayload {
 
 export const sendTicketCreatedEmail = (payload: SendTicketCreatedEmailPayload) =>
   api.post('/emails/send-ticket-created', payload);
+
+export interface SendTaskAssignedEmailPayload {
+  taskId: string;
+  taskName: string;
+  description?: string;
+  departmentName: string;
+  startDate?: string;
+  endDate?: string;
+  scheduledWeek?: number;
+  weekRange?: string;
+  duration?: number;
+  status: string;
+  recipients: string[];
+  senderName: string;
+}
+
+export const sendTaskAssignedEmail = (payload: SendTaskAssignedEmailPayload) =>
+  api.post('/emails/send-task-assigned', payload);
