@@ -3,7 +3,6 @@ import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchTaskComments, createTaskComment, updateTaskComment, deleteTaskComment, clearTaskComments } from '@/redux/slices/taskCommentSlice';
 import { Button } from '@/components/ui/button';
 import { MessageSquare, RefreshCw, Send, Pencil, Trash2, X, Check } from 'lucide-react';
-import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
 import type { TaskComment } from '@/api/taskCommentApi';

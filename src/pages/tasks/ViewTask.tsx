@@ -11,7 +11,7 @@ import TaskAttachmentList from '@/components/tasks/TaskAttachmentList';
 import TaskComments from '@/components/tasks/TaskComments';
 import { getWeekDateRange } from '@/utils/weekUtils';
 import {
-  ArrowLeft, Edit, Trash2, CheckSquare, User, Calendar,
+  Edit, Trash2, CheckSquare, User, Calendar,
   Clock, Building2, CalendarDays, Timer, UserCheck,
   CircleCheck, Circle, Loader2 as SpinnerIcon, Shield,
   Paperclip, MessageSquare, LayoutList,
