@@ -30,7 +30,8 @@
       "PowerShell(head *)",
       "Bash(Get-ChildItem -Path \"D:\\\\Real Project\\\\Ticketing System\\\\back-en-and-api\" -Recurse -Directory)",
       "Bash(Select-Object -ExpandProperty FullName)",
-      "Bash(Sort-Object)"
+      "Bash(Sort-Object)",
+      "PowerShell(gh pr *)"
     ]
   }
 }

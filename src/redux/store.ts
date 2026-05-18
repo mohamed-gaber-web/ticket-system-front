@@ -25,6 +25,8 @@ import workingHoursReducer from './slices/workingHoursSlice';
 import teleSalesLeadsReducer from './slices/teleSalesLeadsSlice';
 import teleSalesAgentsReducer from './slices/teleSalesAgentsSlice';
 import tasksReducer from './slices/tasksSlice';
+import taskAttachmentsReducer from './slices/taskAttachmentSlice';
+import taskCommentsReducer from './slices/taskCommentSlice';
 
 export const store = configureStore({
   reducer: {
@@ -54,6 +56,8 @@ export const store = configureStore({
     teleSalesLeads: teleSalesLeadsReducer,
     teleSalesAgents: teleSalesAgentsReducer,
     tasks: tasksReducer,
+    taskAttachments: taskAttachmentsReducer,
+    taskComments: taskCommentsReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

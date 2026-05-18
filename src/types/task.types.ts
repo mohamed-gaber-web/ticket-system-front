@@ -21,6 +21,7 @@ export interface Task {
   startDate?: string;
   endDate?: string;
   assignedTo?: TaskConsultant | string | null;
+  responsible?: TaskConsultant | string | null;
   scheduledWeek?: number | null;
   duration?: number | null;
   status: TaskStatus;
@@ -36,6 +37,7 @@ export interface CreateTaskData {
   startDate?: string;
   endDate?: string;
   assignedTo?: string | null;
+  responsible?: string | null;
   scheduledWeek?: number | null;
   duration?: number | null;
   status?: TaskStatus;
