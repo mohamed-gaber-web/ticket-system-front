@@ -8,13 +8,13 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Edit, Trash2, Ticket as TicketIcon, Eye, CheckCircle, GitBranch, MoreVertical, ChevronRight, ChevronDown, Timer, ChevronsUpDown, ChevronUp } from 'lucide-react';
+import { Edit, Trash2, Ticket as TicketIcon, Eye, CheckCircle, GitBranch, MoreVertical, ChevronRight, ChevronDown, Timer, ChevronsUpDown, ChevronUp, Pencil, CalendarDays, ChevronUp as Inc, ChevronDown as Dec, Check, X } from 'lucide-react';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
 import type { Ticket, Consultant } from '@/types/ticket';
 import type { ServiceType } from '@/types/serviceType.types';
 import { useAppSelector, useAppDispatch } from '@/redux/hooks/hooks';
-import { acceptTicket, fetchSubTickets } from '@/redux/slices/ticketSlice';
+import { acceptTicket, fetchSubTickets, updateTicket } from '@/redux/slices/ticketSlice';
 
 const MySwal = withReactContent(Swal);
 
@@ -68,6 +68,12 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
   const [loadingSubTickets, setLoadingSubTickets] = useState<Set<string>>(new Set());
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [menuPos, setMenuPos] = useState<{ top: number; right: number }>({ top: 0, right: 0 });
+  const [weekEditId, setWeekEditId] = useState<string | null>(null);
+  const [weekEditValue, setWeekEditValue] = useState<string>('');
+  const [weekSavingId, setWeekSavingId] = useState<string | null>(null);
+  const [weekPopPos, setWeekPopPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
+  const weekInputRef = useRef<HTMLInputElement>(null);
+  const weekPopRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const tableScrollRef = useRef<HTMLDivElement>(null);
   const topScrollRef = useRef<HTMLDivElement>(null);
@@ -108,6 +114,9 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
     const handleClickOutside = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setOpenMenuId(null);
+      }
+      if (weekPopRef.current && !weekPopRef.current.contains(e.target as Node)) {
+        setWeekEditId(null);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -199,6 +208,45 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
         dispatch(acceptTicket(ticket._id));
       }
     });
+  };
+
+  const startWeekEdit = (ticket: Ticket, btn: HTMLElement) => {
+    const rect = btn.getBoundingClientRect();
+    setWeekPopPos({ top: rect.bottom + 6, left: rect.left });
+    setWeekEditId(ticket._id);
+    setWeekEditValue(ticket.scheduledWeek != null ? String(ticket.scheduledWeek) : '');
+    setTimeout(() => { weekInputRef.current?.focus(); weekInputRef.current?.select(); }, 0);
+  };
+
+  const cancelWeekEdit = () => {
+    setWeekEditId(null);
+    setWeekEditValue('');
+  };
+
+  const saveWeekEdit = async () => {
+    if (!weekEditId) return;
+    const ticketId = weekEditId;
+    const raw = weekEditValue.trim();
+    const parsed = raw === '' ? null : parseInt(raw, 10);
+    if (raw !== '' && (isNaN(parsed!) || parsed! < 1 || parsed! > 53)) {
+      cancelWeekEdit();
+      return;
+    }
+    setWeekEditId(null);
+    setWeekSavingId(ticketId);
+    try {
+      await dispatch(updateTicket({ id: ticketId, data: { scheduledWeek: parsed ?? undefined } })).unwrap();
+    } catch {
+      // error toast handled by slice
+    } finally {
+      setWeekSavingId(null);
+    }
+  };
+
+  const stepWeek = (delta: number) => {
+    const current = parseInt(weekEditValue, 10);
+    const next = isNaN(current) ? (delta > 0 ? 1 : 53) : Math.min(53, Math.max(1, current + delta));
+    setWeekEditValue(String(next));
   };
 
   const getConsultantName = (person: string | Consultant | undefined): string | null => {
@@ -602,12 +650,31 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                   {/* Scheduled Week */}
                   {isConsultant && (
                     <TableCell>
-                      {ticket.scheduledWeek != null ? (
-                        <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-md bg-brand-50 text-brand-700 text-xs font-bold">
-                          W{ticket.scheduledWeek}
+                      {weekSavingId === ticket._id ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-brand-50 text-brand-600 text-xs font-semibold opacity-60 select-none">
+                          <span className="h-3 w-3 rounded-full border-2 border-brand-400 border-t-transparent animate-spin shrink-0" />
+                          Saving
                         </span>
                       ) : (
-                        <span className="text-on-surface-variant/40">&mdash;</span>
+                        <button
+                          type="button"
+                          onClick={(e) => startWeekEdit(ticket, e.currentTarget)}
+                          title="Click to set scheduled week"
+                          className={`group/week inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all duration-150 cursor-pointer border
+                            ${weekEditId === ticket._id
+                              ? 'bg-brand-100 border-brand-400 text-brand-700 ring-2 ring-brand-400/30'
+                              : ticket.scheduledWeek != null
+                                ? 'bg-brand-50 border-brand-200 text-brand-700 hover:bg-brand-100 hover:border-brand-400'
+                                : 'bg-transparent border-dashed border-outline-variant/50 text-on-surface-variant/50 hover:border-brand-400 hover:text-brand-600 hover:bg-brand-50'
+                            }`}
+                        >
+                          <CalendarDays className="h-3 w-3 shrink-0 opacity-70" />
+                          {ticket.scheduledWeek != null
+                            ? <span>W{ticket.scheduledWeek}</span>
+                            : <span>Set week</span>
+                          }
+                          <Pencil className="h-2.5 w-2.5 shrink-0 opacity-0 group-hover/week:opacity-60 transition-opacity ml-0.5" />
+                        </button>
                       )}
                     </TableCell>
                   )}
@@ -774,6 +841,91 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
             <Trash2 className="w-4 h-4" />
             Delete
           </button>
+        </div>
+      )}
+
+      {/* Floating week editor popover */}
+      {weekEditId && (
+        <div
+          ref={weekPopRef}
+          className="fixed z-[9999] w-52 rounded-2xl glass shadow-ambient border border-outline-variant/30 overflow-hidden"
+          style={{ top: weekPopPos.top, left: weekPopPos.left }}
+        >
+          {/* Header */}
+          <div className="flex items-center gap-2 px-4 pt-3.5 pb-2 border-b border-outline-variant/20">
+            <CalendarDays className="h-3.5 w-3.5 text-brand-500 shrink-0" />
+            <span className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide">Scheduled Week</span>
+          </div>
+
+          {/* Stepper */}
+          <div className="flex items-center gap-2 px-4 py-3">
+            <button
+              type="button"
+              onClick={() => stepWeek(-1)}
+              className="flex items-center justify-center w-8 h-8 rounded-lg border border-outline-variant hover:bg-surface-container-high hover:border-brand-400 transition-colors text-on-surface-variant hover:text-brand-600"
+              aria-label="Previous week"
+            >
+              <Dec className="h-4 w-4" />
+            </button>
+
+            <div className="flex-1 relative">
+              <input
+                ref={weekInputRef}
+                type="number"
+                min={1}
+                max={53}
+                value={weekEditValue}
+                onChange={(e) => setWeekEditValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') saveWeekEdit();
+                  if (e.key === 'Escape') cancelWeekEdit();
+                  if (e.key === 'ArrowUp') { e.preventDefault(); stepWeek(1); }
+                  if (e.key === 'ArrowDown') { e.preventDefault(); stepWeek(-1); }
+                }}
+                placeholder="—"
+                className="w-full text-center text-lg font-bold text-brand-700 bg-brand-50 border border-brand-200 rounded-xl px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-400 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+              />
+              {weekEditValue && (
+                <span className="absolute -top-2 left-1/2 -translate-x-1/2 text-[10px] font-semibold text-brand-500 bg-surface px-1 rounded">
+                  W{weekEditValue}
+                </span>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => stepWeek(1)}
+              className="flex items-center justify-center w-8 h-8 rounded-lg border border-outline-variant hover:bg-surface-container-high hover:border-brand-400 transition-colors text-on-surface-variant hover:text-brand-600"
+              aria-label="Next week"
+            >
+              <Inc className="h-4 w-4" />
+            </button>
+          </div>
+
+          {/* Week range hint */}
+          <p className="text-center text-[10px] text-on-surface-variant/50 -mt-1 pb-2">
+            {weekEditValue ? `Week ${weekEditValue} of 53` : 'Enter 1 – 53 or leave blank to clear'}
+          </p>
+
+          {/* Actions */}
+          <div className="flex gap-2 px-4 pb-3.5">
+            <button
+              type="button"
+              onClick={cancelWeekEdit}
+              className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-xl border border-outline-variant text-xs font-semibold text-on-surface-variant hover:bg-surface-container-high transition-colors"
+            >
+              <X className="h-3.5 w-3.5" />
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={saveWeekEdit}
+              className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-xl bg-brand-600 text-white text-xs font-semibold hover:bg-brand-700 transition-colors"
+            >
+              <Check className="h-3.5 w-3.5" />
+              Save
+            </button>
+          </div>
         </div>
       )}
     </div>

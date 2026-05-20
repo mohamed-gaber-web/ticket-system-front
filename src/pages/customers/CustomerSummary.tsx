@@ -21,6 +21,8 @@ import {
   ExternalLink,
   Building2,
   User,
+  UserCheck,
+  Clock,
 } from "lucide-react";
 import type { Customer } from "@/types/customer.types";
 import type { Ticket } from "@/types/ticket";
@@ -313,20 +315,33 @@ export default function CustomerSummary() {
 
   /* ── Stats ── */
   const stats = useMemo(() => {
-    const counts = { newCount: 0, inProgressCount: 0, resolvedCount: 0, closedCount: 0, testedCount: 0, deliveredCount: 0, notRelatedCount: 0 };
+    const counts = {
+      newCount: 0,
+      assignedCount: 0,
+      inProgressCount: 0,
+      customerPendingCount: 0,
+      resolvedCount: 0,
+      testedCount: 0,
+      deliveredCount: 0,
+      closedCount: 0,
+      notRelatedCount: 0,
+    };
     const byPriority = { low: 0, medium: 0, high: 0, critical: 0 };
     for (const t of tickets) {
-      if (t.status === "new")         counts.newCount++;
-      if (t.status === "in_progress") counts.inProgressCount++;
-      if (t.status === "resolved")    counts.resolvedCount++;
-      if (t.status === "closed")      counts.closedCount++;
-      if (t.status === "tested")      counts.testedCount++;
-      if (t.status === "delivered")   counts.deliveredCount++;
-      if (t.status === "not_related") counts.notRelatedCount++;
-      if (t.priority in byPriority)   byPriority[t.priority as keyof typeof byPriority]++;
+      if (t.status === "new")              counts.newCount++;
+      else if (t.status === "assigned")         counts.assignedCount++;
+      else if (t.status === "in_progress")      counts.inProgressCount++;
+      else if (t.status === "customer_pending") counts.customerPendingCount++;
+      else if (t.status === "resolved")         counts.resolvedCount++;
+      else if (t.status === "tested")           counts.testedCount++;
+      else if (t.status === "delivered")        counts.deliveredCount++;
+      else if (t.status === "closed")           counts.closedCount++;
+      else if (t.status === "not_related")      counts.notRelatedCount++;
+      if (t.priority in byPriority) byPriority[t.priority as keyof typeof byPriority]++;
     }
     const sorted = [...tickets].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
-    return { total: tickets.length, ...counts, byPriority, sortedTickets: sorted };
+    const totalMain = tickets.filter((t) => !t.isSubTicket).length;
+    return { total: totalMain, ...counts, byPriority, sortedTickets: sorted };
   }, [tickets]);
 
   /* ── Filtered ticket list ── */
@@ -395,14 +410,16 @@ export default function CustomerSummary() {
   };
 
   const statCards: (StatCardProps & { key: string })[] = [
-    { key: "total",       label: "Total Tickets", value: stats.total,              icon: TicketIcon,    numberColor: "text-brand-500",   iconBg: "bg-brand-100",       iconColor: "text-brand-500",   bar: "bg-brand-500",    loading: ticketsLoading, idx: 0 },
-    { key: "new",         label: "New",            value: stats.newCount,           icon: BarChart2,     numberColor: "text-yellow-600",  iconBg: "bg-yellow-500/10",   iconColor: "text-yellow-500",  bar: "bg-yellow-400",   loading: ticketsLoading, idx: 1 },
-    { key: "in_progress", label: "In Progress",    value: stats.inProgressCount,    icon: Activity,      numberColor: "text-blue-600",    iconBg: "bg-blue-500/10",     iconColor: "text-blue-500",    bar: "bg-blue-500",     loading: ticketsLoading, idx: 2 },
-    { key: "resolved",    label: "Resolved",       value: stats.resolvedCount,      icon: CheckCircle2,  numberColor: "text-emerald-600", iconBg: "bg-emerald-500/10",  iconColor: "text-emerald-500", bar: "bg-emerald-400",  loading: ticketsLoading, idx: 3 },
-    { key: "tested",      label: "Tested",         value: stats.testedCount,        icon: CheckCircle2,  numberColor: "text-teal-600",    iconBg: "bg-teal-500/10",     iconColor: "text-teal-500",    bar: "bg-teal-500",     loading: ticketsLoading, idx: 4 },
-    { key: "delivered",   label: "Delivered",      value: stats.deliveredCount,     icon: Activity,      numberColor: "text-cyan-600",    iconBg: "bg-cyan-500/10",     iconColor: "text-cyan-500",    bar: "bg-cyan-500",     loading: ticketsLoading, idx: 5 },
-    { key: "closed",      label: "Closed",         value: stats.closedCount,        icon: XCircle,       numberColor: "text-slate-500",   iconBg: "bg-slate-400/10",    iconColor: "text-slate-400",   bar: "bg-slate-400",    loading: ticketsLoading, idx: 6 },
-    { key: "not_related", label: "Not Related",    value: stats.notRelatedCount,    icon: AlertTriangle, numberColor: "text-slate-500",   iconBg: "bg-slate-400/10",    iconColor: "text-slate-400",   bar: "bg-slate-400",    loading: ticketsLoading, idx: 7 },
+    { key: "total",            label: "Total Main Tickets", value: stats.total,                icon: TicketIcon,    numberColor: "text-brand-500",    iconBg: "bg-brand-100",        iconColor: "text-brand-500",    bar: "bg-brand-500",     loading: ticketsLoading, idx: 0 },
+    { key: "new",              label: "New",              value: stats.newCount,             icon: BarChart2,     numberColor: "text-yellow-600",   iconBg: "bg-yellow-500/10",    iconColor: "text-yellow-500",   bar: "bg-yellow-400",    loading: ticketsLoading, idx: 1 },
+    { key: "assigned",         label: "Assigned",         value: stats.assignedCount,        icon: UserCheck,     numberColor: "text-orange-600",   iconBg: "bg-orange-500/10",    iconColor: "text-orange-500",   bar: "bg-orange-400",    loading: ticketsLoading, idx: 2 },
+    { key: "in_progress",      label: "In Progress",      value: stats.inProgressCount,      icon: Activity,      numberColor: "text-blue-600",     iconBg: "bg-blue-500/10",      iconColor: "text-blue-500",     bar: "bg-blue-500",      loading: ticketsLoading, idx: 3 },
+    { key: "customer_pending", label: "Cust. Pending",    value: stats.customerPendingCount, icon: Clock,         numberColor: "text-violet-600",   iconBg: "bg-violet-500/10",    iconColor: "text-violet-500",   bar: "bg-violet-400",    loading: ticketsLoading, idx: 4 },
+    { key: "resolved",         label: "Resolved",         value: stats.resolvedCount,        icon: CheckCircle2,  numberColor: "text-emerald-600",  iconBg: "bg-emerald-500/10",   iconColor: "text-emerald-500",  bar: "bg-emerald-400",   loading: ticketsLoading, idx: 5 },
+    { key: "tested",           label: "Tested",           value: stats.testedCount,          icon: CheckCircle2,  numberColor: "text-teal-600",     iconBg: "bg-teal-500/10",      iconColor: "text-teal-500",     bar: "bg-teal-500",      loading: ticketsLoading, idx: 6 },
+    { key: "delivered",        label: "Delivered",        value: stats.deliveredCount,       icon: Activity,      numberColor: "text-cyan-600",     iconBg: "bg-cyan-500/10",      iconColor: "text-cyan-500",     bar: "bg-cyan-500",      loading: ticketsLoading, idx: 7 },
+    { key: "closed",           label: "Closed",           value: stats.closedCount,          icon: XCircle,       numberColor: "text-slate-500",    iconBg: "bg-slate-400/10",     iconColor: "text-slate-400",    bar: "bg-slate-400",     loading: ticketsLoading, idx: 8 },
+    { key: "not_related",      label: "Not Related",      value: stats.notRelatedCount,      icon: AlertTriangle, numberColor: "text-slate-500",    iconBg: "bg-slate-400/10",     iconColor: "text-slate-400",    bar: "bg-slate-400",     loading: ticketsLoading, idx: 9 },
   ];
 
   return (
@@ -718,7 +735,7 @@ export default function CustomerSummary() {
             </motion.div>
 
             {/* Stat cards */}
-            <motion.div variants={stagger} className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4">
+            <motion.div variants={stagger} className="grid grid-cols-2 sm:grid-cols-5 gap-4">
               {statCards.map(({ key, ...card }) => (
                 <StatCard key={key} {...card} />
               ))}

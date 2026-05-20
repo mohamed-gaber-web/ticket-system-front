@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { formatDistanceToNow } from 'date-fns';
+import { format } from 'date-fns';
+import { toast } from 'sonner';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -70,6 +71,27 @@ const CommentItem: React.FC<CommentItemProps> = ({
     setIsEditing(false);
   };
 
+  const handleDownload = async (url: string, fileName: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(url, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!response.ok) throw new Error('Download failed');
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = objectUrl;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(objectUrl);
+    } catch {
+      toast.error('Failed to download file');
+    }
+  };
+
   const handleDelete = async () => {
     const result = await MySwal.fire({
       title: 'Delete Comment?',
@@ -111,7 +133,7 @@ const CommentItem: React.FC<CommentItemProps> = ({
               )}
             </div>
             <span className="text-xs text-on-surface-variant">
-              {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
+              {format(new Date(comment.createdAt), 'dd MMM yyyy, HH:mm')}
               {comment.updatedAt !== comment.createdAt && ' (edited)'}
             </span>
           </div>
@@ -189,18 +211,27 @@ const CommentItem: React.FC<CommentItemProps> = ({
               const isImage = !img.fileType || img.fileType.startsWith('image/');
               if (isImage) {
                 return (
-                  <button
-                    key={img.url || img.fileName || i}
-                    type="button"
-                    onClick={() => setLightboxImage(img)}
-                    className="relative group block rounded-lg overflow-hidden border border-outline-variant/30 focus:outline-none focus:ring-2 focus:ring-brand-500"
-                    title={img.fileName}
-                  >
-                    <img src={img.url} alt={img.fileName} className="h-20 w-20 object-cover transition-opacity group-hover:opacity-75" />
-                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
-                      <ZoomIn className="h-5 w-5 text-white drop-shadow" />
-                    </div>
-                  </button>
+                  <div key={img.url || img.fileName || i} className="relative group">
+                    <button
+                      type="button"
+                      onClick={() => setLightboxImage(img)}
+                      className="block rounded-lg overflow-hidden border border-outline-variant/30 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                      title={img.fileName}
+                    >
+                      <img src={img.url} alt={img.fileName} className="h-20 w-20 object-cover transition-opacity group-hover:opacity-75" />
+                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20 rounded-lg">
+                        <ZoomIn className="h-5 w-5 text-white drop-shadow" />
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); handleDownload(img.url, img.fileName); }}
+                      className="absolute top-1 right-1 p-1 rounded bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70"
+                      title="Download"
+                    >
+                      <Download className="h-3 w-3" />
+                    </button>
+                  </div>
                 );
               }
               const Icon =
@@ -212,19 +243,17 @@ const CommentItem: React.FC<CommentItemProps> = ({
                 img.fileType?.includes('excel') || img.fileType?.includes('spreadsheet') ? 'text-emerald-600' :
                 img.fileType?.includes('zip') ? 'text-amber-500' : 'text-on-surface-variant';
               return (
-                <a
+                <button
                   key={img.url || img.fileName || i}
-                  href={img.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  download={img.fileName}
+                  type="button"
+                  onClick={() => handleDownload(img.url, img.fileName)}
                   className="flex items-center gap-2 pl-2.5 pr-3 py-1.5 rounded-lg border border-outline-variant/30 bg-surface-container-low hover:bg-surface-container-high transition-colors group max-w-[220px]"
                   title={img.fileName}
                 >
                   <Icon className={`h-4 w-4 shrink-0 ${iconColor}`} />
                   <span className="text-xs font-medium text-on-surface truncate flex-1">{img.fileName}</span>
                   <Download className="h-3.5 w-3.5 text-on-surface-variant opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                </a>
+                </button>
               );
             })}
           </div>
@@ -234,11 +263,25 @@ const CommentItem: React.FC<CommentItemProps> = ({
         <Dialog open={!!lightboxImage} onOpenChange={(open) => !open && setLightboxImage(null)}>
           <DialogContent className="max-w-4xl w-full p-2 bg-black/90 border-none">
             {lightboxImage && (
-              <img
-                src={lightboxImage.url}
-                alt={lightboxImage.fileName}
-                className="w-full max-h-[80vh] object-contain rounded"
-              />
+              <div className="flex flex-col gap-2">
+                <img
+                  src={lightboxImage.url}
+                  alt={lightboxImage.fileName}
+                  className="w-full max-h-[75vh] object-contain rounded"
+                />
+                <div className="flex items-center justify-between px-2 pb-1">
+                  <span className="text-white/60 text-xs truncate">{lightboxImage.fileName}</span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-white hover:text-white hover:bg-white/10 gap-1.5 shrink-0"
+                    onClick={() => handleDownload(lightboxImage.url, lightboxImage.fileName)}
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    Download
+                  </Button>
+                </div>
+              </div>
             )}
           </DialogContent>
         </Dialog>
