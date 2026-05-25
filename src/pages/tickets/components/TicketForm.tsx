@@ -103,6 +103,7 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
           category: '',
           priority: 'medium',
           startDate: '',
+          deliveryEstimationDate: '',
           environment: '',
           feature: '',
           department: '',
@@ -246,6 +247,7 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
           category: categoryId,
           priority: initialData.priority,
           startDate: toDateInput(initialData.startDate),
+          deliveryEstimationDate: toDateInput(initialData.deliveryEstimationDate),
           environment: extractId(initialData.environment),
           feature: extractId(initialData.feature),
           department: extractId(initialData.department),
@@ -353,6 +355,26 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
     if (!formData.scope || (formData.scope as string[]).length === 0) {
       toast.error('Module is required. Please select at least one module.');
       return;
+    }
+
+    if (isConsultant) {
+      const fd = formData as CreateTicketData | UpdateTicketData;
+      if (!fd.deliveryEstimationDate) {
+        toast.error('Delivery Date is required.');
+        return;
+      }
+      if (!fd.internalDeliveryDate) {
+        toast.error('Internal Delivery Date is required.');
+        return;
+      }
+      if (!fd.scheduledWeek) {
+        toast.error('Scheduled Week is required.');
+        return;
+      }
+      if (fd.durationHours === undefined || fd.durationHours === null || String(fd.durationHours) === '') {
+        toast.error('Actual Duration is required.');
+        return;
+      }
     }
 
     // Clean up empty optional fields before submitting
@@ -577,20 +599,18 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
               />
             </div>
 
-            {isEdit && (
-              <div>
-                <label className="form-label">Delivery Date</label>
-                <Input
-                  type="date"
-                  name="deliveryEstimationDate"
-                  value={(formData as UpdateTicketData).deliveryEstimationDate || ''}
-                  onChange={handleChange}
-                />
-              </div>
-            )}
+            <div>
+              <label className="form-label">Delivery Date *</label>
+              <Input
+                type="date"
+                name="deliveryEstimationDate"
+                value={(formData as CreateTicketData | UpdateTicketData).deliveryEstimationDate || ''}
+                onChange={handleChange}
+              />
+            </div>
 
             <div>
-              <label className="form-label">Internal Delivery Date</label>
+              <label className="form-label">Internal Delivery Date *</label>
               <Input
                 type="date"
                 name="internalDeliveryDate"
@@ -601,7 +621,7 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
             </div>
 
             <div>
-              <label className="form-label">Scheduled Week</label>
+              <label className="form-label">Scheduled Week *</label>
               <CustomSelect
                 value={String((formData as CreateTicketData | UpdateTicketData).scheduledWeek ?? '')}
                 onChange={(val) => setFormData({ ...formData, scheduledWeek: val ? Number(val) : undefined })}
@@ -612,7 +632,7 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
             </div>
 
             <div>
-              <label className="form-label">Actual Duration (hours)</label>
+              <label className="form-label">Actual Duration (hours) *</label>
               <Input
                 type="number"
                 name="durationHours"

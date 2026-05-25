@@ -606,7 +606,7 @@ export default function Tickets() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-on-surface-variant" aria-hidden="true" />
             <Input
               type="search"
-              placeholder="Search by subject, ticket number..."
+              placeholder="Search by subject, ticket #, sub ticket #..."
               aria-label="Search tickets"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}

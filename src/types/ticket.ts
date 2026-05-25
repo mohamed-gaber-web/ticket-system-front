@@ -142,6 +142,7 @@ export interface CreateTicketData {
   priority: 'low' | 'medium' | 'high' | 'critical';
   priorityNumber?: number | null;
   startDate?: string;
+  deliveryEstimationDate?: string;
   notifyEmails?: string[];
   // New optional properties
   environment?: string;

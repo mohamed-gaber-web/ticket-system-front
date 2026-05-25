@@ -81,7 +81,7 @@ export function AssignConsultantsDialog({
   const calculatePosition = () => {
     if (!triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
-    const panelWidth = 320;
+    const panelWidth = isReassign ? 420 : 320;
     const panelMaxHeight = 460;
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
@@ -117,11 +117,7 @@ export function AssignConsultantsDialog({
   };
 
   const handleToggle = (consultantId: string) => {
-    setSelectedConsultants((prev) =>
-      prev.includes(consultantId)
-        ? prev.filter((id) => id !== consultantId)
-        : [...prev, consultantId]
-    );
+    setSelectedConsultants([consultantId]);
   };
 
   const handleSubmit = async () => {
@@ -163,14 +159,14 @@ export function AssignConsultantsDialog({
       <div className="px-4 pt-4 pb-3 border-b border-border shrink-0">
         <p className="text-sm font-semibold text-on-surface flex items-center gap-2">
           {isReassign
-            ? <><RefreshCw className="h-3.5 w-3.5 text-amber-500" /> Re-assign Consultants</>
+            ? <><RefreshCw className="h-3.5 w-3.5 text-amber-500" /> Re-assign responsible task</>
             : <><UserPlus className="h-3.5 w-3.5 text-primary" /> Assign Consultants</>
           }
         </p>
         <p className="text-xs text-on-surface-variant mt-1">
           {isReassign
-            ? 'Select new consultants to replace the current assignment.'
-            : 'Select one or more consultants to assign.'}
+            ? 'Select a consultant to take over responsibility for this task.'
+            : 'Select a consultant to assign to this ticket.'}
         </p>
         {assignedByName && (
           <p className="text-xs text-on-surface-variant mt-2 flex items-center gap-1">
@@ -211,7 +207,7 @@ export function AssignConsultantsDialog({
             return (
               <div
                 key={consultant._id}
-                role="checkbox"
+                role="radio"
                 aria-checked={isSelected}
                 aria-disabled={isDisabled}
                 tabIndex={isDisabled ? -1 : 0}
@@ -230,10 +226,10 @@ export function AssignConsultantsDialog({
                       : 'bg-transparent border-transparent hover:bg-surface-container-high cursor-pointer'
                 }`}
               >
-                <div className={`h-4 w-4 rounded-[4px] border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
-                  isSelected ? 'bg-primary border-primary' : 'border-input bg-transparent'
+                <div className={`h-4 w-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                  isSelected ? 'border-primary' : 'border-input bg-transparent'
                 }`}>
-                  {isSelected && <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />}
+                  {isSelected && <div className="h-2 w-2 rounded-full bg-primary" />}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
@@ -275,9 +271,7 @@ export function AssignConsultantsDialog({
       {/* Footer */}
       <div className="px-3 pb-3 flex items-center justify-between gap-2 border-t border-border pt-3 shrink-0">
         <span className="text-xs text-on-surface-variant">
-          {selectedConsultants.length > 0
-            ? `${selectedConsultants.length} selected`
-            : 'None selected'}
+          {selectedConsultants.length > 0 ? '1 consultant selected' : 'None selected'}
         </span>
         <div className="flex items-center gap-2">
           <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>
@@ -293,7 +287,7 @@ export function AssignConsultantsDialog({
             {loading ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : isReassign ? (
-              <><RefreshCw className="h-3.5 w-3.5 mr-1" /> Re-assign</>
+              <><RefreshCw className="h-3.5 w-3.5 mr-1" /> Re-assign responsible task</>
             ) : (
               <><UserPlus className="h-3.5 w-3.5 mr-1" /> Assign</>
             )}
@@ -309,7 +303,7 @@ export function AssignConsultantsDialog({
         ref={triggerRef}
         type="button"
         onClick={handleOpen}
-        className={`flex items-center gap-2 h-8 px-3 rounded-[0.5rem] border text-sm font-medium transition-colors ${
+        className={`flex items-center gap-2 h-8 px-3 rounded-[0.5rem] border text-sm font-medium transition-colors whitespace-nowrap ${
           isReassign
             ? 'border-amber-200 text-amber-600 hover:bg-amber-50 hover:text-amber-700'
             : 'border-border text-on-surface hover:bg-surface-container-high'
@@ -319,7 +313,7 @@ export function AssignConsultantsDialog({
           ? <RefreshCw className="h-3.5 w-3.5" />
           : <UserPlus className="h-3.5 w-3.5" />
         }
-        {isReassign ? 'Re-assign' : 'Assign Consultant'}
+        {isReassign ? 'Re-assign responsible task' : 'Assign Consultant'}
         <ChevronDown className="h-3.5 w-3.5 text-on-surface-variant" />
       </button>
 

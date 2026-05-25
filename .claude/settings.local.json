@@ -31,7 +31,8 @@
       "Bash(Get-ChildItem -Path \"D:\\\\Real Project\\\\Ticketing System\\\\back-en-and-api\" -Recurse -Directory)",
       "Bash(Select-Object -ExpandProperty FullName)",
       "Bash(Sort-Object)",
-      "PowerShell(gh pr *)"
+      "PowerShell(gh pr *)",
+      "Bash(Get-ChildItem -Path \"D:\\\\Real Project\\\\Ticketing System\\\\front-end\\\\my-react-ts-app\\\\src\" -Recurse -Directory)"
     ]
   }
 }

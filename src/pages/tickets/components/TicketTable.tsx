@@ -11,8 +11,9 @@ import { Button } from '@/components/ui/button';
 import { Edit, Trash2, Ticket as TicketIcon, Eye, CheckCircle, GitBranch, MoreVertical, ChevronRight, ChevronDown, Timer, ChevronsUpDown, ChevronUp, Pencil, CalendarDays, ChevronUp as Inc, ChevronDown as Dec, Check, X } from 'lucide-react';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
-import type { Ticket, Consultant } from '@/types/ticket';
+import type { Ticket, Consultant, Category, UpdateTicketData } from '@/types/ticket';
 import type { ServiceType } from '@/types/serviceType.types';
+import type { Module } from '@/types/module.types';
 import { useAppSelector, useAppDispatch } from '@/redux/hooks/hooks';
 import { acceptTicket, fetchSubTickets, updateTicket } from '@/redux/slices/ticketSlice';
 
@@ -29,6 +30,26 @@ interface TicketTableProps {
 const PRIORITY_ORDER: Record<string, number> = { low: 1, medium: 2, high: 3, critical: 4 };
 type SortKey = 'ticketNumber' | 'status' | 'priority' | 'priorityNumber' | 'createdAt' | 'acceptedAt' | 'deliveryEstimationDate' | 'updatedAt' | 'resolvedAt' | 'closedAt' | 'scheduledWeek';
 type SortDir = 'asc' | 'desc';
+type InlineEditField = 'subject' | 'description' | 'status' | 'priority' | 'priorityNumber' | 'durationHours' | 'deliveryEstimationDate' | 'category' | 'serviceType' | 'scope';
+
+const STATUS_OPTIONS: { value: Ticket['status']; label: string }[] = [
+  { value: 'new', label: 'New' },
+  { value: 'assigned', label: 'Assigned' },
+  { value: 'in_progress', label: 'In Progress' },
+  { value: 'customer_pending', label: 'Customer Pending' },
+  { value: 'delivered', label: 'Delivered' },
+  { value: 'tested', label: 'Tested' },
+  { value: 'resolved', label: 'Resolved' },
+  { value: 'closed', label: 'Closed' },
+  { value: 'not_related', label: 'Not Related' },
+];
+
+const PRIORITY_OPTIONS: { value: Ticket['priority']; label: string }[] = [
+  { value: 'low', label: 'Low' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'high', label: 'High' },
+  { value: 'critical', label: 'Critical' },
+];
 
 export default function TicketTable({ tickets, onDelete, loading }: TicketTableProps) {
   const dispatch = useAppDispatch();
@@ -39,6 +60,8 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
   const isConsultant = userType === 'consultant';
   const isCustomer = userType === 'customer';
   const { serviceTypes } = useAppSelector((state) => state.serviceTypes);
+  const { categories } = useAppSelector((state) => state.categories);
+  const { modules } = useAppSelector((state) => state.modules);
 
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>('asc');
@@ -74,6 +97,13 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
   const [weekPopPos, setWeekPopPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
   const weekInputRef = useRef<HTMLInputElement>(null);
   const weekPopRef = useRef<HTMLDivElement>(null);
+  const [activeEdit, setActiveEdit] = useState<{ ticketId: string; field: InlineEditField; value: string | string[] } | null>(null);
+  const [editSaving, setEditSaving] = useState<{ ticketId: string; field: InlineEditField } | null>(null);
+  const [editPopPos, setEditPopPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
+  const [editSearch, setEditSearch] = useState('');
+  const editPopRef = useRef<HTMLDivElement>(null);
+  const editInputRef = useRef<HTMLInputElement>(null);
+  const editTextareaRef = useRef<HTMLTextAreaElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const tableScrollRef = useRef<HTMLDivElement>(null);
   const topScrollRef = useRef<HTMLDivElement>(null);
@@ -117,6 +147,9 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
       }
       if (weekPopRef.current && !weekPopRef.current.contains(e.target as Node)) {
         setWeekEditId(null);
+      }
+      if (editPopRef.current && !editPopRef.current.contains(e.target as Node)) {
+        setActiveEdit(null);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -247,6 +280,113 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
     const current = parseInt(weekEditValue, 10);
     const next = isNaN(current) ? (delta > 0 ? 1 : 53) : Math.min(53, Math.max(1, current + delta));
     setWeekEditValue(String(next));
+  };
+
+  const isSavingField = (ticketId: string, field: InlineEditField) =>
+    editSaving?.ticketId === ticketId && editSaving?.field === field;
+
+  const startEdit = (ticket: Ticket, field: InlineEditField, btn: HTMLElement) => {
+    const rect = btn.getBoundingClientRect();
+    setEditSearch('');
+    setEditPopPos({ top: rect.bottom + 6, left: rect.left });
+
+    let initialValue: string | string[] = '';
+    switch (field) {
+      case 'subject': initialValue = ticket.subject ?? ''; break;
+      case 'description': initialValue = ticket.description ?? ''; break;
+      case 'status': initialValue = ticket.status; break;
+      case 'priority': initialValue = ticket.priority; break;
+      case 'priorityNumber': initialValue = ticket.priorityNumber != null ? String(ticket.priorityNumber) : ''; break;
+      case 'durationHours': initialValue = ticket.durationHours != null ? String(ticket.durationHours) : ''; break;
+      case 'deliveryEstimationDate':
+        initialValue = ticket.deliveryEstimationDate ? ticket.deliveryEstimationDate.slice(0, 10) : '';
+        break;
+      case 'category':
+        initialValue = ticket.category
+          ? typeof ticket.category === 'object' ? (ticket.category as Category)._id : ticket.category as string
+          : '';
+        break;
+      case 'serviceType':
+        initialValue = ticket.serviceType
+          ? typeof ticket.serviceType === 'object' ? (ticket.serviceType as ServiceType)._id : ticket.serviceType as string
+          : '';
+        break;
+      case 'scope': {
+        const s = Array.isArray(ticket.scope) ? ticket.scope as any[] : [];
+        initialValue = s.map((m: any) => (typeof m === 'object' ? m._id : m));
+        break;
+      }
+    }
+    setActiveEdit({ ticketId: ticket._id, field, value: initialValue });
+    setTimeout(() => {
+      if (field === 'subject' || field === 'description') editTextareaRef.current?.focus();
+      else if (field === 'priorityNumber' || field === 'durationHours' || field === 'deliveryEstimationDate') editInputRef.current?.focus();
+    }, 30);
+  };
+
+  const selectSave = async (ticketId: string, field: InlineEditField, value: string) => {
+    setActiveEdit(null);
+    setEditSaving({ ticketId, field });
+    const data: UpdateTicketData = {};
+    if (field === 'status') data.status = value as any;
+    else if (field === 'priority') data.priority = value as any;
+    else if (field === 'category') data.category = value || undefined;
+    else if (field === 'serviceType') data.serviceType = value || undefined;
+    try {
+      await dispatch(updateTicket({ id: ticketId, data })).unwrap();
+    } catch { /* error toast handled by slice */ }
+    finally { setEditSaving(null); }
+  };
+
+  const saveEdit = async () => {
+    if (!activeEdit) return;
+    const { ticketId, field, value } = activeEdit;
+    const data: UpdateTicketData = {};
+
+    switch (field) {
+      case 'subject': {
+        const v = (value as string).trim();
+        if (!v) { setActiveEdit(null); return; }
+        data.subject = v;
+        break;
+      }
+      case 'description': {
+        const v = (value as string).trim();
+        if (!v) { setActiveEdit(null); return; }
+        data.description = v;
+        break;
+      }
+      case 'priorityNumber': {
+        const v = (value as string).trim();
+        const parsed = v === '' ? null : parseInt(v, 10);
+        if (v !== '' && (isNaN(parsed!) || parsed! < 1)) { setActiveEdit(null); return; }
+        data.priorityNumber = parsed;
+        break;
+      }
+      case 'durationHours': {
+        const v = (value as string).trim();
+        const parsed = v === '' ? undefined : parseFloat(v);
+        if (parsed !== undefined && (isNaN(parsed) || parsed < 0)) { setActiveEdit(null); return; }
+        data.durationHours = parsed;
+        break;
+      }
+      case 'deliveryEstimationDate':
+        data.deliveryEstimationDate = (value as string) || undefined;
+        break;
+      case 'scope':
+        data.scope = value as string[];
+        break;
+      default:
+        setActiveEdit(null);
+        return;
+    }
+
+    setActiveEdit(null);
+    setEditSaving({ ticketId, field });
+    try {
+      await dispatch(updateTicket({ id: ticketId, data })).unwrap();
+    } catch { /* error toast handled by slice */ }
+    finally { setEditSaving(null); }
   };
 
   const getConsultantName = (person: string | Consultant | undefined): string | null => {
@@ -541,19 +681,78 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                     </div>
                   </TableCell>
                   {/* Status */}
-                  <TableCell>{getStatusBadge(ticket.status)}</TableCell>
-                  {/* Subject */}
                   <TableCell>
-                    <div>
-                      <p className={`font-medium text-sm ${isSubTicket ? 'text-brand-500' : 'text-on-surface'}`}>
-                        {ticket.subject}
-                      </p>
-                      {isSubTicket && (
-                        <span className="inline-flex items-center gap-1 mt-0.5 text-xs text-brand-400">
-                          <GitBranch className="h-3 w-3" />
-                          Sub-ticket
+                    {!isCustomer ? (
+                      isSavingField(ticket._id, 'status') ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-container text-on-surface-variant text-xs font-semibold opacity-60 select-none">
+                          <span className="h-3 w-3 rounded-full border-2 border-brand-400 border-t-transparent animate-spin shrink-0" />
+                          Saving
                         </span>
-                      )}
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={(e) => startEdit(ticket, 'status', e.currentTarget)}
+                          title="Click to change status"
+                          className="rounded-lg hover:ring-2 hover:ring-brand-400/30 transition-all cursor-pointer"
+                        >
+                          {getStatusBadge(ticket.status)}
+                        </button>
+                      )
+                    ) : getStatusBadge(ticket.status)}
+                  </TableCell>
+                  {/* Subject + Description */}
+                  <TableCell>
+                    <div className="flex flex-col gap-1 min-w-0">
+                      {/* Subject row */}
+                      <div className="flex items-start gap-1.5 group/subj">
+                        <p className={`font-medium text-sm leading-snug ${isSubTicket ? 'text-brand-500' : 'text-on-surface'}`}>
+                          {ticket.subject}
+                          {isSubTicket && (
+                            <span className="inline-flex items-center gap-1 ml-1.5 text-xs text-brand-400">
+                              <GitBranch className="h-3 w-3" />
+                              Sub-ticket
+                            </span>
+                          )}
+                        </p>
+                        {!isCustomer && (
+                          isSavingField(ticket._id, 'subject') ? (
+                            <span className="h-3.5 w-3.5 rounded-full border-2 border-brand-400 border-t-transparent animate-spin shrink-0 mt-0.5" />
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={(e) => startEdit(ticket, 'subject', e.currentTarget)}
+                              className="opacity-0 group-hover/subj:opacity-60 hover:!opacity-100 p-0.5 rounded hover:bg-surface-container-high transition-all shrink-0 mt-0.5"
+                              title="Edit subject"
+                            >
+                              <Pencil className="h-3 w-3 text-on-surface-variant" />
+                            </button>
+                          )
+                        )}
+                      </div>
+                      {/* Description row */}
+                      <div className="flex items-start gap-1.5 group/desc">
+                        {ticket.description ? (
+                          <p className="text-xs text-on-surface-variant leading-relaxed line-clamp-2 flex-1 min-w-0">
+                            {ticket.description}
+                          </p>
+                        ) : (
+                          !isCustomer && <span className="text-xs text-on-surface-variant/30 italic">No description</span>
+                        )}
+                        {!isCustomer && (
+                          isSavingField(ticket._id, 'description') ? (
+                            <span className="h-3 w-3 rounded-full border-2 border-brand-400 border-t-transparent animate-spin shrink-0 mt-0.5" />
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={(e) => startEdit(ticket, 'description', e.currentTarget)}
+                              className="opacity-0 group-hover/desc:opacity-60 hover:!opacity-100 p-0.5 rounded hover:bg-surface-container-high transition-all shrink-0 mt-0.5"
+                              title="Edit description"
+                            >
+                              <Pencil className="h-3 w-3 text-on-surface-variant" />
+                            </button>
+                          )
+                        )}
+                      </div>
                     </div>
                   </TableCell>
                   {/* Company */}
@@ -610,40 +809,131 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                   {/* Category */}
                   {isConsultant && (
                     <TableCell>
-                      {ticket.category && typeof ticket.category === 'object' ? (
-                        <span className="text-sm text-on-surface">{ticket.category.name}</span>
-                      ) : (
-                        <span className="text-on-surface-variant/40">&mdash;</span>
-                      )}
+                      <div className="flex items-center gap-1.5 group/cat">
+                        {ticket.category && typeof ticket.category === 'object' ? (
+                          <span className="text-sm text-on-surface">{ticket.category.name}</span>
+                        ) : (
+                          <span className="text-on-surface-variant/40">&mdash;</span>
+                        )}
+                        {isSavingField(ticket._id, 'category') ? (
+                          <span className="h-3.5 w-3.5 rounded-full border-2 border-brand-400 border-t-transparent animate-spin shrink-0" />
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={(e) => startEdit(ticket, 'category', e.currentTarget)}
+                            className="opacity-0 group-hover/cat:opacity-60 hover:!opacity-100 p-0.5 rounded hover:bg-surface-container-high transition-all shrink-0"
+                            title="Edit category"
+                          >
+                            <Pencil className="h-3 w-3 text-on-surface-variant" />
+                          </button>
+                        )}
+                      </div>
                     </TableCell>
                   )}
                   {/* Service Type */}
                   <TableCell>
-                    {(() => {
-                      const stName = getServiceTypeName(ticket.serviceType);
-                      return stName
-                        ? <span className="text-sm text-on-surface">{stName}</span>
-                        : <span className="text-on-surface-variant/40">&mdash;</span>;
-                    })()}
+                    <div className="flex items-center gap-1.5 group/st">
+                      {(() => {
+                        const stName = getServiceTypeName(ticket.serviceType);
+                        return stName
+                          ? <span className="text-sm text-on-surface">{stName}</span>
+                          : <span className="text-on-surface-variant/40">&mdash;</span>;
+                      })()}
+                      {!isCustomer && (
+                        isSavingField(ticket._id, 'serviceType') ? (
+                          <span className="h-3.5 w-3.5 rounded-full border-2 border-brand-400 border-t-transparent animate-spin shrink-0" />
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={(e) => startEdit(ticket, 'serviceType', e.currentTarget)}
+                            className="opacity-0 group-hover/st:opacity-60 hover:!opacity-100 p-0.5 rounded hover:bg-surface-container-high transition-all shrink-0"
+                            title="Edit service type"
+                          >
+                            <Pencil className="h-3 w-3 text-on-surface-variant" />
+                          </button>
+                        )
+                      )}
+                    </div>
                   </TableCell>
                   {/* Priority */}
-                  <TableCell>{getPriorityDisplay(ticket.priority)}</TableCell>
+                  <TableCell>
+                    {!isCustomer ? (
+                      isSavingField(ticket._id, 'priority') ? (
+                        <span className="inline-flex items-center gap-1.5 text-xs text-on-surface-variant opacity-60">
+                          <span className="h-3 w-3 rounded-full border-2 border-brand-400 border-t-transparent animate-spin shrink-0" />
+                          Saving
+                        </span>
+                      ) : (
+                        <div className="flex items-center gap-1 group/pri">
+                          <button
+                            type="button"
+                            onClick={(e) => startEdit(ticket, 'priority', e.currentTarget)}
+                            title="Click to change priority"
+                            className="rounded-lg hover:ring-2 hover:ring-brand-400/30 transition-all cursor-pointer"
+                          >
+                            {getPriorityDisplay(ticket.priority)}
+                          </button>
+                          <Pencil className="h-3 w-3 text-on-surface-variant opacity-0 group-hover/pri:opacity-50 transition-opacity shrink-0" />
+                        </div>
+                      )
+                    ) : getPriorityDisplay(ticket.priority)}
+                  </TableCell>
                   {/* Priority # */}
                   <TableCell>
-                    {ticket.priorityNumber != null
-                      ? <span className="text-sm font-semibold text-on-surface">{ticket.priorityNumber}</span>
-                      : <span className="text-on-surface-variant/40">&mdash;</span>}
+                    {!isCustomer ? (
+                      isSavingField(ticket._id, 'priorityNumber') ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-brand-50 text-brand-600 text-xs font-semibold opacity-60 select-none">
+                          <span className="h-3 w-3 rounded-full border-2 border-brand-400 border-t-transparent animate-spin shrink-0" />
+                          Saving
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={(e) => startEdit(ticket, 'priorityNumber', e.currentTarget)}
+                          title="Click to set priority number"
+                          className={`group/pn inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all duration-150 cursor-pointer border
+                            ${activeEdit?.ticketId === ticket._id && activeEdit?.field === 'priorityNumber'
+                              ? 'bg-brand-100 border-brand-400 text-brand-700 ring-2 ring-brand-400/30'
+                              : ticket.priorityNumber != null
+                                ? 'bg-brand-50 border-brand-200 text-brand-700 hover:bg-brand-100 hover:border-brand-400'
+                                : 'bg-transparent border-dashed border-outline-variant/50 text-on-surface-variant/50 hover:border-brand-400 hover:text-brand-600 hover:bg-brand-50'
+                            }`}
+                        >
+                          {ticket.priorityNumber != null ? <span>#{ticket.priorityNumber}</span> : <span>Set #</span>}
+                          <Pencil className="h-2.5 w-2.5 shrink-0 opacity-0 group-hover/pn:opacity-60 transition-opacity ml-0.5" />
+                        </button>
+                      )
+                    ) : (
+                      ticket.priorityNumber != null
+                        ? <span className="text-sm font-semibold text-on-surface">{ticket.priorityNumber}</span>
+                        : <span className="text-on-surface-variant/40">&mdash;</span>
+                    )}
                   </TableCell>
                   {/* Duration */}
                   {isConsultant && (
                     <TableCell>
-                      {ticket.durationHours != null ? (
-                        <span className="inline-flex items-center gap-1 text-sm font-semibold text-on-surface">
-                          <Timer className="w-3.5 h-3.5 text-brand-500 flex-shrink-0" />
-                          {ticket.durationHours}h
+                      {isSavingField(ticket._id, 'durationHours') ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-brand-50 text-brand-600 text-xs font-semibold opacity-60 select-none">
+                          <span className="h-3 w-3 rounded-full border-2 border-brand-400 border-t-transparent animate-spin shrink-0" />
+                          Saving
                         </span>
                       ) : (
-                        <span className="text-on-surface-variant/40">&mdash;</span>
+                        <button
+                          type="button"
+                          onClick={(e) => startEdit(ticket, 'durationHours', e.currentTarget)}
+                          title="Click to set duration"
+                          className={`group/dur inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all duration-150 cursor-pointer border
+                            ${activeEdit?.ticketId === ticket._id && activeEdit?.field === 'durationHours'
+                              ? 'bg-brand-100 border-brand-400 text-brand-700 ring-2 ring-brand-400/30'
+                              : ticket.durationHours != null
+                                ? 'bg-brand-50 border-brand-200 text-brand-700 hover:bg-brand-100 hover:border-brand-400'
+                                : 'bg-transparent border-dashed border-outline-variant/50 text-on-surface-variant/50 hover:border-brand-400 hover:text-brand-600 hover:bg-brand-50'
+                            }`}
+                        >
+                          <Timer className="h-3 w-3 shrink-0 opacity-70" />
+                          {ticket.durationHours != null ? <span>{ticket.durationHours}h</span> : <span>Set duration</span>}
+                          <Pencil className="h-2.5 w-2.5 shrink-0 opacity-0 group-hover/dur:opacity-60 transition-opacity ml-0.5" />
+                        </button>
                       )}
                     </TableCell>
                   )}
@@ -681,11 +971,11 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                   {/* Module (scope — multi-value) */}
                   {isConsultant && (
                     <TableCell>
-                      {(() => {
-                        const scope = getEffectiveScope(ticket);
-                        return scope.length > 0 ? (
-                          <div className="flex flex-wrap gap-1">
-                            {scope.map((s, i) =>
+                      <div className="flex flex-wrap items-start gap-1 group/scope">
+                        {(() => {
+                          const scope = getEffectiveScope(ticket);
+                          return scope.length > 0 ? (
+                            scope.map((s, i) =>
                               s && typeof s === 'object' ? (
                                 <span
                                   key={s._id ?? i}
@@ -694,12 +984,26 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                                   {s.name}
                                 </span>
                               ) : null
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-on-surface-variant/40">&mdash;</span>
-                        );
-                      })()}
+                            )
+                          ) : (
+                            <span className="text-on-surface-variant/40">&mdash;</span>
+                          );
+                        })()}
+                        {!isSubTicket && (
+                          isSavingField(ticket._id, 'scope') ? (
+                            <span className="h-3.5 w-3.5 rounded-full border-2 border-brand-400 border-t-transparent animate-spin shrink-0 mt-0.5" />
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={(e) => startEdit(ticket, 'scope', e.currentTarget)}
+                              className="opacity-0 group-hover/scope:opacity-60 hover:!opacity-100 p-0.5 rounded hover:bg-surface-container-high transition-all shrink-0 mt-0.5"
+                              title="Edit modules"
+                            >
+                              <Pencil className="h-3 w-3 text-on-surface-variant" />
+                            </button>
+                          )
+                        )}
+                      </div>
                     </TableCell>
                   )}
                   {/* Created Date */}
@@ -732,13 +1036,29 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                   </TableCell>
                   {/* Delivery Date */}
                   <TableCell>
-                    {ticket.deliveryEstimationDate ? (
-                      <span className="text-sm text-on-surface">
-                        {new Date(ticket.deliveryEstimationDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </span>
-                    ) : (
-                      <span className="text-on-surface-variant/40">&mdash;</span>
-                    )}
+                    <div className="flex items-center gap-1.5 group/dd">
+                      {ticket.deliveryEstimationDate ? (
+                        <span className="text-sm text-on-surface">
+                          {new Date(ticket.deliveryEstimationDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </span>
+                      ) : (
+                        <span className="text-on-surface-variant/40">&mdash;</span>
+                      )}
+                      {!isCustomer && (
+                        isSavingField(ticket._id, 'deliveryEstimationDate') ? (
+                          <span className="h-3.5 w-3.5 rounded-full border-2 border-brand-400 border-t-transparent animate-spin shrink-0" />
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={(e) => startEdit(ticket, 'deliveryEstimationDate', e.currentTarget)}
+                            className="opacity-0 group-hover/dd:opacity-60 hover:!opacity-100 p-0.5 rounded hover:bg-surface-container-high transition-all shrink-0"
+                            title="Edit delivery date"
+                          >
+                            <Pencil className="h-3 w-3 text-on-surface-variant" />
+                          </button>
+                        )
+                      )}
+                    </div>
                   </TableCell>
                   {/* Last Updated */}
                   <TableCell>
@@ -926,6 +1246,358 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
               Save
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Generic inline field editor popover */}
+      {activeEdit && (
+        <div
+          ref={editPopRef}
+          className="fixed z-[9999] rounded-2xl glass shadow-ambient border border-outline-variant/30 overflow-hidden"
+          style={{
+            top: editPopPos.top,
+            left: editPopPos.left,
+            width: activeEdit.field === 'subject' || activeEdit.field === 'description' ? 320
+              : activeEdit.field === 'scope' ? 280
+              : activeEdit.field === 'status' ? 220
+              : activeEdit.field === 'category' || activeEdit.field === 'serviceType' ? 240
+              : activeEdit.field === 'priorityNumber' || activeEdit.field === 'durationHours' ? 240
+              : 208,
+          }}
+        >
+          {/* Header */}
+          <div className="flex items-center gap-2 px-4 pt-3.5 pb-2 border-b border-outline-variant/20">
+            <span className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide">
+              {activeEdit.field === 'subject' ? 'Subject'
+                : activeEdit.field === 'description' ? 'Description'
+                : activeEdit.field === 'status' ? 'Status'
+                : activeEdit.field === 'priority' ? 'Priority'
+                : activeEdit.field === 'priorityNumber' ? 'Priority #'
+                : activeEdit.field === 'durationHours' ? 'Duration (hours)'
+                : activeEdit.field === 'deliveryEstimationDate' ? 'Delivery Date'
+                : activeEdit.field === 'category' ? 'Category'
+                : activeEdit.field === 'serviceType' ? 'Service Type'
+                : 'Modules'}
+            </span>
+          </div>
+
+          {/* Subject / Description — textarea */}
+          {(activeEdit.field === 'subject' || activeEdit.field === 'description') && (
+            <div className="p-3 space-y-2.5">
+              <textarea
+                ref={editTextareaRef}
+                value={activeEdit.value as string}
+                onChange={(e) => setActiveEdit((prev) => prev ? { ...prev, value: e.target.value } : null)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') setActiveEdit(null);
+                  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) saveEdit();
+                }}
+                rows={activeEdit.field === 'description' ? 5 : 3}
+                className="w-full text-sm text-on-surface bg-surface-container border border-outline-variant rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-400 resize-none"
+                placeholder={activeEdit.field === 'description' ? 'Enter description…' : 'Enter subject…'}
+              />
+              <p className="text-[10px] text-on-surface-variant/50 -mt-1">Ctrl+Enter to save</p>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setActiveEdit(null)}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-xl border border-outline-variant text-xs font-semibold text-on-surface-variant hover:bg-surface-container-high transition-colors">
+                  <X className="h-3.5 w-3.5" />Cancel
+                </button>
+                <button type="button" onClick={saveEdit}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-xl bg-brand-600 text-white text-xs font-semibold hover:bg-brand-700 transition-colors">
+                  <Check className="h-3.5 w-3.5" />Save
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Status — click-to-save list */}
+          {activeEdit.field === 'status' && (
+            <div className="py-1.5 max-h-72 overflow-y-auto">
+              {STATUS_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => selectSave(activeEdit.ticketId, 'status', opt.value)}
+                  className={`flex items-center gap-2 w-full px-3.5 py-2 text-sm hover:bg-surface-container-highest transition-colors ${activeEdit.value === opt.value ? 'bg-surface-container-high' : ''}`}
+                >
+                  {getStatusBadge(opt.value)}
+                  {activeEdit.value === opt.value && <Check className="h-3 w-3 ml-auto text-brand-500 shrink-0" />}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Priority — click-to-save list */}
+          {activeEdit.field === 'priority' && (() => {
+            const dotColors: Record<string, string> = { critical: 'bg-error', high: 'bg-accent-orange-500', medium: 'bg-yellow-500', low: 'bg-green-500' };
+            const textColors: Record<string, string> = { critical: 'text-error', high: 'text-accent-orange-600', medium: 'text-yellow-600', low: 'text-green-600' };
+            return (
+              <div className="py-1.5">
+                {PRIORITY_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => selectSave(activeEdit.ticketId, 'priority', opt.value)}
+                    className={`flex items-center gap-2.5 w-full px-3.5 py-2.5 hover:bg-surface-container-highest transition-colors ${activeEdit.value === opt.value ? 'bg-surface-container-high' : ''}`}
+                  >
+                    <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${dotColors[opt.value] ?? 'bg-yellow-500'}`} />
+                    <span className={`text-xs font-bold tracking-[0.05em] uppercase ${textColors[opt.value] ?? 'text-yellow-600'}`}>{opt.label}</span>
+                    {activeEdit.value === opt.value && <Check className="h-3 w-3 ml-auto text-brand-500 shrink-0" />}
+                  </button>
+                ))}
+              </div>
+            );
+          })()}
+
+          {/* Priority # — number stepper */}
+          {activeEdit.field === 'priorityNumber' && (
+            <div className="p-3 space-y-2.5">
+              <div className="flex items-center gap-2 min-w-0">
+                <button type="button"
+                  onClick={() => setActiveEdit((prev) => {
+                    if (!prev) return null;
+                    const v = parseInt(prev.value as string, 10);
+                    return { ...prev, value: String(isNaN(v) ? 1 : Math.max(1, v - 1)) };
+                  })}
+                  className="flex-shrink-0 flex items-center justify-center w-9 h-9 rounded-lg bg-surface-container border border-outline-variant hover:bg-surface-container-high hover:border-brand-400 transition-colors text-on-surface-variant hover:text-brand-600">
+                  <Dec className="h-4 w-4" />
+                </button>
+                <input
+                  ref={editInputRef}
+                  type="number"
+                  min={1}
+                  value={activeEdit.value as string}
+                  onChange={(e) => setActiveEdit((prev) => prev ? { ...prev, value: e.target.value } : null)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') saveEdit();
+                    if (e.key === 'Escape') setActiveEdit(null);
+                    if (e.key === 'ArrowUp') { e.preventDefault(); setActiveEdit((prev) => { if (!prev) return null; const v = parseInt(prev.value as string, 10); return { ...prev, value: String(isNaN(v) ? 1 : v + 1) }; }); }
+                    if (e.key === 'ArrowDown') { e.preventDefault(); setActiveEdit((prev) => { if (!prev) return null; const v = parseInt(prev.value as string, 10); return { ...prev, value: String(isNaN(v) ? 1 : Math.max(1, v - 1)) }; }); }
+                  }}
+                  placeholder="—"
+                  className="min-w-0 flex-1 text-center text-lg font-bold text-brand-700 bg-brand-50 border border-brand-200 rounded-xl px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-400 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                />
+                <button type="button"
+                  onClick={() => setActiveEdit((prev) => {
+                    if (!prev) return null;
+                    const v = parseInt(prev.value as string, 10);
+                    return { ...prev, value: String(isNaN(v) ? 1 : v + 1) };
+                  })}
+                  className="flex-shrink-0 flex items-center justify-center w-9 h-9 rounded-lg bg-surface-container border border-outline-variant hover:bg-surface-container-high hover:border-brand-400 transition-colors text-on-surface-variant hover:text-brand-600">
+                  <Inc className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setActiveEdit(null)}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-xl border border-outline-variant text-xs font-semibold text-on-surface-variant hover:bg-surface-container-high transition-colors">
+                  <X className="h-3.5 w-3.5" />Cancel
+                </button>
+                <button type="button" onClick={saveEdit}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-xl bg-brand-600 text-white text-xs font-semibold hover:bg-brand-700 transition-colors">
+                  <Check className="h-3.5 w-3.5" />Save
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Duration — number stepper */}
+          {activeEdit.field === 'durationHours' && (
+            <div className="p-3 space-y-2.5">
+              <div className="flex items-center gap-2 min-w-0">
+                <button type="button"
+                  onClick={() => setActiveEdit((prev) => {
+                    if (!prev) return null;
+                    const v = parseFloat(prev.value as string);
+                    return { ...prev, value: String(isNaN(v) ? 0.5 : Math.max(0.5, parseFloat((v - 0.5).toFixed(1)))) };
+                  })}
+                  className="flex-shrink-0 flex items-center justify-center w-9 h-9 rounded-lg bg-surface-container border border-outline-variant hover:bg-surface-container-high hover:border-brand-400 transition-colors text-on-surface-variant hover:text-brand-600">
+                  <Dec className="h-4 w-4" />
+                </button>
+                <div className="flex-1 min-w-0 relative">
+                  <input
+                    ref={editInputRef}
+                    type="number"
+                    min={0}
+                    step={0.5}
+                    value={activeEdit.value as string}
+                    onChange={(e) => setActiveEdit((prev) => prev ? { ...prev, value: e.target.value } : null)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') saveEdit();
+                      if (e.key === 'Escape') setActiveEdit(null);
+                    }}
+                    placeholder="—"
+                    className="w-full min-w-0 text-center text-lg font-bold text-brand-700 bg-brand-50 border border-brand-200 rounded-xl px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-400 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                  />
+                  {activeEdit.value && (
+                    <span className="absolute -top-2 left-1/2 -translate-x-1/2 text-[10px] font-semibold text-brand-500 bg-surface px-1 rounded">
+                      {activeEdit.value}h
+                    </span>
+                  )}
+                </div>
+                <button type="button"
+                  onClick={() => setActiveEdit((prev) => {
+                    if (!prev) return null;
+                    const v = parseFloat(prev.value as string);
+                    return { ...prev, value: String(isNaN(v) ? 0.5 : parseFloat((v + 0.5).toFixed(1))) };
+                  })}
+                  className="flex-shrink-0 flex items-center justify-center w-9 h-9 rounded-lg bg-surface-container border border-outline-variant hover:bg-surface-container-high hover:border-brand-400 transition-colors text-on-surface-variant hover:text-brand-600">
+                  <Inc className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setActiveEdit(null)}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-xl border border-outline-variant text-xs font-semibold text-on-surface-variant hover:bg-surface-container-high transition-colors">
+                  <X className="h-3.5 w-3.5" />Cancel
+                </button>
+                <button type="button" onClick={saveEdit}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-xl bg-brand-600 text-white text-xs font-semibold hover:bg-brand-700 transition-colors">
+                  <Check className="h-3.5 w-3.5" />Save
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Delivery Date */}
+          {activeEdit.field === 'deliveryEstimationDate' && (
+            <div className="p-3 space-y-2.5">
+              <input
+                ref={editInputRef}
+                type="date"
+                value={activeEdit.value as string}
+                onChange={(e) => setActiveEdit((prev) => prev ? { ...prev, value: e.target.value } : null)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') saveEdit();
+                  if (e.key === 'Escape') setActiveEdit(null);
+                }}
+                className="w-full text-sm text-on-surface bg-surface-container border border-outline-variant rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-400"
+              />
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setActiveEdit(null)}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-xl border border-outline-variant text-xs font-semibold text-on-surface-variant hover:bg-surface-container-high transition-colors">
+                  <X className="h-3.5 w-3.5" />Cancel
+                </button>
+                <button type="button" onClick={saveEdit}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-xl bg-brand-600 text-white text-xs font-semibold hover:bg-brand-700 transition-colors">
+                  <Check className="h-3.5 w-3.5" />Save
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Category — searchable click-to-save list */}
+          {activeEdit.field === 'category' && (
+            <>
+              <div className="px-3 pt-2 pb-1.5">
+                <input
+                  type="text"
+                  value={editSearch}
+                  onChange={(e) => setEditSearch(e.target.value)}
+                  placeholder="Search categories…"
+                  className="w-full text-xs bg-surface-container border border-outline-variant rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500/40"
+                />
+              </div>
+              <div className="max-h-52 overflow-y-auto py-1">
+                <button type="button"
+                  onClick={() => selectSave(activeEdit.ticketId, 'category', '')}
+                  className={`flex items-center gap-2 w-full px-3.5 py-2 text-xs hover:bg-surface-container-highest transition-colors ${!activeEdit.value ? 'bg-surface-container-high' : ''}`}>
+                  <span className="text-on-surface-variant italic">None</span>
+                  {!activeEdit.value && <Check className="h-3 w-3 ml-auto text-brand-500 shrink-0" />}
+                </button>
+                {(categories ?? [])
+                  .filter((c) => !editSearch || c.name.toLowerCase().includes(editSearch.toLowerCase()))
+                  .map((cat) => (
+                    <button key={cat._id} type="button"
+                      onClick={() => selectSave(activeEdit.ticketId, 'category', cat._id)}
+                      className={`flex items-center gap-2 w-full px-3.5 py-2 text-xs text-on-surface hover:bg-surface-container-highest transition-colors ${activeEdit.value === cat._id ? 'bg-surface-container-high' : ''}`}>
+                      <span>{cat.name}</span>
+                      {activeEdit.value === cat._id && <Check className="h-3 w-3 ml-auto text-brand-500 shrink-0" />}
+                    </button>
+                  ))
+                }
+              </div>
+            </>
+          )}
+
+          {/* Service Type — searchable click-to-save list */}
+          {activeEdit.field === 'serviceType' && (
+            <>
+              <div className="px-3 pt-2 pb-1.5">
+                <input
+                  type="text"
+                  value={editSearch}
+                  onChange={(e) => setEditSearch(e.target.value)}
+                  placeholder="Search service types…"
+                  className="w-full text-xs bg-surface-container border border-outline-variant rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500/40"
+                />
+              </div>
+              <div className="max-h-52 overflow-y-auto py-1">
+                <button type="button"
+                  onClick={() => selectSave(activeEdit.ticketId, 'serviceType', '')}
+                  className={`flex items-center gap-2 w-full px-3.5 py-2 text-xs hover:bg-surface-container-highest transition-colors ${!activeEdit.value ? 'bg-surface-container-high' : ''}`}>
+                  <span className="text-on-surface-variant italic">None</span>
+                  {!activeEdit.value && <Check className="h-3 w-3 ml-auto text-brand-500 shrink-0" />}
+                </button>
+                {(serviceTypes ?? [])
+                  .filter((s) => !editSearch || s.name.toLowerCase().includes(editSearch.toLowerCase()))
+                  .map((st) => (
+                    <button key={st._id} type="button"
+                      onClick={() => selectSave(activeEdit.ticketId, 'serviceType', st._id)}
+                      className={`flex items-center gap-2 w-full px-3.5 py-2 text-xs text-on-surface hover:bg-surface-container-highest transition-colors ${activeEdit.value === st._id ? 'bg-surface-container-high' : ''}`}>
+                      <span>{st.name}</span>
+                      {activeEdit.value === st._id && <Check className="h-3 w-3 ml-auto text-brand-500 shrink-0" />}
+                    </button>
+                  ))
+                }
+              </div>
+            </>
+          )}
+
+          {/* Scope/Modules — searchable multi-select */}
+          {activeEdit.field === 'scope' && (
+            <>
+              <div className="px-3 pt-2 pb-1.5">
+                <input
+                  type="text"
+                  value={editSearch}
+                  onChange={(e) => setEditSearch(e.target.value)}
+                  placeholder="Search modules…"
+                  className="w-full text-xs bg-surface-container border border-outline-variant rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-500/40"
+                />
+              </div>
+              <div className="max-h-52 overflow-y-auto py-1">
+                {(modules ?? [])
+                  .filter((m) => !editSearch || m.name.toLowerCase().includes(editSearch.toLowerCase()))
+                  .map((mod) => {
+                    const selected = (activeEdit.value as string[]).includes(mod._id);
+                    return (
+                      <button key={mod._id} type="button"
+                        onClick={() => setActiveEdit((prev) => {
+                          if (!prev) return null;
+                          const curr = prev.value as string[];
+                          return { ...prev, value: selected ? curr.filter((id) => id !== mod._id) : [...curr, mod._id] };
+                        })}
+                        className={`flex items-center gap-2.5 w-full px-3.5 py-2 text-xs hover:bg-surface-container-highest transition-colors ${selected ? 'bg-brand-50 text-brand-700' : 'text-on-surface'}`}>
+                        <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${selected ? 'bg-brand-600 border-brand-600' : 'border-outline-variant'}`}>
+                          {selected && <Check className="h-2.5 w-2.5 text-white" />}
+                        </div>
+                        {mod.name}
+                      </button>
+                    );
+                  })
+                }
+              </div>
+              <div className="flex gap-2 px-3 py-2.5 border-t border-outline-variant/20">
+                <button type="button" onClick={() => setActiveEdit(null)}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-xl border border-outline-variant text-xs font-semibold text-on-surface-variant hover:bg-surface-container-high transition-colors">
+                  <X className="h-3.5 w-3.5" />Cancel
+                </button>
+                <button type="button" onClick={saveEdit}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-xl bg-brand-600 text-white text-xs font-semibold hover:bg-brand-700 transition-colors">
+                  <Check className="h-3.5 w-3.5" />Save
+                </button>
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>

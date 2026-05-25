@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -132,9 +132,13 @@ const CommentItem: React.FC<CommentItemProps> = ({
                 </Badge>
               )}
             </div>
-            <span className="text-xs text-on-surface-variant">
-              {format(new Date(comment.createdAt), 'dd MMM yyyy, HH:mm')}
-              {comment.updatedAt !== comment.createdAt && ' (edited)'}
+            <span className="text-xs text-on-surface-variant flex items-center gap-1.5">
+              <span>{format(new Date(comment.createdAt), 'dd MMM yyyy, HH:mm')}</span>
+              <span className="text-on-surface-variant/40">·</span>
+              <span>{formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}</span>
+              {comment.updatedAt !== comment.createdAt && (
+                <span className="text-on-surface-variant/60 italic">(edited)</span>
+              )}
             </span>
           </div>
 
