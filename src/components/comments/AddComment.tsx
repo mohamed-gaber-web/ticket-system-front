@@ -1,12 +1,14 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import type { KeyboardEvent } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Send, Loader2, Mail, X, Plus, Paperclip, FileText, FileSpreadsheet, Archive, Image } from 'lucide-react';
+import { Send, Loader2, Mail, X, Plus, Paperclip, FileText, FileSpreadsheet, Archive, Image, Sparkles } from 'lucide-react';
 import type { UserType } from '@/types/auth.types';
+import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
+import { fetchAiReplyDraft, clearReplyDraft } from '@/redux/slices/aiSlice';
 
 interface AddCommentProps {
   ticketId: string;
@@ -47,9 +49,38 @@ const AddComment: React.FC<AddCommentProps> = ({
   onSubmit,
   loading = false,
 }) => {
+  const dispatch = useAppDispatch();
+  const { currentTicket } = useAppSelector((state) => state.tickets);
+  const { comments } = useAppSelector((state) => state.comments);
+  const { replyDraft } = useAppSelector((state) => state.ai);
+
   const [commentText, setCommentText] = useState('');
   const [isInternal, setIsInternal] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [aiDraftPopulated, setAiDraftPopulated] = useState(false);
+
+  useEffect(() => {
+    if (replyDraft.draft) {
+      setCommentText(replyDraft.draft);
+      setAiDraftPopulated(true);
+      dispatch(clearReplyDraft());
+    }
+  }, [replyDraft.draft, dispatch]);
+
+  const handleRequestDraft = () => {
+    if (!currentTicket) return;
+    const previousComments = (comments ?? []).slice(-10).map((c) => ({
+      content: c.commentText ?? '',
+      userType: c.commentByUserType ?? 'consultant',
+      createdAt: c.createdAt ?? '',
+    }));
+    dispatch(fetchAiReplyDraft({
+      ticketSubject: currentTicket.subject,
+      ticketDescription: currentTicket.description,
+      ticketStatus: currentTicket.status,
+      previousComments,
+    }));
+  };
 
   const [showEmailSection, setShowEmailSection] = useState(false);
   const [emails, setEmails] = useState<string[]>([]);
@@ -136,6 +167,7 @@ const AddComment: React.FC<AddCommentProps> = ({
       await onSubmit(commentText.trim(), isInternal, finalEmails, files);
       setCommentText('');
       setIsInternal(false);
+      setAiDraftPopulated(false);
       setEmails([]);
       setEmailInput('');
       setShowEmailSection(false);
@@ -154,14 +186,35 @@ const AddComment: React.FC<AddCommentProps> = ({
           <Textarea
             placeholder="Add a comment..."
             value={commentText}
-            onChange={(e) => { setCommentText(e.target.value); if (error) setError(null); }}
+            onChange={(e) => { setCommentText(e.target.value); setAiDraftPopulated(false); if (error) setError(null); }}
             disabled={loading}
             className="min-h-[100px] resize-none"
             maxLength={5000}
           />
           <div className="flex justify-between items-center mt-1">
             <p className="text-xs text-on-surface-variant">{commentText.length} / 5000 characters</p>
+            {isStaff && (
+              <button
+                type="button"
+                onClick={handleRequestDraft}
+                disabled={replyDraft.loading || loading}
+                className="flex items-center gap-1.5 text-xs font-medium text-brand-500 hover:text-brand-600 disabled:opacity-40 transition-colors"
+              >
+                {replyDraft.loading ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="h-3.5 w-3.5" />
+                )}
+                {replyDraft.loading ? 'Drafting...' : 'AI Draft'}
+              </button>
+            )}
           </div>
+          {aiDraftPopulated && (
+            <div className="flex items-center gap-1.5 text-[11px] text-brand-600 mt-1.5">
+              <Sparkles className="h-3 w-3" />
+              AI-generated draft — review and edit before posting
+            </div>
+          )}
         </div>
 
         {/* External Email Recipients */}

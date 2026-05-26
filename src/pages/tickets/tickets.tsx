@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { MultiSelect } from '@/components/ui/custom-select';
 import { fetchSources } from '@/redux/slices/sourceSlice';
 import { fetchModules } from '@/redux/slices/moduleSlice';
-import { Plus, Search, Download, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, FileText, FileSpreadsheet, SlidersHorizontal, Calendar, X, MoreVertical } from 'lucide-react';
+import { Plus, Search, Download, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, FileText, FileSpreadsheet, SlidersHorizontal, Calendar, X, MoreVertical, Sparkles, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
@@ -23,6 +23,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { Ticket, Category, Consultant as TicketConsultant } from '@/types/ticket';
 import { getTickets } from '@/api/ticketApi';
+import { fetchNlSearch, clearNlSearch } from '@/redux/slices/aiSlice';
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 200];
 
@@ -148,6 +149,11 @@ export default function Tickets() {
   const [showAdvanced, setShowAdvanced] = useState(() => activeAdvancedFilterCount > 0);
 
   const isCustomer = userType === 'customer';
+
+  // AI Natural Language Search
+  const { nlSearch } = useAppSelector((state) => state.ai);
+  const [aiSearchMode, setAiSearchMode] = useState(false);
+  const [nlQuery, setNlQuery] = useState('');
 
   // Supporting data — fetch once on mount (restricted calls skipped for customers)
   useEffect(() => {
@@ -280,6 +286,24 @@ export default function Tickets() {
 
   const handleSearch = () => {
     updateFilters({ q: searchInput });
+  };
+
+  const handleNlSearch = async () => {
+    if (!nlQuery.trim()) return;
+    try {
+      const result = await dispatch(fetchNlSearch(nlQuery)).unwrap();
+      const updates: Record<string, string | string[]> = {};
+      if (result.status) updates.status = Array.isArray(result.status) ? result.status : [result.status];
+      if (result.priority) updates.priority = Array.isArray(result.priority) ? result.priority : [result.priority];
+      if (result.createdDateFrom) updates.createdFrom = result.createdDateFrom;
+      if (result.createdDateTo) updates.createdTo = result.createdDateTo;
+      if (result.search) updates.q = result.search;
+      if (result.department) updates.department = Array.isArray(result.department) ? result.department : [result.department];
+      if (result.serviceType) updates.serviceType = Array.isArray(result.serviceType) ? result.serviceType : [result.serviceType];
+      updateFilters(updates);
+    } catch {
+      // error already shown via toast in aiSlice
+    }
   };
 
   const handlePageChange = (newPage: number) => {
@@ -603,17 +627,60 @@ export default function Tickets() {
         {/* Top Bar: Search + Quick Filters */}
         <div className="p-4 flex flex-wrap items-center gap-3">
           <div className="relative flex-1 min-w-[240px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-on-surface-variant" aria-hidden="true" />
-            <Input
-              type="search"
-              placeholder="Search by subject, ticket #, sub ticket #..."
-              aria-label="Search tickets"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              className="pl-10"
-            />
+            {aiSearchMode ? (
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-brand-500" aria-hidden="true" />
+                  <Input
+                    type="text"
+                    placeholder='Try: "critical tickets from last week not resolved"'
+                    aria-label="AI natural language search"
+                    value={nlQuery}
+                    onChange={(e) => setNlQuery(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleNlSearch()}
+                    className="pl-10 border-brand-300 focus:border-brand-500"
+                  />
+                </div>
+                <Button
+                  size="sm"
+                  onClick={handleNlSearch}
+                  disabled={nlSearch.loading || !nlQuery.trim()}
+                  className="shrink-0"
+                >
+                  {nlSearch.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Search'}
+                </Button>
+              </div>
+            ) : (
+              <>
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-on-surface-variant" aria-hidden="true" />
+                <Input
+                  type="search"
+                  placeholder="Search by subject, ticket #, sub ticket #..."
+                  aria-label="Search tickets"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                  className="pl-10"
+                />
+              </>
+            )}
           </div>
+
+          {!isCustomer && (
+            <button
+              type="button"
+              onClick={() => { setAiSearchMode(!aiSearchMode); setNlQuery(''); dispatch(clearNlSearch()); }}
+              title={aiSearchMode ? 'Switch to standard search' : 'AI natural language search'}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-[0.75rem] text-sm font-semibold transition-all shrink-0 ${
+                aiSearchMode
+                  ? 'bg-brand-500 text-white shadow-sm'
+                  : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
+              }`}
+            >
+              <Sparkles className="h-4 w-4" />
+              AI
+            </button>
+          )}
 
           <MultiSelect
             values={statusFilter}
@@ -673,6 +740,38 @@ export default function Tickets() {
             </button>
           )}
         </div>
+
+        {/* AI Search Interpretation Banner */}
+        {aiSearchMode && nlSearch.parsedParams && (
+          <div className="px-4 pb-3">
+            <div className="flex flex-wrap items-center gap-2 p-3 rounded-[0.75rem] bg-brand-50 border border-brand-100">
+              <Sparkles className="h-3.5 w-3.5 text-brand-500 shrink-0" />
+              <span className="text-xs text-brand-700 font-medium">{nlSearch.parsedParams.interpretedQuery}</span>
+              <div className="flex flex-wrap gap-1.5 ml-1">
+                {nlSearch.parsedParams.status && (
+                  <span className="px-2 py-0.5 rounded-full text-[11px] bg-brand-100 text-brand-700 font-medium">
+                    Status: {Array.isArray(nlSearch.parsedParams.status) ? nlSearch.parsedParams.status.join(', ') : nlSearch.parsedParams.status}
+                  </span>
+                )}
+                {nlSearch.parsedParams.priority && (
+                  <span className="px-2 py-0.5 rounded-full text-[11px] bg-brand-100 text-brand-700 font-medium capitalize">
+                    Priority: {Array.isArray(nlSearch.parsedParams.priority) ? nlSearch.parsedParams.priority.join(', ') : nlSearch.parsedParams.priority}
+                  </span>
+                )}
+                {nlSearch.parsedParams.createdDateFrom && (
+                  <span className="px-2 py-0.5 rounded-full text-[11px] bg-brand-100 text-brand-700 font-medium">
+                    From: {nlSearch.parsedParams.createdDateFrom}
+                  </span>
+                )}
+                {nlSearch.parsedParams.createdDateTo && (
+                  <span className="px-2 py-0.5 rounded-full text-[11px] bg-brand-100 text-brand-700 font-medium">
+                    To: {nlSearch.parsedParams.createdDateTo}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Advanced Filters Panel */}
         {showAdvanced && (

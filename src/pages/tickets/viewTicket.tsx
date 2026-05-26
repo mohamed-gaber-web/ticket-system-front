@@ -18,6 +18,7 @@ import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { TicketIntelligencePanel } from '@/components/ai/TicketIntelligencePanel';
 import {
   ArrowLeft,
   Loader2,
@@ -795,6 +796,9 @@ export default function ViewTicket() {
                 </p>
               </div>
             )}
+
+            {/* AI Insights Panel — consultants and team members only */}
+            {!isCustomer && <TicketIntelligencePanel ticket={currentTicket} />}
           </div>
         </div>
       )}

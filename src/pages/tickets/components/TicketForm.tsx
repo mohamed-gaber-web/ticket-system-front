@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import type { Ticket, CreateTicketData, UpdateTicketData } from '@/types/ticket';
 import { Button } from '@/components/ui/button';
@@ -14,9 +14,10 @@ import { fetchDepartments } from '@/redux/slices/departmentSlice';
 import { fetchServiceTypes } from '@/redux/slices/serviceTypeSlice';
 import { fetchModules } from '@/redux/slices/moduleSlice';
 import { fetchSources } from '@/redux/slices/sourceSlice';
-import { UserPlus, Upload, X, File, Image as ImageIcon, Mail, Plus } from 'lucide-react';
+import { UserPlus, Upload, X, File, Image as ImageIcon, Mail, Plus, Sparkles, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { validateFile, formatFileSize } from '@/api/attachmentApi';
+import { fetchAutoFillSuggestions, clearAutoFillSuggestions, acceptAutoFillField } from '@/redux/slices/aiSlice';
 
 interface Props {
   initialData?: Ticket;
@@ -124,6 +125,24 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
   const [notifyEmails, setNotifyEmails] = useState<string[]>([]);
   const [notifyEmailInput, setNotifyEmailInput] = useState('');
   const [notifyEmailError, setNotifyEmailError] = useState<string | null>(null);
+
+  const { autoFill } = useAppSelector((state) => state.ai);
+  const analyzeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const triggerAnalysis = useCallback((subject: string, description: string) => {
+    if (isEdit || description.length < 30) return;
+    if (analyzeDebounceRef.current) clearTimeout(analyzeDebounceRef.current);
+    analyzeDebounceRef.current = setTimeout(() => {
+      dispatch(fetchAutoFillSuggestions({ subject, description }));
+    }, 800);
+  }, [isEdit, dispatch]);
+
+  useEffect(() => {
+    return () => {
+      dispatch(clearAutoFillSuggestions());
+      if (analyzeDebounceRef.current) clearTimeout(analyzeDebounceRef.current);
+    };
+  }, [dispatch]);
 
   // Memoize dropdown options — avoids recreating arrays on every render
   const customerOptions = useMemo(() => [
@@ -267,7 +286,11 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+    const updatedData = { ...formData, [name]: value };
+    setFormData(updatedData);
+    if (name === 'description') {
+      triggerAnalysis(updatedData.subject || '', value);
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -459,7 +482,20 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
 
       {/* CATEGORIZATION SECTION */}
       <div className="space-y-4">
-        <h3 className="form-section-title">Categorization</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="form-section-title">Categorization</h3>
+          {!isEdit && (
+            <button
+              type="button"
+              onClick={() => dispatch(fetchAutoFillSuggestions({ subject: formData.subject || '', description: formData.description || '' }))}
+              disabled={autoFill.loading || !(formData.description && (formData.description as string).length >= 30)}
+              className="flex items-center gap-1.5 text-xs font-medium text-brand-500 hover:text-brand-600 disabled:opacity-40 transition-colors"
+            >
+              <Sparkles className={`h-3.5 w-3.5 ${autoFill.loading ? 'animate-pulse' : ''}`} />
+              {autoFill.loading ? 'Analyzing...' : 'AI Analyze'}
+            </button>
+          )}
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="form-label">Service Type *</label>
@@ -469,6 +505,16 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
               placeholder="-- Select Service Type --"
               options={serviceTypeOptions}
             />
+            {autoFill.suggestions?.serviceTypeId && !autoFill.acceptedFields.includes('serviceType') && !autoFill.acceptedFields.includes('serviceType_rejected') && (
+              <div className="mt-1.5 flex items-center gap-2 p-2 rounded-[0.5rem] bg-brand-50 border border-brand-200">
+                <Sparkles className="h-3 w-3 text-brand-500 shrink-0" />
+                <span className="text-xs text-brand-700 flex-1">
+                  AI suggests: <strong>{autoFill.suggestions.serviceType}</strong>
+                </span>
+                <button type="button" onClick={() => { setFormData({ ...formData, serviceType: autoFill.suggestions!.serviceTypeId! }); dispatch(acceptAutoFillField('serviceType')); }} className="p-0.5 text-brand-600 hover:text-brand-800 transition-colors" title="Accept"><CheckCircle2 className="h-3.5 w-3.5" /></button>
+                <button type="button" onClick={() => dispatch(acceptAutoFillField('serviceType_rejected'))} className="p-0.5 text-on-surface-variant hover:text-error transition-colors" title="Dismiss"><X className="h-3.5 w-3.5" /></button>
+              </div>
+            )}
           </div>
 
           <div>
@@ -480,6 +526,17 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
               disabled={categoriesLoading}
               options={categoryOptions}
             />
+            {autoFill.suggestions?.categoryId && !autoFill.acceptedFields.includes('category') && !autoFill.acceptedFields.includes('category_rejected') && (
+              <div className="mt-1.5 flex items-center gap-2 p-2 rounded-[0.5rem] bg-brand-50 border border-brand-200">
+                <Sparkles className="h-3 w-3 text-brand-500 shrink-0" />
+                <span className="text-xs text-brand-700 flex-1">
+                  AI suggests: <strong>{autoFill.suggestions.category}</strong>
+                  <span className="ml-1 text-brand-500">({Math.round((autoFill.suggestions.confidence ?? 0) * 100)}%)</span>
+                </span>
+                <button type="button" onClick={() => { setFormData({ ...formData, category: autoFill.suggestions!.categoryId! }); dispatch(acceptAutoFillField('category')); }} className="p-0.5 text-brand-600 hover:text-brand-800 transition-colors" title="Accept"><CheckCircle2 className="h-3.5 w-3.5" /></button>
+                <button type="button" onClick={() => dispatch(acceptAutoFillField('category_rejected'))} className="p-0.5 text-on-surface-variant hover:text-error transition-colors" title="Dismiss"><X className="h-3.5 w-3.5" /></button>
+              </div>
+            )}
           </div>
 
           <div>
@@ -515,6 +572,14 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
                 { value: 'critical', label: 'Critical' },
               ]}
             />
+            {autoFill.suggestions?.priority && !autoFill.acceptedFields.includes('priority') && !autoFill.acceptedFields.includes('priority_rejected') && (
+              <div className="mt-1.5 flex items-center gap-2 p-2 rounded-[0.5rem] bg-brand-50 border border-brand-200">
+                <Sparkles className="h-3 w-3 text-brand-500 shrink-0" />
+                <span className="text-xs text-brand-700 flex-1">AI suggests: <strong className="capitalize">{autoFill.suggestions.priority}</strong></span>
+                <button type="button" onClick={() => { setFormData({ ...formData, priority: autoFill.suggestions!.priority }); dispatch(acceptAutoFillField('priority')); }} className="p-0.5 text-brand-600 hover:text-brand-800 transition-colors" title="Accept"><CheckCircle2 className="h-3.5 w-3.5" /></button>
+                <button type="button" onClick={() => dispatch(acceptAutoFillField('priority_rejected'))} className="p-0.5 text-on-surface-variant hover:text-error transition-colors" title="Dismiss"><X className="h-3.5 w-3.5" /></button>
+              </div>
+            )}
           </div>
 
           <div>
@@ -570,6 +635,14 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
               placeholder="-- Select Department --"
               options={departmentOptions}
             />
+            {autoFill.suggestions?.departmentId && !autoFill.acceptedFields.includes('department') && !autoFill.acceptedFields.includes('department_rejected') && (
+              <div className="mt-1.5 flex items-center gap-2 p-2 rounded-[0.5rem] bg-brand-50 border border-brand-200">
+                <Sparkles className="h-3 w-3 text-brand-500 shrink-0" />
+                <span className="text-xs text-brand-700 flex-1">AI suggests: <strong>{autoFill.suggestions.department}</strong></span>
+                <button type="button" onClick={() => { setFormData({ ...formData, department: autoFill.suggestions!.departmentId! }); dispatch(acceptAutoFillField('department')); }} className="p-0.5 text-brand-600 hover:text-brand-800 transition-colors" title="Accept"><CheckCircle2 className="h-3.5 w-3.5" /></button>
+                <button type="button" onClick={() => dispatch(acceptAutoFillField('department_rejected'))} className="p-0.5 text-on-surface-variant hover:text-error transition-colors" title="Dismiss"><X className="h-3.5 w-3.5" /></button>
+              </div>
+            )}
           </div>
 
           <div>
