@@ -33,7 +33,8 @@
       "Bash(Sort-Object)",
       "PowerShell(gh pr *)",
       "Bash(Get-ChildItem -Path \"D:\\\\Real Project\\\\Ticketing System\\\\front-end\\\\my-react-ts-app\\\\src\" -Recurse -Directory)",
-      "Bash(git checkout *)"
+      "Bash(git checkout *)",
+      "Bash(curl *)"
     ]
   }
 }
