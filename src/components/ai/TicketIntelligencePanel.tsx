@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Sparkles, ChevronDown, AlertTriangle, CheckCircle2, ArrowRight, RefreshCw } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchTicketInsights, clearInsights } from '@/redux/slices/aiSlice';

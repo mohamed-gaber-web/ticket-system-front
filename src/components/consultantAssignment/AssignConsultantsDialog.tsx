@@ -4,7 +4,7 @@ import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { assignConsultants, reassignConsultants, createAssignment } from '@/redux/slices/assignmentSlice';
 import { fetchConsultants } from '@/redux/slices/consultantSlice';
 import { Button } from '@/components/ui/button';
-import { UserPlus, RefreshCw, CheckCircle2, Loader2, Check, ChevronDown, Search, UserCheck } from 'lucide-react';
+import { UserPlus, RefreshCw, CheckCircle2, Loader2, ChevronDown, Search, UserCheck } from 'lucide-react';
 import type { Consultant } from '@/types/consultant.types';
 
 interface AssignConsultantsDialogProps {

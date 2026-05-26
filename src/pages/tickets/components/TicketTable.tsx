@@ -13,7 +13,6 @@ import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
 import type { Ticket, Consultant, Category, UpdateTicketData } from '@/types/ticket';
 import type { ServiceType } from '@/types/serviceType.types';
-import type { Module } from '@/types/module.types';
 import { useAppSelector, useAppDispatch } from '@/redux/hooks/hooks';
 import { acceptTicket, fetchSubTickets, updateTicket } from '@/redux/slices/ticketSlice';
 
