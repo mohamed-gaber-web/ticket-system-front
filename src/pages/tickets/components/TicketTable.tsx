@@ -731,8 +731,8 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                       {/* Description row */}
                       <div className="flex items-start gap-1.5 group/desc">
                         {ticket.description ? (
-                          <p className="text-xs text-on-surface-variant leading-relaxed line-clamp-2 flex-1 min-w-0" title={ticket.description.length > 120 ? ticket.description : undefined}>
-                            {ticket.description.length > 120 ? ticket.description.slice(0, 120) + '…' : ticket.description}
+                          <p className="text-xs text-on-surface-variant leading-relaxed line-clamp-2 flex-1 min-w-0" title={ticket.description.length > 60 ? ticket.description : undefined}>
+                            {ticket.description.length > 60 ? ticket.description.slice(0, 60) + '…' : ticket.description}
                           </p>
                         ) : (
                           !isCustomer && <span className="text-xs text-on-surface-variant/30 italic">No description</span>
