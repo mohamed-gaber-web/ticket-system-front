@@ -92,6 +92,7 @@ export const ROUTERLINKS = [
     children: [
       { name: "Consultants", path: "/consultants", icon: UserCog },
       { name: "Weekly Report", path: "/consultant-reports/weekly", icon: CalendarDays },
+      { name: "Weekly Hours", path: "/consultants/weekly-hours", icon: CalendarClock },
     ],
   },
   MODULES_GROUP,
@@ -210,6 +211,7 @@ const TICKETING_ADMIN_GROUP = {
         { name: "My Tasks", path: "/profile?view=tasks", icon: ListChecks },
         { name: "Consultants", path: "/consultants", icon: UserCog },
         { name: "Weekly Report", path: "/consultant-reports/weekly", icon: CalendarDays },
+        { name: "Weekly Hours", path: "/consultants/weekly-hours", icon: CalendarClock },
       ],
     },
     {

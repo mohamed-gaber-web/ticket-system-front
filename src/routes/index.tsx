@@ -109,6 +109,7 @@ const CreateConsultant = lazy(() => import("@/pages/consultants/createConsultant
 const EditConsultant = lazy(() => import("@/pages/consultants/editConsultant"));
 const ViewConsultant = lazy(() => import("@/pages/consultants/viewConsultant"));
 const ConsultantDashboard = lazy(() => import("@/pages/consultants/consultantDashboard"));
+const WeeklyHoursPage = lazy(() => import("@/pages/consultants/WeeklyHoursPage"));
 
 // Category Module
 const Categories = lazy(() => import("@/pages/categories/categories"));
@@ -258,6 +259,7 @@ export const routes: RouteObject[] = [
       },
       { path: "/consultants/view/:id", element: <Lazy><ViewConsultant /></Lazy> },
       { path: "/consultants/dashboard", element: <Lazy><ConsultantDashboard /></Lazy> },
+      { path: "/consultants/weekly-hours", element: <Lazy><WeeklyHoursPage /></Lazy> },
 
       // Category Routes
       { path: "/categories", element: <Lazy><Categories /></Lazy> },
