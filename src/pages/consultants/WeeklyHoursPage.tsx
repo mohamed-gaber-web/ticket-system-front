@@ -71,13 +71,16 @@ interface ConsultantRow {
   weeks: Record<string, WeekCell>; // weekKey → cell
 }
 
-// ─── Heatmap intensity for a cell ──────────────────────────────────────────────
-function cellTint(hours: number, max: number): string {
-  if (hours <= 0 || max <= 0) return '';
-  const ratio = hours / max;
-  if (ratio < 0.34) return 'bg-brand-50';
-  if (ratio < 0.67) return 'bg-brand-100';
-  return 'bg-brand-200 text-brand-800';
+// A consultant's full weekly capacity. Under it → green (room to spare),
+// at/over it → red (fully booked / over capacity).
+const WEEKLY_HOURS_TARGET = 40;
+
+// ─── Capacity tint for a cell ───────────────────────────────────────────────────
+function cellTint(hours: number): string {
+  if (hours <= 0) return '';
+  return hours < WEEKLY_HOURS_TARGET
+    ? 'bg-green-100 text-green-800'
+    : 'bg-red-100 text-red-800';
 }
 
 export default function WeeklyHoursPage() {
@@ -149,11 +152,16 @@ export default function WeeklyHoursPage() {
     return [...r].sort((a, b) => b.totalHours - a.totalHours);
   }, [rows, hideEmpty, search]);
 
-  // All week keys (across visible rows) that have data, sorted newest-first
+  // All week keys (across visible rows) that have data, sorted by week number
+  // ascending (W1 on the left → highest week number on the right). Tiebreak by
+  // date so the same week number from different years stays chronological.
   const weekKeys = useMemo(() => {
     const set = new Set<string>();
     visibleRows.forEach((r) => Object.keys(r.weeks).forEach((k) => set.add(k)));
-    return Array.from(set).sort((a, b) => (a < b ? 1 : -1)); // descending (newest first)
+    return Array.from(set).sort((a, b) => {
+      const diff = weekNumberOf(a) - weekNumberOf(b);
+      return diff !== 0 ? diff : a < b ? -1 : 1;
+    });
   }, [visibleRows]);
 
   // Per-week totals across visible consultants + grand total
@@ -171,13 +179,6 @@ export default function WeeklyHoursPage() {
     () => round1(visibleRows.reduce((s, r) => s + r.totalHours, 0)),
     [visibleRows]
   );
-
-  // Max single-cell value for heatmap scaling
-  const maxCellHours = useMemo(() => {
-    let max = 0;
-    visibleRows.forEach((r) => Object.values(r.weeks).forEach((c) => { if (c.hours > max) max = c.hours; }));
-    return max;
-  }, [visibleRows]);
 
   const currentWeekKey = toLocalDateKey(getSaturdayOfWeek(new Date()));
 
@@ -317,7 +318,7 @@ export default function WeeklyHoursPage() {
                           key={wk}
                           className={cn(
                             'px-4 py-4 text-center align-middle',
-                            cell ? cellTint(cell.hours, maxCellHours) : ''
+                            cell ? cellTint(cell.hours) : ''
                           )}
                         >
                           {cell && cell.hours > 0 ? (
