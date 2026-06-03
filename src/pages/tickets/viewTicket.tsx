@@ -243,6 +243,32 @@ export default function ViewTicket() {
 
   const firstConsultant = assignedConsultants[0] ?? null;
 
+  // Resolve an actor reference (populated Consultant object or a bare id) to a name.
+  const resolveActor = (ref?: string | { firstName: string; lastName: string }): { firstName: string; lastName: string } | null => {
+    if (!ref) return null;
+    if (typeof ref !== 'string') return ref;
+    const found = consultants.find((c) => c._id === ref);
+    return found ? { firstName: found.firstName, lastName: found.lastName } : null;
+  };
+
+  // Derive last-updated / resolved / closed actors. Prefer dedicated fields; fall back
+  // to the status history (latest change overall, latest 'resolved', latest 'closed').
+  const sortedHistory = [...(currentTicket.statusHistory ?? [])].sort(
+    (a, b) => new Date(b.changedAt).getTime() - new Date(a.changedAt).getTime()
+  );
+  const latestHistory = sortedHistory[0] ?? null;
+  const resolvedHistory = sortedHistory.find((h) => h.status === 'resolved') ?? null;
+  const closedHistory = sortedHistory.find((h) => h.status === 'closed') ?? null;
+
+  const updatedByActor = resolveActor(currentTicket.updatedBy) ?? resolveActor(latestHistory?.changedBy);
+  const resolvedByActor = resolveActor(currentTicket.resolvedBy) ?? resolveActor(resolvedHistory?.changedBy);
+  const closedByActor = resolveActor(currentTicket.closedBy) ?? resolveActor(closedHistory?.changedBy);
+
+  const showUpdatedBy = !!updatedByActor;
+  const showResolvedBy = !!currentTicket.resolvedAt;
+  const showClosedBy = !!currentTicket.closedAt;
+  const hasLifecycleTail = showUpdatedBy || showResolvedBy || showClosedBy;
+
   const fmtDate = (date?: string) =>
     date ? new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
 
@@ -701,8 +727,9 @@ export default function ViewTicket() {
                 <div className="flex gap-3">
                   <div className="flex flex-col items-center">
                     <div className={`w-2 h-2 rounded-full mt-1 shrink-0 ${assignedConsultants.length > 0 ? 'bg-green-500' : 'bg-surface-container-high border border-surface-container-highest'}`} />
+                    {hasLifecycleTail && <div className="w-px flex-1 bg-surface-container-high mt-1" />}
                   </div>
-                  <div className="min-w-0">
+                  <div className={`min-w-0 ${hasLifecycleTail ? 'pb-5' : ''}`}>
                     <p className="text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider">Assigned to</p>
                     {assignedConsultants.length > 0 ? (
                       <div className="mt-1 space-y-1">
@@ -718,6 +745,68 @@ export default function ViewTicket() {
                     )}
                   </div>
                 </div>
+
+                {/* Last updated by */}
+                {showUpdatedBy && (
+                  <div className="flex gap-3">
+                    <div className="flex flex-col items-center">
+                      <div className="w-2 h-2 rounded-full bg-brand-400 mt-1 shrink-0" />
+                      {(showResolvedBy || showClosedBy) && <div className="w-px flex-1 bg-surface-container-high mt-1" />}
+                    </div>
+                    <div className={`min-w-0 ${showResolvedBy || showClosedBy ? 'pb-5' : ''}`}>
+                      <p className="text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider">Last updated by</p>
+                      <p className="text-sm font-semibold text-on-surface truncate mt-0.5">
+                        {updatedByActor!.firstName} {updatedByActor!.lastName}
+                      </p>
+                      <p className="text-xs text-on-surface-variant mt-0.5">
+                        {new Date(currentTicket.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        {' · '}
+                        {new Date(currentTicket.updatedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Resolved by */}
+                {showResolvedBy && (
+                  <div className="flex gap-3">
+                    <div className="flex flex-col items-center">
+                      <div className="w-2 h-2 rounded-full bg-green-500 mt-1 shrink-0" />
+                      {showClosedBy && <div className="w-px flex-1 bg-surface-container-high mt-1" />}
+                    </div>
+                    <div className={`min-w-0 ${showClosedBy ? 'pb-5' : ''}`}>
+                      <p className="text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider">Resolved by</p>
+                      <p className="text-sm font-semibold text-on-surface truncate mt-0.5">
+                        {resolvedByActor ? `${resolvedByActor.firstName} ${resolvedByActor.lastName}` : '—'}
+                      </p>
+                      <p className="text-xs text-on-surface-variant mt-0.5">
+                        {new Date(currentTicket.resolvedAt!).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        {' · '}
+                        {new Date(currentTicket.resolvedAt!).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Closed by */}
+                {showClosedBy && (
+                  <div className="flex gap-3">
+                    <div className="flex flex-col items-center">
+                      <div className="w-2 h-2 rounded-full bg-surface-container-highest border border-surface-container-highest mt-1 shrink-0" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-semibold text-on-surface-variant uppercase tracking-wider">Closed by</p>
+                      <p className="text-sm font-semibold text-on-surface truncate mt-0.5">
+                        {closedByActor ? `${closedByActor.firstName} ${closedByActor.lastName}` : '—'}
+                      </p>
+                      <p className="text-xs text-on-surface-variant mt-0.5">
+                        {new Date(currentTicket.closedAt!).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        {' · '}
+                        {new Date(currentTicket.closedAt!).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+                  </div>
+                )}
 
               </div>
             </div>
