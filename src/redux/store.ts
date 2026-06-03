@@ -27,6 +27,8 @@ import teleSalesAgentsReducer from './slices/teleSalesAgentsSlice';
 import tasksReducer from './slices/tasksSlice';
 import taskAttachmentsReducer from './slices/taskAttachmentSlice';
 import taskCommentsReducer from './slices/taskCommentSlice';
+import employeeRequestsReducer from './slices/employeeRequestSlice';
+import employeeBalancesReducer from './slices/employeeBalanceSlice';
 import aiReducer from './slices/aiSlice';
 
 export const store = configureStore({
@@ -59,6 +61,8 @@ export const store = configureStore({
     tasks: tasksReducer,
     taskAttachments: taskAttachmentsReducer,
     taskComments: taskCommentsReducer,
+    employeeRequests: employeeRequestsReducer,
+    employeeBalances: employeeBalancesReducer,
     ai: aiReducer,
   },
   middleware: (getDefaultMiddleware) =>

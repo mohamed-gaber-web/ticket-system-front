@@ -28,6 +28,10 @@ import {
   PhoneCall,
   UserPlus,
   CheckSquare,
+  CalendarHeart,
+  Plane,
+  ClipboardCheck,
+  Wallet,
 } from "lucide-react";
 
 const MODULES_GROUP = {
@@ -154,6 +158,35 @@ const TELE_SALES_USER_LINKS = [
   { name: "Leads", path: "/tele-sales/leads", icon: PhoneCall },
 ];
 
+// Employee Requests — full group (consultants may also approve as department heads/admins)
+const EMPLOYEE_REQUESTS_GROUP = {
+  name: "Employee Requests",
+  icon: CalendarHeart,
+  isGroup: true as const,
+  children: [
+    { name: "My Requests", path: "/employee-requests", icon: Plane },
+    { name: "Approvals", path: "/employee-requests/approvals", icon: ClipboardCheck },
+    { name: "Balances", path: "/employee-requests/balances", icon: Wallet },
+  ],
+};
+
+// Employee Requests — lite group for staff who cannot approve (team members, tele_sales)
+const EMPLOYEE_REQUESTS_GROUP_LITE = {
+  name: "Employee Requests",
+  icon: CalendarHeart,
+  isGroup: true as const,
+  children: [
+    { name: "My Requests", path: "/employee-requests", icon: Plane },
+    { name: "My Balance", path: "/employee-requests/balances", icon: Wallet },
+  ],
+};
+
+// Append the Employee Requests module to every internal-staff link set
+CONSULTANT_LINKS.push(EMPLOYEE_REQUESTS_GROUP);
+TEAM_MEMBER_LINKS.push(EMPLOYEE_REQUESTS_GROUP_LITE as any);
+TELE_SALES_ADMIN_LINKS.push(EMPLOYEE_REQUESTS_GROUP_LITE as any);
+TELE_SALES_USER_LINKS.push(EMPLOYEE_REQUESTS_GROUP_LITE as any);
+
 // Single Tasks group (page handles dept filtering internally)
 const TASKS_GROUP = {
   name: "Tasks",
@@ -248,6 +281,7 @@ const buildConsultantLinks = (consultantRole?: string | null, department?: strin
     return [
       TICKETING_ADMIN_GROUP,
       TASKS_GROUP,
+      EMPLOYEE_REQUESTS_GROUP,
       TELE_SALES_GROUP,
     ];
   }
@@ -258,12 +292,13 @@ const buildConsultantLinks = (consultantRole?: string | null, department?: strin
     return [
       { name: "Dashboard", path: "/tele-sales", icon: LayoutDashboard },
       { name: "Leads", path: "/tele-sales/leads", icon: PhoneCall },
+      EMPLOYEE_REQUESTS_GROUP,
     ];
   }
 
   // Administration → Tasks only (no TeleSales)
   if (department === 'administration') {
-    return TASKS_ONLY_LINKS;
+    return [...TASKS_ONLY_LINKS, EMPLOYEE_REQUESTS_GROUP];
   }
 
   // Consultant / Senior Consultant → Ticketing module only

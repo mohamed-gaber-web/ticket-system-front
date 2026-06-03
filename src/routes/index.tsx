@@ -164,6 +164,11 @@ const TaskForm = lazy(() => import("@/pages/tasks/components/TaskForm"));
 const ViewTask = lazy(() => import("@/pages/tasks/ViewTask"));
 const TasksDashboard = lazy(() => import("@/pages/tasks/TasksDashboard"));
 
+// Employee Requests Module
+const MyRequests = lazy(() => import("@/pages/employee-requests/MyRequests"));
+const RequestApprovals = lazy(() => import("@/pages/employee-requests/Approvals"));
+const EmployeeBalance = lazy(() => import("@/pages/employee-requests/EmployeeBalance"));
+
 export const routes: RouteObject[] = [
   // Public Routes (Authentication — Ticket System)
   { path: "/signin", element: <Lazy><SigninPage /></Lazy> },
@@ -324,6 +329,32 @@ export const routes: RouteObject[] = [
       {
         path: "/tasks/:id",
         element: <TasksRoute><Lazy><ViewTask /></Lazy></TasksRoute>,
+      },
+
+      // Employee Requests Module — internal staff only (consultant, team_member, tele_sales)
+      {
+        path: "/employee-requests",
+        element: (
+          <ProtectedRoute allowedUserTypes={["consultant", "team_member", "tele_sales"]}>
+            <Lazy><MyRequests /></Lazy>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "/employee-requests/approvals",
+        element: (
+          <ProtectedRoute allowedUserTypes={["consultant", "team_member", "tele_sales"]}>
+            <Lazy><RequestApprovals /></Lazy>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "/employee-requests/balances",
+        element: (
+          <ProtectedRoute allowedUserTypes={["consultant", "team_member", "tele_sales"]}>
+            <Lazy><EmployeeBalance /></Lazy>
+          </ProtectedRoute>
+        ),
       },
 
     ],
