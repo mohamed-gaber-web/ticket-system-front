@@ -158,7 +158,7 @@ const TELE_SALES_USER_LINKS = [
   { name: "Leads", path: "/tele-sales/leads", icon: PhoneCall },
 ];
 
-// Employee Requests — full group (consultants may also approve as department heads/admins)
+// Employee Requests — full group for admins (only admins can approve requests)
 const EMPLOYEE_REQUESTS_GROUP = {
   name: "Employee Requests",
   icon: CalendarHeart,
@@ -170,7 +170,7 @@ const EMPLOYEE_REQUESTS_GROUP = {
   ],
 };
 
-// Employee Requests — lite group for staff who cannot approve (team members, tele_sales)
+// Employee Requests — lite group for non-admin staff who cannot approve
 const EMPLOYEE_REQUESTS_GROUP_LITE = {
   name: "Employee Requests",
   icon: CalendarHeart,
@@ -181,8 +181,9 @@ const EMPLOYEE_REQUESTS_GROUP_LITE = {
   ],
 };
 
-// Append the Employee Requests module to every internal-staff link set
-CONSULTANT_LINKS.push(EMPLOYEE_REQUESTS_GROUP);
+// Append the Employee Requests module to every internal-staff link set.
+// Only admins get the full group (with Approvals); everyone else gets the lite group.
+CONSULTANT_LINKS.push(EMPLOYEE_REQUESTS_GROUP_LITE);
 TEAM_MEMBER_LINKS.push(EMPLOYEE_REQUESTS_GROUP_LITE as any);
 TELE_SALES_ADMIN_LINKS.push(EMPLOYEE_REQUESTS_GROUP_LITE as any);
 TELE_SALES_USER_LINKS.push(EMPLOYEE_REQUESTS_GROUP_LITE as any);
@@ -292,13 +293,13 @@ const buildConsultantLinks = (consultantRole?: string | null, department?: strin
     return [
       { name: "Dashboard", path: "/tele-sales", icon: LayoutDashboard },
       { name: "Leads", path: "/tele-sales/leads", icon: PhoneCall },
-      EMPLOYEE_REQUESTS_GROUP,
+      EMPLOYEE_REQUESTS_GROUP_LITE,
     ];
   }
 
   // Administration → Tasks only (no TeleSales)
   if (department === 'administration') {
-    return [...TASKS_ONLY_LINKS, EMPLOYEE_REQUESTS_GROUP];
+    return [...TASKS_ONLY_LINKS, EMPLOYEE_REQUESTS_GROUP_LITE];
   }
 
   // Consultant / Senior Consultant → Ticketing module only
