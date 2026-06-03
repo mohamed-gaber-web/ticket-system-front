@@ -694,6 +694,7 @@ export default function Tickets() {
               { value: 'customer_pending', label: 'Customer Pending' },
               { value: 'resolved', label: 'Resolved' },
               { value: 'tested', label: 'Tested' },
+              { value: 'delivered', label: 'Delivered' },
               { value: 'closed', label: 'Closed' },
               { value: 'not_related', label: 'Not Related' },
             ]}
