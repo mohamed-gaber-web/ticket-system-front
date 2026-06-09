@@ -1,11 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
-import { fetchTaskById, deleteTask, clearCurrentTask } from '@/redux/slices/tasksSlice';
+import { fetchTaskById, deleteTask, clearCurrentTask, fetchSubTasks, createSubTask, clearSubTasks } from '@/redux/slices/tasksSlice';
 import { fetchTaskAttachments } from '@/redux/slices/taskAttachmentSlice';
 import { fetchTaskComments } from '@/redux/slices/taskCommentSlice';
 import { fetchDepartments } from '@/redux/slices/departmentSlice';
+import { fetchConsultants } from '@/redux/slices/consultantSlice';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from '@/components/ui/dialog';
 import TaskFileUpload from '@/components/tasks/TaskFileUpload';
 import TaskAttachmentList from '@/components/tasks/TaskAttachmentList';
 import TaskComments from '@/components/tasks/TaskComments';
@@ -14,14 +18,16 @@ import {
   Edit, Trash2, CheckSquare, User, Calendar,
   Clock, Building2, CalendarDays, Timer, UserCheck,
   CircleCheck, Circle, Loader2 as SpinnerIcon, Shield,
-  Paperclip, MessageSquare, LayoutList,
+  Paperclip, MessageSquare, LayoutList, Plus, GitBranch,
 } from 'lucide-react';
+import { toast } from 'sonner';
+import type { TaskStatus, CreateTaskData } from '@/types/task.types';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
 
 const MySwal = withReactContent(Swal);
 
-type Tab = 'details' | 'attachments' | 'comments';
+type Tab = 'details' | 'attachments' | 'comments' | 'subtasks';
 
 const STATUS_CONFIG: Record<string, { label: string; classes: string; icon: React.ReactNode; bar: string; dot: string }> = {
   pending: {
@@ -47,28 +53,49 @@ const STATUS_CONFIG: Record<string, { label: string; classes: string; icon: Reac
   },
 };
 
+const STATUSES: { value: TaskStatus; label: string }[] = [
+  { value: 'pending', label: 'Pending' },
+  { value: 'in_progress', label: 'In Progress' },
+  { value: 'done', label: 'Done' },
+];
+
 const fmtDate = (d?: string) =>
   d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null;
+
+const EMPTY_SUB_FORM = {
+  name: '', description: '', department: '',
+  startDate: '', endDate: '', assignedTo: '', responsible: '',
+  scheduledWeek: '', duration: '', status: 'pending' as TaskStatus,
+};
 
 export default function ViewTask() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const { currentTask, loading } = useAppSelector((s) => s.tasks);
+  const { currentTask, loading, subTasks, subTasksLoading, subTasksTotal } = useAppSelector((s) => s.tasks);
   const { departments } = useAppSelector((s) => s.departments);
+  const { consultants } = useAppSelector((s) => s.consultants);
   const { total: attachmentCount } = useAppSelector((s) => s.taskAttachments);
   const { total: commentCount } = useAppSelector((s) => s.taskComments);
 
   const [activeTab, setActiveTab] = useState<Tab>('details');
+  const [showSubDialog, setShowSubDialog] = useState(false);
+  const [subForm, setSubForm] = useState(EMPTY_SUB_FORM);
+  const [subSubmitting, setSubSubmitting] = useState(false);
 
   useEffect(() => {
     if (id) {
       dispatch(fetchTaskById(id));
       dispatch(fetchTaskAttachments(id));
       dispatch(fetchTaskComments(id));
+      dispatch(fetchSubTasks(id));
     }
     dispatch(fetchDepartments({ isActive: true, limit: 999 } as any));
-    return () => { dispatch(clearCurrentTask()); };
+    dispatch(fetchConsultants({ limit: 999 }));
+    return () => {
+      dispatch(clearCurrentTask());
+      dispatch(clearSubTasks());
+    };
   }, [id, dispatch]);
 
   const getDeptName = (dept?: any): string => {
@@ -90,6 +117,62 @@ export default function ViewTask() {
         dispatch(deleteTask(currentTask._id)).then(() => navigate('/tasks'));
       }
     });
+  };
+
+  const handleDeleteSubTask = (subId: string, subName: string) => {
+    MySwal.fire({
+      title: `Delete "${subName}"?`,
+      html: `<p style="color:#BA1A1A">This action cannot be undone.</p>`,
+      icon: 'warning', showCancelButton: true,
+      confirmButtonColor: '#BA1A1A', cancelButtonColor: '#434653',
+      confirmButtonText: 'Delete', cancelButtonText: 'Cancel', reverseButtons: true,
+    }).then((result) => {
+      if (result.isConfirmed) dispatch(deleteTask(subId));
+    });
+  };
+
+  const openSubDialog = () => {
+    const deptId = currentTask
+      ? typeof currentTask.department === 'object'
+        ? (currentTask.department as any)._id
+        : currentTask.department ?? ''
+      : '';
+    setSubForm({ ...EMPTY_SUB_FORM, department: deptId });
+    setShowSubDialog(true);
+  };
+
+  const setSubField = (field: string, value: string) =>
+    setSubForm((f) => ({ ...f, [field]: value }));
+
+  const handleSubSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!subForm.name.trim()) { toast.error('Subtask name is required'); return; }
+    if (!subForm.department) { toast.error('Department is required'); return; }
+    if (subForm.startDate && subForm.endDate && subForm.endDate < subForm.startDate) {
+      toast.error('End date must be on or after start date'); return;
+    }
+    const data: CreateTaskData = {
+      name: subForm.name.trim(),
+      description: subForm.description.trim() || undefined,
+      department: subForm.department,
+      startDate: subForm.startDate || undefined,
+      endDate: subForm.endDate || undefined,
+      assignedTo: subForm.assignedTo || null,
+      responsible: subForm.responsible || null,
+      scheduledWeek: subForm.scheduledWeek ? Number(subForm.scheduledWeek) : null,
+      duration: subForm.duration ? Number(subForm.duration) : null,
+      status: subForm.status,
+      parentTask: currentTask!._id,
+    };
+    setSubSubmitting(true);
+    try {
+      await dispatch(createSubTask(data)).unwrap();
+      setShowSubDialog(false);
+    } catch {
+      // toast shown in thunk
+    } finally {
+      setSubSubmitting(false);
+    }
   };
 
   if (loading || !currentTask) {
@@ -123,6 +206,7 @@ export default function ViewTask() {
 
   const TABS: { key: Tab; label: string; icon: React.ReactNode; count?: number }[] = [
     { key: 'details', label: 'Details', icon: <LayoutList className="w-4 h-4" /> },
+    { key: 'subtasks', label: 'Subtasks', icon: <GitBranch className="w-4 h-4" />, count: subTasksTotal },
     { key: 'attachments', label: 'Attachments', icon: <Paperclip className="w-4 h-4" />, count: attachmentCount },
     { key: 'comments', label: 'Comments', icon: <MessageSquare className="w-4 h-4" />, count: commentCount },
   ];
@@ -308,6 +392,105 @@ export default function ViewTask() {
         </div>
       )}
 
+      {activeTab === 'subtasks' && (
+        <div className="bg-surface-container-lowest rounded-[1.25rem] p-6 shadow-sm ring-1 ring-outline-variant/20 space-y-5">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">
+              Subtasks {subTasksTotal > 0 && <span className="ml-1 text-primary">({subTasksTotal})</span>}
+            </h2>
+            <Button size="sm" onClick={openSubDialog} className="gap-1.5">
+              <Plus className="w-3.5 h-3.5" />
+              Add Subtask
+            </Button>
+          </div>
+
+          {subTasksLoading ? (
+            <div className="flex justify-center py-8">
+              <SpinnerIcon className="h-6 w-6 animate-spin text-brand-500" />
+            </div>
+          ) : subTasks.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center mb-3">
+                <GitBranch className="w-5 h-5 text-on-surface-variant/50" />
+              </div>
+              <p className="text-sm font-medium text-on-surface-variant">No subtasks yet</p>
+              <p className="text-xs text-on-surface-variant/60 mt-1">Break this task into smaller pieces</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {subTasks.map((sub) => {
+                const sc = STATUS_CONFIG[sub.status] ?? STATUS_CONFIG.pending;
+                const subAssignee = typeof sub.assignedTo === 'object' && sub.assignedTo
+                  ? `${sub.assignedTo.firstName} ${sub.assignedTo.lastName}` : null;
+                return (
+                  <div
+                    key={sub._id}
+                    className="group flex items-center gap-4 p-4 rounded-[0.875rem] border border-outline-variant/20 bg-surface hover:bg-surface-container-low transition-colors"
+                  >
+                    {/* Status dot */}
+                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${sc.dot}`} />
+
+                    {/* Name + meta */}
+                    <div className="flex-1 min-w-0">
+                      <button
+                        onClick={() => navigate(`/tasks/${sub._id}`)}
+                        className="text-sm font-semibold text-on-surface hover:text-primary transition-colors text-left truncate w-full"
+                      >
+                        {sub.name}
+                      </button>
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-xs text-on-surface-variant">
+                        {subAssignee && (
+                          <span className="flex items-center gap-1">
+                            <UserCheck className="w-3 h-3" /> {subAssignee}
+                          </span>
+                        )}
+                        {sub.scheduledWeek != null && (
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3" /> W{sub.scheduledWeek}
+                          </span>
+                        )}
+                        {sub.startDate && (
+                          <span className="flex items-center gap-1">
+                            <CalendarDays className="w-3 h-3" /> {fmtDate(sub.startDate)}
+                          </span>
+                        )}
+                        {sub.duration != null && (
+                          <span className="flex items-center gap-1">
+                            <Timer className="w-3 h-3" /> {sub.duration}h
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Status badge */}
+                    <span className={`hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-[0.4rem] text-[11px] font-bold flex-shrink-0 ${sc.classes}`}>
+                      {sc.icon}
+                      {sc.label}
+                    </span>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => navigate(`/tasks/edit/${sub._id}`)}
+                        className="p-1.5 rounded-lg hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-colors"
+                      >
+                        <Edit className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteSubTask(sub._id, sub.name)}
+                        className="p-1.5 rounded-lg hover:bg-error/10 text-on-surface-variant hover:text-error transition-colors"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       {activeTab === 'attachments' && (
         <div className="bg-surface-container-lowest rounded-[1.25rem] p-6 shadow-sm ring-1 ring-outline-variant/20 space-y-6">
           <div>
@@ -324,6 +507,156 @@ export default function ViewTask() {
           <TaskComments taskId={currentTask._id} />
         </div>
       )}
+
+      {/* Add Subtask Dialog */}
+      <Dialog open={showSubDialog} onOpenChange={setShowSubDialog}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <GitBranch className="w-5 h-5 text-primary" />
+              Add Subtask
+            </DialogTitle>
+          </DialogHeader>
+
+          <form onSubmit={handleSubSubmit} className="space-y-6 py-2">
+            {/* Row 1: Name + Description */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold text-on-surface">Subtask Name *</label>
+                <input
+                  value={subForm.name}
+                  onChange={(e) => setSubField('name', e.target.value)}
+                  placeholder="Enter subtask name"
+                  className="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold text-on-surface">Description</label>
+                <textarea
+                  value={subForm.description}
+                  onChange={(e) => setSubField('description', e.target.value)}
+                  placeholder="Enter description"
+                  rows={3}
+                  className="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 resize-y"
+                />
+              </div>
+            </div>
+
+            {/* Row 2: Department + Assigned To + Responsible + Status */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold text-on-surface">Department *</label>
+                <select
+                  value={subForm.department}
+                  onChange={(e) => setSubField('department', e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+                >
+                  <option value="">Select…</option>
+                  {departments.map((d) => (
+                    <option key={d._id} value={d._id}>{d.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold text-on-surface">Assigned To</label>
+                <select
+                  value={subForm.assignedTo}
+                  onChange={(e) => setSubField('assignedTo', e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+                >
+                  <option value="">Unassigned</option>
+                  {consultants.map((c) => (
+                    <option key={c._id} value={c._id}>{c.fullName || `${c.firstName} ${c.lastName}`}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold text-on-surface">Responsible</label>
+                <select
+                  value={subForm.responsible}
+                  onChange={(e) => setSubField('responsible', e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+                >
+                  <option value="">None</option>
+                  {consultants.map((c) => (
+                    <option key={c._id} value={c._id}>{c.fullName || `${c.firstName} ${c.lastName}`}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold text-on-surface">Status</label>
+                <select
+                  value={subForm.status}
+                  onChange={(e) => setSubField('status', e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+                >
+                  {STATUSES.map((s) => (
+                    <option key={s.value} value={s.value}>{s.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Row 3: Week + Duration + Start Date + End Date */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold text-on-surface">Week</label>
+                <select
+                  value={subForm.scheduledWeek}
+                  onChange={(e) => setSubField('scheduledWeek', e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+                >
+                  <option value="">Select week…</option>
+                  {Array.from({ length: 52 }, (_, i) => i + 1).map((w) => (
+                    <option key={w} value={String(w)}>W{w} — {getWeekDateRange(w)}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold text-on-surface">Duration (h)</label>
+                <input
+                  type="number"
+                  min={0}
+                  step={0.5}
+                  value={subForm.duration}
+                  onChange={(e) => setSubField('duration', e.target.value)}
+                  placeholder="e.g. 2.5"
+                  className="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold text-on-surface">Start Date</label>
+                <input
+                  type="date"
+                  value={subForm.startDate}
+                  onChange={(e) => setSubField('startDate', e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold text-on-surface">End Date</label>
+                <input
+                  type="date"
+                  value={subForm.endDate}
+                  onChange={(e) => setSubField('endDate', e.target.value)}
+                  min={subForm.startDate || undefined}
+                  className="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setShowSubDialog(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={subSubmitting}>
+                {subSubmitting ? <SpinnerIcon className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
+                Create Subtask
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

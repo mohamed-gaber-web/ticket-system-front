@@ -11,6 +11,9 @@ interface TasksState {
   total: number;
   page: number;
   pages: number;
+  subTasks: Task[];
+  subTasksLoading: boolean;
+  subTasksTotal: number;
 }
 
 const initialState: TasksState = {
@@ -21,6 +24,9 @@ const initialState: TasksState = {
   total: 0,
   page: 1,
   pages: 1,
+  subTasks: [],
+  subTasksLoading: false,
+  subTasksTotal: 0,
 };
 
 export const fetchTasks = createAsyncThunk(
@@ -80,6 +86,33 @@ export const updateTask = createAsyncThunk(
   }
 );
 
+export const fetchSubTasks = createAsyncThunk(
+  'tasks/fetchSubTasks',
+  async (parentTaskId: string, { rejectWithValue }) => {
+    try {
+      return await tasksApi.getTasks({ parentTask: parentTaskId, limit: 999 });
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Failed to fetch subtasks';
+      return rejectWithValue(message);
+    }
+  }
+);
+
+export const createSubTask = createAsyncThunk(
+  'tasks/createSubTask',
+  async (data: CreateTaskData, { rejectWithValue }) => {
+    try {
+      const response = await tasksApi.createTask(data);
+      toast.success('Subtask created successfully');
+      return response.data;
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Failed to create subtask';
+      toast.error(message);
+      return rejectWithValue(message);
+    }
+  }
+);
+
 export const deleteTask = createAsyncThunk(
   'tasks/deleteTask',
   async (id: string, { rejectWithValue }) => {
@@ -101,6 +134,7 @@ const tasksSlice = createSlice({
   reducers: {
     clearCurrentTask: (state) => { state.currentTask = null; },
     clearError: (state) => { state.error = null; },
+    clearSubTasks: (state) => { state.subTasks = []; state.subTasksTotal = 0; },
   },
   extraReducers: (builder) => {
     builder
@@ -139,11 +173,31 @@ const tasksSlice = createSlice({
       .addCase(deleteTask.fulfilled, (state, action) => {
         state.loading = false;
         state.tasks = state.tasks.filter((t) => t._id !== action.payload);
+        state.subTasks = state.subTasks.filter((t) => t._id !== action.payload);
         state.total = Math.max(0, state.total - 1);
+        if (state.subTasks.length < state.subTasksTotal) state.subTasksTotal = Math.max(0, state.subTasksTotal - 1);
       })
       .addCase(deleteTask.rejected, (state, action) => { state.loading = false; state.error = action.payload as string; });
+
+    builder
+      .addCase(fetchSubTasks.pending, (state) => { state.subTasksLoading = true; })
+      .addCase(fetchSubTasks.fulfilled, (state, action) => {
+        state.subTasksLoading = false;
+        state.subTasks = action.payload.data;
+        state.subTasksTotal = action.payload.total;
+      })
+      .addCase(fetchSubTasks.rejected, (state) => { state.subTasksLoading = false; });
+
+    builder
+      .addCase(createSubTask.pending, (state) => { state.subTasksLoading = true; })
+      .addCase(createSubTask.fulfilled, (state, action) => {
+        state.subTasksLoading = false;
+        state.subTasks.unshift(action.payload);
+        state.subTasksTotal += 1;
+      })
+      .addCase(createSubTask.rejected, (state) => { state.subTasksLoading = false; });
   },
 });
 
-export const { clearCurrentTask, clearError } = tasksSlice.actions;
+export const { clearCurrentTask, clearError, clearSubTasks } = tasksSlice.actions;
 export default tasksSlice.reducer;

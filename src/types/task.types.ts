@@ -26,6 +26,8 @@ export interface Task {
   duration?: number | null;
   status: TaskStatus;
   createdBy?: TaskConsultant | string | null;
+  parentTask?: string | null;
+  subTaskCount?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -41,6 +43,7 @@ export interface CreateTaskData {
   scheduledWeek?: number | null;
   duration?: number | null;
   status?: TaskStatus;
+  parentTask?: string | null;
 }
 
 export interface UpdateTaskData extends Partial<CreateTaskData> {}
@@ -55,6 +58,7 @@ export interface TaskQueryParams {
   startDate?: string;
   endDate?: string;
   search?: string;
+  parentTask?: string;
 }
 
 export interface TasksListResponse {
