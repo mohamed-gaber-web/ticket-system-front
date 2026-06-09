@@ -21,8 +21,8 @@ function Lazy({ children }: { children: ReactNode }) {
   return <Suspense fallback={<PageLoader />}>{children}</Suspense>;
 }
 
-const TELE_SALES_DEPARTMENTS = ['sales', 'marketing'];
-const TASK_DEPARTMENTS = ['administration'];
+const TELE_SALES_DEPARTMENTS = ['sales'];
+const TASK_DEPARTMENTS = ['administration', 'marketing'];
 
 // Guard: tele_sales userType OR consultant admin OR consultant in Sales/Marketing
 function TeleSalesRoute({ children }: { children: ReactNode }) {

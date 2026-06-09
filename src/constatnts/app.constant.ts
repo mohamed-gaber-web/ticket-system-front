@@ -250,13 +250,18 @@ const buildConsultantLinks = (consultantRole?: string | null, department?: strin
     ];
   }
 
-  // Sales/Marketing → TeleSales only (no Tasks)
+  // Sales → TeleSales only (no Tasks)
   // Non-admin: no Agents (backend requires admin); admin already handled above
-  if (department === 'sales' || department === 'marketing') {
+  if (department === 'sales') {
     return [
       { name: "Dashboard", path: "/tele-sales", icon: LayoutDashboard },
       { name: "Leads", path: "/tele-sales/leads", icon: PhoneCall },
     ];
+  }
+
+  // Marketing → Tasks only (no TeleSales)
+  if (department === 'marketing') {
+    return TASKS_ONLY_LINKS;
   }
 
   // Administration → Tasks only (no TeleSales)
