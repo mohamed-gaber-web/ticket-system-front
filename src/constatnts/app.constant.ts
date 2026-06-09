@@ -28,6 +28,10 @@ import {
   PhoneCall,
   UserPlus,
   CheckSquare,
+  CalendarHeart,
+  Plane,
+  ClipboardCheck,
+  Wallet,
 } from "lucide-react";
 
 const MODULES_GROUP = {
@@ -92,6 +96,7 @@ export const ROUTERLINKS = [
     children: [
       { name: "Consultants", path: "/consultants", icon: UserCog },
       { name: "Weekly Report", path: "/consultant-reports/weekly", icon: CalendarDays },
+      { name: "Weekly Hours", path: "/consultants/weekly-hours", icon: CalendarClock },
     ],
   },
   MODULES_GROUP,
@@ -153,6 +158,36 @@ const TELE_SALES_USER_LINKS = [
   { name: "Leads", path: "/tele-sales/leads", icon: PhoneCall },
 ];
 
+// Employee Requests — full group for admins (only admins can approve requests)
+const EMPLOYEE_REQUESTS_GROUP = {
+  name: "Employee Requests",
+  icon: CalendarHeart,
+  isGroup: true as const,
+  children: [
+    { name: "My Requests", path: "/employee-requests", icon: Plane },
+    { name: "Approvals", path: "/employee-requests/approvals", icon: ClipboardCheck },
+    { name: "Balances", path: "/employee-requests/balances", icon: Wallet },
+  ],
+};
+
+// Employee Requests — lite group for non-admin staff who cannot approve
+const EMPLOYEE_REQUESTS_GROUP_LITE = {
+  name: "Employee Requests",
+  icon: CalendarHeart,
+  isGroup: true as const,
+  children: [
+    { name: "My Requests", path: "/employee-requests", icon: Plane },
+    { name: "My Balance", path: "/employee-requests/balances", icon: Wallet },
+  ],
+};
+
+// Append the Employee Requests module to every internal-staff link set.
+// Only admins get the full group (with Approvals); everyone else gets the lite group.
+CONSULTANT_LINKS.push(EMPLOYEE_REQUESTS_GROUP_LITE);
+TEAM_MEMBER_LINKS.push(EMPLOYEE_REQUESTS_GROUP_LITE as any);
+TELE_SALES_ADMIN_LINKS.push(EMPLOYEE_REQUESTS_GROUP_LITE as any);
+TELE_SALES_USER_LINKS.push(EMPLOYEE_REQUESTS_GROUP_LITE as any);
+
 // Single Tasks group (page handles dept filtering internally)
 const TASKS_GROUP = {
   name: "Tasks",
@@ -210,6 +245,7 @@ const TICKETING_ADMIN_GROUP = {
         { name: "My Tasks", path: "/profile?view=tasks", icon: ListChecks },
         { name: "Consultants", path: "/consultants", icon: UserCog },
         { name: "Weekly Report", path: "/consultant-reports/weekly", icon: CalendarDays },
+        { name: "Weekly Hours", path: "/consultants/weekly-hours", icon: CalendarClock },
       ],
     },
     {
@@ -246,6 +282,7 @@ const buildConsultantLinks = (consultantRole?: string | null, department?: strin
     return [
       TICKETING_ADMIN_GROUP,
       TASKS_GROUP,
+      EMPLOYEE_REQUESTS_GROUP,
       TELE_SALES_GROUP,
     ];
   }
@@ -256,6 +293,7 @@ const buildConsultantLinks = (consultantRole?: string | null, department?: strin
     return [
       { name: "Dashboard", path: "/tele-sales", icon: LayoutDashboard },
       { name: "Leads", path: "/tele-sales/leads", icon: PhoneCall },
+      EMPLOYEE_REQUESTS_GROUP_LITE,
     ];
   }
 
@@ -266,7 +304,7 @@ const buildConsultantLinks = (consultantRole?: string | null, department?: strin
 
   // Administration → Tasks only (no TeleSales)
   if (department === 'administration') {
-    return TASKS_ONLY_LINKS;
+    return [...TASKS_ONLY_LINKS, EMPLOYEE_REQUESTS_GROUP_LITE];
   }
 
   // Consultant / Senior Consultant → Ticketing module only

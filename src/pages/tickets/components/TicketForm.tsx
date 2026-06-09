@@ -18,6 +18,7 @@ import { UserPlus, Upload, X, File, Image as ImageIcon, Mail, Plus, Sparkles, Ch
 import { toast } from 'sonner';
 import { validateFile, formatFileSize } from '@/api/attachmentApi';
 import { fetchAutoFillSuggestions, clearAutoFillSuggestions, acceptAutoFillField } from '@/redux/slices/aiSlice';
+import { suggestDescription as suggestDescriptionApi } from '@/api/aiApi';
 
 interface Props {
   initialData?: Ticket;
@@ -125,6 +126,10 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
   const [notifyEmails, setNotifyEmails] = useState<string[]>([]);
   const [notifyEmailInput, setNotifyEmailInput] = useState('');
   const [notifyEmailError, setNotifyEmailError] = useState<string | null>(null);
+
+  // AI description suggestion (generated from the subject; editable before accepting)
+  const [aiSuggesting, setAiSuggesting] = useState(false);
+  const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
 
   const { autoFill } = useAppSelector((state) => state.ai);
   const analyzeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -291,6 +296,31 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
     if (name === 'description') {
       triggerAnalysis(updatedData.subject || '', value);
     }
+  };
+
+  const handleSuggestDescription = async () => {
+    const subject = (formData.subject || '').trim();
+    if (subject.length < 3) {
+      toast.error('Write a subject first so AI can suggest a description.');
+      return;
+    }
+    setAiSuggesting(true);
+    try {
+      const text = await suggestDescriptionApi(subject);
+      setAiSuggestion(text);
+    } catch {
+      toast.error('Could not generate a description. Please try again.');
+    } finally {
+      setAiSuggesting(false);
+    }
+  };
+
+  const acceptAiSuggestion = () => {
+    if (aiSuggestion == null) return;
+    const updated = { ...formData, description: aiSuggestion };
+    setFormData(updated);
+    triggerAnalysis(updated.subject || '', aiSuggestion);
+    setAiSuggestion(null);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -465,7 +495,19 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
           </div>
 
           <div className="md:col-span-2">
-            <label className="form-label">Description *</label>
+            <div className="flex items-center justify-between gap-2 mb-1">
+              <label className="form-label mb-0">Description *</label>
+              <button
+                type="button"
+                onClick={handleSuggestDescription}
+                disabled={aiSuggesting || (formData.subject || '').trim().length < 3}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-500 hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+                title="Let AI suggest a description from the subject"
+              >
+                <Sparkles className={`w-3.5 h-3.5 ${aiSuggesting ? 'animate-pulse' : ''}`} />
+                {aiSuggesting ? 'Suggesting…' : 'Suggest with AI'}
+              </button>
+            </div>
             <textarea
               name="description"
               value={formData.description || ''}
@@ -475,6 +517,30 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
               rows={4}
               className="form-select min-h-[120px] h-auto py-2.5"
             />
+
+            {aiSuggestion !== null && (
+              <div className="mt-2 rounded-lg border border-brand-500/30 bg-brand-500/5 p-3 space-y-2">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-brand-500">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  AI suggestion — edit if needed, then accept
+                </div>
+                <textarea
+                  value={aiSuggestion}
+                  onChange={(e) => setAiSuggestion(e.target.value)}
+                  rows={4}
+                  className="form-select min-h-[100px] h-auto py-2.5 w-full text-sm"
+                />
+                <div className="flex items-center gap-2">
+                  <Button type="button" size="sm" onClick={acceptAiSuggestion}>
+                    <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
+                    Accept
+                  </Button>
+                  <Button type="button" size="sm" variant="ghost" onClick={() => setAiSuggestion(null)}>
+                    Dismiss
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
 
         </div>

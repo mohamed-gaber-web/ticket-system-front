@@ -59,6 +59,15 @@ export const analyzeTicket = async (payload: AnalyzeTicketRequest): Promise<Anal
   return response.data.data;
 };
 
+export const suggestDescription = async (subject: string): Promise<string> => {
+  const response = await api.post<{ success: boolean; data: { suggestedDescription: string } }>(
+    '/ai/suggest-description',
+    { subject },
+    { timeout: AI_TIMEOUT }
+  );
+  return response.data.data.suggestedDescription;
+};
+
 export const draftReply = async (payload: DraftReplyRequest): Promise<DraftReplyResponse> => {
   const response = await api.post<{ success: boolean; data: DraftReplyResponse }>(
     '/ai/draft-reply',

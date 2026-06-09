@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { getProfile, updateProfile } from '@/redux/slices/authSlice';
 import { Button } from '@/components/ui/button';
@@ -120,7 +120,7 @@ const ProfilePage = () => {
     statsLoading: true,
   });
 
-  const [monthlyHoursData, setMonthlyHoursData] = useState<{ totalHours: number; ticketCount: number }>({ totalHours: 0, ticketCount: 0 });
+  const [hoursTickets, setHoursTickets] = useState<any[]>([]);
   const [monthlyHoursLoading, setMonthlyHoursLoading] = useState(true);
   const [hoursMonth, setHoursMonth] = useState<{ year: number; month: number }>(() => {
     const now = new Date();
@@ -245,14 +245,29 @@ const ProfilePage = () => {
       assignedConsultant: u._id,
       limit: 9999,
     }).then((res) => {
-      const totalHours = res.data.reduce((sum: number, t: any) => {
-        const h = parseFloat(t.durationHours);
-        return isNaN(h) ? sum : sum + h;
-      }, 0);
-      setMonthlyHoursData({ totalHours: Math.round(totalHours * 10) / 10, ticketCount: res.data.length });
+      setHoursTickets(res.data || []);
     }).catch(() => {})
       .finally(() => setMonthlyHoursLoading(false));
   }, [u?._id, isConsultant]);
+
+  // Hours for the selected month. A ticket's durationHours counts toward the month of
+  // its internal delivery date (falling back to creation date) — same scheme as the
+  // Weekly Hours page. Recomputes instantly when the month changes (no re-fetch).
+  const monthlyHoursData = useMemo(() => {
+    const { year, month } = hoursMonth;
+    let totalHours = 0;
+    let ticketCount = 0;
+    for (const t of hoursTickets) {
+      const dateStr = t.internalDeliveryDate || t.createdAt;
+      if (!dateStr) continue;
+      const d = new Date(dateStr);
+      if (d.getFullYear() !== year || d.getMonth() !== month) continue;
+      ticketCount += 1;
+      const h = parseFloat(t.durationHours);
+      if (!isNaN(h)) totalHours += h;
+    }
+    return { totalHours: Math.round(totalHours * 10) / 10, ticketCount };
+  }, [hoursTickets, hoursMonth]);
 
   const loadTickets = async (
     page: number,

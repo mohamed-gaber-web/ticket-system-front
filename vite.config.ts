@@ -11,23 +11,28 @@ export default defineConfig({
         target: 'https://ticket-system-back-en-production.up.railway.app',
         changeOrigin: true,
         secure: true,
+        configure: (proxy) => {
+          // Backend's CORS middleware 500s on non-whitelisted origins.
+          // Requests with no Origin header succeed, so strip it before forwarding.
+          proxy.on('proxyReq', (proxyReq) => {
+            proxyReq.removeHeader('origin');
+            proxyReq.removeHeader('referer');
+          });
+        },
       },
     },
   },
   resolve: {
-      alias: {
-        '@': path.resolve(__dirname, './src'),
-      },
+    alias: {
+      '@': path.resolve(__dirname, './src'),
     },
+  },
   build: {
     rollupOptions: {
       output: {
         manualChunks: {
-          // Core framework — cached long-term
           'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-          // State management
           'vendor-redux': ['@reduxjs/toolkit', 'react-redux'],
-          // Heavy UI libraries — only loaded when needed
           'vendor-charts': ['recharts'],
           'vendor-motion': ['framer-motion'],
           'vendor-pdf': ['jspdf', 'jspdf-autotable', 'html2canvas'],

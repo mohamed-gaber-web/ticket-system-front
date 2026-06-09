@@ -65,7 +65,7 @@ export interface TicketStatusHistory {
   ticket: string;
   status: 'new' | 'assigned' | 'in_progress' | 'resolved' | 'closed' | 'customer_pending' | 'delivered' | 'tested' | 'not_related';
   changedAt: string;
-  changedBy: string;
+  changedBy: string | Consultant;
 }
 
 export interface TicketAssignment {
@@ -108,6 +108,10 @@ export interface Ticket {
   firstResponseAt?: string;
   resolvedAt?: string;
   closedAt?: string;
+  // Actor tracking — who last updated / resolved / closed the ticket
+  updatedBy?: string | Consultant;
+  resolvedBy?: string | Consultant;
+  closedBy?: string | Consultant;
   slaDueDate?: string;
   isSlaBreached: boolean;
   customerRating?: number;

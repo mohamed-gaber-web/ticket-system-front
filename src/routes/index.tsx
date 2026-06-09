@@ -109,6 +109,7 @@ const CreateConsultant = lazy(() => import("@/pages/consultants/createConsultant
 const EditConsultant = lazy(() => import("@/pages/consultants/editConsultant"));
 const ViewConsultant = lazy(() => import("@/pages/consultants/viewConsultant"));
 const ConsultantDashboard = lazy(() => import("@/pages/consultants/consultantDashboard"));
+const WeeklyHoursPage = lazy(() => import("@/pages/consultants/WeeklyHoursPage"));
 
 // Category Module
 const Categories = lazy(() => import("@/pages/categories/categories"));
@@ -162,6 +163,11 @@ const Tasks = lazy(() => import("@/pages/tasks/Tasks"));
 const TaskForm = lazy(() => import("@/pages/tasks/components/TaskForm"));
 const ViewTask = lazy(() => import("@/pages/tasks/ViewTask"));
 const TasksDashboard = lazy(() => import("@/pages/tasks/TasksDashboard"));
+
+// Employee Requests Module
+const MyRequests = lazy(() => import("@/pages/employee-requests/MyRequests"));
+const RequestApprovals = lazy(() => import("@/pages/employee-requests/Approvals"));
+const EmployeeBalance = lazy(() => import("@/pages/employee-requests/EmployeeBalance"));
 
 export const routes: RouteObject[] = [
   // Public Routes (Authentication — Ticket System)
@@ -258,6 +264,7 @@ export const routes: RouteObject[] = [
       },
       { path: "/consultants/view/:id", element: <Lazy><ViewConsultant /></Lazy> },
       { path: "/consultants/dashboard", element: <Lazy><ConsultantDashboard /></Lazy> },
+      { path: "/consultants/weekly-hours", element: <Lazy><WeeklyHoursPage /></Lazy> },
 
       // Category Routes
       { path: "/categories", element: <Lazy><Categories /></Lazy> },
@@ -322,6 +329,32 @@ export const routes: RouteObject[] = [
       {
         path: "/tasks/:id",
         element: <TasksRoute><Lazy><ViewTask /></Lazy></TasksRoute>,
+      },
+
+      // Employee Requests Module — internal staff only (consultant, team_member, tele_sales)
+      {
+        path: "/employee-requests",
+        element: (
+          <ProtectedRoute allowedUserTypes={["consultant", "team_member", "tele_sales"]}>
+            <Lazy><MyRequests /></Lazy>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "/employee-requests/approvals",
+        element: (
+          <ProtectedRoute allowedUserTypes={["consultant", "team_member", "tele_sales"]}>
+            <Lazy><RequestApprovals /></Lazy>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "/employee-requests/balances",
+        element: (
+          <ProtectedRoute allowedUserTypes={["consultant", "team_member", "tele_sales"]}>
+            <Lazy><EmployeeBalance /></Lazy>
+          </ProtectedRoute>
+        ),
       },
 
     ],
