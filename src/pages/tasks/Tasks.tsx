@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchTasks, deleteTask } from '@/redux/slices/tasksSlice';
@@ -152,7 +152,7 @@ export default function Tasks() {
 
   const pages = Math.ceil(total / limit);
 
-  const renderTaskRow = (task: Task, isSubTask = false) => {
+  const renderTaskRow = (task: Task, isSubTask = false): React.ReactElement => {
     const isExpanded = expandedIds.has(task._id);
     const isLoadingSub = loadingSubIds.has(task._id);
     const subTasks = subTasksMap[task._id];
