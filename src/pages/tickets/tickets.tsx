@@ -32,7 +32,7 @@ export default function Tickets() {
   const [searchParams, setSearchParams] = useSearchParams();
   const dispatch = useAppDispatch();
   const { tickets, loading, total, page, pages } = useAppSelector((state) => state.tickets);
-  const { user, userType, customerRole } = useAppSelector((state) => state.auth);
+  const { user, userType } = useAppSelector((state) => state.auth);
   const isConsultant = userType === 'consultant';
   const { sources } = useAppSelector((state) => state.sources);
   const { consultants } = useAppSelector((state) => state.consultants);
