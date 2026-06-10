@@ -44,16 +44,11 @@ export default function Tickets() {
   const { categories } = useAppSelector((state) => state.categories);
   const { customizedSolutions } = useAppSelector((state) => state.customizedSolutions);
 
-  // Returns the scoping params based on customer role:
-  // - company_admin → filter by companyName (sees all company tickets)
-  // - company_user  → filter by customer ID (sees only own tickets)
+  // All customer users (both company_admin and company_user) see all company tickets
   const getCustomerScopeParams = () => {
     if (userType !== 'customer') return {};
-    if (customerRole === 'company_admin') {
-      const companyName = (user as any)?.companyName;
-      return companyName ? { companyName } : {};
-    }
-    return user?._id ? { customer: user._id } : {};
+    const companyName = (user as any)?.companyName;
+    return companyName ? { companyName } : {};
   };
 
   // --- URL param helpers ---

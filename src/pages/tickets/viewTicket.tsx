@@ -469,7 +469,7 @@ export default function ViewTicket() {
               </Button>
             )}
             {/* Customer: close ticket after delivery */}
-            {isCustomer && currentTicket.status === 'delivered' && (
+            {isCustomer && (currentTicket.status === 'delivered' || currentTicket.status === 'resolved') && (
               <Button
                 variant="outline"
                 size="sm"
