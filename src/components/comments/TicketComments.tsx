@@ -13,7 +13,6 @@ import {
   createComment,
   updateComment,
   deleteComment,
-  clearComments,
 } from '@/redux/slices/commentSlice';
 import { sendCommentEmail } from '@/api/emailApi';
 import { uploadFile } from '@/api/attachmentApi';
@@ -41,10 +40,6 @@ const TicketComments: React.FC<TicketCommentsProps> = ({ ticketId }) => {
 
   useEffect(() => {
     loadComments();
-
-    return () => {
-      dispatch(clearComments());
-    };
   }, [ticketId, showInternalOnly]);
 
   const loadComments = async () => {

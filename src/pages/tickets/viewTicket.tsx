@@ -7,7 +7,8 @@ import { submitFeedback } from '@/api/ticketApi';
 import { fetchCurrentAssignment } from '@/redux/slices/assignmentSlice';
 import { fetchConsultants } from '@/redux/slices/consultantSlice';
 import { AssignConsultantsDialog } from '@/components/consultantAssignment/AssignConsultantsDialog';
-import { fetchTicketAttachments } from '@/redux/slices/attachmentSlice';
+import { fetchTicketAttachments, clearAttachments } from '@/redux/slices/attachmentSlice';
+import { fetchTicketComments, fetchPublicComments, clearComments } from '@/redux/slices/commentSlice';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { SubTicketsList } from '@/components/subTickets/SubTicketsList';
@@ -86,7 +87,8 @@ export default function ViewTicket() {
   const { currentTicket, loading, subTickets } = useAppSelector((state) => state.tickets);
   const { currentAssignment } = useAppSelector((state) => state.assignments);
   const { user, userType } = useAppSelector((state) => state.auth);
-  const { total } = useAppSelector((state) => state.attachments);
+  const { total: attachmentTotal } = useAppSelector((state) => state.attachments);
+  const { total: commentTotal } = useAppSelector((state) => state.comments);
   const { consultants } = useAppSelector((state) => state.consultants);
 
   const isCustomer = userType === 'customer';
@@ -132,11 +134,19 @@ export default function ViewTicket() {
     if (id) {
       dispatch(fetchTicketById(id));
       dispatch(fetchCurrentAssignment(id));
-      if (!isCustomer) {
+      dispatch(fetchTicketAttachments({ ticketId: id }));
+      if (isCustomer) {
+        dispatch(fetchPublicComments({ ticketId: id }));
+      } else {
+        dispatch(fetchTicketComments({ ticketId: id, params: { includeInternal: true } }));
         dispatch(fetchConsultants({ limit: 500 }));
       }
     }
-    return () => { dispatch(clearCurrentTicket()); };
+    return () => {
+      dispatch(clearCurrentTicket());
+      dispatch(clearComments());
+      dispatch(clearAttachments());
+    };
   }, [dispatch, id, isCustomer]);
 
   const handleRefreshAssignment = () => {
@@ -592,16 +602,23 @@ export default function ViewTicket() {
                 : 'text-on-surface-variant hover:text-on-surface'
             }`}
           >
-            {tab === 'attachments' ? (
+            {tab === 'comments' ? (
+              <span className="flex items-center gap-1.5">
+                Comments
+                <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full ${
+                  activeTab === 'comments' ? 'bg-brand-500 text-white' : 'bg-surface-container-high text-on-surface-variant'
+                }`}>
+                  {commentTotal}
+                </span>
+              </span>
+            ) : tab === 'attachments' ? (
               <span className="flex items-center gap-1.5">
                 Attachments
-                {total > 0 && (
-                  <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full ${
-                    activeTab === 'attachments' ? 'bg-brand-500 text-white' : 'bg-surface-container-high text-on-surface-variant'
-                  }`}>
-                    {total}
-                  </span>
-                )}
+                <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full ${
+                  activeTab === 'attachments' ? 'bg-brand-500 text-white' : 'bg-surface-container-high text-on-surface-variant'
+                }`}>
+                  {attachmentTotal}
+                </span>
               </span>
             ) : tab}
           </button>
