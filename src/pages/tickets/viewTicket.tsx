@@ -455,6 +455,19 @@ export default function ViewTicket() {
                 )}
               </div>
             )}
+            {/* Customer: respond when waiting for customer input */}
+            {isCustomer && currentTicket.status === 'customer_pending' && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleStatusChange('new')}
+                disabled={updatingStatus}
+                className="gap-1.5 text-on-surface border-border hover:bg-surface-container-highest"
+              >
+                {updatingStatus ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                {updatingStatus ? 'Updating...' : 'Change Status to New'}
+              </Button>
+            )}
             {/* Customer: close ticket after delivery */}
             {isCustomer && currentTicket.status === 'delivered' && (
               <Button

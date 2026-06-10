@@ -681,22 +681,20 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                   </TableCell>
                   {/* Status */}
                   <TableCell>
-                    {!isCustomer ? (
-                      isSavingField(ticket._id, 'status') ? (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-container text-on-surface-variant text-xs font-semibold opacity-60 select-none">
-                          <span className="h-3 w-3 rounded-full border-2 border-brand-400 border-t-transparent animate-spin shrink-0" />
-                          Saving
-                        </span>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={(e) => startEdit(ticket, 'status', e.currentTarget)}
-                          title="Click to change status"
-                          className="rounded-lg hover:ring-2 hover:ring-brand-400/30 transition-all cursor-pointer"
-                        >
-                          {getStatusBadge(ticket.status)}
-                        </button>
-                      )
+                    {isSavingField(ticket._id, 'status') ? (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-container text-on-surface-variant text-xs font-semibold opacity-60 select-none">
+                        <span className="h-3 w-3 rounded-full border-2 border-brand-400 border-t-transparent animate-spin shrink-0" />
+                        Saving
+                      </span>
+                    ) : (!isCustomer || ticket.status === 'customer_pending') ? (
+                      <button
+                        type="button"
+                        onClick={(e) => startEdit(ticket, 'status', e.currentTarget)}
+                        title="Click to change status"
+                        className="rounded-lg hover:ring-2 hover:ring-brand-400/30 transition-all cursor-pointer"
+                      >
+                        {getStatusBadge(ticket.status)}
+                      </button>
                     ) : getStatusBadge(ticket.status)}
                   </TableCell>
                   {/* Subject + Description */}
@@ -1312,7 +1310,7 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
           {/* Status — click-to-save list */}
           {activeEdit.field === 'status' && (
             <div className="py-1.5 max-h-72 overflow-y-auto">
-              {STATUS_OPTIONS.map((opt) => (
+              {(isCustomer ? STATUS_OPTIONS.filter(o => o.value === 'new') : STATUS_OPTIONS).map((opt) => (
                 <button
                   key={opt.value}
                   type="button"
