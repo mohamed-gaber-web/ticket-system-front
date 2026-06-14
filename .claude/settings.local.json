@@ -34,7 +34,19 @@
       "PowerShell(gh pr *)",
       "Bash(Get-ChildItem -Path \"D:\\\\Real Project\\\\Ticketing System\\\\front-end\\\\my-react-ts-app\\\\src\" -Recurse -Directory)",
       "Bash(git checkout *)",
-      "Bash(curl *)"
+      "Bash(curl *)",
+      "PowerShell(npx tsc --noEmit -p tsconfig.app.json)",
+      "PowerShell(npx tsc --noEmit -p tsconfig.app.json; if \\($?\\) { \"TYPECHECK OK\" })",
+      "PowerShell(git *)",
+      "PowerShell($f=\"D:\\\\Projects\\\\For Me\\\\Ticketing system\\\\ticket-system-front\"; Write-Output \"=== FE: committed feature delta vs dev ===\"; git -C $f diff dev --stat; Write-Output \"\"; Write-Output \"=== FE: uncommitted working tree ===\"; git -C $f diff --stat; Write-Output \"\"; Write-Output \"=== FE: untracked already shown ===\")",
+      "PowerShell($b=\"D:\\\\Projects\\\\For Me\\\\Ticketing system\\\\Back-end\\\\ticket-system-back-en\"; Write-Output \"=== BE: committed feature delta vs dev ===\"; git -C $b diff dev --stat; Write-Output \"\"; Write-Output \"=== BE: uncommitted working tree ===\"; git -C $b diff --stat)",
+      "PowerShell($b=\"D:\\\\Projects\\\\For Me\\\\Ticketing system\\\\Back-end\\\\ticket-system-back-en\"; git -C $b --no-pager diff -- server.js src/utils/workingHoursCron.js package.json .env.example 2>$null)",
+      "PowerShell($f=\"D:\\\\Projects\\\\For Me\\\\Ticketing system\\\\ticket-system-front\"; Write-Output \"--- scripts ---\"; \\(Get-Content \"$f\\\\package.json\" | ConvertFrom-Json\\).scripts | Format-List)",
+      "PowerShell($b=\"D:\\\\Projects\\\\For Me\\\\Ticketing system\\\\Back-end\\\\ticket-system-back-en\"; $files=@\\(\"server.js\",\"src/socket/io.js\",\"src/utils/emailHelper.js\",\"src/utils/workingHoursCron.js\",\"src/controllers/employeeRequestController.js\",\"src/models/notification.js\"\\); $ok=$true; foreach\\($file in $files\\){ node --check \"$b\\\\$file\"; if\\(-not $?\\){ Write-Output \"FAIL: $file\"; $ok=$false } }; if\\($ok\\){ Write-Output \"ALL BACKEND FILES OK\" }; Write-Output \"--- backend scripts ---\"; \\(Get-Content \"$b\\\\package.json\" | ConvertFrom-Json\\).scripts | Format-List)",
+      "PowerShell($f=\"D:\\\\Projects\\\\For Me\\\\Ticketing system\\\\ticket-system-front\"; Write-Output \"=== FE status ===\"; git -C $f status --short; Write-Output \"=== FE is dist ignored? ===\"; git -C $f check-ignore dist; if\\($?\\){\"dist is ignored ✓\"})",
+      "PowerShell($f=\"D:\\\\Projects\\\\For Me\\\\Ticketing system\\\\ticket-system-front\"; git -C $f add .env.example package.json package-lock.json src/api/notificationApi.ts src/components/layout/Header/Header.tsx src/components/layout/layout.tsx src/components/notifications/NotificationDropdown.tsx src/redux/hooks/useAuth.tsx src/redux/hooks/useNotificationSocket.ts src/redux/slices/notificationSlice.ts src/types/notification.types.ts src/lib/socket.ts; Write-Output \"=== staged ===\"; git -C $f status --short)",
+      "PowerShell($b=\"D:\\\\Projects\\\\For Me\\\\Ticketing system\\\\Back-end\\\\ticket-system-back-en\"; git -C $b add package.json package-lock.json server.js src/socket/io.js src/controllers/employeeRequestController.js src/models/notification.js src/utils/emailHelper.js src/utils/workingHoursCron.js; Write-Output \"=== staged ===\"; git -C $b status --short)",
+      "PowerShell($b=\"D:\\\\Projects\\\\For Me\\\\Ticketing system\\\\Back-end\\\\ticket-system-back-en\"; $f=\"D:\\\\Projects\\\\For Me\\\\Ticketing system\\\\ticket-system-front\"; Write-Output \"BE socket.io installed: $\\(\\(Test-Path \"$b\\\\node_modules\\\\socket.io\\\\package.json\"\\)\\)\"; Write-Output \"FE socket.io-client installed: $\\(\\(Test-Path \"$f\\\\node_modules\\\\socket.io-client\\\\package.json\"\\)\\)\"; Write-Output \"=== FE branch ===\"; git -C $f rev-parse --abbrev-ref HEAD; git -C $f status -sb | Select-Object -First 1; Write-Output \"=== BE branch ===\"; git -C $b rev-parse --abbrev-ref HEAD; git -C $b status -sb | Select-Object -First 1)"
     ]
   }
 }
