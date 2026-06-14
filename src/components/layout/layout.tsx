@@ -7,12 +7,14 @@ import { Toaster } from "@/components/ui/sonner";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks/hooks";
 import { getProfile } from "@/redux/slices/authSlice";
 import { useSessionTimeout } from "@/hooks/useSessionTimeout";
+import { useNotificationSocket } from "@/redux/hooks/useNotificationSocket";
 
 export default function Layout() {
   const dispatch = useAppDispatch();
   const { isAuthenticated, user } = useAppSelector((state) => state.auth);
 
   useSessionTimeout();
+  useNotificationSocket();
 
   // Fetch user profile if authenticated but user data is missing
   useEffect(() => {

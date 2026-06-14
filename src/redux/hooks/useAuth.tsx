@@ -1,6 +1,7 @@
 import { useAppSelector, useAppDispatch } from './hooks';
 import { signout } from '@/redux/slices/authSlice';
 import { useNavigate } from 'react-router-dom';
+import { disconnectSocket } from '@/lib/socket';
 
 /**
  * Custom hook for authentication
@@ -13,6 +14,7 @@ export const useAuth = () => {
 
   const logout = async () => {
     const isTeleSales = auth.userType === 'tele_sales';
+    disconnectSocket();
     await dispatch(signout());
     navigate(isTeleSales ? '/tele-sales/login' : '/signin');
   };

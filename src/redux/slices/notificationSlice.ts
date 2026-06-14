@@ -1,21 +1,15 @@
 import { createSlice, createAsyncThunk, type PayloadAction } from '@reduxjs/toolkit';
 import { notificationApi } from '@/api/notificationApi';
-import type {
-  Notification,
-  NotificationListParams,
-  NotificationUserType,
-} from '@/types/notification.types';
+import type { Notification, NotificationListParams, NotificationUserType } from '@/types/notification.types';
 
 interface NotificationState {
   items: Notification[];
-  unreadCount: number;
   loading: boolean;
   error: string | null;
 }
 
 const initialState: NotificationState = {
   items: [],
-  unreadCount: 0,
   loading: false,
   error: null,
 };
@@ -28,22 +22,6 @@ export const fetchNotifications = createAsyncThunk(
       return response.data || [];
     } catch (error: any) {
       const message = error.response?.data?.message || 'Failed to load notifications';
-      return rejectWithValue(message);
-    }
-  }
-);
-
-export const fetchUnreadCount = createAsyncThunk(
-  'notifications/fetchUnreadCount',
-  async (
-    { userId, userType }: { userId: string; userType: NotificationUserType },
-    { rejectWithValue }
-  ) => {
-    try {
-      const response = await notificationApi.getUnreadCount(userId, userType);
-      return typeof response.data === 'number' ? response.data : 0;
-    } catch (error: any) {
-      const message = error.response?.data?.message || 'Failed to load unread count';
       return rejectWithValue(message);
     }
   }
@@ -98,8 +76,11 @@ const notificationSlice = createSlice({
   name: 'notifications',
   initialState,
   reducers: {
-    setUnreadCount: (state, action: PayloadAction<number>) => {
-      state.unreadCount = action.payload;
+    // Real-time: a notification pushed over the socket. Dedupe by _id so a
+    // socket event followed by a refetch (or a second tab) can't double-count.
+    notificationReceived: (state, action: PayloadAction<Notification>) => {
+      if (state.items.some((n) => n._id === action.payload._id)) return;
+      state.items.unshift(action.payload);
     },
   },
   extraReducers: (builder) => {
@@ -116,21 +97,17 @@ const notificationSlice = createSlice({
         state.loading = false;
         state.error = action.payload as string;
       })
-      .addCase(fetchUnreadCount.fulfilled, (state, action) => {
-        state.unreadCount = action.payload;
-      })
-      .addCase(fetchUnreadCount.rejected, (state, action) => {
-        state.error = action.payload as string;
-      })
       .addCase(markNotificationRead.fulfilled, (state, action) => {
         state.items = state.items.map((item) =>
           item._id === action.payload ? { ...item, isRead: true, readAt: new Date().toISOString() } : item
         );
-        state.unreadCount = Math.max(0, state.unreadCount - 1);
       })
       .addCase(markAllNotificationsRead.fulfilled, (state) => {
-        state.items = state.items.map((item) => ({ ...item, isRead: true, readAt: item.readAt || new Date().toISOString() }));
-        state.unreadCount = 0;
+        state.items = state.items.map((item) => ({
+          ...item,
+          isRead: true,
+          readAt: item.readAt || new Date().toISOString(),
+        }));
       })
       .addCase(clearReadNotifications.fulfilled, (state) => {
         state.items = state.items.filter((item) => !item.isRead);
@@ -138,6 +115,5 @@ const notificationSlice = createSlice({
   },
 });
 
-export const { setUnreadCount } = notificationSlice.actions;
+export const { notificationReceived } = notificationSlice.actions;
 export default notificationSlice.reducer;
-

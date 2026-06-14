@@ -9,7 +9,10 @@ export type NotificationType =
   | 'sla_alert'
   | 'sla_breach'
   | 'ticket_resolved'
-  | 'ticket_closed';
+  | 'ticket_closed'
+  | 'ticket_reopened'
+  | 'vacation_request'
+  | 'excuse_request';
 
 export interface Notification {
   _id: string;

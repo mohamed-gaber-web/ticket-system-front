@@ -15,12 +15,6 @@ export interface NotificationListResponse {
   count?: number;
 }
 
-export interface UnreadCountResponse {
-  success?: boolean;
-  data?: number;
-  count?: number;
-}
-
 export const notificationApi = {
   async getUserNotifications(params: NotificationListParams) {
     const { userId, userType, limit = 10 } = params;
@@ -42,18 +36,6 @@ export const notificationApi = {
       : [];
     const total = Array.isArray(data.data) ? undefined : (data?.total ?? (typeof data.data === 'object' && data.data && 'total' in data.data ? data.data.total : undefined));
     return { success: data?.success ?? true, data: payload, total };
-  },
-
-  async getUnreadCount(userId: string, userType: NotificationUserType) {
-    const { data } = await api.get<UnreadCountResponse>(
-      `${BASE}/user/${userId}/unread-count`,
-      {
-        params: { userType },
-      }
-    );
-    // Normalize possible shapes: {data:number} or {count:number}
-    const count = typeof data === 'number' ? data : data?.data ?? data?.count ?? 0;
-    return { success: data?.success ?? true, data: count };
   },
 
   async markAsRead(notificationId: string) {

@@ -1,8 +1,9 @@
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   ChevronDown,
-  // Bell,       // notifications hidden
+  Bell,
   Search,
   // Settings,   // settings hidden
   // Moon,       // dark mode hidden
@@ -14,24 +15,26 @@ import {
 import { useEffect, useState } from "react";
 import { useAuth } from "@/redux/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
-// import { NotificationDropdown } from "@/components/notifications/NotificationDropdown"; // notifications hidden
-// import { useAppDispatch, useAppSelector } from "@/redux/hooks/hooks";                   // notifications hidden
-// import { fetchUnreadCount } from "@/redux/slices/notificationSlice";                    // notifications hidden
-// import type { NotificationType } from "@/types/notification.types";                     // notifications hidden
+import { NotificationDropdown } from "@/components/notifications/NotificationDropdown";
+import { useAppDispatch, useAppSelector } from "@/redux/hooks/hooks";
+import { fetchNotifications } from "@/redux/slices/notificationSlice";
+import type { NotificationType } from "@/types/notification.types";
 
 export default function Header() {
   // const [isDark, setIsDark] = useState(false);           // dark mode hidden
   const [showUserMenu, setShowUserMenu] = useState(false);
-  // const [showNotifications, setShowNotifications] = useState(false); // notifications hidden
+  const [showNotifications, setShowNotifications] = useState(false);
   const { user, userType, logout } = useAuth();
   const navigate = useNavigate();
-  // const dispatch = useAppDispatch();                                                     // notifications hidden
-  // const { unreadCount, items } = useAppSelector((state) => state.notifications);        // notifications hidden
+  const dispatch = useAppDispatch();
+  const { items } = useAppSelector((state) => state.notifications);
 
-  // const excludedNotificationTypes: NotificationType[] = [];                             // notifications hidden
-  // const visibleUnreadCount =                                                             // notifications hidden
-  //   items.filter((n) => !n.isRead && !excludedNotificationTypes.includes(n.notificationType)).length ||
-  //   unreadCount;
+  const excludedNotificationTypes: NotificationType[] = [];
+  // Count unread from the loaded notification list so the badge always matches
+  // what the panel shows — and reads 0 when there are no notifications.
+  const visibleUnreadCount = items.filter(
+    (n) => !n.isRead && !excludedNotificationTypes.includes(n.notificationType)
+  ).length;
 
   const userEmail = user?.email || '';
   const u = user as any;
@@ -41,12 +44,13 @@ export default function Header() {
     : userType === 'consultant' ? 'Consultant'
     : 'User';
 
-  // Notification fetch — disabled while notifications UI is hidden
-  // useEffect(() => {
-  //   if (user?._id && userType) {
-  //     dispatch(fetchUnreadCount({ userId: user._id, userType }));
-  //   }
-  // }, [dispatch, user?._id, userType]);
+  // Load notifications on mount so the badge reflects the real list right after
+  // a reload (live updates then arrive via the socket).
+  useEffect(() => {
+    if (user?._id && userType) {
+      dispatch(fetchNotifications({ userId: user._id, userType, limit: 50 }));
+    }
+  }, [dispatch, user?._id, userType]);
 
   const handleLogout = async () => {
     await logout();
@@ -68,7 +72,7 @@ export default function Header() {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setShowUserMenu(false);
-        // setShowNotifications(false); // notifications hidden
+        setShowNotifications(false);
       }
     };
     const handleClick = (e: MouseEvent) => {
@@ -76,9 +80,9 @@ export default function Header() {
       if (showUserMenu && !target.closest('[aria-label="User menu"]') && !target.closest('[role="menu"]')) {
         setShowUserMenu(false);
       }
-      // if (showNotifications && !target.closest('[aria-expanded]') && !target.closest('[role="region"]')) {
-      //   setShowNotifications(false);
-      // }
+      if (showNotifications && !target.closest('[aria-expanded]') && !target.closest('[role="region"]')) {
+        setShowNotifications(false);
+      }
     };
     document.addEventListener('keydown', handleKey);
     document.addEventListener('mousedown', handleClick);
@@ -86,7 +90,7 @@ export default function Header() {
       document.removeEventListener('keydown', handleKey);
       document.removeEventListener('mousedown', handleClick);
     };
-  }, [showUserMenu]);
+  }, [showUserMenu, showNotifications]);
 
   return (
     <header className="sticky top-0 z-50 flex items-center justify-between px-6 py-3 bg-surface-container-lowest/80 backdrop-blur-xl">
@@ -116,7 +120,7 @@ export default function Header() {
           {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
         </Button> */}
 
-        {/* Notifications — hidden, re-enable with notification system
+        {/* Notifications */}
         <div className="relative">
           <Button
             variant="ghost"
@@ -130,15 +134,19 @@ export default function Header() {
             <Bell className="h-5 w-5" />
             {visibleUnreadCount > 0 && (
               <span
-                className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-accent-orange-500 text-[10px] font-bold text-white"
+                className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent-orange-500 px-1 text-[10px] font-bold text-white"
                 aria-hidden="true"
               >
                 {visibleUnreadCount}
               </span>
             )}
           </Button>
-          <NotificationDropdown isOpen={showNotifications} excludeTypes={excludedNotificationTypes} />
-        </div> */}
+          <NotificationDropdown
+            isOpen={showNotifications}
+            onClose={() => setShowNotifications(false)}
+            excludeTypes={excludedNotificationTypes}
+          />
+        </div>
 
         {/* Settings — hidden, re-enable when settings page is ready
         <Button
