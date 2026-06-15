@@ -11,6 +11,8 @@ import type {
   LeadQueryParams,
   CreateLeadData,
   UpdateLeadData,
+  ImportLeadsRequest,
+  ImportLeadsResponse,
   CallLogsResponse,
   CreateCallLogData,
   FollowUpsResponse,
@@ -57,6 +59,9 @@ export const updateLead = (id: string, data: UpdateLeadData): Promise<LeadRespon
 
 export const deleteLead = (id: string): Promise<{ success: boolean; message: string }> =>
   api.delete(`/leads/${id}`).then((r) => r.data);
+
+export const importLeads = (data: ImportLeadsRequest): Promise<ImportLeadsResponse> =>
+  api.post('/leads/import', data).then((r) => r.data);
 
 // ── Call Logs ─────────────────────────────────────────────────────────────────
 

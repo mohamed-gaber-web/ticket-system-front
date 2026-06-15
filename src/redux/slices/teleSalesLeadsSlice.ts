@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { toast } from 'sonner';
 import * as teleSalesApi from '@/api/teleSalesApi';
-import type { Lead, LeadStats, LeadQueryParams, CreateLeadData, UpdateLeadData } from '@/types/teleSales.types';
+import type { Lead, LeadStats, LeadQueryParams, CreateLeadData, UpdateLeadData, ImportLeadsRequest } from '@/types/teleSales.types';
 
 interface TeleSalesLeadsState {
   leads: Lead[];
@@ -79,6 +79,25 @@ export const createLead = createAsyncThunk(
   }
 );
 
+export const importLeads = createAsyncThunk(
+  'teleSalesLeads/importLeads',
+  async (data: ImportLeadsRequest, { rejectWithValue }) => {
+    try {
+      const response = await teleSalesApi.importLeads(data);
+      if (response.inserted > 0) {
+        toast.success(`Imported ${response.inserted} lead${response.inserted === 1 ? '' : 's'} successfully!`);
+      } else {
+        toast.error('No leads were imported');
+      }
+      return response;
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Failed to import leads';
+      toast.error(message);
+      return rejectWithValue(message);
+    }
+  }
+);
+
 export const updateLead = createAsyncThunk(
   'teleSalesLeads/updateLead',
   async ({ id, data }: { id: string; data: UpdateLeadData }, { rejectWithValue }) => {
@@ -140,6 +159,11 @@ const teleSalesLeadsSlice = createSlice({
       .addCase(createLead.pending, (state) => { state.loading = true; state.error = null; })
       .addCase(createLead.fulfilled, (state) => { state.loading = false; })
       .addCase(createLead.rejected, (state, action) => { state.loading = false; state.error = action.payload as string; });
+
+    builder
+      .addCase(importLeads.pending, (state) => { state.loading = true; state.error = null; })
+      .addCase(importLeads.fulfilled, (state) => { state.loading = false; })
+      .addCase(importLeads.rejected, (state, action) => { state.loading = false; state.error = action.payload as string; });
 
     builder
       .addCase(updateLead.pending, (state) => { state.loading = true; state.error = null; })

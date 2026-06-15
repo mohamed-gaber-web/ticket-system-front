@@ -1,7 +1,7 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
-import { fetchLeads, createLead, updateLead, deleteLead } from '@/redux/slices/teleSalesLeadsSlice';
+import { fetchLeads, createLead, updateLead, deleteLead, importLeads } from '@/redux/slices/teleSalesLeadsSlice';
 import { fetchAgents } from '@/redux/slices/teleSalesAgentsSlice';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,9 +9,10 @@ import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import {
   Plus, Search, Phone, User, Eye, Pencil, Trash2,
-  ChevronLeft, ChevronRight, Filter, X,
+  ChevronLeft, ChevronRight, Filter, X, Upload, FileSpreadsheet, CheckCircle2, AlertTriangle,
 } from 'lucide-react';
-import type { Lead, LeadStatus, LeadPriority, LeadSource, CreateLeadData } from '@/types/teleSales.types';
+import type { Lead, LeadStatus, LeadPriority, LeadSource, CreateLeadData, ImportLeadsResponse } from '@/types/teleSales.types';
+import { parseLeadsFile, FIELD_LABELS, type ParsedImport } from '@/utils/leadImport';
 
 const ALL_STATUSES: LeadStatus[] = [
   'New Lead', 'No Answer', 'Not Available', 'Call Back Later', 'Interested',
@@ -20,6 +21,8 @@ const ALL_STATUSES: LeadStatus[] = [
 ];
 
 const LEAD_SOURCES: LeadSource[] = ['LinkedIn', 'Website', 'Referral', 'Cold Call', 'Exhibition', 'Partner', 'Other'];
+
+const PAGE_SIZE_OPTIONS = [25, 50, 100, 200];
 
 const STATUS_COLORS: Record<string, string> = {
   'New Lead': 'bg-blue-100 text-blue-700',
@@ -52,6 +55,7 @@ const emptyForm: CreateLeadData = {
   jobTitle: '',
   industry: '',
   companySize: '',
+  address: '',
   leadSource: undefined,
   assignedTo: '',
   priority: 'Medium',
@@ -76,11 +80,25 @@ export default function Leads() {
   const [statusFilter, setStatusFilter] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
   const [page, setPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(PAGE_SIZE_OPTIONS[0]);
   const [showFilters, setShowFilters] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [form, setForm] = useState<CreateLeadData>(emptyForm);
   const [tagInput, setTagInput] = useState('');
+
+  // Import state
+  const [isImportOpen, setIsImportOpen] = useState(false);
+  const [parsed, setParsed] = useState<ParsedImport | null>(null);
+  const [fileName, setFileName] = useState('');
+  const [parsing, setParsing] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<ImportLeadsResponse | null>(null);
+  const [importAssignedTo, setImportAssignedTo] = useState('');
+  const [importStatus, setImportStatus] = useState<LeadStatus>('New Lead');
+  const [importSource, setImportSource] = useState<string>('');
+  const [skipDuplicates, setSkipDuplicates] = useState(true);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(() => {
     dispatch(fetchLeads({
@@ -88,15 +106,34 @@ export default function Leads() {
       status: statusFilter as LeadStatus || undefined,
       priority: priorityFilter as LeadPriority || undefined,
       page,
-      limit: 15,
+      limit: itemsPerPage,
     }));
-  }, [dispatch, search, statusFilter, priorityFilter, page]);
+  }, [dispatch, search, statusFilter, priorityFilter, page, itemsPerPage]);
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { if (isAdmin) dispatch(fetchAgents(undefined)); }, [isAdmin, dispatch]);
 
-  // Reset page on filter change
-  useEffect(() => { setPage(1); }, [search, statusFilter, priorityFilter]);
+  // Reset page on filter / page-size change
+  useEffect(() => { setPage(1); }, [search, statusFilter, priorityFilter, itemsPerPage]);
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage < 1 || newPage > pages || newPage === page) return;
+    setPage(newPage);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const getPageNumbers = () => {
+    const pageNumbers: number[] = [];
+    const maxVisible = 5;
+    let start = Math.max(1, page - Math.floor(maxVisible / 2));
+    const end = Math.min(pages, start + maxVisible - 1);
+    start = Math.max(1, end - maxVisible + 1);
+    for (let i = start; i <= end; i++) pageNumbers.push(i);
+    return pageNumbers;
+  };
+
+  const startItem = total === 0 ? 0 : (page - 1) * itemsPerPage + 1;
+  const endItem = Math.min(page * itemsPerPage, total);
 
   const openCreate = () => { setEditingLead(null); setForm(emptyForm); setTagInput(''); setIsDialogOpen(true); };
   const openEdit = (lead: Lead) => {
@@ -109,6 +146,7 @@ export default function Leads() {
       jobTitle: lead.jobTitle || '',
       industry: lead.industry || '',
       companySize: lead.companySize || '',
+      address: lead.address || '',
       leadSource: lead.leadSource,
       assignedTo: (lead.assignedTo as any)?._id || '',
       priority: lead.priority,
@@ -172,6 +210,63 @@ export default function Leads() {
   };
   const removeTag = (t: string) => setForm((p) => ({ ...p, tags: p.tags?.filter((x) => x !== t) }));
 
+  // ── Import handlers ──────────────────────────────────────────────────────────
+  const openImport = () => {
+    setParsed(null);
+    setFileName('');
+    setImportResult(null);
+    setImportAssignedTo('');
+    setImportStatus('New Lead');
+    setImportSource('');
+    setSkipDuplicates(true);
+    setIsImportOpen(true);
+  };
+
+  const handleFile = async (file: File) => {
+    setFileName(file.name);
+    setImportResult(null);
+    setParsing(true);
+    try {
+      const result = await parseLeadsFile(file);
+      if (result.rows.length === 0) {
+        toast.error('No valid rows found in the file. Make sure it has a header row with a name and phone column.');
+      }
+      setParsed(result);
+    } catch (err) {
+      console.error(err);
+      toast.error('Could not read the file. Supported formats: .xlsx, .xls, .csv, .md');
+      setParsed(null);
+    } finally {
+      setParsing(false);
+    }
+  };
+
+  const onFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleFile(file);
+    e.target.value = ''; // allow re-selecting the same file
+  };
+
+  const handleImport = async () => {
+    if (!parsed || parsed.rows.length === 0) return;
+    setImporting(true);
+    try {
+      const action = await dispatch(importLeads({
+        leads: parsed.rows,
+        assignedTo: isAdmin && importAssignedTo ? importAssignedTo : undefined,
+        status: importStatus,
+        leadSource: (importSource as LeadSource) || undefined,
+        skipDuplicates,
+      }));
+      if (importLeads.fulfilled.match(action)) {
+        setImportResult(action.payload);
+        if (action.payload.inserted > 0) load();
+      }
+    } finally {
+      setImporting(false);
+    }
+  };
+
   const formatDate = (d?: string) => !d ? '—' : new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
 
   return (
@@ -182,9 +277,14 @@ export default function Leads() {
           <h1 className="text-2xl font-bold text-on-surface">Leads</h1>
           <p className="text-sm text-on-surface-variant mt-0.5">{total} total leads</p>
         </div>
-        <Button onClick={openCreate} className="gap-2">
-          <Plus className="w-4 h-4" /> New Lead
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={openImport} className="gap-2">
+            <Upload className="w-4 h-4" /> Import
+          </Button>
+          <Button onClick={openCreate} className="gap-2">
+            <Plus className="w-4 h-4" /> New Lead
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -314,17 +414,64 @@ export default function Leads() {
         )}
 
         {/* Pagination */}
-        {pages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-outline-variant/20">
-            <span className="text-sm text-on-surface-variant">Page {page} of {pages}</span>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage(p => p - 1)}>
-                <ChevronLeft className="w-4 h-4" />
-              </Button>
-              <Button variant="outline" size="sm" disabled={page === pages} onClick={() => setPage(p => p + 1)}>
-                <ChevronRight className="w-4 h-4" />
-              </Button>
+        {total > 0 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-4 py-3 border-t border-outline-variant/20">
+            <div className="flex items-center gap-3">
+              <p className="text-sm text-on-surface-variant">
+                Showing <span className="font-semibold text-on-surface">{startItem}-{endItem}</span> of{' '}
+                <span className="font-semibold text-on-surface">{total.toLocaleString()}</span> results
+              </p>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-on-surface-variant">Per page:</span>
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                  className="h-7 px-2 pr-6 rounded-lg text-xs font-semibold bg-surface-container-lowest border border-outline-variant text-on-surface focus:outline-none focus:ring-2 focus:ring-brand-500/30 cursor-pointer"
+                >
+                  {PAGE_SIZE_OPTIONS.map((size) => (
+                    <option key={size} value={size}>{size}</option>
+                  ))}
+                </select>
+              </div>
             </div>
+
+            {pages > 1 && (
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => handlePageChange(page - 1)}
+                  disabled={page <= 1}
+                  aria-label="Previous page"
+                  className="p-2 rounded-xl bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-high disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+
+                {getPageNumbers().map((pageNum) => (
+                  <button
+                    key={pageNum}
+                    onClick={() => handlePageChange(pageNum)}
+                    aria-label={`Page ${pageNum}`}
+                    aria-current={pageNum === page ? 'page' : undefined}
+                    className={`min-w-[36px] h-9 rounded-xl text-sm font-semibold transition-colors ${
+                      pageNum === page
+                        ? 'bg-primary text-white'
+                        : 'bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                ))}
+
+                <button
+                  onClick={() => handlePageChange(page + 1)}
+                  disabled={page >= pages}
+                  aria-label="Next page"
+                  className="p-2 rounded-xl bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-high disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -367,6 +514,10 @@ export default function Leads() {
                   <div>
                     <label className="text-sm font-medium text-on-surface mb-1 block">Company Size</label>
                     <Input value={form.companySize} onChange={(e) => setForm(p => ({ ...p, companySize: e.target.value }))} placeholder="50-200" />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="text-sm font-medium text-on-surface mb-1 block">Address</label>
+                    <Input value={form.address} onChange={(e) => setForm(p => ({ ...p, address: e.target.value }))} placeholder="Street, city..." />
                   </div>
                 </div>
               </div>
@@ -491,6 +642,196 @@ export default function Leads() {
                 </Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Import Dialog */}
+      {isImportOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-surface rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-outline-variant/20">
+              <h2 className="text-lg font-semibold text-on-surface flex items-center gap-2">
+                <FileSpreadsheet className="w-5 h-5 text-brand-500" /> Import Leads
+              </h2>
+              <button onClick={() => setIsImportOpen(false)} className="p-2 rounded-lg hover:bg-surface-container text-on-surface-variant">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-5">
+              {/* Result summary */}
+              {importResult ? (
+                <div className="space-y-4">
+                  <div className="flex flex-col items-center text-center py-4">
+                    {importResult.inserted > 0 ? (
+                      <CheckCircle2 className="w-12 h-12 text-emerald-500 mb-2" />
+                    ) : (
+                      <AlertTriangle className="w-12 h-12 text-amber-500 mb-2" />
+                    )}
+                    <p className="text-lg font-semibold text-on-surface">{importResult.message}</p>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="bg-emerald-50 rounded-xl p-4 text-center">
+                      <p className="text-2xl font-bold text-emerald-700">{importResult.inserted}</p>
+                      <p className="text-xs text-emerald-600 mt-1">Imported</p>
+                    </div>
+                    <div className="bg-amber-50 rounded-xl p-4 text-center">
+                      <p className="text-2xl font-bold text-amber-700">{importResult.duplicates}</p>
+                      <p className="text-xs text-amber-600 mt-1">Duplicates</p>
+                    </div>
+                    <div className="bg-gray-50 rounded-xl p-4 text-center">
+                      <p className="text-2xl font-bold text-gray-700">{importResult.skipped}</p>
+                      <p className="text-xs text-gray-500 mt-1">Skipped</p>
+                    </div>
+                  </div>
+                  {importResult.errors.length > 0 && (
+                    <div className="border border-outline-variant/20 rounded-xl overflow-hidden">
+                      <p className="px-4 py-2 text-xs font-semibold text-on-surface-variant uppercase tracking-wide bg-surface-container/50">
+                        Issues ({importResult.errors.length})
+                      </p>
+                      <div className="max-h-48 overflow-y-auto divide-y divide-outline-variant/10">
+                        {importResult.errors.slice(0, 100).map((err, i) => (
+                          <div key={i} className="px-4 py-2 text-sm flex items-center gap-2">
+                            <span className="text-on-surface-variant w-16 flex-shrink-0">Row {err.row ?? '—'}</span>
+                            <span className={err.duplicate ? 'text-amber-600' : 'text-error'}>{err.reason}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex justify-end gap-3 pt-2 border-t border-outline-variant/20">
+                    <Button variant="outline" onClick={openImport}>Import Another</Button>
+                    <Button onClick={() => setIsImportOpen(false)}>Done</Button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {/* File picker */}
+                  <div>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".xlsx,.xls,.csv,.md,.markdown,.txt"
+                      onChange={onFileInput}
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-full border-2 border-dashed border-outline-variant rounded-2xl py-8 flex flex-col items-center gap-2 hover:border-brand-400 hover:bg-surface-container/40 transition-colors"
+                    >
+                      <Upload className="w-8 h-8 text-on-surface-variant" />
+                      <p className="text-sm font-medium text-on-surface">{fileName || 'Click to choose a file'}</p>
+                      <p className="text-xs text-on-surface-variant">Excel (.xlsx, .xls), CSV, or Markdown table (.md)</p>
+                    </button>
+                  </div>
+
+                  {parsing && (
+                    <div className="flex items-center justify-center gap-2 text-sm text-on-surface-variant py-2">
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
+                      Parsing file…
+                    </div>
+                  )}
+
+                  {parsed && parsed.rows.length > 0 && (
+                    <>
+                      {/* Detected column mapping */}
+                      <div>
+                        <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide mb-2">Detected Columns</p>
+                        <div className="flex flex-wrap gap-2">
+                          {parsed.headers.map((h, i) => (
+                            <span
+                              key={`${h}-${i}`}
+                              className={`text-xs px-2.5 py-1 rounded-full border ${parsed.mapping[i] ? 'bg-brand-50 text-brand-700 border-brand-200' : 'bg-gray-50 text-gray-400 border-gray-200 line-through'}`}
+                              title={parsed.mapping[i] ? `Mapped to ${FIELD_LABELS[parsed.mapping[i]!]}` : 'Ignored'}
+                            >
+                              {h || '(blank)'}{parsed.mapping[i] ? ` → ${FIELD_LABELS[parsed.mapping[i]!]}` : ''}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Preview */}
+                      <div>
+                        <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide mb-2">
+                          Preview — {parsed.rows.length} lead{parsed.rows.length === 1 ? '' : 's'} ready
+                          {parsed.skippedEmpty > 0 && `, ${parsed.skippedEmpty} empty row(s) skipped`}
+                        </p>
+                        <div className="border border-outline-variant/20 rounded-xl overflow-x-auto max-h-56 overflow-y-auto">
+                          <table className="w-full text-sm">
+                            <thead className="sticky top-0 bg-surface-container">
+                              <tr className="border-b border-outline-variant/20">
+                                {['Contact', 'Company', 'Phone(s)', 'Email', 'Job Title'].map((h) => (
+                                  <th key={h} className="px-3 py-2 text-left text-xs font-semibold text-on-surface-variant whitespace-nowrap">{h}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-outline-variant/10">
+                              {parsed.rows.slice(0, 50).map((r, i) => (
+                                <tr key={i}>
+                                  <td className="px-3 py-1.5 text-on-surface whitespace-nowrap">{r.contactPersonName}</td>
+                                  <td className="px-3 py-1.5 text-on-surface-variant whitespace-nowrap">{r.companyName || <span className="italic opacity-50">= contact</span>}</td>
+                                  <td className="px-3 py-1.5 text-on-surface-variant whitespace-nowrap">{r.phones.map((p) => p.number).join(', ')}</td>
+                                  <td className="px-3 py-1.5 text-on-surface-variant whitespace-nowrap">{r.email || '—'}</td>
+                                  <td className="px-3 py-1.5 text-on-surface-variant whitespace-nowrap">{r.jobTitle || '—'}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                        {parsed.rows.length > 50 && (
+                          <p className="text-xs text-on-surface-variant mt-1">Showing first 50 of {parsed.rows.length} rows.</p>
+                        )}
+                      </div>
+
+                      {/* Options */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-sm font-medium text-on-surface mb-1 block">Default Status</label>
+                          <select value={importStatus} onChange={(e) => setImportStatus(e.target.value as LeadStatus)}
+                            className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+                            {ALL_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-on-surface mb-1 block">Lead Source</label>
+                          <select value={importSource} onChange={(e) => setImportSource(e.target.value)}
+                            className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+                            <option value="">None</option>
+                            {LEAD_SOURCES.map((s) => <option key={s} value={s}>{s}</option>)}
+                          </select>
+                        </div>
+                        {isAdmin && (
+                          <div className="col-span-2">
+                            <label className="text-sm font-medium text-on-surface mb-1 block">Assign All To</label>
+                            <select value={importAssignedTo} onChange={(e) => setImportAssignedTo(e.target.value)}
+                              className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+                              <option value="">Unassigned</option>
+                              {agents.filter((a) => a.status === 'active').map((a) => (
+                                <option key={a._id} value={a._id}>{a.firstName} {a.lastName}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+                        <div className="col-span-2 flex items-center gap-3">
+                          <input type="checkbox" id="skipDup" checked={skipDuplicates} onChange={(e) => setSkipDuplicates(e.target.checked)} className="w-4 h-4" />
+                          <label htmlFor="skipDup" className="text-sm text-on-surface">Skip duplicates (by phone number)</label>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Actions */}
+                  <div className="flex justify-end gap-3 pt-2 border-t border-outline-variant/20">
+                    <Button variant="outline" onClick={() => setIsImportOpen(false)}>Cancel</Button>
+                    <Button onClick={handleImport} disabled={!parsed || parsed.rows.length === 0 || importing}>
+                      {importing ? 'Importing…' : parsed?.rows.length ? `Import ${parsed.rows.length} Lead${parsed.rows.length === 1 ? '' : 's'}` : 'Import'}
+                    </Button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}

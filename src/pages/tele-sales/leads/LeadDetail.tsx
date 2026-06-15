@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import {
   ArrowLeft, Phone, Mail, Building2, User, Briefcase, Tag, Edit2, X,
-  PhoneCall, Calendar, Paperclip, Plus, CheckCircle2, Trash2,
+  PhoneCall, Calendar, Paperclip, Plus, CheckCircle2, Trash2, MapPin,
 } from 'lucide-react';
 import type { CallLog, FollowUp, LeadStatus, FollowUpType, CreateCallLogData, CreateFollowUpData } from '@/types/teleSales.types';
 
@@ -250,6 +250,7 @@ export default function LeadDetail() {
             {lead.jobTitle && <InfoRow icon={<Briefcase className="w-4 h-4" />} label="Job Title" value={lead.jobTitle} />}
             {lead.industry && <InfoRow icon={<Building2 className="w-4 h-4" />} label="Industry" value={lead.industry} />}
             {lead.companySize && <InfoRow icon={<User className="w-4 h-4" />} label="Company Size" value={lead.companySize} />}
+            {lead.address && <InfoRow icon={<MapPin className="w-4 h-4" />} label="Address" value={lead.address} />}
           </div>
           <div className="space-y-5">
             <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/20 p-5 space-y-4">

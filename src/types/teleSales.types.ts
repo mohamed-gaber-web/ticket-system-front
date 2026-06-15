@@ -99,6 +99,7 @@ export interface Lead {
   jobTitle?: string;
   industry?: string;
   companySize?: string;
+  address?: string;
   leadSource?: LeadSource;
   assignedTo?: TeleSalesAgent | null;
   priority: LeadPriority;
@@ -128,6 +129,7 @@ export interface CreateLeadData {
   jobTitle?: string;
   industry?: string;
   companySize?: string;
+  address?: string;
   leadSource?: LeadSource;
   assignedTo?: string;
   priority?: LeadPriority;
@@ -248,6 +250,49 @@ export interface AttachmentsResponse {
   success: boolean;
   total: number;
   data: LeadAttachment[];
+}
+
+// ── Import ────────────────────────────────────────────────────────────────────
+
+/** A single parsed row ready to be imported. Mirrors the importable Lead fields. */
+export interface ImportLeadRow {
+  companyName?: string;
+  contactPersonName: string;
+  phones: LeadPhone[];
+  email?: string;
+  jobTitle?: string;
+  industry?: string;
+  companySize?: string;
+  address?: string;
+  department?: string;
+  leadSource?: LeadSource;
+  priority?: LeadPriority;
+  status?: LeadStatus;
+  tags?: string[];
+}
+
+export interface ImportLeadsRequest {
+  leads: ImportLeadRow[];
+  assignedTo?: string;
+  status?: LeadStatus;
+  leadSource?: LeadSource;
+  skipDuplicates?: boolean;
+}
+
+export interface ImportError {
+  row: number | null;
+  reason: string;
+  duplicate?: boolean;
+}
+
+export interface ImportLeadsResponse {
+  success: boolean;
+  message: string;
+  inserted: number;
+  skipped: number;
+  duplicates: number;
+  total: number;
+  errors: ImportError[];
 }
 
 // ── Stats ─────────────────────────────────────────────────────────────────────
