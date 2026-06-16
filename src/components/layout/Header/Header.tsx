@@ -16,8 +16,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/redux/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { NotificationDropdown } from "@/components/notifications/NotificationDropdown";
-import { useAppDispatch, useAppSelector } from "@/redux/hooks/hooks";
-import { fetchNotifications } from "@/redux/slices/notificationSlice";
+import { useAppSelector } from "@/redux/hooks/hooks";
 import type { NotificationType } from "@/types/notification.types";
 
 export default function Header() {
@@ -26,7 +25,6 @@ export default function Header() {
   const [showNotifications, setShowNotifications] = useState(false);
   const { user, userType, logout } = useAuth();
   const navigate = useNavigate();
-  const dispatch = useAppDispatch();
   const { items } = useAppSelector((state) => state.notifications);
 
   const excludedNotificationTypes: NotificationType[] = [];
@@ -44,14 +42,9 @@ export default function Header() {
     : userType === 'consultant' ? 'Consultant'
     : 'User';
 
-  // Load notifications on mount so the badge reflects the real list right after
-  // a reload (live updates then arrive via the socket).
-  useEffect(() => {
-    if (user?._id && userType) {
-      dispatch(fetchNotifications({ userId: user._id, userType, limit: 50 }));
-    }
-  }, [dispatch, user?._id, userType]);
-
+  // Notifications are loaded centrally by useNotificationSocket (it baselines
+  // the list on every socket (re)connect, which covers mount/reload). The badge
+  // below reads straight from the Redux store, so it stays in sync regardless.
   const handleLogout = async () => {
     await logout();
     setShowUserMenu(false);

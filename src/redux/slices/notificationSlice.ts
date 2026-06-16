@@ -6,17 +6,29 @@ interface NotificationState {
   items: Notification[];
   loading: boolean;
   error: string | null;
+  // When the list was last loaded from the API. Used to throttle redundant
+  // refetches (e.g. opening the notification panel) — the socket keeps the
+  // list live, so a fresh-enough cache can be reused without a round-trip.
+  lastFetchedAt: number | null;
 }
 
 const initialState: NotificationState = {
   items: [],
   loading: false,
   error: null,
+  lastFetchedAt: null,
 };
+
+// How long a freshly-loaded list stays "fresh". Opening the panel within this
+// window reuses the cached list instead of re-hitting the API; a forced fetch
+// (socket (re)connect) always bypasses it to catch any events missed offline.
+const FRESH_WINDOW_MS = 45_000;
+
+type FetchNotificationsArg = NotificationListParams & { force?: boolean };
 
 export const fetchNotifications = createAsyncThunk(
   'notifications/fetchNotifications',
-  async (params: NotificationListParams, { rejectWithValue }) => {
+  async (params: FetchNotificationsArg, { rejectWithValue }) => {
     try {
       const response = await notificationApi.getUserNotifications(params);
       return response.data || [];
@@ -24,6 +36,23 @@ export const fetchNotifications = createAsyncThunk(
       const message = error.response?.data?.message || 'Failed to load notifications';
       return rejectWithValue(message);
     }
+  },
+  {
+    // Stale-while-revalidate guard: skip the request when one is already in
+    // flight, or when the cache is still fresh and this isn't a forced refresh.
+    // A skipped thunk dispatches no actions, so it won't flip loading or error.
+    condition: (params: FetchNotificationsArg, { getState }) => {
+      const { notifications } = getState() as { notifications: NotificationState };
+      if (notifications.loading) return false;
+      if (params.force) return true;
+      if (
+        notifications.lastFetchedAt !== null &&
+        Date.now() - notifications.lastFetchedAt < FRESH_WINDOW_MS
+      ) {
+        return false;
+      }
+      return true;
+    },
   }
 );
 
@@ -92,6 +121,7 @@ const notificationSlice = createSlice({
       .addCase(fetchNotifications.fulfilled, (state, action) => {
         state.loading = false;
         state.items = action.payload;
+        state.lastFetchedAt = Date.now();
       })
       .addCase(fetchNotifications.rejected, (state, action) => {
         state.loading = false;

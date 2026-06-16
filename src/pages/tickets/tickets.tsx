@@ -203,9 +203,12 @@ export default function Tickets() {
     return ids;
   };
 
-  // Fetch tickets whenever URL params, user identity, or loaded categories change
-  useEffect(() => {
-    const params: any = { page: currentPage, limit: itemsPerPage };
+  // Build the exact /tickets request for a given page. The serviceTypes /
+  // categories arrays are only consulted to resolve name-based URL shortcuts
+  // (e.g. ?serviceTypeName=…) into IDs — everything else comes from the URL.
+  const buildTicketParams = (pageNum: number, includeSubTickets = false) => {
+    const params: any = { page: pageNum, limit: itemsPerPage };
+    if (includeSubTickets)       params.includeSubTickets   = true;
     if (searchTerm)              params.search             = searchTerm;
     if (statusFilter.length)     params.status             = statusFilter.join(',');
     if (priorityFilter.length)   params.priority           = priorityFilter.join(',');
@@ -238,46 +241,21 @@ export default function Tickets() {
     if (updatedDateFrom)         params.updatedDateFrom    = updatedDateFrom;
     if (updatedDateTo)           params.updatedDateTo      = updatedDateTo;
     Object.assign(params, getCustomerScopeParams());
-    dispatch(fetchTickets(params));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams.toString(), user?._id, serviceTypes, categories]);
-
-  const buildCurrentParams = (pageNum: number) => {
-    const params: any = { page: pageNum, limit: itemsPerPage, includeSubTickets: true };
-    if (searchTerm)              params.search             = searchTerm;
-    if (statusFilter.length)     params.status             = statusFilter.join(',');
-    if (priorityFilter.length)   params.priority           = priorityFilter.join(',');
-    if (sourceFilter.length)     params.source             = sourceFilter.join(',');
-    if (departmentFilter.length) params.department         = departmentFilter.join(',');
-    if (assignedByFilter.length) params.assignedConsultant = assignedByFilter.join(',');
-    const resolvedST = resolveServiceTypeIds();
-    if (resolvedST.length)       params.serviceType        = resolvedST.join(',');
-    if (customerFilter.length)   params.customer           = customerFilter.join(',');
-    if (companyFilter.length)    params.companyName        = companyFilter.join(',');
-    if (moduleFilter.length)     params.scope              = moduleFilter.join(',');
-    const resolvedCats = resolveCategoryIds();
-    if (resolvedCats.length)     params.category           = resolvedCats.join(',');
-    const excST = resolveExcludeServiceTypeIds();
-    if (excST.length)            params.excludeServiceType = excST.join(',');
-    const excCat = resolveExcludeCategoryIds();
-    if (excCat.length)           params.excludeCategory    = excCat.join(',');
-    if (featureFilter.length)    params.feature            = featureFilter.join(',');
-    if (weekFilter.length)       params.scheduledWeek      = weekFilter.join(',');
-    if (createdDateFrom)         params.createdDateFrom    = createdDateFrom;
-    if (createdDateTo)           params.createdDateTo      = createdDateTo;
-    if (closedDateFrom)          params.closedDateFrom     = closedDateFrom;
-    if (closedDateTo)            params.closedDateTo       = closedDateTo;
-    if (resolvedDateFrom)        params.resolvedDateFrom   = resolvedDateFrom;
-    if (resolvedDateTo)          params.resolvedDateTo     = resolvedDateTo;
-    if (deliveryDateFrom)        params.deliveryDateFrom   = deliveryDateFrom;
-    if (deliveryDateTo)          params.deliveryDateTo     = deliveryDateTo;
-    if (acceptedDateFrom)        params.acceptedDateFrom   = acceptedDateFrom;
-    if (acceptedDateTo)          params.acceptedDateTo     = acceptedDateTo;
-    if (updatedDateFrom)         params.updatedDateFrom    = updatedDateFrom;
-    if (updatedDateTo)           params.updatedDateTo      = updatedDateTo;
-    Object.assign(params, getCustomerScopeParams());
     return params;
   };
+
+  // Fetch tickets whenever the *resolved request* changes. Keying the effect on
+  // the serialized params (instead of the raw serviceTypes/categories arrays)
+  // means those lists arriving asynchronously no longer re-fire an identical
+  // request — it only runs when the params that actually go to the API change.
+  const listParams = buildTicketParams(currentPage);
+  const listParamsKey = JSON.stringify(listParams);
+  useEffect(() => {
+    dispatch(fetchTickets(listParams));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listParamsKey]);
+
+  const buildCurrentParams = (pageNum: number) => buildTicketParams(pageNum, true);
 
   const handleSearch = () => {
     updateFilters({ q: searchInput });

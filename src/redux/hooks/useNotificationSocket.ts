@@ -28,8 +28,10 @@ export const useNotificationSocket = () => {
 
     socket.on('notification:new', onNew);
 
-    // Baseline the notification list whenever the connection (re)establishes
-    dispatch(fetchNotifications({ userId: user._id, userType, limit: 50 }));
+    // Baseline the notification list whenever the connection (re)establishes.
+    // force: true bypasses the freshness throttle so a reconnect always pulls
+    // anything that may have been pushed while we were offline.
+    dispatch(fetchNotifications({ userId: user._id, userType, limit: 50, force: true }));
 
     return () => {
       socket.off('notification:new', onNew);
