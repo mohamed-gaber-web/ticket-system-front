@@ -33,11 +33,6 @@ function toLocalDateKey(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-// Bucket key = local date (yyyy-mm-dd) of the week's Saturday
-function weekKeyOf(dateStr: string): string {
-  return toLocalDateKey(getSaturdayOfWeek(new Date(dateStr)));
-}
-
 // First Saturday of a given year (matches weekUtils.getWeekDateRange anchoring)
 function firstSaturdayOfYear(year: number): Date {
   const jan1 = new Date(year, 0, 1);
@@ -108,9 +103,10 @@ export default function WeeklyHoursPage() {
             const tickets = ticketsRes.data ?? [];
             totalTickets = tickets.length;
             for (const t of tickets) {
-              const dateStr = t.internalDeliveryDate || t.createdAt;
-              if (!dateStr) continue;
-              const key = weekKeyOf(dateStr);
+              // Bucket by the ticket's scheduledWeek — the same "Week" (W#) value shown
+              // and edited in the tickets table — so this matrix matches that column
+              // exactly. Tickets with no scheduled week fall into the "unscheduled" bucket.
+              const key = typeof t.scheduledWeek === 'number' ? String(t.scheduledWeek) : 'unscheduled';
               const hrs = typeof t.durationHours === 'number' ? t.durationHours : 0;
               if (!weeks[key]) weeks[key] = { hours: 0, count: 0 };
               weeks[key].hours += hrs;
@@ -159,8 +155,10 @@ export default function WeeklyHoursPage() {
     const set = new Set<string>();
     visibleRows.forEach((r) => Object.keys(r.weeks).forEach((k) => set.add(k)));
     return Array.from(set).sort((a, b) => {
-      const diff = weekNumberOf(a) - weekNumberOf(b);
-      return diff !== 0 ? diff : a < b ? -1 : 1;
+      // Keep the "unscheduled" bucket last; everything else sorts by week number.
+      if (a === 'unscheduled') return 1;
+      if (b === 'unscheduled') return -1;
+      return Number(a) - Number(b);
     });
   }, [visibleRows]);
 
@@ -180,7 +178,10 @@ export default function WeeklyHoursPage() {
     [visibleRows]
   );
 
-  const currentWeekKey = toLocalDateKey(getSaturdayOfWeek(new Date()));
+  // Current week number using the project scheme, so the matching scheduledWeek
+  // column gets the "Current" highlight. Date ranges are anchored to this year.
+  const currentYear = new Date().getFullYear();
+  const currentWeekKey = String(weekNumberOf(toLocalDateKey(getSaturdayOfWeek(new Date()))));
 
   if (ADMIN_ONLY && !isAdmin) {
     return (
@@ -258,27 +259,33 @@ export default function WeeklyHoursPage() {
                   <th className="sticky left-0 z-10 bg-surface-container-low px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase tracking-wider min-w-[220px]">
                     Consultant
                   </th>
-                  {weekKeys.map((wk) => (
-                    <th
-                      key={wk}
-                      className={cn(
-                        'px-4 py-3 text-center text-xs font-medium uppercase tracking-wider whitespace-nowrap',
-                        wk === currentWeekKey ? 'text-brand-700' : 'text-on-surface-variant'
-                      )}
-                    >
-                      <div className="flex flex-col items-center gap-0.5">
-                        <span className="font-bold">W{weekNumberOf(wk)}</span>
-                        <span className="normal-case text-[10px] font-normal text-on-surface-variant/80">
-                          {getWeekDateRange(weekNumberOf(wk), new Date(wk + 'T00:00:00').getFullYear())}
-                        </span>
-                        {wk === currentWeekKey && (
-                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-brand-100 text-brand-700 normal-case">
-                            Current
-                          </span>
+                  {weekKeys.map((wk) => {
+                    const isUnscheduled = wk === 'unscheduled';
+                    const weekNum = isUnscheduled ? null : Number(wk);
+                    return (
+                      <th
+                        key={wk}
+                        className={cn(
+                          'px-4 py-3 text-center text-xs font-medium uppercase tracking-wider whitespace-nowrap',
+                          wk === currentWeekKey ? 'text-brand-700' : 'text-on-surface-variant'
                         )}
-                      </div>
-                    </th>
-                  ))}
+                      >
+                        <div className="flex flex-col items-center gap-0.5">
+                          <span className="font-bold">{isUnscheduled ? 'No Week' : `W${weekNum}`}</span>
+                          {!isUnscheduled && (
+                            <span className="normal-case text-[10px] font-normal text-on-surface-variant/80">
+                              {getWeekDateRange(weekNum as number, currentYear)}
+                            </span>
+                          )}
+                          {wk === currentWeekKey && (
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-brand-100 text-brand-700 normal-case">
+                              Current
+                            </span>
+                          )}
+                        </div>
+                      </th>
+                    );
+                  })}
                 </tr>
               </thead>
               <tbody className="divide-y divide-surface-container-high">
@@ -363,9 +370,9 @@ export default function WeeklyHoursPage() {
       </div>
 
       <p className="text-xs text-on-surface-variant/70">
-        Weeks run Saturday–Friday and are numbered (W#) from the first Saturday of the year — the same scheme as the ticket
-        scheduled week. A ticket counts toward the week of its internal delivery date (or creation date if not set), and hours
-        are summed from each ticket's duration.
+        Each ticket counts toward its scheduled week — the same “Week” (W#) value set on the ticket and shown in the tickets
+        table — and hours are summed from each ticket's duration. Tickets with no scheduled week are grouped under “No Week”.
+        Week date ranges (Saturday–Friday) are shown for the current year.
       </p>
     </div>
   );

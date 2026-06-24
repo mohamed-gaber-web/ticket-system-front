@@ -13,11 +13,14 @@ import {
   FlaskConical,
   PackageCheck,
   Ban,
+  CalendarDays,
+  X,
 } from "lucide-react";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks/hooks";
 import { fetchTickets } from "@/redux/slices/ticketSlice";
 import { fetchCustomers } from "@/redux/slices/customerSlice";
+import { Input } from "@/components/ui/input";
 import {
   motion,
   useMotionValue,
@@ -358,21 +361,57 @@ export default function Dashboard() {
   const { total: totalCustomers, loading: customersLoading } =
     useAppSelector((s) => s.customers);
 
+  /* ── Date filter (by createdAt) ── */
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+
   useEffect(() => {
     dispatch(fetchTickets({ limit: 10000, includeSubTickets: true }));
     dispatch(fetchCustomers());
   }, [dispatch]);
 
+  // All dashboard figures derive from this date-filtered set. Empty range = all tickets.
+  const filteredTickets = useMemo(() => {
+    if (!dateFrom && !dateTo) return tickets;
+    const fromMs = dateFrom ? new Date(dateFrom + "T00:00:00").getTime() : -Infinity;
+    const toMs = dateTo ? new Date(dateTo + "T23:59:59.999").getTime() : Infinity;
+    return tickets.filter((t) => {
+      if (!t.createdAt) return false;
+      const ms = new Date(t.createdAt).getTime();
+      return ms >= fromMs && ms <= toMs;
+    });
+  }, [tickets, dateFrom, dateTo]);
+
+  // Quick presets — fill From/To relative to today (local date, yyyy-mm-dd).
+  const applyPreset = (preset: "today" | "7d" | "30d" | "month" | "year") => {
+    const now = new Date();
+    const fmt = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const from =
+      preset === "today" ? new Date(now)
+      : preset === "7d" ? new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6)
+      : preset === "30d" ? new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29)
+      : preset === "month" ? new Date(now.getFullYear(), now.getMonth(), 1)
+      : new Date(now.getFullYear(), 0, 1);
+    setDateFrom(fmt(from));
+    setDateTo(fmt(now));
+  };
+
+  const clearDateFilter = () => {
+    setDateFrom("");
+    setDateTo("");
+  };
+
   /* ── Derived data ── */
   const stats = useMemo(() => {
-    const main = tickets.filter((t) => !t.isSubTicket);
-    const subs = tickets.filter((t) => t.isSubTicket);
+    const main = filteredTickets.filter((t) => !t.isSubTicket);
+    const subs = filteredTickets.filter((t) => t.isSubTicket);
 
     const byStatus = (arr: typeof tickets, status: string) =>
       arr.filter((t) => t.status === status).length;
 
     return {
-      total: tickets.length,
+      total: filteredTickets.length,
       mainTickets: main.length,
       subTicketsCount: subs.length,
       closed:          byStatus(main, "closed"),
@@ -394,14 +433,14 @@ export default function Dashboard() {
       subClosed:          byStatus(subs, "closed"),
       subNotRelated:      byStatus(subs, "not_related"),
     };
-  }, [tickets]);
+  }, [filteredTickets]);
 
   const metrics = useMemo(() => {
-    const resolved = tickets.filter((t) => t.resolvedAt && t.createdAt);
+    const resolved = filteredTickets.filter((t) => t.resolvedAt && t.createdAt);
     if (!resolved.length)
       return { response: "N/A", resolution: "N/A", totalResolved: 0 };
 
-    const withResponse = tickets.filter((t) => t.firstResponseAt && t.createdAt);
+    const withResponse = filteredTickets.filter((t) => t.firstResponseAt && t.createdAt);
     const avgResponseMs = withResponse.length
       ? withResponse.reduce(
           (s, t) =>
@@ -426,11 +465,11 @@ export default function Dashboard() {
       resolution: (avgResMs / 3_600_000).toFixed(1) + " hrs",
       totalResolved: resolved.length,
     };
-  }, [tickets]);
+  }, [filteredTickets]);
 
   const recentlyClosed = useMemo(
     () =>
-      tickets
+      filteredTickets
         .filter((t) => t.status === "closed" || t.status === "resolved")
         .toSorted(
           (a, b) =>
@@ -438,7 +477,7 @@ export default function Dashboard() {
             new Date(a.resolvedAt || a.closedAt || a.updatedAt).getTime()
         )
         .slice(0, 5),
-    [tickets]
+    [filteredTickets]
   );
 
   const today = new Date().toLocaleDateString("en-US", {
@@ -469,6 +508,99 @@ export default function Dashboard() {
           {today}
         </div>
       </motion.div>
+
+      {/* ── Date filter ── */}
+      <motion.div
+        className="mb-7 p-4 rounded-2xl bg-surface-container-lowest border border-outline-variant/10 shadow-sm"
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ ...SP, delay: 0.05 }}
+      >
+        <div className="flex flex-wrap items-end gap-x-4 gap-y-3">
+          {/* Title */}
+          <div className="flex items-center gap-2 h-10 text-on-surface-variant">
+            <CalendarDays className="h-4 w-4 shrink-0" />
+            <span className="text-sm font-semibold whitespace-nowrap">Filter by date</span>
+          </div>
+
+          {/* From */}
+          <div className="space-y-1 w-36">
+            <label className="text-xs text-on-surface-variant" htmlFor="dash-date-from">From</label>
+            <Input
+              id="dash-date-from"
+              type="date"
+              value={dateFrom}
+              max={dateTo || undefined}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="[color-scheme:light] dark:[color-scheme:dark]"
+            />
+          </div>
+
+          {/* To */}
+          <div className="space-y-1 w-36">
+            <label className="text-xs text-on-surface-variant" htmlFor="dash-date-to">To</label>
+            <Input
+              id="dash-date-to"
+              type="date"
+              value={dateTo}
+              min={dateFrom || undefined}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="[color-scheme:light] dark:[color-scheme:dark]"
+            />
+          </div>
+
+          {/* Presets */}
+          <div className="flex flex-wrap items-center gap-1.5 h-10">
+            {([
+              { key: "today", label: "Today" },
+              { key: "7d", label: "Last 7d" },
+              { key: "30d", label: "Last 30d" },
+              { key: "month", label: "This Month" },
+              { key: "year", label: "This Year" },
+            ] as const).map((p) => (
+              <button
+                key={p.key}
+                type="button"
+                onClick={() => applyPreset(p.key)}
+                className="px-3 h-8 rounded-full text-xs font-semibold bg-surface-container text-on-surface-variant hover:bg-brand-100 hover:text-brand-700 transition-colors"
+              >
+                {p.label}
+              </button>
+            ))}
+            {(dateFrom || dateTo) && (
+              <button
+                type="button"
+                onClick={clearDateFilter}
+                className="inline-flex items-center gap-1 px-3 h-8 rounded-full text-xs font-semibold bg-accent-orange-100 text-accent-orange-600 hover:bg-accent-orange-200 transition-colors"
+              >
+                <X className="h-3 w-3" />
+                Clear
+              </button>
+            )}
+          </div>
+
+          {/* Count */}
+          <div className="ml-auto h-10 flex items-center text-xs text-on-surface-variant whitespace-nowrap">
+            Showing{" "}
+            <span className="font-bold text-on-surface tabular-nums mx-1">{filteredTickets.length}</span>{" "}
+            ticket{filteredTickets.length !== 1 ? "s" : ""}
+          </div>
+        </div>
+      </motion.div>
+
+      {/* ── Empty date-range notice ── */}
+      {!ticketsLoading && (dateFrom || dateTo) && filteredTickets.length === 0 && (
+        <motion.div
+          className="mb-7 p-4 rounded-2xl bg-accent-orange-50 border border-accent-orange-200 text-accent-orange-700 text-sm flex items-center gap-2"
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          <span>
+            No tickets were <strong>created</strong> in the selected date range. Try a wider range (e.g. “This Year”) or click <strong>Clear</strong> to see all tickets.
+          </span>
+        </motion.div>
+      )}
 
       {/* ── Stat cards ── */}
       <motion.div
@@ -611,9 +743,9 @@ export default function Dashboard() {
                       Recent Activities
                     </span>
                   </div>
-                  {!ticketsLoading && tickets.length > 0 && (
+                  {!ticketsLoading && filteredTickets.length > 0 && (
                     <span className="text-xs font-semibold text-brand-600 bg-brand-100 px-2.5 py-1 rounded-full">
-                      {Math.min(tickets.length, 8)} tickets
+                      {Math.min(filteredTickets.length, 8)} tickets
                     </span>
                   )}
                 </>
@@ -629,13 +761,13 @@ export default function Dashboard() {
                   ? SKELETON_KEYS_6.map((k) => (
                       <SkeletonRow key={k} delay={k * 0.05} />
                     ))
-                  : tickets.length === 0
+                  : filteredTickets.length === 0
                   ? (
                     <p className="text-center py-12 text-sm text-on-surface-variant">
                       No recent activities
                     </p>
                   )
-                  : tickets.slice(0, 8).map((ticket, i) => {
+                  : filteredTickets.slice(0, 8).map((ticket, i) => {
                       const cfg = getStatusCfg(ticket.status);
                       return (
                         <motion.div
