@@ -267,8 +267,22 @@ export const routes: RouteObject[] = [
       { path: "/consultants/view/:id", element: <Lazy><ViewConsultant /></Lazy> },
       { path: "/consultants/dashboard", element: <Lazy><ConsultantDashboard /></Lazy> },
       { path: "/consultants/weekly-hours", element: <Lazy><WeeklyHoursPage /></Lazy> },
-      { path: "/consultants/evaluation/:id", element: <Lazy><EmployeeEvaluationPage /></Lazy> },
-      { path: "/consultants/evaluations", element: <Lazy><EvaluationsOverviewPage /></Lazy> },
+      {
+        path: "/consultants/evaluation/:id",
+        element: (
+          <ProtectedRoute allowedUserTypes={["consultant"]}>
+            <Lazy><EmployeeEvaluationPage /></Lazy>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "/consultants/evaluations",
+        element: (
+          <ProtectedRoute allowedUserTypes={["consultant"]}>
+            <Lazy><EvaluationsOverviewPage /></Lazy>
+          </ProtectedRoute>
+        ),
+      },
 
       // Category Routes
       { path: "/categories", element: <Lazy><Categories /></Lazy> },
