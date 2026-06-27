@@ -30,6 +30,7 @@ import taskCommentsReducer from './slices/taskCommentSlice';
 import employeeRequestsReducer from './slices/employeeRequestSlice';
 import employeeBalancesReducer from './slices/employeeBalanceSlice';
 import aiReducer from './slices/aiSlice';
+import evaluationReducer from './slices/evaluationSlice';
 
 export const store = configureStore({
   reducer: {
@@ -64,6 +65,7 @@ export const store = configureStore({
     employeeRequests: employeeRequestsReducer,
     employeeBalances: employeeBalancesReducer,
     ai: aiReducer,
+    evaluation: evaluationReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

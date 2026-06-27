@@ -125,6 +125,7 @@ export interface Ticket {
   internalDeliveryDate?: string;
   scheduledWeek?: number;
   durationHours?: number;
+  adminPoints?: number | null;
   // Sub-ticket fields
   parentTicket?: string | Ticket;
   isSubTicket: boolean;

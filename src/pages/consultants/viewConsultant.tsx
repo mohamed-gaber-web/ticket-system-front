@@ -5,7 +5,7 @@ import { fetchConsultantById, updateConsultant, clearCurrentConsultant } from '@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { CustomSelect } from '@/components/ui/custom-select';
-import { ArrowLeft, Save, Ticket as TicketIcon, Mail, Phone, Calendar, Clock, Zap, CheckCircle2, ArchiveX, AlertTriangle, Timer, ChevronLeft, ChevronRight, Pencil, X, Check } from 'lucide-react';
+import { ArrowLeft, Save, Ticket as TicketIcon, Mail, Phone, Calendar, Clock, Zap, CheckCircle2, ArchiveX, AlertTriangle, Timer, ChevronLeft, ChevronRight, Pencil, X, Check, GaugeCircle } from 'lucide-react';
 import type { UpdateConsultantData, ConsultantRole, ConsultantStatus } from '@/types/consultant.types';
 import type { Ticket } from '@/types/ticket';
 import * as ticketApi from '@/api/ticketApi';
@@ -288,6 +288,19 @@ export default function ViewConsultant() {
               <span>Last login {fmtDate(currentConsultant.lastLogin)}</span>
             </div>
           )}
+        </div>
+
+        {/* Evaluation link */}
+        <div className="flex flex-col items-center justify-center px-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate(`/consultants/evaluation/${currentConsultant._id}`)}
+            className="gap-1.5 whitespace-nowrap"
+          >
+            <GaugeCircle className="w-3.5 h-3.5" />
+            Evaluation
+          </Button>
         </div>
 
         {/* Ticket Count + Hours */}

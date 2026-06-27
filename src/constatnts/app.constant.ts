@@ -4,6 +4,7 @@ import {
   Ticket,
   UserCog,
   BarChart2,
+  GaugeCircle,
   CalendarDays,
   // UsersRound, // Hidden - not in use
   // UserCheck, // Hidden - not in use
@@ -134,6 +135,7 @@ const CONSULTANT_LINKS = [
     isGroup: true as const,
     children: [
       { name: "My Tasks", path: "/profile?view=tasks", icon: ListChecks },
+      { name: "My Evaluation", path: "/consultants/evaluation/me", icon: GaugeCircle },
       { name: "Consultants", path: "/consultants", icon: UserCog },
     ],
   },
@@ -243,6 +245,8 @@ const TICKETING_ADMIN_GROUP = {
       isSubGroup: true as const,
       children: [
         { name: "My Tasks", path: "/profile?view=tasks", icon: ListChecks },
+        { name: "My Evaluation", path: "/consultants/evaluation/me", icon: GaugeCircle },
+        { name: "Evaluations", path: "/consultants/evaluations", icon: BarChart2 },
         { name: "Consultants", path: "/consultants", icon: UserCog },
         { name: "Weekly Report", path: "/consultant-reports/weekly", icon: CalendarDays },
         { name: "Weekly Hours", path: "/consultants/weekly-hours", icon: CalendarClock },
