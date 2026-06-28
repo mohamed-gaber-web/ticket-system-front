@@ -60,6 +60,21 @@ export const authApi = {
   },
 
   /**
+   * Upload a profile picture (image) to GridFS.
+   * Returns the stored file id, which should be saved on a user's
+   * `profilePicture` field (via create/update user or updateProfile).
+   * @param file - The image file to upload
+   */
+  uploadAvatar: async (
+    file: File
+  ): Promise<{ success: boolean; message: string; data: { fileId: string; url: string } }> => {
+    const formData = new FormData();
+    formData.append('avatar', file);
+    const response = await api.post('/avatar', formData);
+    return response.data;
+  },
+
+  /**
    * Change user password
    * @param data - Current and new password
    */

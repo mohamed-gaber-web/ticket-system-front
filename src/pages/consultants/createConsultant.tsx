@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CustomSelect } from '@/components/ui/custom-select';
+import { ProfilePictureUpload } from '@/components/ui/profile-picture-upload';
 import { ArrowLeft, Save } from 'lucide-react';
 import type { CreateConsultantData, ConsultantRole } from '@/types/consultant.types';
 
@@ -36,6 +37,7 @@ export default function CreateConsultant() {
     department: undefined,
     status: 'active',
     monthlyTargetHours: null,
+    profilePicture: null,
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -118,6 +120,17 @@ export default function CreateConsultant() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Profile Picture */}
+            <div className="flex flex-col items-center gap-2">
+              <ProfilePictureUpload
+                value={formData.profilePicture}
+                onChange={(fileId) => setFormData((prev) => ({ ...prev, profilePicture: fileId }))}
+                name={`${formData.firstName} ${formData.lastName}`.trim() || 'New Consultant'}
+                fallbackClassName="bg-brand-100 text-brand-700"
+              />
+              <p className="text-xs text-on-surface-variant">Profile picture (optional)</p>
+            </div>
+
             {/* Personal Information */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>

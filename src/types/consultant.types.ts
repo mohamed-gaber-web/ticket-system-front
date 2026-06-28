@@ -20,6 +20,7 @@ export interface Consultant {
   status: ConsultantStatus;
   fullName: string;
   monthlyTargetHours?: number | null;
+  profilePicture?: string | null;
   lastLogin?: string;
   createdAt: string;
   updatedAt: string;
@@ -77,6 +78,7 @@ export interface CreateConsultantData {
   department?: string | null;
   status: ConsultantStatus;
   monthlyTargetHours?: number | null;
+  profilePicture?: string | null;
 }
 
 export interface UpdateConsultantData {
@@ -89,6 +91,7 @@ export interface UpdateConsultantData {
   department?: string | null;
   status?: ConsultantStatus;
   monthlyTargetHours?: number | null;
+  profilePicture?: string | null;
 }
 
 export interface DeleteResponse {

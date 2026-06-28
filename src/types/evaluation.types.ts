@@ -50,6 +50,22 @@ export interface EvaluationConsultant {
   lastName: string;
   position?: string | null;
   role: string;
+  profilePicture?: string | null;
+}
+
+export type TicketCategory = 'early' | 'onTime' | 'late' | null;
+
+export interface EvaluationTicketDetail {
+  _id: string;
+  ticketNumber: number | string | null;
+  subject: string;
+  status: string;
+  deadline: string | null;
+  resolvedDate: string | null;
+  /** null = not counted (no delivery date / still within deadline). */
+  category: TicketCategory;
+  counted: boolean;
+  points: number;
 }
 
 export interface EvaluationData {
@@ -57,6 +73,7 @@ export interface EvaluationData {
   period: { year: number; month: number; label: string };
   adminScores: AdminScores;
   breakdown: EvaluationBreakdown;
+  tickets?: EvaluationTicketDetail[];
   totalScore: number;
 }
 
@@ -70,12 +87,23 @@ export interface ConsultantEvaluationRow {
   totalScore: number;
   breakdown: EvaluationBreakdown;
   ticketCount: number;
+  /** Number of selected months that have a stored admin evaluation. */
+  monthsEvaluated?: number;
   adminScores: Omit<AdminScores, 'notes'>;
+}
+
+export interface EvaluationPeriod {
+  label: string;
+  /** Present on single-month responses (legacy /all/:month). */
+  year?: number;
+  month?: number;
+  /** Present on multi-month responses (/all?months=…). */
+  months?: { year: number; month: number }[];
 }
 
 export interface AllEvaluationsResponse {
   success: boolean;
-  period: { year: number; month: number; label: string };
+  period: EvaluationPeriod;
   count: number;
   data: ConsultantEvaluationRow[];
 }

@@ -14,6 +14,7 @@ import {
   PackageCheck,
   Ban,
   CalendarDays,
+  Building2,
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -21,6 +22,7 @@ import { useAppDispatch, useAppSelector } from "@/redux/hooks/hooks";
 import { fetchTickets } from "@/redux/slices/ticketSlice";
 import { fetchCustomers } from "@/redux/slices/customerSlice";
 import { Input } from "@/components/ui/input";
+import { CustomSelect } from "@/components/ui/custom-select";
 import {
   motion,
   useMotionValue,
@@ -361,7 +363,8 @@ export default function Dashboard() {
   const { total: totalCustomers, loading: customersLoading } =
     useAppSelector((s) => s.customers);
 
-  /* ── Date filter (by createdAt) ── */
+  /* ── Filters (company + createdAt date range) ── */
+  const [company, setCompany] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
 
@@ -370,17 +373,41 @@ export default function Dashboard() {
     dispatch(fetchCustomers());
   }, [dispatch]);
 
-  // All dashboard figures derive from this date-filtered set. Empty range = all tickets.
+  // Company options derived from the loaded tickets (their customer's companyName),
+  // so the dropdown only lists companies that actually have tickets.
+  const companyOptions = useMemo(() => {
+    const names = new Set<string>();
+    for (const t of tickets) {
+      const c = t.customer;
+      if (typeof c === "object" && c?.companyName) names.add(c.companyName);
+    }
+    return [
+      { value: "", label: "All companies" },
+      ...Array.from(names)
+        .sort((a, b) => a.localeCompare(b))
+        .map((n) => ({ value: n, label: n })),
+    ];
+  }, [tickets]);
+
+  // All dashboard figures derive from this filtered set.
+  // No company + empty range = all tickets.
   const filteredTickets = useMemo(() => {
-    if (!dateFrom && !dateTo) return tickets;
+    const hasDate = Boolean(dateFrom || dateTo);
     const fromMs = dateFrom ? new Date(dateFrom + "T00:00:00").getTime() : -Infinity;
     const toMs = dateTo ? new Date(dateTo + "T23:59:59.999").getTime() : Infinity;
     return tickets.filter((t) => {
-      if (!t.createdAt) return false;
-      const ms = new Date(t.createdAt).getTime();
-      return ms >= fromMs && ms <= toMs;
+      if (company) {
+        const name = typeof t.customer === "object" && t.customer ? t.customer.companyName : "";
+        if (name !== company) return false;
+      }
+      if (hasDate) {
+        if (!t.createdAt) return false;
+        const ms = new Date(t.createdAt).getTime();
+        if (ms < fromMs || ms > toMs) return false;
+      }
+      return true;
     });
-  }, [tickets, dateFrom, dateTo]);
+  }, [tickets, company, dateFrom, dateTo]);
 
   // Quick presets — fill From/To relative to today (local date, yyyy-mm-dd).
   const applyPreset = (preset: "today" | "7d" | "30d" | "month" | "year") => {
@@ -397,10 +424,13 @@ export default function Dashboard() {
     setDateTo(fmt(now));
   };
 
-  const clearDateFilter = () => {
+  const clearFilters = () => {
+    setCompany("");
     setDateFrom("");
     setDateTo("");
   };
+
+  const hasActiveFilter = Boolean(company || dateFrom || dateTo);
 
   /* ── Derived data ── */
   const stats = useMemo(() => {
@@ -517,6 +547,23 @@ export default function Dashboard() {
         transition={{ ...SP, delay: 0.05 }}
       >
         <div className="flex flex-wrap items-end gap-x-4 gap-y-3">
+          {/* Company */}
+          <div className="flex items-center gap-2 h-10">
+            <Building2 className="h-4 w-4 shrink-0 text-on-surface-variant" />
+            <div className="w-52">
+              <CustomSelect
+                variant="filter"
+                value={company}
+                onChange={setCompany}
+                options={companyOptions}
+                placeholder="All companies"
+              />
+            </div>
+          </div>
+
+          {/* Divider */}
+          <div className="hidden sm:block h-8 w-px bg-outline-variant/30 self-center" />
+
           {/* Title */}
           <div className="flex items-center gap-2 h-10 text-on-surface-variant">
             <CalendarDays className="h-4 w-4 shrink-0" />
@@ -567,10 +614,10 @@ export default function Dashboard() {
                 {p.label}
               </button>
             ))}
-            {(dateFrom || dateTo) && (
+            {hasActiveFilter && (
               <button
                 type="button"
-                onClick={clearDateFilter}
+                onClick={clearFilters}
                 className="inline-flex items-center gap-1 px-3 h-8 rounded-full text-xs font-semibold bg-accent-orange-100 text-accent-orange-600 hover:bg-accent-orange-200 transition-colors"
               >
                 <X className="h-3 w-3" />
@@ -588,8 +635,8 @@ export default function Dashboard() {
         </div>
       </motion.div>
 
-      {/* ── Empty date-range notice ── */}
-      {!ticketsLoading && (dateFrom || dateTo) && filteredTickets.length === 0 && (
+      {/* ── Empty filter notice ── */}
+      {!ticketsLoading && hasActiveFilter && filteredTickets.length === 0 && (
         <motion.div
           className="mb-7 p-4 rounded-2xl bg-accent-orange-50 border border-accent-orange-200 text-accent-orange-700 text-sm flex items-center gap-2"
           initial={{ opacity: 0, y: -8 }}
@@ -597,7 +644,7 @@ export default function Dashboard() {
         >
           <AlertTriangle className="h-4 w-4 shrink-0" />
           <span>
-            No tickets were <strong>created</strong> in the selected date range. Try a wider range (e.g. “This Year”) or click <strong>Clear</strong> to see all tickets.
+            No tickets match the selected filters{company ? <> for <strong>{company}</strong></> : null}. Try a different company, a wider date range, or click <strong>Clear</strong> to see all tickets.
           </span>
         </motion.div>
       )}

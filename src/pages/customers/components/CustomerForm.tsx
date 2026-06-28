@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { CustomSelect } from '@/components/ui/custom-select';
+import { ProfilePictureUpload } from '@/components/ui/profile-picture-upload';
 import { Loader2, Building2, User, Mail, Phone, MapPin, Lock, Database, Plus, Users } from 'lucide-react';
 import { ConsultantSelect } from '@/components/ui/consultant-select';
 import { MultiSelect } from '@/components/ui/multi-select';
@@ -53,6 +54,7 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
     versionNumber: '',
     consultants: [] as string[],
     productTypes: [] as string[],
+    profilePicture: null as string | null,
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -95,6 +97,7 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
         versionNumber: (typeof customer.versionNumber === 'string' ? customer.versionNumber : customer.versionNumber?._id) || '',
         consultants: consultantIds,
         productTypes: productTypeIds,
+        profilePicture: customer.profilePicture ?? null,
       });
     }
   }, [customer, isEditMode]);
@@ -210,6 +213,7 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
       if (formData.versionNumber) submitData.versionNumber = formData.versionNumber;
       if (formData.consultants.length > 0) submitData.consultants = formData.consultants;
       submitData.productTypes = formData.productTypes;
+      submitData.profilePicture = formData.profilePicture;
 
       await onSubmit(submitData);
     } else {
@@ -229,6 +233,7 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
       if (formData.versionNumber) submitData.versionNumber = formData.versionNumber;
       if (formData.consultants.length > 0) submitData.consultants = formData.consultants;
       submitData.productTypes = formData.productTypes;
+      if (formData.profilePicture) submitData.profilePicture = formData.profilePicture;
 
       await onSubmit(submitData);
     }
@@ -247,6 +252,17 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
       </div>
       <div className="p-8">
         <form onSubmit={handleSubmit} className="space-y-8">
+          {/* Profile Picture */}
+          <div className="flex flex-col items-center gap-2">
+            <ProfilePictureUpload
+              value={formData.profilePicture}
+              onChange={(fileId) => setFormData((prev) => ({ ...prev, profilePicture: fileId }))}
+              name={formData.contactPerson || 'New Customer'}
+              fallbackClassName="bg-brand-100 text-brand-600"
+            />
+            <p className="text-xs text-on-surface-variant">Profile picture (optional)</p>
+          </div>
+
           <div className="space-y-6">
             <div className="form-section-title flex items-center gap-3">
               <div className="p-2 bg-brand-100 rounded-lg">

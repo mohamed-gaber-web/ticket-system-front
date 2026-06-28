@@ -25,6 +25,21 @@ export const getAllEvaluations = async (
   return response.data;
 };
 
+/**
+ * Combined evaluations for all consultants across one or more months.
+ * Tickets are pooled across the selected months and admin scores averaged,
+ * producing a single combined score/ranking per consultant for the period.
+ */
+export const getAllEvaluationsRange = async (
+  months: { year: number; month: number }[]
+): Promise<AllEvaluationsResponse> => {
+  const monthsCsv = months.map((m) => monthParam(m.year, m.month)).join(',');
+  const response = await api.get<AllEvaluationsResponse>('/evaluations/all', {
+    params: { months: monthsCsv },
+  });
+  return response.data;
+};
+
 export const saveEvaluation = async (
   employeeId: string,
   year: number,

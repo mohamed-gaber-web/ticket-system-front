@@ -1,8 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  ChevronLeft,
-  ChevronRight,
   ChevronUp,
   ChevronDown,
   ChevronsUpDown,
@@ -13,9 +11,12 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-import { getAllEvaluations } from '@/api/evaluationApi';
+import { getAllEvaluationsRange } from '@/api/evaluationApi';
 import type { AllEvaluationsResponse, ConsultantEvaluationRow } from '@/types/evaluation.types';
 import { Button } from '@/components/ui/button';
+import { MultiSelect } from '@/components/ui/multi-select';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { getAvatarUrl } from '@/lib/avatar';
 
 /* ── Score badge ─────────────────────────────────────────────── */
 function ScoreBadge({ score }: { score: number }) {
@@ -75,14 +76,38 @@ function Th({
   );
 }
 
+/* ── Month-key helpers ───────────────────────────────────────── */
+// Months are tracked as 'YYYY-MM' string keys (month is 1-indexed in the key).
+const monthKey = (year: number, month: number) => `${year}-${String(month + 1).padStart(2, '0')}`;
+
+const parseMonthKey = (key: string) => {
+  const [y, m] = key.split('-').map(Number);
+  return { year: y, month: m - 1 };
+};
+
+// Most recent `count` months, newest first, for the picker.
+const buildMonthOptions = (count = 24) => {
+  const now = new Date();
+  return Array.from({ length: count }, (_, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    return {
+      _id: monthKey(d.getFullYear(), d.getMonth()),
+      name: d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+    };
+  });
+};
+
 /* ─────────────────────────────────────────────────────────────── */
 
 export default function EvaluationsOverviewPage() {
   const navigate = useNavigate();
 
-  const [period, setPeriod] = useState(() => {
+  const monthOptions = useMemo(() => buildMonthOptions(24), []);
+
+  // Selected months as 'YYYY-MM' keys. Defaults to the current month.
+  const [selectedMonths, setSelectedMonths] = useState<string[]>(() => {
     const now = new Date();
-    return { year: now.getFullYear(), month: now.getMonth() };
+    return [monthKey(now.getFullYear(), now.getMonth())];
   });
 
   const [response, setResponse] = useState<AllEvaluationsResponse | null>(null);
@@ -93,10 +118,16 @@ export default function EvaluationsOverviewPage() {
   const [search, setSearch] = useState('');
 
   const fetchData = async () => {
+    if (selectedMonths.length === 0) {
+      setResponse(null);
+      setError(null);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
-      const data = await getAllEvaluations(period.year, period.month);
+      const months = [...selectedMonths].sort().map(parseMonthKey);
+      const data = await getAllEvaluationsRange(months);
       setResponse(data);
     } catch (e: any) {
       setError(e.response?.data?.message || 'Failed to load evaluations');
@@ -105,22 +136,9 @@ export default function EvaluationsOverviewPage() {
     }
   };
 
-  useEffect(() => { fetchData(); }, [period]);
+  useEffect(() => { fetchData(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [selectedMonths]);
 
-  const prevMonth = () =>
-    setPeriod(({ year, month }) => {
-      const d = new Date(year, month - 1, 1);
-      return { year: d.getFullYear(), month: d.getMonth() };
-    });
-
-  const nextMonth = () =>
-    setPeriod(({ year, month }) => {
-      const d = new Date(year, month + 1, 1);
-      return { year: d.getFullYear(), month: d.getMonth() };
-    });
-
-  const now = new Date();
-  const isCurrentMonth = period.year === now.getFullYear() && period.month === now.getMonth();
+  const isMultiMonth = selectedMonths.length > 1;
 
   const handleSort = (key: SortKey) => {
     setSort((s) => ({ key, dir: s.key === key && s.dir === 'desc' ? 'asc' : 'desc' }));
@@ -174,7 +192,10 @@ export default function EvaluationsOverviewPage() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-on-surface">Employee Evaluations</h1>
-          <p className="text-sm text-on-surface-variant mt-0.5">Monthly performance overview — all consultants</p>
+          <p className="text-sm text-on-surface-variant mt-0.5">
+            Performance overview — all consultants
+            {response?.period.label ? ` · ${response.period.label}` : ''}
+          </p>
         </div>
         <Button variant="outline" size="sm" onClick={fetchData} disabled={loading} className="gap-1.5">
           <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -182,20 +203,20 @@ export default function EvaluationsOverviewPage() {
         </Button>
       </div>
 
-      {/* ── Month navigator ──────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3 bg-surface-container-lowest rounded-full px-4 py-2 border border-outline-variant shadow-sm">
-          <button onClick={prevMonth}
-            className="p-1 rounded-full hover:bg-surface-container-high transition-colors text-on-surface-variant">
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-          <span className="text-sm font-semibold text-on-surface min-w-[150px] text-center">
-            {response?.period.label ?? new Date(period.year, period.month).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-          </span>
-          <button onClick={nextMonth} disabled={isCurrentMonth}
-            className="p-1 rounded-full hover:bg-surface-container-high transition-colors text-on-surface-variant disabled:opacity-30 disabled:cursor-not-allowed">
-            <ChevronRight className="w-4 h-4" />
-          </button>
+      {/* ── Month filter (multi-select) + search ─────────────── */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4">
+        <div className="w-full sm:w-80">
+          <label className="block text-xs font-medium text-on-surface-variant uppercase tracking-wide mb-1.5">
+            Months {isMultiMonth && <span className="text-primary normal-case">· combined</span>}
+          </label>
+          <MultiSelect
+            items={monthOptions}
+            value={selectedMonths}
+            onChange={setSelectedMonths}
+            placeholder="Select one or more months…"
+            searchPlaceholder="Search month…"
+            emptyMessage="No months"
+          />
         </div>
 
         <input
@@ -211,7 +232,7 @@ export default function EvaluationsOverviewPage() {
       {response && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { label: 'Consultants', value: response.count, sub: 'evaluated this month', color: 'text-primary' },
+            { label: 'Consultants', value: response.count, sub: 'in selected period', color: 'text-primary' },
             { label: 'Average Score', value: avg.toFixed(1), sub: 'out of 100', color: avg >= 60 ? 'text-green-600' : 'text-orange-600' },
             { label: 'Top Score', value: top.toFixed(1), sub: 'highest performer', color: 'text-purple-600' },
             { label: 'Certified', value: certified, sub: 'bi-annual certification', color: 'text-amber-600' },
@@ -248,7 +269,11 @@ export default function EvaluationsOverviewPage() {
         {!loading && !error && rows.length === 0 && (
           <div className="flex flex-col items-center gap-2 py-20">
             <Award className="w-8 h-8 text-on-surface-variant/30" />
-            <p className="text-sm text-on-surface-variant">No evaluations found for this period.</p>
+            <p className="text-sm text-on-surface-variant">
+              {selectedMonths.length === 0
+                ? 'Select one or more months to view evaluations.'
+                : 'No evaluations found for the selected period.'}
+            </p>
           </div>
         )}
 
@@ -288,11 +313,18 @@ export default function EvaluationsOverviewPage() {
                       {/* Name */}
                       <td className="px-3 py-3">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                            <span className="text-xs font-bold text-primary">
+                          <Avatar className="w-8 h-8 flex-shrink-0">
+                            {getAvatarUrl(consultant.profilePicture) && (
+                              <AvatarImage
+                                src={getAvatarUrl(consultant.profilePicture)}
+                                alt={name}
+                                className="object-cover"
+                              />
+                            )}
+                            <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
                               {consultant.firstName[0]}{consultant.lastName[0]}
-                            </span>
-                          </div>
+                            </AvatarFallback>
+                          </Avatar>
                           <div>
                             <p className="font-medium text-on-surface leading-tight">{name}</p>
                             <p className="text-xs text-on-surface-variant">{consultant.position ?? consultant.role}</p>

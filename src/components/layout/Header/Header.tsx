@@ -1,4 +1,5 @@
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { getAvatarUrl } from "@/lib/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -36,6 +37,7 @@ export default function Header() {
 
   const userEmail = user?.email || '';
   const u = user as any;
+  const avatarUrl = getAvatarUrl(u?.profilePicture);
   const userRole = userType === 'tele_sales'
     ? (u?.role === 'admin' ? 'Admin' : 'User')
     : userType === 'customer' ? 'Customer'
@@ -166,6 +168,7 @@ export default function Header() {
           >
             <div className="relative">
               <Avatar className="h-9 w-9">
+                {avatarUrl && <AvatarImage src={avatarUrl} alt={userEmail} className="object-cover" />}
                 <AvatarFallback className="bg-primary-gradient text-white font-semibold text-sm">
                   {userEmail ? userEmail.substring(0, 2).toUpperCase() : 'U'}
                 </AvatarFallback>

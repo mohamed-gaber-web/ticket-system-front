@@ -46,6 +46,7 @@ export interface Customer {
   versionNumber?: VersionNumberRef | string;
   consultants?: ConsultantRef[] | string[];
   productTypes?: ProductTypeRef[] | string[];
+  profilePicture?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -65,6 +66,7 @@ export interface CreateCustomerData {
   consultants?: string[];
   productTypes?: string[];
   role?: CustomerRole;
+  profilePicture?: string | null;
 }
 
 export interface UpdateCustomerData {
@@ -82,6 +84,7 @@ export interface UpdateCustomerData {
   consultants?: string[];
   productTypes?: string[];
   role?: CustomerRole;
+  profilePicture?: string | null;
 }
 
 export interface CreateCompanyUserData {

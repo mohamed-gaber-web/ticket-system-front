@@ -22,6 +22,8 @@ import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { useAuth } from '@/redux/hooks/useAuth';
 import { fetchEvaluation, saveEvaluation, clearEvaluation } from '@/redux/slices/evaluationSlice';
 import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { getAvatarUrl } from '@/lib/avatar';
 import type { AdminScores } from '@/types/evaluation.types';
 import type { RootState } from '@/redux/store';
 
@@ -122,6 +124,17 @@ function ScoreInput({
     </label>
   );
 }
+
+/* ── Ticket detail helpers ────────────────────────────────────── */
+const fmtDate = (d?: string | null) =>
+  d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+
+const CATEGORY_META: Record<'early' | 'onTime' | 'late', { label: string; cls: string }> = {
+  early:  { label: 'Early',   cls: 'bg-emerald-100 text-emerald-700' },
+  onTime: { label: 'On-Time', cls: 'bg-blue-100 text-blue-700' },
+  late:   { label: 'Late',    cls: 'bg-red-100 text-red-700' },
+};
+const NOT_COUNTED_META = { label: 'Not counted', cls: 'bg-surface-container-high text-on-surface-variant' };
 
 /* ── Module-level constants (stable across renders) ───────────── */
 const KPI_CONFIG = [
@@ -229,9 +242,23 @@ export default function EmployeeEvaluationPage() {
         <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-1.5">
           <ArrowLeft className="w-4 h-4" /> Back
         </Button>
+        <Avatar className="w-14 h-14">
+          {getAvatarUrl(data?.consultant.profilePicture) && (
+            <AvatarImage
+              src={getAvatarUrl(data?.consultant.profilePicture)}
+              alt={consultantName}
+              className="object-cover"
+            />
+          )}
+          <AvatarFallback className="bg-primary/10 text-primary font-bold">
+            {data ? `${data.consultant.firstName[0] ?? ''}${data.consultant.lastName[0] ?? ''}`.toUpperCase() : '…'}
+          </AvatarFallback>
+        </Avatar>
         <div>
           <h1 className="text-2xl font-bold text-on-surface">{consultantName}</h1>
-          <p className="text-sm text-on-surface-variant">Performance Evaluation</p>
+          <p className="text-sm text-on-surface-variant">
+            {data?.consultant.position ?? data?.consultant.role ?? 'Performance Evaluation'}
+          </p>
         </div>
       </div>
 
@@ -352,6 +379,64 @@ export default function EmployeeEvaluationPage() {
                   </p>
                 )}
               </div>
+
+              {/* Per-ticket breakdown — every ticket behind the number above */}
+              {data.tickets && data.tickets.length > 0 && (
+                <div className="border-t border-outline-variant">
+                  <div className="px-5 py-3 flex items-center justify-between gap-2 flex-wrap">
+                    <h3 className="text-sm font-semibold text-on-surface">Tickets in this period</h3>
+                    <span className="text-xs text-on-surface-variant">
+                      {data.tickets.filter((t) => t.counted).length} counted · {data.tickets.length} total
+                    </span>
+                  </div>
+                  <div className="overflow-x-auto max-h-96 overflow-y-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-surface-container-high/50 sticky top-0">
+                        <tr className="text-xs text-on-surface-variant uppercase tracking-wide">
+                          <th className="px-4 py-2 text-left font-semibold">Ticket</th>
+                          <th className="px-4 py-2 text-left font-semibold whitespace-nowrap">Deadline</th>
+                          <th className="px-4 py-2 text-left font-semibold whitespace-nowrap">Resolved</th>
+                          <th className="px-4 py-2 text-center font-semibold">Result</th>
+                          <th className="px-4 py-2 text-right font-semibold">Pts</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {data.tickets.map((t) => {
+                          const meta = t.category ? CATEGORY_META[t.category] : NOT_COUNTED_META;
+                          return (
+                            <tr
+                              key={t._id}
+                              onClick={() => window.open(`/tickets/view/${t._id}`, '_blank')}
+                              className={`border-t border-outline-variant/50 hover:bg-surface-container-high/40 cursor-pointer transition-colors ${t.counted ? '' : 'opacity-60'}`}
+                            >
+                              <td className="px-4 py-2.5">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  {t.ticketNumber != null && (
+                                    <span className="text-xs font-semibold text-brand-600 whitespace-nowrap">#{t.ticketNumber}</span>
+                                  )}
+                                  <span className="text-on-surface truncate max-w-[220px]" title={t.subject}>
+                                    {t.subject || '—'}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-2.5 text-on-surface-variant whitespace-nowrap">{fmtDate(t.deadline)}</td>
+                              <td className="px-4 py-2.5 text-on-surface-variant whitespace-nowrap">{fmtDate(t.resolvedDate)}</td>
+                              <td className="px-4 py-2.5 text-center">
+                                <span className={`text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${meta.cls}`}>
+                                  {meta.label}
+                                </span>
+                              </td>
+                              <td className={`px-4 py-2.5 text-right font-semibold tabular-nums ${t.points > 0 ? 'text-green-600' : t.points < 0 ? 'text-red-600' : 'text-on-surface-variant'}`}>
+                                {t.points > 0 ? `+${t.points}` : t.points}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </motion.div>
           </div>
 

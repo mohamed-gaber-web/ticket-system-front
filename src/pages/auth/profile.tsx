@@ -3,6 +3,7 @@ import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { getProfile, updateProfile } from '@/redux/slices/authSlice';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { ProfilePictureUpload } from '@/components/ui/profile-picture-upload';
 import { toast } from 'sonner';
 import { Save, Mail, Phone, Calendar, Clock, Ticket as TicketIcon, Building2, MapPin, GitBranch, Zap, CheckCircle2, ArchiveX, AlertTriangle, FlaskConical, PackageCheck, Ban, Users, Timer, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -20,14 +21,6 @@ const fmtDate = (d?: string) =>
 
 const formatLabel = (s: string | null | undefined) =>
   String(s ?? '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-
-const getInitials = (name: string) =>
-  name
-    .split(' ')
-    .map((w) => w[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase();
 
 const PRIORITY_DOT: Record<string, string> = {
   critical: 'bg-error',
@@ -363,6 +356,17 @@ const ProfilePage = () => {
     }
   };
 
+  // ── Profile picture ──
+  // Persists the new picture immediately so it shows in the header right away.
+  const handleAvatarChange = async (fileId: string | null) => {
+    try {
+      await dispatch(updateProfile({ profilePicture: fileId } as any)).unwrap();
+      toast.success(fileId ? 'Profile picture updated' : 'Profile picture removed');
+    } catch (error: any) {
+      toast.error(error || 'Failed to update profile picture');
+    }
+  };
+
   if (!user) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -389,9 +393,13 @@ const ProfilePage = () => {
 
         {/* Profile Summary Card */}
         <div className="bg-surface-container-lowest rounded-[1rem] p-6 flex flex-col sm:flex-row items-start sm:items-center gap-5">
-          <div className="w-20 h-20 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-            <span className="text-2xl font-bold text-emerald-700">{getInitials(displayName)}</span>
-          </div>
+          <ProfilePictureUpload
+            value={u.profilePicture}
+            onChange={handleAvatarChange}
+            name={displayName}
+            size={128}
+            fallbackClassName="bg-emerald-100 text-emerald-700"
+          />
 
           <div className="flex-1 min-w-0">
             <h2 className="text-xl font-bold text-on-surface">{displayName}</h2>
@@ -534,9 +542,13 @@ const ProfilePage = () => {
 
         {/* Profile Summary Card */}
         <div className="bg-surface-container-lowest rounded-[1rem] p-6 flex flex-col sm:flex-row items-start sm:items-center gap-5">
-          <div className="w-20 h-20 rounded-full bg-brand-100 flex items-center justify-center flex-shrink-0">
-            <span className="text-2xl font-bold text-brand-700">{getInitials(displayName)}</span>
-          </div>
+          <ProfilePictureUpload
+            value={u.profilePicture}
+            onChange={handleAvatarChange}
+            name={displayName}
+            size={128}
+            fallbackClassName="bg-brand-100 text-brand-700"
+          />
           <div className="flex-1 min-w-0">
             <h2 className="text-xl font-bold text-on-surface">{displayName}</h2>
             <p className="text-sm text-on-surface-variant mt-0.5">
@@ -674,9 +686,13 @@ const ProfilePage = () => {
 
         {/* Profile Summary Card */}
         <div className="bg-surface-container-lowest rounded-[1rem] p-6 flex flex-col sm:flex-row items-start sm:items-center gap-5">
-          <div className="w-20 h-20 rounded-full bg-brand-100 flex items-center justify-center flex-shrink-0">
-            <span className="text-2xl font-bold text-brand-700">{getInitials(displayName)}</span>
-          </div>
+          <ProfilePictureUpload
+            value={u.profilePicture}
+            onChange={handleAvatarChange}
+            name={displayName}
+            size={128}
+            fallbackClassName="bg-brand-100 text-brand-700"
+          />
 
           <div className="flex-1 min-w-0">
             <h2 className="text-xl font-bold text-on-surface">{displayName}</h2>
@@ -1136,9 +1152,13 @@ const ProfilePage = () => {
 
       {/* Profile Summary Card */}
       <div className="bg-surface-container-lowest rounded-[1rem] p-6 flex flex-col sm:flex-row items-start sm:items-center gap-5">
-        <div className="w-20 h-20 rounded-full bg-surface-container-high flex items-center justify-center flex-shrink-0">
-          <span className="text-2xl font-bold text-on-surface-variant">{getInitials(displayName)}</span>
-        </div>
+        <ProfilePictureUpload
+          value={u.profilePicture}
+          onChange={handleAvatarChange}
+          name={displayName}
+          size={128}
+          fallbackClassName="bg-surface-container-high text-on-surface-variant"
+        />
         <div className="flex-1 min-w-0">
           <h2 className="text-xl font-bold text-on-surface">{displayName}</h2>
           {u.companyName && (

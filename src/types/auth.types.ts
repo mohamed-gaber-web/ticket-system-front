@@ -17,6 +17,7 @@ export interface User {
   country: string;
   userType: UserType;
   status: UserStatus;
+  profilePicture?: string | null;
   lastLogin?: string;
   createdAt: string;
   updatedAt: string;
@@ -88,6 +89,7 @@ export interface UpdateProfileRequest {
   country?: string;
   status?: UserStatus;
   slaMapping?: string;
+  profilePicture?: string | null;
 }
 
 export interface ChangePasswordRequest {

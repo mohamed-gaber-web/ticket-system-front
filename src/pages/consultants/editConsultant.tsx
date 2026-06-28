@@ -6,6 +6,7 @@ import { fetchDepartments } from '@/redux/slices/departmentSlice';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { CustomSelect } from '@/components/ui/custom-select';
+import { ProfilePictureUpload } from '@/components/ui/profile-picture-upload';
 import { ArrowLeft, Save } from 'lucide-react';
 import type { UpdateConsultantData, ConsultantRole, ConsultantStatus } from '@/types/consultant.types';
 
@@ -31,6 +32,7 @@ export default function EditConsultant() {
     department: undefined,
     status: 'active',
     monthlyTargetHours: null,
+    profilePicture: null,
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -55,6 +57,7 @@ export default function EditConsultant() {
           : (currentConsultant.department as string | undefined),
         status: currentConsultant.status,
         monthlyTargetHours: currentConsultant.monthlyTargetHours ?? null,
+        profilePicture: currentConsultant.profilePicture ?? null,
       });
     }
   }, [currentConsultant]);
@@ -142,6 +145,17 @@ export default function EditConsultant() {
       <div className="form-card">
         <h2 className="form-section-title">Consultant Information</h2>
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Profile Picture */}
+          <div className="flex flex-col items-center gap-2">
+            <ProfilePictureUpload
+              value={formData.profilePicture}
+              onChange={(fileId) => setFormData((prev) => ({ ...prev, profilePicture: fileId }))}
+              name={`${formData.firstName ?? ''} ${formData.lastName ?? ''}`.trim() || 'Consultant'}
+              fallbackClassName="bg-brand-100 text-brand-700"
+            />
+            <p className="text-xs text-on-surface-variant">Profile picture (optional)</p>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="form-label">First Name</label>
