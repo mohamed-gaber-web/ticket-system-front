@@ -394,8 +394,8 @@ export default function EmployeeEvaluationPage() {
                       <thead className="bg-surface-container-high/50 sticky top-0">
                         <tr className="text-xs text-on-surface-variant uppercase tracking-wide">
                           <th className="px-4 py-2 text-left font-semibold">Ticket</th>
-                          <th className="px-4 py-2 text-left font-semibold whitespace-nowrap">Deadline</th>
-                          <th className="px-4 py-2 text-left font-semibold whitespace-nowrap">Resolved</th>
+                          <th className="px-4 py-2 text-left font-semibold whitespace-nowrap">Customer Delivery Date</th>
+                          <th className="px-4 py-2 text-left font-semibold whitespace-nowrap">Delivered</th>
                           <th className="px-4 py-2 text-center font-semibold">Result</th>
                           <th className="px-4 py-2 text-right font-semibold">Pts</th>
                         </tr>
