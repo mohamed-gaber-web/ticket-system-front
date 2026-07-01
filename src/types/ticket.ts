@@ -63,7 +63,7 @@ export interface TicketAttachment {
 export interface TicketStatusHistory {
   _id: string;
   ticket: string;
-  status: 'new' | 'assigned' | 'in_progress' | 'resolved' | 'closed' | 'customer_pending' | 'delivered' | 'tested' | 'not_related';
+  status: 'new' | 'assigned' | 'in_progress' | 'resolved' | 'closed' | 'customer_pending' | 'reopened' | 'delivered' | 'tested' | 'not_related';
   changedAt: string;
   changedBy: string | Consultant;
 }
@@ -85,7 +85,7 @@ export interface Ticket {
   category: string | Category;
   priority: 'low' | 'medium' | 'high' | 'critical';
   priorityNumber?: number | null;
-  status: 'new' | 'assigned' | 'in_progress' | 'resolved' | 'closed' | 'customer_pending' | 'delivered' | 'tested' | 'not_related';
+  status: 'new' | 'assigned' | 'in_progress' | 'resolved' | 'closed' | 'customer_pending' | 'reopened' | 'delivered' | 'tested' | 'not_related';
   notifyEmails?: string[];
   sla?: string | SLA;
   assignedTeam?: string | Team;
