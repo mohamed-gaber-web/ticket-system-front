@@ -18,7 +18,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, UserCheck, Mail, X, Paperclip, Upload, File, ImageIcon, Layers, Building } from 'lucide-react';
+import { Plus, UserCheck, Mail, X, Paperclip, Upload, File, ImageIcon, Layers, Building, CalendarClock, CalendarDays, CalendarRange, Timer } from 'lucide-react';
 import { toast } from 'sonner';
 import { ConsultantSelect } from '@/components/ui/consultant-select';
 import { CustomSelect } from '@/components/ui/custom-select';
@@ -26,6 +26,29 @@ import { validateFile, formatFileSize } from '@/api/attachmentApi';
 import { getModules } from '@/api/moduleApi';
 import type { Module } from '@/types/module.types';
 import type { CreateSubTicketData } from '@/types/ticket';
+
+// Generate week options for the current year (Saturday–Friday, Egypt calendar).
+// Mirrors the main ticket form so sub-tickets share the same scheduling UI.
+const generateWeekOptions = () => {
+  const year = new Date().getFullYear();
+  const options: { value: string; label: string }[] = [
+    { value: '', label: '-- Select Week --' },
+  ];
+  const d = new Date(year, 0, 1);
+  while (d.getDay() !== 6) d.setDate(d.getDate() + 1); // advance to first Saturday
+  let week = 1;
+  while (d.getFullYear() === year && week <= 53) {
+    const start = new Date(d);
+    const end = new Date(d);
+    end.setDate(end.getDate() + 6); // Saturday + 6 = Friday
+    const fmt = (dt: Date) => dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    options.push({ value: String(week), label: `Week ${week} — ${fmt(start)} to ${fmt(end)}` });
+    d.setDate(d.getDate() + 7);
+    week++;
+  }
+  return options;
+};
+const WEEK_OPTIONS = generateWeekOptions();
 
 interface CreateSubTicketDialogProps {
   parentTicketId: string;
@@ -119,6 +142,29 @@ export function CreateSubTicketDialog({
       toast.error('Department is required.');
       return;
     }
+    // Consultant-only planning fields — required when staff create the sub-ticket.
+    if (!isCustomer) {
+      if (!formData.deliveryEstimationDate) {
+        toast.error('Customer Delivery Date is required.');
+        return;
+      }
+      if (!formData.internalDeliveryDate) {
+        toast.error('Internal Delivery Date is required.');
+        return;
+      }
+      if (!formData.scheduledWeek) {
+        toast.error('Scheduled Week is required.');
+        return;
+      }
+      if (
+        formData.durationHours === undefined ||
+        formData.durationHours === null ||
+        String(formData.durationHours) === ''
+      ) {
+        toast.error('Actual Duration is required.');
+        return;
+      }
+    }
 
     const dataToSend: CreateSubTicketData = {
       ...formData,
@@ -167,7 +213,10 @@ export function CreateSubTicketDialog({
       }
 
       setOpen(false);
-      setFormData({ subject: '', description: '', priority: 'medium', scope: [], department: undefined });
+      setFormData({
+        subject: '', description: '', priority: 'medium', scope: [], department: undefined,
+        deliveryEstimationDate: '', internalDeliveryDate: '', scheduledWeek: undefined, durationHours: undefined,
+      });
       setSelectedConsultants([]);
       setNotifyEmails([]);
       setNotifyEmailInput('');
@@ -185,7 +234,7 @@ export function CreateSubTicketDialog({
           Create Sub-Ticket
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[600px] flex flex-col max-h-[90vh]">
+      <DialogContent className="sm:max-w-[820px] flex flex-col max-h-[90vh]">
         <DialogHeader className="shrink-0">
           <DialogTitle>Create Sub-Ticket</DialogTitle>
           <DialogDescription>
@@ -307,6 +356,75 @@ export function CreateSubTicketDialog({
                 ]}
               />
             </div>
+
+            {/* Scheduling & Delivery — consultant planning fields */}
+            {!isCustomer && (
+              <div className="pt-2">
+                <div className="h-px bg-surface-container-high -mx-2 mb-4" />
+                <div className="flex items-center gap-2 mb-3">
+                  <CalendarClock className="h-5 w-5 text-on-surface-variant" />
+                  <Label className="text-base font-semibold">Scheduling &amp; Delivery</Label>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="sub-deliveryEstimationDate" className="flex items-center gap-1.5">
+                      <CalendarDays className="h-4 w-4 text-on-surface-variant" />
+                      Customer Delivery Date *
+                    </Label>
+                    <Input
+                      id="sub-deliveryEstimationDate"
+                      type="date"
+                      value={formData.deliveryEstimationDate || ''}
+                      onChange={(e) => setFormData({ ...formData, deliveryEstimationDate: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="sub-internalDeliveryDate" className="flex items-center gap-1.5">
+                      <CalendarRange className="h-4 w-4 text-on-surface-variant" />
+                      Internal Delivery Date *
+                    </Label>
+                    <Input
+                      id="sub-internalDeliveryDate"
+                      type="date"
+                      value={formData.internalDeliveryDate || ''}
+                      onChange={(e) => setFormData({ ...formData, internalDeliveryDate: e.target.value })}
+                    />
+                    <p className="text-xs text-on-surface-variant">Internal deadline — not visible to customers.</p>
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label className="flex items-center gap-1.5">
+                      <CalendarClock className="h-4 w-4 text-on-surface-variant" />
+                      Scheduled Week *
+                    </Label>
+                    <CustomSelect
+                      value={String(formData.scheduledWeek ?? '')}
+                      onChange={(val) => setFormData({ ...formData, scheduledWeek: val ? Number(val) : undefined })}
+                      placeholder="-- Select Week --"
+                      options={WEEK_OPTIONS}
+                    />
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="sub-durationHours" className="flex items-center gap-1.5">
+                      <Timer className="h-4 w-4 text-on-surface-variant" />
+                      Actual Duration (hours) *
+                    </Label>
+                    <Input
+                      id="sub-durationHours"
+                      type="number"
+                      min={0}
+                      step={0.5}
+                      value={formData.durationHours ?? ''}
+                      onChange={(e) => setFormData({ ...formData, durationHours: e.target.value ? Number(e.target.value) : undefined })}
+                      placeholder="e.g. 4"
+                    />
+                    <p className="text-xs text-on-surface-variant">Total hours actually spent on this sub-ticket.</p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="pt-2">
               <div className="h-px bg-surface-container-high -mx-2 mb-4" />

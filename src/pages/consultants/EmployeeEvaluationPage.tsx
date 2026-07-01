@@ -362,6 +362,14 @@ export default function EmployeeEvaluationPage() {
                   </span>
                 </div>
                 <div className="flex justify-between">
+                  <span className="text-on-surface-variant">Counted Tickets (Main / Sub)</span>
+                  <span className="font-bold text-on-surface">
+                    <span className="text-brand-600">{data.breakdown.ticketPerformance.details.mainTickets}</span>
+                    <span className="text-on-surface-variant"> / </span>
+                    <span className="text-purple-600">{data.breakdown.ticketPerformance.details.subTickets}</span>
+                  </span>
+                </div>
+                <div className="flex justify-between">
                   <span className="text-on-surface-variant">Performance %</span>
                   <span className="font-bold text-on-surface">
                     {data.breakdown.ticketPerformance.details.performancePercentage.toFixed(2)}%
@@ -394,6 +402,7 @@ export default function EmployeeEvaluationPage() {
                       <thead className="bg-surface-container-high/50 sticky top-0">
                         <tr className="text-xs text-on-surface-variant uppercase tracking-wide">
                           <th className="px-4 py-2 text-left font-semibold">Ticket</th>
+                          <th className="px-4 py-2 text-left font-semibold">Type</th>
                           <th className="px-4 py-2 text-left font-semibold whitespace-nowrap">Customer Delivery Date</th>
                           <th className="px-4 py-2 text-left font-semibold whitespace-nowrap">Delivered</th>
                           <th className="px-4 py-2 text-center font-semibold">Result</th>
@@ -418,6 +427,15 @@ export default function EmployeeEvaluationPage() {
                                     {t.subject || '—'}
                                   </span>
                                 </div>
+                              </td>
+                              <td className="px-4 py-2.5">
+                                <span className={`text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${
+                                  t.isSubTicket
+                                    ? 'bg-purple-100 text-purple-700'
+                                    : 'bg-brand-100 text-brand-700'
+                                }`}>
+                                  {t.isSubTicket ? 'Sub' : 'Main'}
+                                </span>
                               </td>
                               <td className="px-4 py-2.5 text-on-surface-variant whitespace-nowrap">{fmtDate(t.deadline)}</td>
                               <td className="px-4 py-2.5 text-on-surface-variant whitespace-nowrap">{fmtDate(t.resolvedDate)}</td>

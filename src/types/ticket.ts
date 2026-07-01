@@ -178,6 +178,11 @@ export interface CreateSubTicketData {
   notifyEmails?: string[];
   scope?: string[];
   department?: string;
+  // Consultant-only planning fields (mirrors the main ticket form)
+  deliveryEstimationDate?: string;
+  internalDeliveryDate?: string;
+  scheduledWeek?: number;
+  durationHours?: number;
 }
 
 export interface SubTicketsQueryParams {

@@ -4,6 +4,10 @@ export interface TicketMetrics {
   lateCount: number;
   netPoints: number;
   totalTickets: number;
+  /** Counted main tickets (isSubTicket === false). */
+  mainTickets: number;
+  /** Counted sub-tickets (isSubTicket === true). */
+  subTickets: number;
   performancePercentage: number;
   contribution: number;
 }
@@ -66,6 +70,9 @@ export interface EvaluationTicketDetail {
   category: TicketCategory;
   counted: boolean;
   points: number;
+  /** true = sub-ticket, false = main ticket. */
+  isSubTicket: boolean;
+  parentTicket?: string | null;
 }
 
 export interface EvaluationData {

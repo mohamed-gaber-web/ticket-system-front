@@ -23,6 +23,7 @@ import {
   User,
   UserCheck,
   Clock,
+  RotateCcw,
 } from "lucide-react";
 import type { Customer } from "@/types/customer.types";
 import type { Ticket } from "@/types/ticket";
@@ -152,6 +153,7 @@ const STATUS_PILL: Record<string, { label: string; pill: string }> = {
   customer_pending: { label: "Customer Pending",pill: "bg-violet-500/12 text-violet-700"  },
   resolved:         { label: "Resolved",        pill: "bg-emerald-500/12 text-emerald-700"},
   tested:           { label: "Tested",          pill: "bg-teal-500/12 text-teal-700"      },
+  reopened:         { label: "Reopened",        pill: "bg-rose-500/12 text-rose-700"      },
   delivered:        { label: "Delivered",       pill: "bg-cyan-500/12 text-cyan-700"      },
   closed:           { label: "Closed",          pill: "bg-slate-400/20 text-slate-600"    },
   not_related:      { label: "Not Related",     pill: "bg-slate-500/12 text-slate-600"    },
@@ -322,25 +324,31 @@ export default function CustomerSummary() {
       customerPendingCount: 0,
       resolvedCount: 0,
       testedCount: 0,
+      reopenedCount: 0,
       deliveredCount: 0,
       closedCount: 0,
       notRelatedCount: 0,
     };
     const byPriority = { low: 0, medium: 0, high: 0, critical: 0 };
-    for (const t of tickets) {
+    // Status/priority cards summarise MAIN tickets only, so their counts
+    // reconcile with the "Total Main Tickets" figure. Sub-tickets are excluded
+    // here (they still appear in the ticket table below).
+    const mainTickets = tickets.filter((t) => !t.isSubTicket);
+    for (const t of mainTickets) {
       if (t.status === "new")              counts.newCount++;
       else if (t.status === "assigned")         counts.assignedCount++;
       else if (t.status === "in_progress")      counts.inProgressCount++;
       else if (t.status === "customer_pending") counts.customerPendingCount++;
       else if (t.status === "resolved")         counts.resolvedCount++;
       else if (t.status === "tested")           counts.testedCount++;
+      else if (t.status === "reopened")         counts.reopenedCount++;
       else if (t.status === "delivered")        counts.deliveredCount++;
       else if (t.status === "closed")           counts.closedCount++;
       else if (t.status === "not_related")      counts.notRelatedCount++;
       if (t.priority in byPriority) byPriority[t.priority as keyof typeof byPriority]++;
     }
     const sorted = [...tickets].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
-    const totalMain = tickets.filter((t) => !t.isSubTicket).length;
+    const totalMain = mainTickets.length;
     return { total: totalMain, ...counts, byPriority, sortedTickets: sorted };
   }, [tickets]);
 
@@ -417,9 +425,10 @@ export default function CustomerSummary() {
     { key: "customer_pending", label: "Cust. Pending",    value: stats.customerPendingCount, icon: Clock,         numberColor: "text-violet-600",   iconBg: "bg-violet-500/10",    iconColor: "text-violet-500",   bar: "bg-violet-400",    loading: ticketsLoading, idx: 4 },
     { key: "resolved",         label: "Resolved",         value: stats.resolvedCount,        icon: CheckCircle2,  numberColor: "text-emerald-600",  iconBg: "bg-emerald-500/10",   iconColor: "text-emerald-500",  bar: "bg-emerald-400",   loading: ticketsLoading, idx: 5 },
     { key: "tested",           label: "Tested",           value: stats.testedCount,          icon: CheckCircle2,  numberColor: "text-teal-600",     iconBg: "bg-teal-500/10",      iconColor: "text-teal-500",     bar: "bg-teal-500",      loading: ticketsLoading, idx: 6 },
-    { key: "delivered",        label: "Delivered",        value: stats.deliveredCount,       icon: Activity,      numberColor: "text-cyan-600",     iconBg: "bg-cyan-500/10",      iconColor: "text-cyan-500",     bar: "bg-cyan-500",      loading: ticketsLoading, idx: 7 },
-    { key: "closed",           label: "Closed",           value: stats.closedCount,          icon: XCircle,       numberColor: "text-slate-500",    iconBg: "bg-slate-400/10",     iconColor: "text-slate-400",    bar: "bg-slate-400",     loading: ticketsLoading, idx: 8 },
-    { key: "not_related",      label: "Not Related",      value: stats.notRelatedCount,      icon: AlertTriangle, numberColor: "text-slate-500",    iconBg: "bg-slate-400/10",     iconColor: "text-slate-400",    bar: "bg-slate-400",     loading: ticketsLoading, idx: 9 },
+    { key: "reopened",         label: "Reopened",         value: stats.reopenedCount,        icon: RotateCcw,     numberColor: "text-rose-600",     iconBg: "bg-rose-500/10",      iconColor: "text-rose-500",     bar: "bg-rose-400",      loading: ticketsLoading, idx: 7 },
+    { key: "delivered",        label: "Delivered",        value: stats.deliveredCount,       icon: Activity,      numberColor: "text-cyan-600",     iconBg: "bg-cyan-500/10",      iconColor: "text-cyan-500",     bar: "bg-cyan-500",      loading: ticketsLoading, idx: 8 },
+    { key: "closed",           label: "Closed",           value: stats.closedCount,          icon: XCircle,       numberColor: "text-slate-500",    iconBg: "bg-slate-400/10",     iconColor: "text-slate-400",    bar: "bg-slate-400",     loading: ticketsLoading, idx: 9 },
+    { key: "not_related",      label: "Not Related",      value: stats.notRelatedCount,      icon: AlertTriangle, numberColor: "text-slate-500",    iconBg: "bg-slate-400/10",     iconColor: "text-slate-400",    bar: "bg-slate-400",     loading: ticketsLoading, idx: 10 },
   ];
 
   return (
