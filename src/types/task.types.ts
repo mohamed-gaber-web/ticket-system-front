@@ -13,11 +13,18 @@ export interface TaskConsultant {
   email?: string;
 }
 
+export interface TaskCategoryObject {
+  _id: string;
+  name: string;
+}
+
 export interface Task {
   _id: string;
+  taskNumber?: string;
   name: string;
   description?: string;
   department: TaskDepartmentObject | TaskDepartment;
+  category?: TaskCategoryObject | string | null;
   startDate?: string;
   endDate?: string;
   assignedTo?: TaskConsultant | string | null;
@@ -25,6 +32,8 @@ export interface Task {
   scheduledWeek?: number | null;
   duration?: number | null;
   status: TaskStatus;
+  completedAt?: string | null;
+  delayDays?: number;
   createdBy?: TaskConsultant | string | null;
   parentTask?: string | null;
   subTaskCount?: number;
@@ -36,6 +45,7 @@ export interface CreateTaskData {
   name: string;
   description?: string;
   department: TaskDepartment;
+  category: string;
   startDate?: string;
   endDate?: string;
   assignedTo?: string | null;
@@ -48,10 +58,25 @@ export interface CreateTaskData {
 
 export interface UpdateTaskData extends Partial<CreateTaskData> {}
 
+export type TaskSortField =
+  | 'taskNumber'
+  | 'name'
+  | 'department'
+  | 'category'
+  | 'assignedTo'
+  | 'scheduledWeek'
+  | 'duration'
+  | 'startDate'
+  | 'endDate'
+  | 'status'
+  | 'delay'
+  | 'createdAt';
+
 export interface TaskQueryParams {
   page?: number;
   limit?: number;
   department?: TaskDepartment;
+  category?: string;
   status?: TaskStatus;
   assignedTo?: string;
   scheduledWeek?: number;
@@ -59,6 +84,8 @@ export interface TaskQueryParams {
   endDate?: string;
   search?: string;
   parentTask?: string;
+  sort?: TaskSortField;
+  order?: 'asc' | 'desc';
 }
 
 export interface TasksListResponse {
@@ -74,4 +101,29 @@ export interface TaskResponse {
   success: boolean;
   data: Task;
   message?: string;
+}
+
+export interface TaskStats {
+  totals: {
+    total: number;
+    pending: number;
+    inProgress: number;
+    done: number;
+    overdue: number;
+    completionRate: number;
+    avgDelayDays: number;
+  };
+  byStatus: { status: TaskStatus; count: number }[];
+  byCategory: { name: string; count: number }[];
+  byDepartment: { name: string; count: number }[];
+  byWeek: { week: number; count: number }[];
+  topAssignees: { name: string; count: number }[];
+  recent: Task[];
+  upcoming: Task[];
+  overdue: Task[];
+}
+
+export interface TaskStatsResponse {
+  success: boolean;
+  data: TaskStats;
 }

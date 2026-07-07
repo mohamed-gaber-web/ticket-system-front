@@ -151,10 +151,17 @@ export default function ViewTask() {
     if (subForm.startDate && subForm.endDate && subForm.endDate < subForm.startDate) {
       toast.error('End date must be on or after start date'); return;
     }
+    // Subtasks inherit the parent task's category.
+    const parentCategoryId = typeof currentTask!.category === 'object' && currentTask!.category
+      ? (currentTask!.category as any)._id
+      : (currentTask!.category as string) ?? '';
+    if (!parentCategoryId) { toast.error('Parent task has no category'); return; }
+
     const data: CreateTaskData = {
       name: subForm.name.trim(),
       description: subForm.description.trim() || undefined,
       department: subForm.department,
+      category: parentCategoryId,
       startDate: subForm.startDate || undefined,
       endDate: subForm.endDate || undefined,
       assignedTo: subForm.assignedTo || null,
@@ -188,6 +195,10 @@ export default function ViewTask() {
 
   const status = STATUS_CONFIG[currentTask.status] ?? STATUS_CONFIG.pending;
   const deptName = getDeptName(currentTask.department);
+  const categoryName = typeof currentTask.category === 'object' && currentTask.category
+    ? (currentTask.category as any).name
+    : null;
+  const delayDays = currentTask.delayDays ?? 0;
 
   const assignee = typeof currentTask.assignedTo === 'object' && currentTask.assignedTo
     ? `${currentTask.assignedTo.firstName} ${currentTask.assignedTo.lastName}` : null;
@@ -230,6 +241,11 @@ export default function ViewTask() {
             {/* Left: Task identity */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-3 mb-3 flex-wrap">
+                {currentTask.taskNumber && (
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-[0.5rem] bg-brand-50 text-brand-700 text-xs font-mono font-bold">
+                    {currentTask.taskNumber}
+                  </span>
+                )}
                 <div className="flex items-center gap-2">
                   <span className={`w-2 h-2 rounded-full ${status.dot}`} />
                   <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-[0.5rem] text-xs font-bold ${status.classes}`}>
@@ -241,6 +257,18 @@ export default function ViewTask() {
                   <Building2 className="w-3.5 h-3.5" />
                   <span className="font-semibold uppercase tracking-wider">{deptName}</span>
                 </div>
+                {categoryName && (
+                  <div className="flex items-center gap-1.5 text-xs text-on-surface-variant">
+                    <LayoutList className="w-3.5 h-3.5" />
+                    <span className="font-semibold uppercase tracking-wider">{categoryName}</span>
+                  </div>
+                )}
+                {delayDays > 0 && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[0.5rem] bg-red-100 text-red-700 text-xs font-bold">
+                    <Clock className="w-3.5 h-3.5" />
+                    {delayDays}d late
+                  </span>
+                )}
               </div>
 
               <div className="flex items-start gap-3 mb-4">
@@ -387,6 +415,28 @@ export default function ViewTask() {
                   <p className="text-sm font-semibold text-on-surface">{fmtDate(currentTask.updatedAt) ?? '—'}</p>
                 </div>
               </div>
+              {currentTask.completedAt && (
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center flex-shrink-0">
+                    <CircleCheck className="w-4 h-4 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-on-surface-variant font-medium">Completed</p>
+                    <p className="text-sm font-semibold text-on-surface">{fmtDate(currentTask.completedAt) ?? '—'}</p>
+                  </div>
+                </div>
+              )}
+              {delayDays > 0 && (
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0">
+                    <Clock className="w-4 h-4 text-red-600" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-on-surface-variant font-medium">Delay</p>
+                    <p className="text-sm font-semibold text-red-700">{delayDays} day{delayDays === 1 ? '' : 's'}</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -48,7 +48,11 @@ export const saveWorkingHours = createAsyncThunk(
       toast.success('Working hours saved successfully!');
       return response.data;
     } catch (error: any) {
-      const message = error.response?.data?.message || 'Failed to save working hours';
+      // Prefer the specific validation detail when the API returns one.
+      const message =
+        error.response?.data?.errors?.[0] ||
+        error.response?.data?.message ||
+        'Failed to save working hours';
       toast.error(message);
       return rejectWithValue(message);
     }

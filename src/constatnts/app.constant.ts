@@ -196,8 +196,10 @@ const TASKS_GROUP = {
   icon: CheckSquare,
   isGroup: true as const,
   children: [
+    { name: "Dashboard", path: "/tasks/dashboard", icon: LayoutDashboard },
     { name: "All Tasks", path: "/tasks", icon: ListChecks },
     { name: "Create Task", path: "/tasks/create", icon: CheckSquare },
+    { name: "Task Categories", path: "/task-categories", icon: FolderKanban },
   ],
 };
 

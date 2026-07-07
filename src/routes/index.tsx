@@ -165,6 +165,9 @@ const Tasks = lazy(() => import("@/pages/tasks/Tasks"));
 const TaskForm = lazy(() => import("@/pages/tasks/components/TaskForm"));
 const ViewTask = lazy(() => import("@/pages/tasks/ViewTask"));
 const TasksDashboard = lazy(() => import("@/pages/tasks/TasksDashboard"));
+const TaskCategories = lazy(() => import("@/pages/task-categories/taskCategories"));
+const CreateTaskCategory = lazy(() => import("@/pages/task-categories/createTaskCategory"));
+const EditTaskCategory = lazy(() => import("@/pages/task-categories/editTaskCategory"));
 
 // Employee Requests Module
 const MyRequests = lazy(() => import("@/pages/employee-requests/MyRequests"));
@@ -333,6 +336,10 @@ export const routes: RouteObject[] = [
 
       // Tasks Module — admin or tasks-department consultants only
       {
+        path: "/tasks/dashboard",
+        element: <TasksRoute><Lazy><TasksDashboard /></Lazy></TasksRoute>,
+      },
+      {
         path: "/tasks",
         element: <TasksRoute><Lazy><Tasks /></Lazy></TasksRoute>,
       },
@@ -347,6 +354,20 @@ export const routes: RouteObject[] = [
       {
         path: "/tasks/:id",
         element: <TasksRoute><Lazy><ViewTask /></Lazy></TasksRoute>,
+      },
+
+      // Task Categories — admin or tasks-department consultants only
+      {
+        path: "/task-categories",
+        element: <TasksRoute><Lazy><TaskCategories /></Lazy></TasksRoute>,
+      },
+      {
+        path: "/task-categories/create",
+        element: <TasksRoute><Lazy><CreateTaskCategory /></Lazy></TasksRoute>,
+      },
+      {
+        path: "/task-categories/edit/:id",
+        element: <TasksRoute><Lazy><EditTaskCategory /></Lazy></TasksRoute>,
       },
 
       // Employee Requests Module — internal staff only (consultant, team_member, tele_sales)

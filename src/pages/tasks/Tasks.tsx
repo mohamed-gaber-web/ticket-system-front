@@ -4,16 +4,21 @@ import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchTasks, deleteTask } from '@/redux/slices/tasksSlice';
 import { fetchDepartments } from '@/redux/slices/departmentSlice';
 import { fetchConsultants } from '@/redux/slices/consultantSlice';
+import { fetchTaskCategories } from '@/redux/slices/taskCategorySlice';
 import { getTasks } from '@/api/tasksApi';
-import type { Task, TaskStatus } from '@/types/task.types';
+import type { Task, TaskStatus, TaskSortField } from '@/types/task.types';
 import { Button } from '@/components/ui/button';
 import {
   Plus, CheckSquare, Search, Trash2, Eye, Edit,
   ChevronRight, ChevronDown, GitBranch, Loader2,
+  Download, ArrowUp, ArrowDown, ChevronsUpDown,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
+import { toast } from 'sonner';
 
 const MySwal = withReactContent(Swal);
 
@@ -31,6 +36,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 const getDeptId = (dept: any): string => (typeof dept === 'object' && dept !== null ? dept._id : dept) ?? '';
 const getDeptName = (dept: any): string => (typeof dept === 'object' && dept !== null ? dept.name : null) ?? '';
+const getCategoryName = (cat: any): string => (typeof cat === 'object' && cat !== null ? cat.name : null) ?? '';
 const fmtDate = (d?: string) =>
   d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null;
 
@@ -47,6 +53,9 @@ function getWeekDateRange(weekNum: number, year = new Date().getFullYear()) {
   return `${fmt(start)} – ${fmt(end)}`;
 }
 
+// Total data columns (excluding the expand column) — used for subtask row colSpan.
+const DATA_COLSPAN = 12;
+
 export default function Tasks() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
@@ -54,17 +63,22 @@ export default function Tasks() {
   const { departments } = useAppSelector((state) => state.departments);
   const { consultantDepartment, consultantRole } = useAppSelector((state) => state.auth);
   const { consultants } = useAppSelector((state) => state.consultants);
+  const { taskCategories } = useAppSelector((state) => state.taskCategories);
   const isAdmin = consultantRole === 'admin';
 
   const [searchParams] = useSearchParams();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<TaskStatus | ''>('');
   const [deptFilter, setDeptFilter] = useState(searchParams.get('department') || '');
+  const [categoryFilter, setCategoryFilter] = useState('');
   const [startDateFilter, setStartDateFilter] = useState('');
   const [endDateFilter, setEndDateFilter] = useState('');
   const [assignedToFilter, setAssignedToFilter] = useState('');
   const [weekFilter, setWeekFilter] = useState('');
+  const [sortField, setSortField] = useState<TaskSortField>('createdAt');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [page, setPage] = useState(1);
+  const [exporting, setExporting] = useState(false);
   const limit = 20;
 
   // Subtask expand state
@@ -75,27 +89,95 @@ export default function Tasks() {
   useEffect(() => {
     dispatch(fetchDepartments({ isActive: true, limit: 999 } as any));
     dispatch(fetchConsultants({ limit: 999 } as any));
+    dispatch(fetchTaskCategories({ limit: 1000 }));
   }, []);
 
-  const load = useCallback(() => {
-    const params: any = { page, limit };
+  const buildParams = useCallback((extra: Record<string, any> = {}) => {
+    const params: any = { ...extra };
     if (search) params.search = search;
     if (statusFilter) params.status = statusFilter;
     if (deptFilter) params.department = deptFilter;
     else if (!isAdmin && consultantDepartment) params.department = consultantDepartment;
+    if (categoryFilter) params.category = categoryFilter;
     if (startDateFilter) params.startDate = startDateFilter;
     if (endDateFilter) params.endDate = endDateFilter;
     if (assignedToFilter) params.assignedTo = assignedToFilter;
     if (weekFilter) params.scheduledWeek = Number(weekFilter);
-    dispatch(fetchTasks(params));
-  }, [page, search, statusFilter, deptFilter, startDateFilter, endDateFilter, assignedToFilter, weekFilter]);
+    params.sort = sortField;
+    params.order = sortOrder;
+    return params;
+  }, [search, statusFilter, deptFilter, categoryFilter, startDateFilter, endDateFilter, assignedToFilter, weekFilter, sortField, sortOrder, isAdmin, consultantDepartment]);
 
-  useEffect(() => { load(); }, [page, statusFilter, deptFilter, startDateFilter, endDateFilter, assignedToFilter, weekFilter]);
+  const load = useCallback(() => {
+    dispatch(fetchTasks(buildParams({ page, limit })));
+  }, [buildParams, page]);
+
+  useEffect(() => { load(); }, [page, statusFilter, deptFilter, categoryFilter, startDateFilter, endDateFilter, assignedToFilter, weekFilter, sortField, sortOrder]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setPage(1);
     load();
+  };
+
+  const handleSort = (field: TaskSortField) => {
+    if (sortField === field) {
+      setSortOrder((o) => (o === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      setSortOrder('asc');
+    }
+    setPage(1);
+  };
+
+  const handleExportExcel = async () => {
+    try {
+      setExporting(true);
+      toast.info('Preparing Excel export…');
+      const res = await getTasks(buildParams({ limit: 10000, page: 1 }));
+      const data = res.data;
+
+      const EXPORT_HEADERS = [
+        'Task #', 'Name', 'Description', 'Category', 'Department', 'Assigned To',
+        'Responsible', 'Week', 'Duration (hrs)', 'Start Date', 'End Date', 'Status', 'Delay (days)', 'Created',
+      ];
+
+      const consultantName = (c: any) =>
+        typeof c === 'object' && c ? `${c.firstName ?? ''} ${c.lastName ?? ''}`.trim() : '';
+
+      const rows = data.map((t) => [
+        t.taskNumber ?? '',
+        t.name,
+        t.description ?? '',
+        getCategoryName(t.category),
+        getDeptName(t.department),
+        consultantName(t.assignedTo),
+        consultantName(t.responsible),
+        t.scheduledWeek != null ? String(t.scheduledWeek) : '',
+        t.duration != null ? String(t.duration) : '',
+        fmtDate(t.startDate) ?? '',
+        fmtDate(t.endDate) ?? '',
+        STATUS_LABELS[t.status] ?? t.status,
+        t.delayDays != null ? String(t.delayDays) : '0',
+        fmtDate(t.createdAt) ?? '',
+      ]);
+
+      const worksheet = XLSX.utils.aoa_to_sheet([EXPORT_HEADERS, ...rows]);
+      worksheet['!cols'] = EXPORT_HEADERS.map((h, i) => ({
+        wch: Math.max(h.length, ...rows.map((r) => String(r[i] ?? '').length)) + 2,
+      }));
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Tasks');
+      const buffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+      saveAs(
+        new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
+        `tasks-export-${new Date().toISOString().split('T')[0]}.xlsx`
+      );
+    } catch {
+      toast.error('Failed to export Excel');
+    } finally {
+      setExporting(false);
+    }
   };
 
   const toggleExpand = async (taskId: string) => {
@@ -152,6 +234,34 @@ export default function Tasks() {
 
   const pages = Math.ceil(total / limit);
 
+  const renderDelay = (task: Task) => {
+    const d = task.delayDays ?? 0;
+    if (d > 0) {
+      return <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-red-100 text-red-700 text-xs font-bold">+{d}d</span>;
+    }
+    return <span className="text-xs text-green-700 font-medium">On time</span>;
+  };
+
+  const SortHeader = ({ field, label, align = 'left' }: { field: TaskSortField; label: string; align?: 'left' | 'right' }) => {
+    const active = sortField === field;
+    return (
+      <th className="px-4 py-3">
+        <button
+          type="button"
+          onClick={() => handleSort(field)}
+          className={`inline-flex items-center gap-1 hover:text-on-surface transition-colors ${align === 'right' ? 'justify-end w-full' : ''} ${active ? 'text-on-surface' : ''}`}
+        >
+          {label}
+          {active ? (
+            sortOrder === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+          ) : (
+            <ChevronsUpDown className="w-3 h-3 opacity-40" />
+          )}
+        </button>
+      </th>
+    );
+  };
+
   const renderTaskRow = (task: Task, isSubTask = false): React.ReactElement => {
     const isExpanded = expandedIds.has(task._id);
     const isLoadingSub = loadingSubIds.has(task._id);
@@ -192,6 +302,13 @@ export default function Tasks() {
             ) : null}
           </td>
 
+          {/* Task number */}
+          <td className="px-4 py-3">
+            {task.taskNumber
+              ? <span className="text-xs font-mono font-semibold text-primary">{task.taskNumber}</span>
+              : <span className="text-on-surface-variant/40">&mdash;</span>}
+          </td>
+
           {/* Task name */}
           <td className={`px-4 py-3 ${isSubTask ? 'pl-6' : ''}`}>
             <div className="flex items-center gap-2">
@@ -208,6 +325,12 @@ export default function Tasks() {
                 )}
               </div>
             </div>
+          </td>
+
+          <td className="px-4 py-3">
+            {getCategoryName(task.category)
+              ? <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-surface-container text-on-surface-variant text-xs font-medium">{getCategoryName(task.category)}</span>
+              : <span className="text-on-surface-variant/40">&mdash;</span>}
           </td>
 
           <td className="px-4 py-3">
@@ -246,6 +369,8 @@ export default function Tasks() {
               : <span className="text-on-surface-variant/40">&mdash;</span>}
           </td>
 
+          <td className="px-4 py-3">{renderDelay(task)}</td>
+
           <td className="px-4 py-3">
             <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${STATUS_COLORS[task.status]}`}>
               {STATUS_LABELS[task.status]}
@@ -276,7 +401,7 @@ export default function Tasks() {
         {!isSubTask && isExpanded && (
           isLoadingSub ? (
             <tr key={`${task._id}-loading`}>
-              <td colSpan={10} className="px-10 py-3 bg-surface-container-low/30">
+              <td colSpan={DATA_COLSPAN + 1} className="px-10 py-3 bg-surface-container-low/30">
                 <div className="flex items-center gap-2 text-sm text-on-surface-variant">
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   Loading subtasks…
@@ -285,7 +410,7 @@ export default function Tasks() {
             </tr>
           ) : subTasks !== undefined && subTasks.length === 0 ? (
             <tr key={`${task._id}-empty`}>
-              <td colSpan={10} className="px-10 py-3 bg-surface-container-low/30">
+              <td colSpan={DATA_COLSPAN + 1} className="px-10 py-3 bg-surface-container-low/30">
                 <span className="text-xs text-on-surface-variant/50 italic">No subtasks</span>
               </td>
             </tr>
@@ -309,10 +434,16 @@ export default function Tasks() {
               : 'All department tasks'}
           </p>
         </div>
-        <Button onClick={() => navigate('/tasks/create')}>
-          <Plus className="w-4 h-4 mr-2" />
-          New Task
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={handleExportExcel} disabled={exporting || tasks.length === 0}>
+            {exporting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+            Export
+          </Button>
+          <Button onClick={() => navigate('/tasks/create')}>
+            <Plus className="w-4 h-4 mr-2" />
+            New Task
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -336,6 +467,17 @@ export default function Tasks() {
             <option value="">All Statuses</option>
             {Object.entries(STATUS_LABELS).map(([v, l]) => (
               <option key={v} value={v}>{l}</option>
+            ))}
+          </select>
+
+          <select
+            value={categoryFilter}
+            onChange={(e) => { setCategoryFilter(e.target.value); setPage(1); }}
+            className="px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+          >
+            <option value="">All Categories</option>
+            {taskCategories.map((c) => (
+              <option key={c._id} value={c._id}>{c.name}</option>
             ))}
           </select>
 
@@ -397,7 +539,7 @@ export default function Tasks() {
             variant="outline"
             size="sm"
             onClick={() => {
-              setSearch(''); setStatusFilter(''); setDeptFilter('');
+              setSearch(''); setStatusFilter(''); setDeptFilter(''); setCategoryFilter('');
               setStartDateFilter(''); setEndDateFilter('');
               setAssignedToFilter(''); setWeekFilter(''); setPage(1);
             }}
@@ -427,14 +569,17 @@ export default function Tasks() {
               <thead className="sticky top-0 z-10 bg-surface-container-low">
                 <tr className="text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wide">
                   <th className="px-2 py-3 w-8" />
-                  <th className="px-4 py-3">Task</th>
-                  <th className="px-4 py-3">Department</th>
-                  <th className="px-4 py-3">Assigned To</th>
-                  <th className="px-4 py-3">Week</th>
-                  <th className="px-4 py-3">Duration</th>
-                  <th className="px-4 py-3">Start Date</th>
-                  <th className="px-4 py-3">End Date</th>
-                  <th className="px-4 py-3">Status</th>
+                  <SortHeader field="taskNumber" label="Task #" />
+                  <SortHeader field="name" label="Task" />
+                  <SortHeader field="category" label="Category" />
+                  <SortHeader field="department" label="Department" />
+                  <SortHeader field="assignedTo" label="Assigned To" />
+                  <SortHeader field="scheduledWeek" label="Week" />
+                  <SortHeader field="duration" label="Duration" />
+                  <SortHeader field="startDate" label="Start Date" />
+                  <SortHeader field="endDate" label="End Date" />
+                  <SortHeader field="delay" label="Delay" />
+                  <SortHeader field="status" label="Status" />
                   <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>

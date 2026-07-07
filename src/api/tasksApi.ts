@@ -1,8 +1,13 @@
 import api from './axiosConfig';
-import type { TasksListResponse, TaskResponse, CreateTaskData, UpdateTaskData, TaskQueryParams } from '@/types/task.types';
+import type { TasksListResponse, TaskResponse, TaskStatsResponse, CreateTaskData, UpdateTaskData, TaskQueryParams } from '@/types/task.types';
 
 export const getTasks = async (params?: TaskQueryParams): Promise<TasksListResponse> => {
   const response = await api.get('/tasks', { params });
+  return response.data;
+};
+
+export const getTaskStats = async (params?: { department?: string }): Promise<TaskStatsResponse> => {
+  const response = await api.get('/tasks/stats', { params });
   return response.data;
 };
 

@@ -4,6 +4,7 @@ import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { createTask, updateTask, fetchTaskById, clearCurrentTask } from '@/redux/slices/tasksSlice';
 import { fetchDepartments } from '@/redux/slices/departmentSlice';
 import { fetchConsultants } from '@/redux/slices/consultantSlice';
+import { fetchTaskCategories } from '@/redux/slices/taskCategorySlice';
 import type { TaskStatus, CreateTaskData } from '@/types/task.types';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -26,12 +27,14 @@ export default function TaskForm() {
   const { currentTask, loading } = useAppSelector((state) => state.tasks);
   const { departments } = useAppSelector((state) => state.departments);
   const { consultants } = useAppSelector((state) => state.consultants);
+  const { taskCategories } = useAppSelector((state) => state.taskCategories);
   const { consultantDepartment, user } = useAppSelector((state) => state.auth);
 
   const [form, setForm] = useState({
     name: '',
     description: '',
     department: consultantDepartment ?? '',
+    category: '',
     startDate: '',
     endDate: '',
     assignedTo: '',
@@ -44,6 +47,7 @@ export default function TaskForm() {
   useEffect(() => {
     dispatch(fetchDepartments({ isActive: true, limit: 999 } as any));
     dispatch(fetchConsultants({ limit: 999 }));
+    dispatch(fetchTaskCategories({ limit: 1000 }));
     if (isEdit && id) dispatch(fetchTaskById(id));
     return () => { dispatch(clearCurrentTask()); };
   }, [id, dispatch]);
@@ -56,6 +60,9 @@ export default function TaskForm() {
         department: typeof currentTask.department === 'object'
           ? (currentTask.department as { _id: string })._id
           : currentTask.department,
+        category: typeof currentTask.category === 'object' && currentTask.category
+          ? (currentTask.category as { _id: string })._id
+          : (currentTask.category as string) ?? '',
         startDate: currentTask.startDate ? currentTask.startDate.split('T')[0] : '',
         endDate: currentTask.endDate ? currentTask.endDate.split('T')[0] : '',
         assignedTo: typeof currentTask.assignedTo === 'object' && currentTask.assignedTo
@@ -76,6 +83,7 @@ export default function TaskForm() {
 
     if (!form.name.trim()) { toast.error('Task name is required'); return; }
     if (!form.department) { toast.error('Department is required'); return; }
+    if (!form.category) { toast.error('Category is required'); return; }
     if (form.startDate && form.endDate && form.endDate < form.startDate) {
       toast.error('End date must be on or after start date'); return;
     }
@@ -84,6 +92,7 @@ export default function TaskForm() {
       name: form.name.trim(),
       description: form.description.trim() || undefined,
       department: form.department,
+      category: form.category,
       startDate: form.startDate || undefined,
       endDate: form.endDate || undefined,
       assignedTo: form.assignedTo || null,
@@ -175,7 +184,7 @@ export default function TaskForm() {
           </div>
         </div>
 
-        {/* Row 2: Department + Assigned To + Responsible + Status */}
+        {/* Row 2: Department + Category + Assigned To + Responsible + Status */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           <div className="space-y-1.5">
             <label className="text-sm font-semibold text-on-surface">Department *</label>
@@ -187,6 +196,20 @@ export default function TaskForm() {
               <option value="">Select department…</option>
               {departments.map((d) => (
                 <option key={d._id} value={d._id}>{d.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-sm font-semibold text-on-surface">Category *</label>
+            <select
+              value={form.category}
+              onChange={(e) => set('category', e.target.value)}
+              className="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+            >
+              <option value="">Select category…</option>
+              {taskCategories.map((c) => (
+                <option key={c._id} value={c._id}>{c.name}</option>
               ))}
             </select>
           </div>

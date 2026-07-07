@@ -18,6 +18,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Save, Trash2, Plus, CalendarDays, Download } from 'lucide-react';
+import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
 import type { UpdateWorkingHoursData } from '@/types/workingHours.types';
@@ -109,6 +110,15 @@ export default function WorkingHoursPage() {
   };
 
   const handleSaveSettings = () => {
+    const weekend = form.weekendDays ?? [];
+    if (weekend.length >= 7) {
+      toast.error('At least one working day is required — you cannot mark every day as a weekend.');
+      return;
+    }
+    if (form.workStartTime && form.workEndTime && form.workStartTime >= form.workEndTime) {
+      toast.error('Work Start Time must be earlier than Work End Time.');
+      return;
+    }
     dispatch(saveWorkingHours(form));
   };
 
