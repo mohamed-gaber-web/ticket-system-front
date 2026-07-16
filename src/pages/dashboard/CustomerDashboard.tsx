@@ -22,6 +22,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchTickets } from '@/redux/slices/ticketSlice';
+import { activityDate, activityMs, buildRange, isInRange, DATE_BASIS } from '@/lib/ticketActivity';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -38,49 +39,6 @@ import {
 const SKELETON_KEYS_6 = Array.from({ length: 6 }, (_, i) => i);
 const SKELETON_KEYS_4 = Array.from({ length: 4 }, (_, i) => i);
 
-/* ─────────────────────────────────────────────────────────────
-   Activity date — when a ticket reached the state it's in now.
-   This is what the date filter measures each status by, so work
-   done in a range counts in that range no matter when the ticket
-   was first created.
-───────────────────────────────────────────────────────────── */
-interface DatedTicket {
-  status: string;
-  createdAt: string;
-  updatedAt?: string;
-  acceptedAt?: string;
-  resolvedAt?: string;
-  deliveredAt?: string;
-  closedAt?: string;
-}
-
-function activityDate(t: DatedTicket): string {
-  switch (t.status) {
-    case 'new':       return t.createdAt;
-    case 'assigned':  return t.acceptedAt  || t.updatedAt || t.createdAt;
-    case 'resolved':  return t.resolvedAt  || t.updatedAt || t.createdAt;
-    case 'delivered': return t.deliveredAt || t.updatedAt || t.createdAt;
-    case 'closed':    return t.closedAt || t.resolvedAt || t.updatedAt || t.createdAt;
-    // in_progress, customer_pending, tested, not_related and reopened have no stamp
-    // of their own; updatedAt is when the ticket last moved, the closest proxy.
-    default:          return t.updatedAt || t.createdAt;
-  }
-}
-
-const activityMs = (t: DatedTicket) => new Date(activityDate(t)).getTime();
-
-/** Names the date each status is measured by, shown on the cards while a range is on. */
-const DATE_BASIS: Record<string, string> = {
-  new:              'by created date',
-  assigned:         'by accepted date',
-  in_progress:      'by last update',
-  customer_pending: 'by last update',
-  resolved:         'by resolved date',
-  tested:           'by last update',
-  delivered:        'by delivered date',
-  closed:           'by closed date',
-  not_related:      'by last update',
-};
 
 /* ─────────────────────────────────────────────────────────────
    Spring presets
@@ -296,18 +254,8 @@ export default function CustomerDashboard() {
     dispatch(fetchTickets(params));
   }, [dispatch, companyName]);
 
-  const range = useMemo(() => ({
-    active: Boolean(dateFrom || dateTo),
-    fromMs: dateFrom ? new Date(dateFrom + 'T00:00:00').getTime() : -Infinity,
-    toMs:   dateTo ? new Date(dateTo + 'T23:59:59.999').getTime() : Infinity,
-  }), [dateFrom, dateTo]);
-
-  const inRange = useCallback((date?: string) => {
-    if (!range.active) return true;
-    if (!date) return false;
-    const ms = new Date(date).getTime();
-    return ms >= range.fromMs && ms <= range.toMs;
-  }, [range]);
+  const range = useMemo(() => buildRange(dateFrom, dateTo), [dateFrom, dateTo]);
+  const inRange = useCallback((date?: string) => isInRange(range, date), [range]);
 
   // Tickets created in the range — basis for the three "what came in" totals.
   const createdTickets = useMemo(
