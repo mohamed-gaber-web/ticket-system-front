@@ -108,6 +108,7 @@ export interface Ticket {
   firstResponseAt?: string;
   resolvedAt?: string;
   closedAt?: string;
+  deliveredAt?: string; // When the ticket was delivered
   // Actor tracking — who last updated / resolved / closed the ticket
   updatedBy?: string | Consultant;
   resolvedBy?: string | Consultant;

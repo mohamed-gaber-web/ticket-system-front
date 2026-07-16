@@ -18,7 +18,7 @@ import {
   CalendarDays,
   X,
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchTickets } from '@/redux/slices/ticketSlice';
@@ -37,6 +37,50 @@ import {
 ───────────────────────────────────────────────────────────── */
 const SKELETON_KEYS_6 = Array.from({ length: 6 }, (_, i) => i);
 const SKELETON_KEYS_4 = Array.from({ length: 4 }, (_, i) => i);
+
+/* ─────────────────────────────────────────────────────────────
+   Activity date — when a ticket reached the state it's in now.
+   This is what the date filter measures each status by, so work
+   done in a range counts in that range no matter when the ticket
+   was first created.
+───────────────────────────────────────────────────────────── */
+interface DatedTicket {
+  status: string;
+  createdAt: string;
+  updatedAt?: string;
+  acceptedAt?: string;
+  resolvedAt?: string;
+  deliveredAt?: string;
+  closedAt?: string;
+}
+
+function activityDate(t: DatedTicket): string {
+  switch (t.status) {
+    case 'new':       return t.createdAt;
+    case 'assigned':  return t.acceptedAt  || t.updatedAt || t.createdAt;
+    case 'resolved':  return t.resolvedAt  || t.updatedAt || t.createdAt;
+    case 'delivered': return t.deliveredAt || t.updatedAt || t.createdAt;
+    case 'closed':    return t.closedAt || t.resolvedAt || t.updatedAt || t.createdAt;
+    // in_progress, customer_pending, tested, not_related and reopened have no stamp
+    // of their own; updatedAt is when the ticket last moved, the closest proxy.
+    default:          return t.updatedAt || t.createdAt;
+  }
+}
+
+const activityMs = (t: DatedTicket) => new Date(activityDate(t)).getTime();
+
+/** Names the date each status is measured by, shown on the cards while a range is on. */
+const DATE_BASIS: Record<string, string> = {
+  new:              'by created date',
+  assigned:         'by accepted date',
+  in_progress:      'by last update',
+  customer_pending: 'by last update',
+  resolved:         'by resolved date',
+  tested:           'by last update',
+  delivered:        'by delivered date',
+  closed:           'by closed date',
+  not_related:      'by last update',
+};
 
 /* ─────────────────────────────────────────────────────────────
    Spring presets
@@ -100,9 +144,11 @@ interface StatCardProps {
   bar: string;
   loading: boolean;
   idx: number;
+  /** Names the date this figure is measured by, when a range is active. */
+  hint?: string;
 }
 
-function StatCard({ label, value, icon: Icon, numberColor, iconBg, iconColor, bar, loading, idx }: StatCardProps) {
+function StatCard({ label, value, icon: Icon, numberColor, iconBg, iconColor, bar, loading, idx, hint }: StatCardProps) {
   return (
     <motion.div
       variants={cardVariants}
@@ -112,7 +158,10 @@ function StatCard({ label, value, icon: Icon, numberColor, iconBg, iconColor, ba
     >
       <div className={`absolute inset-x-0 top-0 h-[3px] ${bar}`} />
       <div className="flex items-start justify-between gap-2">
-        <p className="label-technical mt-0.5">{label}</p>
+        <div className="min-w-0">
+          <p className="label-technical mt-0.5">{label}</p>
+          {hint && <p className="text-[10px] leading-tight text-on-surface-variant/60 mt-1">{hint}</p>}
+        </div>
         <div className={`p-2.5 rounded-xl ${iconBg} shrink-0 group-hover:scale-110 transition-transform duration-200`}>
           <Icon className={`h-4 w-4 ${iconColor}`} />
         </div>
@@ -232,7 +281,12 @@ export default function CustomerDashboard() {
   const companyName = (user as any)?.companyName || '';
   const contactPerson = (user as any)?.contactPerson || 'there';
 
-  /* ── Date filter (by createdAt) ── */
+  /* ── Date filter ──
+     Every status figure is measured by the date it reached that status (see
+     activityDate), not by createdAt alone. So a ticket created 30/6 and resolved 5/7
+     counts as resolved in a 1/7–10/7 range, a ticket delivered 5/7 counts as
+     delivered, and so on for every status. The three totals stay on createdAt —
+     they answer "how many tickets came in during the range". */
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
 
@@ -242,17 +296,38 @@ export default function CustomerDashboard() {
     dispatch(fetchTickets(params));
   }, [dispatch, companyName]);
 
-  // All dashboard figures derive from this date-filtered set. Empty range = all tickets.
-  const filteredTickets = useMemo(() => {
-    if (!dateFrom && !dateTo) return tickets;
-    const fromMs = dateFrom ? new Date(dateFrom + 'T00:00:00').getTime() : -Infinity;
-    const toMs = dateTo ? new Date(dateTo + 'T23:59:59.999').getTime() : Infinity;
-    return tickets.filter((t) => {
-      if (!t.createdAt) return false;
-      const ms = new Date(t.createdAt).getTime();
-      return ms >= fromMs && ms <= toMs;
-    });
-  }, [tickets, dateFrom, dateTo]);
+  const range = useMemo(() => ({
+    active: Boolean(dateFrom || dateTo),
+    fromMs: dateFrom ? new Date(dateFrom + 'T00:00:00').getTime() : -Infinity,
+    toMs:   dateTo ? new Date(dateTo + 'T23:59:59.999').getTime() : Infinity,
+  }), [dateFrom, dateTo]);
+
+  const inRange = useCallback((date?: string) => {
+    if (!range.active) return true;
+    if (!date) return false;
+    const ms = new Date(date).getTime();
+    return ms >= range.fromMs && ms <= range.toMs;
+  }, [range]);
+
+  // Tickets created in the range — basis for the three "what came in" totals.
+  const createdTickets = useMemo(
+    () => tickets.filter((t) => inRange(t.createdAt)),
+    [tickets, inRange]
+  );
+
+  // Tickets that reached their current status inside the range — basis for every
+  // per-status figure, whenever the ticket itself was created.
+  const activityTickets = useMemo(
+    () => tickets.filter((t) => inRange(activityDate(t))),
+    [tickets, inRange]
+  );
+
+  // Every distinct ticket the range touches, most recent activity first.
+  const shownTickets = useMemo(() => {
+    if (!range.active) return tickets;
+    const byId = new Map([...createdTickets, ...activityTickets].map((t) => [t._id, t]));
+    return [...byId.values()].toSorted((a, b) => activityMs(b) - activityMs(a));
+  }, [range.active, tickets, createdTickets, activityTickets]);
 
   // Quick presets — fill From/To relative to today (local date, yyyy-mm-dd).
   const applyPreset = (preset: 'today' | '7d' | '30d' | 'month' | 'year') => {
@@ -276,13 +351,13 @@ export default function CustomerDashboard() {
 
   /* ── Derived stats ── */
   const stats = useMemo(() => {
-    const main = filteredTickets.filter((t) => !t.isSubTicket);
-    const subs = filteredTickets.filter((t) => t.isSubTicket);
+    const main = activityTickets.filter((t) => !t.isSubTicket);
+    const subs = activityTickets.filter((t) => t.isSubTicket);
     const byStatus = (arr: typeof tickets, s: string) => arr.filter((t) => t.status === s).length;
     return {
-      total:           filteredTickets.length,
-      mainTickets:     main.length,
-      subTicketsCount: subs.length,
+      total:           createdTickets.length,
+      mainTickets:     createdTickets.filter((t) => !t.isSubTicket).length,
+      subTicketsCount: createdTickets.filter((t) => t.isSubTicket).length,
       closed:          byStatus(main, 'closed'),
       resolved:        byStatus(main, 'resolved'),
       inProgress:      byStatus(main, 'in_progress'),
@@ -302,31 +377,39 @@ export default function CustomerDashboard() {
       subClosed:          byStatus(subs, 'closed'),
       subNotRelated:      byStatus(subs, 'not_related'),
     };
-  }, [filteredTickets]);
+  }, [createdTickets, activityTickets]);
+
+  // Each status is dated by its own field, and 'reopened' has no card, so bars are
+  // drawn as a share of what's actually charted rather than of the created-in-range total.
+  const chartTotals = useMemo(() => ({
+    main: stats.new + stats.assigned + stats.inProgress + stats.customerPending
+        + stats.resolved + stats.tested + stats.delivered + stats.closed + stats.notRelated,
+    sub:  stats.subNew + stats.subAssigned + stats.subInProgress + stats.subCustomerPending
+        + stats.subResolved + stats.subTested + stats.subDelivered + stats.subClosed + stats.subNotRelated,
+  }), [stats]);
 
   const metrics = useMemo(() => {
-    const resolved = filteredTickets.filter((t) => t.resolvedAt && t.createdAt);
-    if (!resolved.length) return { response: 'N/A', resolution: 'N/A' };
-    const withResponse = filteredTickets.filter((t) => t.firstResponseAt && t.createdAt);
-    const avgResponseMs = withResponse.length
-      ? withResponse.reduce((s, t) => s + new Date(t.firstResponseAt!).getTime() - new Date(t.createdAt).getTime(), 0) / withResponse.length
-      : 0;
-    const avgResMs = resolved.reduce((s, t) => s + new Date(t.resolvedAt!).getTime() - new Date(t.createdAt).getTime(), 0) / resolved.length;
+    const resolved = tickets.filter((t) => t.resolvedAt && t.createdAt && inRange(t.resolvedAt));
+    const withResponse = tickets.filter((t) => t.firstResponseAt && t.createdAt && inRange(t.firstResponseAt));
+    const avg = (arr: typeof tickets, field: 'firstResponseAt' | 'resolvedAt') =>
+      arr.reduce((s, t) => s + new Date(t[field]!).getTime() - new Date(t.createdAt).getTime(), 0) / arr.length;
     return {
-      response:   (avgResponseMs / 3_600_000).toFixed(1) + ' hrs',
-      resolution: (avgResMs / 3_600_000).toFixed(1) + ' hrs',
+      response:   withResponse.length ? (avg(withResponse, 'firstResponseAt') / 3_600_000).toFixed(1) + ' hrs' : 'N/A',
+      resolution: resolved.length ? (avg(resolved, 'resolvedAt') / 3_600_000).toFixed(1) + ' hrs' : 'N/A',
     };
-  }, [filteredTickets]);
+  }, [tickets, inRange]);
 
   const recentlyClosed = useMemo(
-    () => filteredTickets
+    () => activityTickets
       .filter((t) => t.status === 'closed' || t.status === 'resolved')
-      .toSorted((a, b) => new Date(b.resolvedAt || b.closedAt || b.updatedAt).getTime() - new Date(a.resolvedAt || a.closedAt || a.updatedAt).getTime())
+      .toSorted((a, b) => activityMs(b) - activityMs(a))
       .slice(0, 5),
-    [filteredTickets]
+    [activityTickets]
   );
 
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+
+  const basis = (status: string) => (range.active ? DATE_BASIS[status] : undefined);
 
   return (
     <div className="min-h-screen bg-surface p-6 md:p-8 w-full max-w-full overflow-x-hidden">
@@ -437,14 +520,15 @@ export default function CustomerDashboard() {
           {/* Count */}
           <div className="ml-auto h-10 flex items-center text-xs text-on-surface-variant whitespace-nowrap">
             Showing{' '}
-            <span className="font-bold text-on-surface tabular-nums mx-1">{filteredTickets.length}</span>{' '}
-            ticket{filteredTickets.length !== 1 ? 's' : ''}
+            <span className="font-bold text-on-surface tabular-nums mx-1">{shownTickets.length}</span>{' '}
+            ticket{shownTickets.length !== 1 ? 's' : ''}
+            {range.active && <span className="ml-1">created or updated in this range</span>}
           </div>
         </div>
       </motion.div>
 
       {/* ── Empty date-range notice ── */}
-      {!ticketsLoading && (dateFrom || dateTo) && filteredTickets.length === 0 && (
+      {!ticketsLoading && range.active && shownTickets.length === 0 && (
         <motion.div
           className="mb-7 p-4 rounded-2xl bg-accent-orange-50 border border-accent-orange-200 text-accent-orange-700 text-sm flex items-center gap-2"
           initial={{ opacity: 0, y: -8 }}
@@ -452,7 +536,7 @@ export default function CustomerDashboard() {
         >
           <AlertTriangle className="h-4 w-4 shrink-0" />
           <span>
-            No tickets were <strong>created</strong> in the selected date range. Try a wider range (e.g. “This Year”) or click <strong>Clear</strong> to see all tickets.
+            No tickets were <strong>created or updated</strong> in the selected date range. Try a wider range (e.g. “This Year”) or click <strong>Clear</strong> to see all tickets.
           </span>
         </motion.div>
       )}
@@ -464,18 +548,18 @@ export default function CustomerDashboard() {
         initial="hidden"
         animate="visible"
       >
-        <StatCard label="All Tickets"     value={stats.total}             icon={Layers}       numberColor="text-brand-500"          iconBg="bg-brand-100"               iconColor="text-brand-600"           bar="bg-brand-500"          loading={ticketsLoading} idx={0} />
-        <StatCard label="Tickets"         value={stats.mainTickets}       icon={Ticket}       numberColor="text-brand-600"          iconBg="bg-brand-50"                iconColor="text-brand-500"           bar="bg-brand-600"          loading={ticketsLoading} idx={1} />
-        <StatCard label="Sub Tickets"     value={stats.subTicketsCount}   icon={GitBranch}    numberColor="text-violet-600"         iconBg="bg-violet-100"              iconColor="text-violet-600"          bar="bg-violet-500"         loading={ticketsLoading} idx={2} />
-        <StatCard label="New"             value={stats.new}               icon={AlertTriangle} numberColor="text-yellow-700"        iconBg="bg-yellow-100"              iconColor="text-yellow-600"          bar="bg-yellow-400"         loading={ticketsLoading} idx={3} />
-        <StatCard label="In Progress"     value={stats.inProgress}        icon={Activity}     numberColor="text-brand-400"          iconBg="bg-brand-50"                iconColor="text-brand-400"           bar="bg-brand-400"          loading={ticketsLoading} idx={4} />
-        <StatCard label="Assigned"        value={stats.assigned}          icon={Ticket}       numberColor="text-accent-orange-500"  iconBg="bg-accent-orange-100"       iconColor="text-accent-orange-500"   bar="bg-accent-orange-500"  loading={ticketsLoading} idx={5} />
-        <StatCard label="Cust. Pending"   value={stats.customerPending}   icon={Clock}        numberColor="text-purple-600"         iconBg="bg-purple-100"              iconColor="text-purple-600"          bar="bg-purple-500"         loading={ticketsLoading} idx={6} />
-        <StatCard label="Closed"          value={stats.closed}            icon={CheckCircle2} numberColor="text-emerald-600"        iconBg="bg-emerald-100"             iconColor="text-emerald-600"         bar="bg-emerald-500"        loading={ticketsLoading} idx={7} />
-        <StatCard label="Resolved"        value={stats.resolved}          icon={TrendingUp}   numberColor="text-emerald-700"        iconBg="bg-green-100"               iconColor="text-emerald-700"         bar="bg-emerald-400"        loading={ticketsLoading} idx={8} />
-        <StatCard label="Tested"          value={stats.tested}            icon={FlaskConical} numberColor="text-cyan-600"           iconBg="bg-cyan-100"                iconColor="text-cyan-600"            bar="bg-cyan-500"           loading={ticketsLoading} idx={9} />
-        <StatCard label="Delivered"       value={stats.delivered}         icon={PackageCheck} numberColor="text-teal-600"           iconBg="bg-teal-100"                iconColor="text-teal-600"            bar="bg-teal-500"           loading={ticketsLoading} idx={10} />
-        <StatCard label="Not Related"     value={stats.notRelated}        icon={Ban}          numberColor="text-slate-600"          iconBg="bg-slate-100"               iconColor="text-slate-600"           bar="bg-slate-500"          loading={ticketsLoading} idx={11} />
+        <StatCard label="All Tickets"     value={stats.total}             icon={Layers}       numberColor="text-brand-500"          iconBg="bg-brand-100"               iconColor="text-brand-600"           bar="bg-brand-500"          loading={ticketsLoading} idx={0}  hint={basis('new')} />
+        <StatCard label="Tickets"         value={stats.mainTickets}       icon={Ticket}       numberColor="text-brand-600"          iconBg="bg-brand-50"                iconColor="text-brand-500"           bar="bg-brand-600"          loading={ticketsLoading} idx={1}  hint={basis('new')} />
+        <StatCard label="Sub Tickets"     value={stats.subTicketsCount}   icon={GitBranch}    numberColor="text-violet-600"         iconBg="bg-violet-100"              iconColor="text-violet-600"          bar="bg-violet-500"         loading={ticketsLoading} idx={2}  hint={basis('new')} />
+        <StatCard label="New"             value={stats.new}               icon={AlertTriangle} numberColor="text-yellow-700"        iconBg="bg-yellow-100"              iconColor="text-yellow-600"          bar="bg-yellow-400"         loading={ticketsLoading} idx={3}  hint={basis('new')} />
+        <StatCard label="In Progress"     value={stats.inProgress}        icon={Activity}     numberColor="text-brand-400"          iconBg="bg-brand-50"                iconColor="text-brand-400"           bar="bg-brand-400"          loading={ticketsLoading} idx={4}  hint={basis('in_progress')} />
+        <StatCard label="Assigned"        value={stats.assigned}          icon={Ticket}       numberColor="text-accent-orange-500"  iconBg="bg-accent-orange-100"       iconColor="text-accent-orange-500"   bar="bg-accent-orange-500"  loading={ticketsLoading} idx={5}  hint={basis('assigned')} />
+        <StatCard label="Cust. Pending"   value={stats.customerPending}   icon={Clock}        numberColor="text-purple-600"         iconBg="bg-purple-100"              iconColor="text-purple-600"          bar="bg-purple-500"         loading={ticketsLoading} idx={6}  hint={basis('customer_pending')} />
+        <StatCard label="Closed"          value={stats.closed}            icon={CheckCircle2} numberColor="text-emerald-600"        iconBg="bg-emerald-100"             iconColor="text-emerald-600"         bar="bg-emerald-500"        loading={ticketsLoading} idx={7}  hint={basis('closed')} />
+        <StatCard label="Resolved"        value={stats.resolved}          icon={TrendingUp}   numberColor="text-emerald-700"        iconBg="bg-green-100"               iconColor="text-emerald-700"         bar="bg-emerald-400"        loading={ticketsLoading} idx={8}  hint={basis('resolved')} />
+        <StatCard label="Tested"          value={stats.tested}            icon={FlaskConical} numberColor="text-cyan-600"           iconBg="bg-cyan-100"                iconColor="text-cyan-600"            bar="bg-cyan-500"           loading={ticketsLoading} idx={9}  hint={basis('tested')} />
+        <StatCard label="Delivered"       value={stats.delivered}         icon={PackageCheck} numberColor="text-teal-600"           iconBg="bg-teal-100"                iconColor="text-teal-600"            bar="bg-teal-500"           loading={ticketsLoading} idx={10} hint={basis('delivered')} />
+        <StatCard label="Not Related"     value={stats.notRelated}        icon={Ban}          numberColor="text-slate-600"          iconBg="bg-slate-100"               iconColor="text-slate-600"           bar="bg-slate-500"          loading={ticketsLoading} idx={11} hint={basis('not_related')} />
       </motion.div>
 
       {/* ── Main 2-col layout ── */}
@@ -494,9 +578,9 @@ export default function CustomerDashboard() {
                     <BarChart3 className="h-4 w-4 text-on-surface-variant" />
                     <span className="text-sm font-semibold text-on-surface">Ticket Distribution</span>
                   </div>
-                  {!ticketsLoading && stats.mainTickets > 0 && (
+                  {!ticketsLoading && chartTotals.main > 0 && (
                     <span className="label-technical bg-surface-container px-2.5 py-1 rounded-full border border-outline-variant/20">
-                      {stats.mainTickets} total
+                      {chartTotals.main} total
                     </span>
                   )}
                 </>
@@ -528,7 +612,7 @@ export default function CustomerDashboard() {
                           key={seg.color}
                           className={`${seg.color} first:rounded-l-full last:rounded-r-full`}
                           initial={{ width: 0 }}
-                          animate={{ width: `${stats.mainTickets > 0 ? (seg.v / stats.mainTickets) * 100 : 0}%` }}
+                          animate={{ width: `${chartTotals.main > 0 ? (seg.v / chartTotals.main) * 100 : 0}%` }}
                           transition={{ duration: 1, ease: [0.23, 1, 0.32, 1], delay: 0.4 + i * 0.07 }}
                         />
                       ))}
@@ -550,7 +634,7 @@ export default function CustomerDashboard() {
                           <span className="text-xs text-on-surface-variant flex-1">{item.label}</span>
                           <span className={`text-xs font-bold tabular-nums ${item.text}`}>{item.v}</span>
                           <span className="text-[10px] text-on-surface-variant/50 tabular-nums">
-                            {stats.mainTickets > 0 ? Math.round((item.v / stats.mainTickets) * 100) : 0}%
+                            {chartTotals.main > 0 ? Math.round((item.v / chartTotals.main) * 100) : 0}%
                           </span>
                         </div>
                       ))}
@@ -571,9 +655,9 @@ export default function CustomerDashboard() {
                     <Activity className="h-4 w-4 text-brand-500" />
                     <span className="text-sm font-semibold text-on-surface">Recent Activities</span>
                   </div>
-                  {!ticketsLoading && filteredTickets.length > 0 && (
+                  {!ticketsLoading && shownTickets.length > 0 && (
                     <span className="text-xs font-semibold text-brand-600 bg-brand-100 px-2.5 py-1 rounded-full">
-                      {Math.min(filteredTickets.length, 8)} tickets
+                      {Math.min(shownTickets.length, 8)} tickets
                     </span>
                   )}
                 </>
@@ -582,9 +666,9 @@ export default function CustomerDashboard() {
               <motion.div variants={stagger} initial="hidden" animate="visible" className="divide-y divide-outline-variant/8">
                 {ticketsLoading
                   ? SKELETON_KEYS_6.map((k) => <SkeletonRow key={k} delay={k * 0.05} />)
-                  : filteredTickets.length === 0
+                  : shownTickets.length === 0
                   ? <p className="text-center py-12 text-sm text-on-surface-variant">No recent activities</p>
-                  : filteredTickets.slice(0, 8).map((ticket, i) => {
+                  : shownTickets.slice(0, 8).map((ticket, i) => {
                       const cfg = getStatusCfg(ticket.status);
                       return (
                         <motion.div
@@ -605,7 +689,7 @@ export default function CustomerDashboard() {
                             {cfg.label}
                           </span>
                           <span className="text-xs text-on-surface-variant shrink-0 hidden md:block">
-                            {new Date(ticket.createdAt).toLocaleDateString()}
+                            {new Date(activityDate(ticket)).toLocaleDateString()}
                           </span>
                         </motion.div>
                       );
@@ -653,7 +737,7 @@ export default function CustomerDashboard() {
                           <p className="text-xs text-on-surface-variant font-mono mt-0.5">{ticket.ticketNumber}</p>
                         </div>
                         <span className="text-xs text-on-surface-variant shrink-0 hidden sm:block">
-                          {new Date(ticket.resolvedAt || ticket.closedAt || ticket.updatedAt).toLocaleDateString()}
+                          {new Date(activityDate(ticket)).toLocaleDateString()}
                         </span>
                       </motion.div>
                     ))}
@@ -720,7 +804,7 @@ export default function CustomerDashboard() {
                   </div>
                   {!ticketsLoading && (
                     <span className="label-technical bg-surface-container px-2.5 py-1 rounded-full border border-outline-variant/20">
-                      {stats.mainTickets} total
+                      {chartTotals.main} total
                     </span>
                   )}
                 </>
@@ -738,7 +822,7 @@ export default function CustomerDashboard() {
                   { label: 'Closed',        value: stats.closed,          bar: 'bg-emerald-600',       dot: 'bg-emerald-600',       text: 'text-emerald-700' },
                   { label: 'Not Related',   value: stats.notRelated,      bar: 'bg-slate-500',         dot: 'bg-slate-500',         text: 'text-slate-600' },
                 ]}
-                total={stats.mainTickets}
+                total={chartTotals.main}
                 loading={ticketsLoading}
               />
             </SectionBlock>
@@ -756,7 +840,7 @@ export default function CustomerDashboard() {
                   </div>
                   {!ticketsLoading && (
                     <span className="label-technical bg-surface-container px-2.5 py-1 rounded-full border border-outline-variant/20">
-                      {stats.subTicketsCount} total
+                      {chartTotals.sub} total
                     </span>
                   )}
                 </>
@@ -774,7 +858,7 @@ export default function CustomerDashboard() {
                   { label: 'Closed',        value: stats.subClosed,          bar: 'bg-emerald-600',       dot: 'bg-emerald-600',       text: 'text-emerald-700' },
                   { label: 'Not Related',   value: stats.subNotRelated,      bar: 'bg-slate-500',         dot: 'bg-slate-500',         text: 'text-slate-600' },
                 ]}
-                total={stats.subTicketsCount}
+                total={chartTotals.sub}
                 loading={ticketsLoading}
               />
             </SectionBlock>
