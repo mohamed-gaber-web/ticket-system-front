@@ -177,6 +177,16 @@ export function normalizeEgyptPhone(raw: string | null | undefined): string {
   return `+20${digits}`;
 }
 
+/**
+ * Build a `tel:` URI for click-to-call. Strips spaces/formatting, keeping digits
+ * and a leading `+`, so the OS hands it to the registered dialer / linked device.
+ */
+export function telHref(num: string | null | undefined): string {
+  if (!num) return '';
+  const cleaned = String(num).trim().replace(/[^\d+]/g, '');
+  return cleaned ? `tel:${cleaned}` : '';
+}
+
 export interface Lead {
   _id: string;
   customerId?: string; // auto-generated reference, e.g. CUST-2026-00042 (read-only)

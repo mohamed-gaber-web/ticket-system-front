@@ -5,6 +5,7 @@ import { fetchLeads, createLead, updateLead, deleteLead, importLeads } from '@/r
 import { fetchAgents } from '@/redux/slices/teleSalesAgentsSlice';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PhoneLink } from '@/components/PhoneLink';
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import {
@@ -483,11 +484,8 @@ export default function Leads() {
                         {lead.contactPersonName}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-on-surface-variant whitespace-nowrap">
-                      <div className="flex items-center gap-1">
-                        <Phone className="w-3.5 h-3.5" />
-                        {lead.phonePrimary || lead.phoneSecondary || '—'}
-                      </div>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <PhoneLink number={lead.phonePrimary || lead.phoneSecondary} />
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       {lead.entityType

@@ -5,6 +5,7 @@ import { fetchLeadById, updateLead } from '@/redux/slices/teleSalesLeadsSlice';
 import * as teleSalesApi from '@/api/teleSalesApi';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PhoneLink } from '@/components/PhoneLink';
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import {
@@ -188,7 +189,15 @@ export default function LeadDetail() {
               {lead.priority}
             </span>
           </div>
-          <p className="text-on-surface-variant text-sm mt-1">{lead.contactPersonName}{(lead.phonePrimary || lead.phoneSecondary) ? ` · ${lead.phonePrimary || lead.phoneSecondary}` : ''}</p>
+          <p className="text-on-surface-variant text-sm mt-1 flex items-center gap-1.5 flex-wrap">
+            <span>{lead.contactPersonName}</span>
+            {(lead.phonePrimary || lead.phoneSecondary) && (
+              <>
+                <span aria-hidden>·</span>
+                <PhoneLink number={lead.phonePrimary || lead.phoneSecondary} showIcon={false} />
+              </>
+            )}
+          </p>
         </div>
 
         {/* Quick status change */}
@@ -249,9 +258,17 @@ export default function LeadDetail() {
             <InfoRow icon={<User className="w-4 h-4" />} label="Contact Person" value={lead.contactPersonName} />
             {lead.email && <InfoRow icon={<Mail className="w-4 h-4" />} label="Email" value={lead.email} />}
             {lead.website && <InfoRow icon={<Globe className="w-4 h-4" />} label="Website" value={lead.website} />}
-            {lead.phonePrimary && <InfoRow icon={<Phone className="w-4 h-4" />} label="Phone (Primary)" value={lead.phonePrimary} />}
-            {lead.phoneSecondary && <InfoRow icon={<Phone className="w-4 h-4" />} label="Phone (Secondary)" value={lead.phoneSecondary} />}
-            {lead.phoneOther && <InfoRow icon={<Phone className="w-4 h-4" />} label="Phone (Other)" value={lead.phoneOther} />}
+            {lead.phonePrimary && <InfoRow icon={<Phone className="w-4 h-4" />} label="Phone (Primary)" value={<PhoneLink number={lead.phonePrimary} showIcon={false} />} />}
+            {lead.phoneSecondary && <InfoRow icon={<Phone className="w-4 h-4" />} label="Phone (Secondary)" value={<PhoneLink number={lead.phoneSecondary} showIcon={false} />} />}
+            {lead.phoneOther && (
+              <InfoRow icon={<Phone className="w-4 h-4" />} label="Phone (Other)" value={
+                <span className="flex flex-wrap gap-x-2 gap-y-0.5">
+                  {lead.phoneOther.split(/[,/]/).map((n) => n.trim()).filter(Boolean).map((n, i) => (
+                    <PhoneLink key={`${n}-${i}`} number={n} showIcon={false} />
+                  ))}
+                </span>
+              } />
+            )}
             {lead.jobTitle && <InfoRow icon={<Briefcase className="w-4 h-4" />} label="Job Title" value={lead.jobTitle} />}
             {lead.industry && <InfoRow icon={<Building2 className="w-4 h-4" />} label="Industry" value={lead.industry} />}
             {lead.companySize && <InfoRow icon={<User className="w-4 h-4" />} label="Company Size" value={lead.companySize} />}
@@ -452,13 +469,13 @@ export default function LeadDetail() {
   );
 }
 
-function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: React.ReactNode }) {
   return (
     <div className="flex items-start gap-3">
       <div className="text-on-surface-variant mt-0.5 flex-shrink-0">{icon}</div>
       <div className="min-w-0">
         <p className="text-xs text-on-surface-variant">{label}</p>
-        <p className="text-sm text-on-surface font-medium break-words">{value}</p>
+        <div className="text-sm text-on-surface font-medium break-words">{value}</div>
       </div>
     </div>
   );

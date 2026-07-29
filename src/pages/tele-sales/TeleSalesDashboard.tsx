@@ -5,6 +5,7 @@ import { fetchLeadStats } from '@/redux/slices/teleSalesLeadsSlice';
 import { fetchLeads } from '@/redux/slices/teleSalesLeadsSlice';
 import * as teleSalesApi from '@/api/teleSalesApi';
 import { useState } from 'react';
+import { PhoneLink } from '@/components/PhoneLink';
 import type { FollowUp, LeadStatus } from '@/types/teleSales.types';
 import {
   PhoneCall,
@@ -173,7 +174,15 @@ export default function TeleSalesDashboard() {
                 className="px-5 py-3 flex items-center justify-between hover:bg-surface-container cursor-pointer">
                 <div>
                   <p className="text-sm font-semibold text-on-surface">{lead.companyName}</p>
-                  <p className="text-xs text-on-surface-variant mt-0.5">{lead.contactPersonName}{(lead.phonePrimary || lead.phoneSecondary) ? ` · ${lead.phonePrimary || lead.phoneSecondary}` : ''}</p>
+                  <p className="text-xs text-on-surface-variant mt-0.5 flex items-center gap-1.5 flex-wrap">
+                    <span>{lead.contactPersonName}</span>
+                    {(lead.phonePrimary || lead.phoneSecondary) && (
+                      <>
+                        <span aria-hidden>·</span>
+                        <PhoneLink number={lead.phonePrimary || lead.phoneSecondary} showIcon={false} className="text-xs" />
+                      </>
+                    )}
+                  </p>
                 </div>
                 <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${STATUS_COLORS[lead.status] ?? 'bg-gray-100 text-gray-600'}`}>
                   {lead.status}
