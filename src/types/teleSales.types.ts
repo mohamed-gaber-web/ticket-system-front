@@ -85,21 +85,120 @@ export type LeadSource =
   | 'Partner'
   | 'Other';
 
-export interface LeadPhone {
-  number: string;
-  label?: string;
+// ── Spec enums (tele-sales lead field specification) ──────────────────────────
+
+// Field 1: Entity_Type
+export const ENTITY_TYPES = ['Hotel', 'Restaurant', 'Cafe', 'Factory', 'Company'] as const;
+export type EntityType = (typeof ENTITY_TYPES)[number];
+
+// Field 3: Industry_Sector — 26 normalised sectors.
+export const INDUSTRY_SECTORS = [
+  'Hospitality',
+  'Food & Beverage',
+  'Retail',
+  'Wholesale & Trade',
+  'Manufacturing',
+  'Construction & Real Estate',
+  'Healthcare & Pharmaceuticals',
+  'Education',
+  'Information Technology',
+  'Telecommunications',
+  'Financial Services',
+  'Insurance',
+  'Tourism & Travel',
+  'Transportation',
+  'Logistics & Supply Chain',
+  'Agriculture',
+  'Energy & Utilities',
+  'Oil & Gas',
+  'Media & Entertainment',
+  'Automotive',
+  'Textiles & Apparel',
+  'Professional Services',
+  'Government & Public Sector',
+  'Non-Profit & NGO',
+  'Chemicals',
+  'Unclassified',
+] as const;
+export type IndustrySector = (typeof INDUSTRY_SECTORS)[number];
+
+// Field 5: Governorate — 27 Egyptian governorates, normalised English.
+export const GOVERNORATES = [
+  'Cairo',
+  'Giza',
+  'Alexandria',
+  'Qalyubia',
+  'Port Said',
+  'Suez',
+  'Dakahlia',
+  'Sharqia',
+  'Gharbia',
+  'Monufia',
+  'Beheira',
+  'Kafr El Sheikh',
+  'Damietta',
+  'Ismailia',
+  'Fayoum',
+  'Beni Suef',
+  'Minya',
+  'Asyut',
+  'Sohag',
+  'Qena',
+  'Luxor',
+  'Aswan',
+  'Red Sea',
+  'New Valley',
+  'Matrouh',
+  'North Sinai',
+  'South Sinai',
+] as const;
+export type Governorate = (typeof GOVERNORATES)[number];
+
+// Field 8: Phone_Primary — E.164 Egypt format (matches the backend validator).
+export const PHONE_E164_EG_REGEX = /^\+20[\s-]?\d(?:[\s-]?\d){6,10}$/;
+
+/**
+ * Normalise an Egyptian phone number to compact E.164 (+20…) when possible so
+ * locally-formatted input ("01001234567", "02 2735 1234") passes the
+ * Phone_Primary validator. Returns the input trimmed if it can't be confidently
+ * normalised (e.g. 5-digit hotlines, foreign numbers). Mirrors the backend.
+ */
+export function normalizeEgyptPhone(raw: string | null | undefined): string {
+  if (raw == null) return '';
+  const str = String(raw).trim();
+  if (!str) return '';
+  let digits = str.replace(/\D/g, '');
+  if (!digits) return str;
+  if (digits.startsWith('0020')) digits = digits.slice(4);
+  else if (digits.startsWith('20') && digits.length >= 10) digits = digits.slice(2);
+  else if (digits.startsWith('0')) digits = digits.slice(1);
+  else return str;
+  if (digits.length < 7 || digits.length > 11) return str;
+  return `+20${digits}`;
 }
 
 export interface Lead {
   _id: string;
   companyName: string;
   contactPersonName: string;
-  phones: LeadPhone[];
   email?: string;
   jobTitle?: string;
   industry?: string;
   companySize?: string;
-  address?: string;
+  // ── Spec fields ─────────────────────────────────────────────────────────────
+  entityType?: EntityType;
+  businessClassification?: string;
+  industrySector?: IndustrySector;
+  country?: string;
+  governorate?: Governorate;
+  cityArea?: string;
+  fullAddress?: string;
+  phonePrimary?: string;
+  phoneSecondary?: string;
+  phoneOther?: string;
+  website?: string;
+  dataSource?: string;
+  // ────────────────────────────────────────────────────────────────────────────
   leadSource?: LeadSource;
   assignedTo?: TeleSalesAgent | null;
   priority: LeadPriority;
@@ -124,12 +223,24 @@ export interface Lead {
 export interface CreateLeadData {
   companyName: string;
   contactPersonName: string;
-  phones: LeadPhone[];
   email?: string;
   jobTitle?: string;
   industry?: string;
   companySize?: string;
-  address?: string;
+  // ── Spec fields ─────────────────────────────────────────────────────────────
+  entityType?: EntityType;
+  businessClassification?: string;
+  industrySector?: IndustrySector;
+  country?: string;
+  governorate?: Governorate;
+  cityArea?: string;
+  fullAddress?: string;
+  phonePrimary?: string;
+  phoneSecondary?: string;
+  phoneOther?: string;
+  website?: string;
+  dataSource?: string;
+  // ────────────────────────────────────────────────────────────────────────────
   leadSource?: LeadSource;
   assignedTo?: string;
   priority?: LeadPriority;
@@ -150,6 +261,10 @@ export interface LeadQueryParams {
   priority?: LeadPriority;
   assignedTo?: string;
   tags?: string;
+  entityType?: EntityType;
+  industrySector?: IndustrySector;
+  governorate?: Governorate;
+  country?: string;
   from?: string;
   to?: string;
   page?: number;
@@ -258,13 +373,25 @@ export interface AttachmentsResponse {
 export interface ImportLeadRow {
   companyName?: string;
   contactPersonName: string;
-  phones: LeadPhone[];
   email?: string;
   jobTitle?: string;
   industry?: string;
   companySize?: string;
-  address?: string;
   department?: string;
+  // ── Spec fields ─────────────────────────────────────────────────────────────
+  entityType?: string;
+  businessClassification?: string;
+  industrySector?: string;
+  country?: string;
+  governorate?: string;
+  cityArea?: string;
+  fullAddress?: string;
+  phonePrimary?: string;
+  phoneSecondary?: string;
+  phoneOther?: string;
+  website?: string;
+  dataSource?: string;
+  // ────────────────────────────────────────────────────────────────────────────
   leadSource?: LeadSource;
   priority?: LeadPriority;
   status?: LeadStatus;

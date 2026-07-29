@@ -173,7 +173,7 @@ export default function TeleSalesDashboard() {
                 className="px-5 py-3 flex items-center justify-between hover:bg-surface-container cursor-pointer">
                 <div>
                   <p className="text-sm font-semibold text-on-surface">{lead.companyName}</p>
-                  <p className="text-xs text-on-surface-variant mt-0.5">{lead.contactPersonName} · {lead.phones[0]?.number}</p>
+                  <p className="text-xs text-on-surface-variant mt-0.5">{lead.contactPersonName}{(lead.phonePrimary || lead.phoneSecondary) ? ` · ${lead.phonePrimary || lead.phoneSecondary}` : ''}</p>
                 </div>
                 <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${STATUS_COLORS[lead.status] ?? 'bg-gray-100 text-gray-600'}`}>
                   {lead.status}

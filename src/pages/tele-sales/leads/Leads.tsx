@@ -10,8 +10,15 @@ import Swal from 'sweetalert2';
 import {
   Plus, Search, Phone, User, Eye, Pencil, Trash2,
   ChevronLeft, ChevronRight, Filter, X, Upload, FileSpreadsheet, CheckCircle2, AlertTriangle,
+  Building2, MapPin, ClipboardList, StickyNote, Tags, ChevronDown,
 } from 'lucide-react';
-import type { Lead, LeadStatus, LeadPriority, LeadSource, CreateLeadData, ImportLeadsResponse } from '@/types/teleSales.types';
+import type {
+  Lead, LeadStatus, LeadPriority, LeadSource, CreateLeadData, ImportLeadsResponse,
+  EntityType, IndustrySector, Governorate,
+} from '@/types/teleSales.types';
+import {
+  ENTITY_TYPES, INDUSTRY_SECTORS, GOVERNORATES, PHONE_E164_EG_REGEX, normalizeEgyptPhone,
+} from '@/types/teleSales.types';
 import { parseLeadsFile, FIELD_LABELS, type ParsedImport } from '@/utils/leadImport';
 
 const ALL_STATUSES: LeadStatus[] = [
@@ -47,15 +54,77 @@ const PRIORITY_COLORS: Record<string, string> = {
   Low: 'bg-gray-100 text-gray-600',
 };
 
+// Shared field styling so inputs, selects and textareas read as one system.
+const selectCls =
+  'h-10 w-full appearance-none cursor-pointer rounded-[0.5rem] bg-surface-container-high border-none pl-3 pr-9 text-sm text-on-surface outline-none transition-all focus-visible:ring-[2px] focus-visible:ring-primary/40';
+const textareaCls =
+  'w-full rounded-[0.5rem] bg-surface-container-high border-none px-3 py-2.5 text-sm text-on-surface outline-none transition-all resize-none focus-visible:ring-[2px] focus-visible:ring-primary/40';
+
+/** A titled, iconed card that groups related fields in the lead form. */
+function SectionCard({
+  icon, title, subtitle, children,
+}: { icon: React.ReactNode; title: string; subtitle?: string; children: React.ReactNode }) {
+  return (
+    <section className="bg-surface-container-lowest rounded-2xl border border-outline-variant/30 p-5">
+      <div className="flex items-center gap-3 mb-4">
+        <span className="flex items-center justify-center w-9 h-9 rounded-xl bg-primary/10 text-primary shrink-0">{icon}</span>
+        <div className="min-w-0">
+          <h3 className="text-sm font-semibold text-on-surface leading-tight">{title}</h3>
+          {subtitle && <p className="text-xs text-on-surface-variant mt-0.5">{subtitle}</p>}
+        </div>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+/** A labelled form field with optional required marker and helper hint. */
+function Field({
+  label, required, hint, className = '', children,
+}: { label: string; required?: boolean; hint?: string; className?: string; children: React.ReactNode }) {
+  return (
+    <div className={className}>
+      <label className="text-sm font-medium text-on-surface mb-1.5 block">
+        {label}{required && <span className="text-error ml-0.5">*</span>}
+      </label>
+      {children}
+      {hint && <p className="text-xs text-on-surface-variant mt-1">{hint}</p>}
+    </div>
+  );
+}
+
+/** A native select wrapped with a chevron, styled to match the Input component. */
+function SelectField({
+  value, onChange, children,
+}: { value: string; onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void; children: React.ReactNode }) {
+  return (
+    <div className="relative">
+      <select value={value} onChange={onChange} className={selectCls}>{children}</select>
+      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
+    </div>
+  );
+}
+
 const emptyForm: CreateLeadData = {
   companyName: '',
   contactPersonName: '',
-  phones: [{ number: '', label: 'Primary' }],
   email: '',
   jobTitle: '',
   industry: '',
   companySize: '',
-  address: '',
+  // Spec fields
+  entityType: undefined,
+  businessClassification: '',
+  industrySector: undefined,
+  country: 'Egypt',
+  governorate: undefined,
+  cityArea: '',
+  fullAddress: '',
+  phonePrimary: '',
+  phoneSecondary: '',
+  phoneOther: '',
+  website: '',
+  dataSource: '',
   leadSource: undefined,
   assignedTo: '',
   priority: 'Medium',
@@ -79,6 +148,9 @@ export default function Leads() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
+  const [entityTypeFilter, setEntityTypeFilter] = useState('');
+  const [sectorFilter, setSectorFilter] = useState('');
+  const [governorateFilter, setGovernorateFilter] = useState('');
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(PAGE_SIZE_OPTIONS[0]);
   const [showFilters, setShowFilters] = useState(false);
@@ -105,16 +177,19 @@ export default function Leads() {
       search: search || undefined,
       status: statusFilter as LeadStatus || undefined,
       priority: priorityFilter as LeadPriority || undefined,
+      entityType: entityTypeFilter as EntityType || undefined,
+      industrySector: sectorFilter as IndustrySector || undefined,
+      governorate: governorateFilter as Governorate || undefined,
       page,
       limit: itemsPerPage,
     }));
-  }, [dispatch, search, statusFilter, priorityFilter, page, itemsPerPage]);
+  }, [dispatch, search, statusFilter, priorityFilter, entityTypeFilter, sectorFilter, governorateFilter, page, itemsPerPage]);
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { if (isAdmin) dispatch(fetchAgents(undefined)); }, [isAdmin, dispatch]);
 
   // Reset page on filter / page-size change
-  useEffect(() => { setPage(1); }, [search, statusFilter, priorityFilter, itemsPerPage]);
+  useEffect(() => { setPage(1); }, [search, statusFilter, priorityFilter, entityTypeFilter, sectorFilter, governorateFilter, itemsPerPage]);
 
   const handlePageChange = (newPage: number) => {
     if (newPage < 1 || newPage > pages || newPage === page) return;
@@ -141,12 +216,23 @@ export default function Leads() {
     setForm({
       companyName: lead.companyName,
       contactPersonName: lead.contactPersonName,
-      phones: lead.phones,
       email: lead.email || '',
       jobTitle: lead.jobTitle || '',
       industry: lead.industry || '',
       companySize: lead.companySize || '',
-      address: lead.address || '',
+      // Spec fields
+      entityType: lead.entityType,
+      businessClassification: lead.businessClassification || '',
+      industrySector: lead.industrySector,
+      country: lead.country || 'Egypt',
+      governorate: lead.governorate,
+      cityArea: lead.cityArea || '',
+      fullAddress: lead.fullAddress || '',
+      phonePrimary: lead.phonePrimary || '',
+      phoneSecondary: lead.phoneSecondary || '',
+      phoneOther: lead.phoneOther || '',
+      website: lead.website || '',
+      dataSource: lead.dataSource || '',
       leadSource: lead.leadSource,
       assignedTo: (lead.assignedTo as any)?._id || '',
       priority: lead.priority,
@@ -179,11 +265,21 @@ export default function Leads() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.companyName || !form.contactPersonName || !form.phones[0]?.number) {
-      toast.error('Company name, contact person, and at least one phone are required');
+    if (!form.companyName || !form.contactPersonName) {
+      toast.error('Company name and contact person are required');
       return;
     }
-    const payload = { ...form, phones: form.phones.filter((p) => p.number.trim()) };
+    // Normalise local Egyptian numbers (01…, 02…) to E.164 before validating.
+    const primary = form.phonePrimary?.trim() ? normalizeEgyptPhone(form.phonePrimary) : '';
+    if (!primary) {
+      toast.error('A primary phone number is required');
+      return;
+    }
+    if (!PHONE_E164_EG_REGEX.test(primary)) {
+      toast.error('Primary phone must be a valid Egypt number, e.g. +20 1XX XXX XXXX or 01XXXXXXXXX');
+      return;
+    }
+    const payload = { ...form, phonePrimary: primary };
     if (!payload.assignedTo) delete payload.assignedTo;
     if (!payload.potentialValue) delete payload.potentialValue;
 
@@ -195,11 +291,6 @@ export default function Leads() {
     setIsDialogOpen(false);
     load();
   };
-
-  const addPhone = () => setForm((p) => ({ ...p, phones: [...p.phones, { number: '', label: '' }] }));
-  const removePhone = (i: number) => setForm((p) => ({ ...p, phones: p.phones.filter((_, idx) => idx !== i) }));
-  const updatePhone = (i: number, field: 'number' | 'label', val: string) =>
-    setForm((p) => ({ ...p, phones: p.phones.map((ph, idx) => idx === i ? { ...ph, [field]: val } : ph) }));
 
   const addTag = () => {
     const t = tagInput.trim();
@@ -323,8 +414,32 @@ export default function Leads() {
               <option value="">All Priorities</option>
               {(['High', 'Medium', 'Low'] as LeadPriority[]).map((p) => <option key={p} value={p}>{p}</option>)}
             </select>
-            {(statusFilter || priorityFilter) && (
-              <button onClick={() => { setStatusFilter(''); setPriorityFilter(''); }}
+            <select
+              value={entityTypeFilter}
+              onChange={(e) => setEntityTypeFilter(e.target.value)}
+              className="px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+            >
+              <option value="">All Entity Types</option>
+              {ENTITY_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+            <select
+              value={sectorFilter}
+              onChange={(e) => setSectorFilter(e.target.value)}
+              className="px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+            >
+              <option value="">All Sectors</option>
+              {INDUSTRY_SECTORS.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+            <select
+              value={governorateFilter}
+              onChange={(e) => setGovernorateFilter(e.target.value)}
+              className="px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+            >
+              <option value="">All Governorates</option>
+              {GOVERNORATES.map((g) => <option key={g} value={g}>{g}</option>)}
+            </select>
+            {(statusFilter || priorityFilter || entityTypeFilter || sectorFilter || governorateFilter) && (
+              <button onClick={() => { setStatusFilter(''); setPriorityFilter(''); setEntityTypeFilter(''); setSectorFilter(''); setGovernorateFilter(''); }}
                 className="flex items-center gap-1 text-sm text-error hover:text-error/80">
                 <X className="w-3.5 h-3.5" /> Clear
               </button>
@@ -350,7 +465,7 @@ export default function Leads() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-outline-variant/20 bg-surface-container/50">
-                  {['Company', 'Contact', 'Phone', 'Status', 'Priority', 'Assigned To', 'Last Call', 'Next Follow-up', ''].map((h) => (
+                  {['Company', 'Contact', 'Phone', 'Entity Type', 'Sector', 'Governorate', 'City / Area', 'Status', 'Priority', 'Assigned To', 'Last Call', 'Next Follow-up', ''].map((h) => (
                     <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wide whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -368,9 +483,17 @@ export default function Leads() {
                     <td className="px-4 py-3 text-on-surface-variant whitespace-nowrap">
                       <div className="flex items-center gap-1">
                         <Phone className="w-3.5 h-3.5" />
-                        {lead.phones[0]?.number}
+                        {lead.phonePrimary || lead.phoneSecondary || '—'}
                       </div>
                     </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {lead.entityType
+                        ? <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-primary/10 text-primary">{lead.entityType}</span>
+                        : <span className="text-on-surface-variant">—</span>}
+                    </td>
+                    <td className="px-4 py-3 text-on-surface-variant whitespace-nowrap">{lead.industrySector || '—'}</td>
+                    <td className="px-4 py-3 text-on-surface-variant whitespace-nowrap">{lead.governorate || '—'}</td>
+                    <td className="px-4 py-3 text-on-surface-variant whitespace-nowrap">{lead.cityArea || '—'}</td>
                     <td className="px-4 py-3">
                       <span className={`text-xs font-medium px-2.5 py-1 rounded-full whitespace-nowrap ${STATUS_COLORS[lead.status] ?? 'bg-gray-100 text-gray-600'}`}>
                         {lead.status}
@@ -478,170 +601,180 @@ export default function Leads() {
 
       {/* Create/Edit Dialog */}
       {isDialogOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-surface rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between px-6 py-5 border-b border-outline-variant/20">
-              <h2 className="text-lg font-semibold text-on-surface">{editingLead ? 'Edit Lead' : 'New Lead'}</h2>
-              <button onClick={() => setIsDialogOpen(false)} className="p-2 rounded-lg hover:bg-surface-container text-on-surface-variant">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-surface rounded-3xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden border border-outline-variant/30">
+            {/* Header */}
+            <div className="flex items-center justify-between px-7 py-5 border-b border-outline-variant/20 bg-surface-container-lowest">
+              <div className="min-w-0">
+                <h2 className="text-xl font-bold text-on-surface truncate">{editingLead ? 'Edit Lead' : 'New Lead'}</h2>
+                <p className="text-sm text-on-surface-variant mt-0.5">
+                  {editingLead ? 'Update this lead’s details' : 'Capture a new business lead'}
+                </p>
+              </div>
+              <button onClick={() => setIsDialogOpen(false)} className="p-2 rounded-xl hover:bg-surface-container text-on-surface-variant transition-colors shrink-0">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <form onSubmit={handleSubmit} className="p-6 space-y-5">
-              {/* Basic Info */}
-              <div>
-                <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide mb-3">Basic Info</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-sm font-medium text-on-surface mb-1 block">Company Name *</label>
+
+            {/* Body */}
+            <form id="lead-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-7 py-6 space-y-5">
+              <SectionCard icon={<Building2 className="w-5 h-5" />} title="Business Information">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Field label="Company Name" required>
                     <Input value={form.companyName} onChange={(e) => setForm(p => ({ ...p, companyName: e.target.value }))} placeholder="Acme Corp" />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-on-surface mb-1 block">Contact Person *</label>
+                  </Field>
+                  <Field label="Contact Person" required>
                     <Input value={form.contactPersonName} onChange={(e) => setForm(p => ({ ...p, contactPersonName: e.target.value }))} placeholder="John Doe" />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-on-surface mb-1 block">Email</label>
-                    <Input type="email" value={form.email} onChange={(e) => setForm(p => ({ ...p, email: e.target.value }))} placeholder="john@example.com" />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-on-surface mb-1 block">Job Title</label>
+                  </Field>
+                  <Field label="Job Title">
                     <Input value={form.jobTitle} onChange={(e) => setForm(p => ({ ...p, jobTitle: e.target.value }))} placeholder="CEO" />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-on-surface mb-1 block">Industry</label>
-                    <Input value={form.industry} onChange={(e) => setForm(p => ({ ...p, industry: e.target.value }))} placeholder="Technology" />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-on-surface mb-1 block">Company Size</label>
+                  </Field>
+                  <Field label="Company Size">
                     <Input value={form.companySize} onChange={(e) => setForm(p => ({ ...p, companySize: e.target.value }))} placeholder="50-200" />
-                  </div>
-                  <div className="col-span-2">
-                    <label className="text-sm font-medium text-on-surface mb-1 block">Address</label>
-                    <Input value={form.address} onChange={(e) => setForm(p => ({ ...p, address: e.target.value }))} placeholder="Street, city..." />
-                  </div>
+                  </Field>
                 </div>
-              </div>
+              </SectionCard>
 
-              {/* Phones */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide">Phone Numbers *</p>
-                  <button type="button" onClick={addPhone} className="text-xs text-brand-500 hover:text-brand-600 font-medium">+ Add</button>
+              <SectionCard icon={<MapPin className="w-5 h-5" />} title="Classification & Location">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Field label="Entity Type">
+                    <SelectField value={form.entityType || ''} onChange={(e) => setForm(p => ({ ...p, entityType: (e.target.value as EntityType) || undefined }))}>
+                      <option value="">Select type</option>
+                      {ENTITY_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                    </SelectField>
+                  </Field>
+                  <Field label="Industry Sector">
+                    <SelectField value={form.industrySector || ''} onChange={(e) => setForm(p => ({ ...p, industrySector: (e.target.value as IndustrySector) || undefined }))}>
+                      <option value="">Select sector</option>
+                      {INDUSTRY_SECTORS.map((s) => <option key={s} value={s}>{s}</option>)}
+                    </SelectField>
+                  </Field>
+                  <Field label="Business Classification" className="sm:col-span-2" hint="Specific activity in English — product details may stay in Arabic.">
+                    <Input value={form.businessClassification} onChange={(e) => setForm(p => ({ ...p, businessClassification: e.target.value }))} placeholder="e.g. Seafood restaurant" />
+                  </Field>
+                  <Field label="Country">
+                    <Input value={form.country} onChange={(e) => setForm(p => ({ ...p, country: e.target.value }))} placeholder="Egypt" />
+                  </Field>
+                  <Field label="Governorate">
+                    <SelectField value={form.governorate || ''} onChange={(e) => setForm(p => ({ ...p, governorate: (e.target.value as Governorate) || undefined }))}>
+                      <option value="">Select governorate</option>
+                      {GOVERNORATES.map((g) => <option key={g} value={g}>{g}</option>)}
+                    </SelectField>
+                  </Field>
+                  <Field label="City / Area">
+                    <Input value={form.cityArea} onChange={(e) => setForm(p => ({ ...p, cityArea: e.target.value }))} placeholder="District, resort zone, or town" />
+                  </Field>
+                  <Field label="Full Address">
+                    <Input value={form.fullAddress} onChange={(e) => setForm(p => ({ ...p, fullAddress: e.target.value }))} placeholder="Cleaned street address" />
+                  </Field>
                 </div>
-                <div className="space-y-2">
-                  {form.phones.map((ph, i) => (
-                    <div key={`${i}-${ph.number}`} className="flex gap-2">
-                      <Input value={ph.number} onChange={(e) => updatePhone(i, 'number', e.target.value)} placeholder="Phone number" className="flex-1" />
-                      <Input value={ph.label || ''} onChange={(e) => updatePhone(i, 'label', e.target.value)} placeholder="Label" className="w-28" />
-                      {form.phones.length > 1 && (
-                        <button type="button" onClick={() => removePhone(i)} className="p-2 text-error hover:bg-error/10 rounded-lg">
-                          <X className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
+              </SectionCard>
 
-              {/* Lead Details */}
-              <div>
-                <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide mb-3">Lead Details</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-sm font-medium text-on-surface mb-1 block">Lead Source</label>
-                    <select value={form.leadSource || ''} onChange={(e) => setForm(p => ({ ...p, leadSource: e.target.value as LeadSource || undefined }))}
-                      className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+              <SectionCard icon={<Phone className="w-5 h-5" />} title="Contact">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Field label="Phone — Primary" required hint="Egypt format, e.g. +20 1XX XXX XXXX or 01XXXXXXXXX.">
+                    <Input value={form.phonePrimary} onChange={(e) => setForm(p => ({ ...p, phonePrimary: e.target.value }))} placeholder="+20 1XX XXX XXXX" />
+                  </Field>
+                  <Field label="Phone — Secondary">
+                    <Input value={form.phoneSecondary} onChange={(e) => setForm(p => ({ ...p, phoneSecondary: e.target.value }))} placeholder="Secondary number" />
+                  </Field>
+                  <Field label="Phone — Other" hint="Hotlines, 0800 toll-free numbers.">
+                    <Input value={form.phoneOther} onChange={(e) => setForm(p => ({ ...p, phoneOther: e.target.value }))} placeholder="19XXX, 0800 XXX XXXX" />
+                  </Field>
+                  <Field label="Email">
+                    <Input type="email" value={form.email} onChange={(e) => setForm(p => ({ ...p, email: e.target.value }))} placeholder="john@example.com" />
+                  </Field>
+                  <Field label="Website" className="sm:col-span-2">
+                    <Input value={form.website} onChange={(e) => setForm(p => ({ ...p, website: e.target.value }))} placeholder="https://example.com" />
+                  </Field>
+                </div>
+              </SectionCard>
+
+              <SectionCard icon={<ClipboardList className="w-5 h-5" />} title="Lead Details">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Field label="Lead Source">
+                    <SelectField value={form.leadSource || ''} onChange={(e) => setForm(p => ({ ...p, leadSource: e.target.value as LeadSource || undefined }))}>
                       <option value="">Select source</option>
                       {LEAD_SOURCES.map((s) => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-on-surface mb-1 block">Priority</label>
-                    <select value={form.priority || 'Medium'} onChange={(e) => setForm(p => ({ ...p, priority: e.target.value as LeadPriority }))}
-                      className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+                    </SelectField>
+                  </Field>
+                  <Field label="Priority">
+                    <SelectField value={form.priority || 'Medium'} onChange={(e) => setForm(p => ({ ...p, priority: e.target.value as LeadPriority }))}>
                       {(['High', 'Medium', 'Low'] as LeadPriority[]).map((pv) => <option key={pv} value={pv}>{pv}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-on-surface mb-1 block">Status</label>
-                    <select value={form.status || 'New Lead'} onChange={(e) => setForm(p => ({ ...p, status: e.target.value as LeadStatus }))}
-                      className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+                    </SelectField>
+                  </Field>
+                  <Field label="Status">
+                    <SelectField value={form.status || 'New Lead'} onChange={(e) => setForm(p => ({ ...p, status: e.target.value as LeadStatus }))}>
                       {ALL_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-on-surface mb-1 block">Potential Value</label>
+                    </SelectField>
+                  </Field>
+                  <Field label="Potential Value">
                     <Input type="number" value={form.potentialValue || ''} onChange={(e) => setForm(p => ({ ...p, potentialValue: e.target.value ? Number(e.target.value) : undefined }))} placeholder="0" />
-                  </div>
+                  </Field>
                   {isAdmin && (
-                    <div className="col-span-2">
-                      <label className="text-sm font-medium text-on-surface mb-1 block">Assign To</label>
-                      <select value={form.assignedTo || ''} onChange={(e) => setForm(p => ({ ...p, assignedTo: e.target.value }))}
-                        className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+                    <Field label="Assign To">
+                      <SelectField value={form.assignedTo || ''} onChange={(e) => setForm(p => ({ ...p, assignedTo: e.target.value }))}>
                         <option value="">Unassigned</option>
                         {agents.filter((a) => a.status === 'active').map((a) => (
                           <option key={a._id} value={a._id}>{a.firstName} {a.lastName}</option>
                         ))}
-                      </select>
-                    </div>
+                      </SelectField>
+                    </Field>
                   )}
+                  <Field label="Data Source" hint="Originating file, for auditing.">
+                    <Input value={form.dataSource} onChange={(e) => setForm(p => ({ ...p, dataSource: e.target.value }))} placeholder="e.g. hotels_alex_2024.xlsx" />
+                  </Field>
                 </div>
-              </div>
+              </SectionCard>
 
-              {/* Notes & Insights */}
-              <div>
-                <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide mb-3">Notes & Insights</p>
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-sm font-medium text-on-surface mb-1 block">Pain Points</label>
+              <SectionCard icon={<StickyNote className="w-5 h-5" />} title="Notes & Insights">
+                <div className="space-y-4">
+                  <Field label="Pain Points">
                     <textarea value={form.painPoints} onChange={(e) => setForm(p => ({ ...p, painPoints: e.target.value }))}
-                      rows={2} className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none" placeholder="What challenges does the customer face?" />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-on-surface mb-1 block">Customer Needs</label>
+                      rows={2} className={textareaCls} placeholder="What challenges does the customer face?" />
+                  </Field>
+                  <Field label="Customer Needs">
                     <textarea value={form.customerNeeds} onChange={(e) => setForm(p => ({ ...p, customerNeeds: e.target.value }))}
-                      rows={2} className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none" placeholder="What does the customer need?" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-sm font-medium text-on-surface mb-1 block">Budget</label>
+                      rows={2} className={textareaCls} placeholder="What does the customer need?" />
+                  </Field>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Field label="Budget">
                       <Input value={form.budget} onChange={(e) => setForm(p => ({ ...p, budget: e.target.value }))} placeholder="e.g. $10,000" />
-                    </div>
-                    <div className="flex items-center gap-3 pt-6">
-                      <input type="checkbox" id="dm" checked={!!form.isDecisionMaker} onChange={(e) => setForm(p => ({ ...p, isDecisionMaker: e.target.checked }))} className="w-4 h-4" />
-                      <label htmlFor="dm" className="text-sm text-on-surface">Decision Maker</label>
-                    </div>
+                    </Field>
+                    <label className="flex items-center gap-3 sm:pt-8 cursor-pointer select-none">
+                      <input type="checkbox" checked={!!form.isDecisionMaker} onChange={(e) => setForm(p => ({ ...p, isDecisionMaker: e.target.checked }))} className="w-4 h-4 accent-primary" />
+                      <span className="text-sm text-on-surface">Decision Maker</span>
+                    </label>
                   </div>
                 </div>
-              </div>
+              </SectionCard>
 
-              {/* Tags */}
-              <div>
-                <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide mb-2">Tags</p>
-                <div className="flex gap-2 flex-wrap mb-2">
+              <SectionCard icon={<Tags className="w-5 h-5" />} title="Tags">
+                <div className="flex gap-2 flex-wrap mb-3">
                   {form.tags?.map((t) => (
-                    <span key={t} className="inline-flex items-center gap-1 bg-brand-100 text-brand-700 text-xs font-medium px-2.5 py-1 rounded-full">
+                    <span key={t} className="inline-flex items-center gap-1 bg-primary/10 text-primary text-xs font-medium px-2.5 py-1 rounded-full">
                       {t}
-                      <button type="button" onClick={() => removeTag(t)}>
+                      <button type="button" onClick={() => removeTag(t)} className="hover:text-error">
                         <X className="w-3 h-3" />
                       </button>
                     </span>
                   ))}
+                  {(!form.tags || form.tags.length === 0) && <span className="text-xs text-on-surface-variant">No tags yet.</span>}
                 </div>
                 <div className="flex gap-2">
-                  <Input value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())} placeholder="Add tag..." className="flex-1" />
+                  <Input value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())} placeholder="Add tag and press Enter…" className="flex-1" />
                   <Button type="button" variant="outline" size="sm" onClick={addTag}>Add</Button>
                 </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex justify-end gap-3 pt-2 border-t border-outline-variant/20">
-                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-                <Button type="submit" disabled={loading}>
-                  {loading ? 'Saving...' : editingLead ? 'Update Lead' : 'Create Lead'}
-                </Button>
-              </div>
+              </SectionCard>
             </form>
+
+            {/* Footer */}
+            <div className="flex justify-end gap-3 px-7 py-4 border-t border-outline-variant/20 bg-surface-container-lowest">
+              <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+              <Button type="submit" form="lead-form" disabled={loading}>
+                {loading ? 'Saving…' : editingLead ? 'Update Lead' : 'Create Lead'}
+              </Button>
+            </div>
           </div>
         </div>
       )}
@@ -762,7 +895,7 @@ export default function Leads() {
                           <table className="w-full text-sm">
                             <thead className="sticky top-0 bg-surface-container">
                               <tr className="border-b border-outline-variant/20">
-                                {['Contact', 'Company', 'Phone(s)', 'Email', 'Job Title'].map((h) => (
+                                {['Contact', 'Company', 'Phone', 'Email', 'Job Title'].map((h) => (
                                   <th key={h} className="px-3 py-2 text-left text-xs font-semibold text-on-surface-variant whitespace-nowrap">{h}</th>
                                 ))}
                               </tr>
@@ -772,7 +905,7 @@ export default function Leads() {
                                 <tr key={i}>
                                   <td className="px-3 py-1.5 text-on-surface whitespace-nowrap">{r.contactPersonName}</td>
                                   <td className="px-3 py-1.5 text-on-surface-variant whitespace-nowrap">{r.companyName || <span className="italic opacity-50">= contact</span>}</td>
-                                  <td className="px-3 py-1.5 text-on-surface-variant whitespace-nowrap">{r.phones.map((p) => p.number).join(', ')}</td>
+                                  <td className="px-3 py-1.5 text-on-surface-variant whitespace-nowrap">{[r.phonePrimary, r.phoneSecondary, r.phoneOther].filter(Boolean).join(', ') || '—'}</td>
                                   <td className="px-3 py-1.5 text-on-surface-variant whitespace-nowrap">{r.email || '—'}</td>
                                   <td className="px-3 py-1.5 text-on-surface-variant whitespace-nowrap">{r.jobTitle || '—'}</td>
                                 </tr>

@@ -10,6 +10,7 @@ import Swal from 'sweetalert2';
 import {
   ArrowLeft, Phone, Mail, Building2, User, Briefcase, Tag, Edit2, X,
   PhoneCall, Calendar, Paperclip, Plus, CheckCircle2, Trash2, MapPin,
+  Globe, Landmark, FileText,
 } from 'lucide-react';
 import type { CallLog, FollowUp, LeadStatus, FollowUpType, CreateCallLogData, CreateFollowUpData } from '@/types/teleSales.types';
 
@@ -184,7 +185,7 @@ export default function LeadDetail() {
               {lead.priority}
             </span>
           </div>
-          <p className="text-on-surface-variant text-sm mt-1">{lead.contactPersonName} · {lead.phones[0]?.number}</p>
+          <p className="text-on-surface-variant text-sm mt-1">{lead.contactPersonName}{(lead.phonePrimary || lead.phoneSecondary) ? ` · ${lead.phonePrimary || lead.phoneSecondary}` : ''}</p>
         </div>
 
         {/* Quick status change */}
@@ -244,13 +245,13 @@ export default function LeadDetail() {
             <InfoRow icon={<Building2 className="w-4 h-4" />} label="Company" value={lead.companyName} />
             <InfoRow icon={<User className="w-4 h-4" />} label="Contact Person" value={lead.contactPersonName} />
             {lead.email && <InfoRow icon={<Mail className="w-4 h-4" />} label="Email" value={lead.email} />}
-            {lead.phones.map((p) => (
-              <InfoRow key={p.number} icon={<Phone className="w-4 h-4" />} label={p.label || 'Phone'} value={p.number} />
-            ))}
+            {lead.website && <InfoRow icon={<Globe className="w-4 h-4" />} label="Website" value={lead.website} />}
+            {lead.phonePrimary && <InfoRow icon={<Phone className="w-4 h-4" />} label="Phone (Primary)" value={lead.phonePrimary} />}
+            {lead.phoneSecondary && <InfoRow icon={<Phone className="w-4 h-4" />} label="Phone (Secondary)" value={lead.phoneSecondary} />}
+            {lead.phoneOther && <InfoRow icon={<Phone className="w-4 h-4" />} label="Phone (Other)" value={lead.phoneOther} />}
             {lead.jobTitle && <InfoRow icon={<Briefcase className="w-4 h-4" />} label="Job Title" value={lead.jobTitle} />}
             {lead.industry && <InfoRow icon={<Building2 className="w-4 h-4" />} label="Industry" value={lead.industry} />}
             {lead.companySize && <InfoRow icon={<User className="w-4 h-4" />} label="Company Size" value={lead.companySize} />}
-            {lead.address && <InfoRow icon={<MapPin className="w-4 h-4" />} label="Address" value={lead.address} />}
           </div>
           <div className="space-y-5">
             <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/20 p-5 space-y-4">
@@ -259,7 +260,21 @@ export default function LeadDetail() {
               <InfoRow icon={<User className="w-4 h-4" />} label="Assigned To" value={assignedName} />
               {lead.potentialValue != null && <InfoRow icon={<Tag className="w-4 h-4" />} label="Potential Value" value={`$${lead.potentialValue.toLocaleString()}`} />}
               {lead.isDecisionMaker != null && <InfoRow icon={<CheckCircle2 className="w-4 h-4" />} label="Decision Maker" value={lead.isDecisionMaker ? 'Yes' : 'No'} />}
+              {lead.dataSource && <InfoRow icon={<FileText className="w-4 h-4" />} label="Data Source" value={lead.dataSource} />}
             </div>
+            {(lead.entityType || lead.industrySector || lead.businessClassification ||
+              lead.country || lead.governorate || lead.cityArea || lead.fullAddress) && (
+              <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/20 p-5 space-y-4">
+                <h3 className="font-semibold text-on-surface text-sm uppercase tracking-wide text-on-surface-variant">Classification &amp; Location</h3>
+                {lead.entityType && <InfoRow icon={<Building2 className="w-4 h-4" />} label="Entity Type" value={lead.entityType} />}
+                {lead.industrySector && <InfoRow icon={<Briefcase className="w-4 h-4" />} label="Industry Sector" value={lead.industrySector} />}
+                {lead.businessClassification && <InfoRow icon={<Tag className="w-4 h-4" />} label="Business Classification" value={lead.businessClassification} />}
+                {lead.country && <InfoRow icon={<Globe className="w-4 h-4" />} label="Country" value={lead.country} />}
+                {lead.governorate && <InfoRow icon={<Landmark className="w-4 h-4" />} label="Governorate" value={lead.governorate} />}
+                {lead.cityArea && <InfoRow icon={<MapPin className="w-4 h-4" />} label="City / Area" value={lead.cityArea} />}
+                {lead.fullAddress && <InfoRow icon={<MapPin className="w-4 h-4" />} label="Full Address" value={lead.fullAddress} />}
+              </div>
+            )}
             {(lead.painPoints || lead.customerNeeds || lead.budget) && (
               <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/20 p-5 space-y-4">
                 <h3 className="font-semibold text-on-surface text-sm uppercase tracking-wide text-on-surface-variant">Notes & Insights</h3>
