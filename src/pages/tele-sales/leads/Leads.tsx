@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchLeads, createLead, updateLead, deleteLead, importLeads } from '@/redux/slices/teleSalesLeadsSlice';
 import { fetchAgents } from '@/redux/slices/teleSalesAgentsSlice';
+import * as teleSalesApi from '@/api/teleSalesApi';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
@@ -10,7 +11,7 @@ import Swal from 'sweetalert2';
 import {
   Plus, Search, Phone, User, Eye, Pencil, Trash2,
   ChevronLeft, ChevronRight, Filter, X, Upload, FileSpreadsheet, CheckCircle2, AlertTriangle,
-  Building2, MapPin, ClipboardList, StickyNote, Tags, ChevronDown,
+  Building2, MapPin, ClipboardList, StickyNote, Tags, ChevronDown, Hash,
 } from 'lucide-react';
 import type {
   Lead, LeadStatus, LeadPriority, LeadSource, CreateLeadData, ImportLeadsResponse,
@@ -248,6 +249,28 @@ export default function Leads() {
     setIsDialogOpen(true);
   };
 
+  const [backfilling, setBackfilling] = useState(false);
+  const handleBackfillIds = async () => {
+    const r = await Swal.fire({
+      title: 'Generate missing Customer IDs?',
+      text: 'Assigns a CUST-YYYY-NNNNN reference to every lead that doesn’t have one yet. Existing IDs are left unchanged.',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Generate',
+    });
+    if (!r.isConfirmed) return;
+    setBackfilling(true);
+    try {
+      const res = await teleSalesApi.backfillCustomerIds();
+      toast.success(res.message || 'Customer IDs generated');
+      load();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to generate customer IDs');
+    } finally {
+      setBackfilling(false);
+    }
+  };
+
   const handleDelete = async (lead: Lead) => {
     const result = await Swal.fire({
       title: 'Delete Lead?',
@@ -369,6 +392,11 @@ export default function Leads() {
           <p className="text-sm text-on-surface-variant mt-0.5">{total} total leads</p>
         </div>
         <div className="flex items-center gap-2">
+          {isAdmin && (
+            <Button variant="outline" onClick={handleBackfillIds} disabled={backfilling} className="gap-2">
+              <Hash className="w-4 h-4" /> {backfilling ? 'Generating…' : 'Generate IDs'}
+            </Button>
+          )}
           <Button variant="outline" onClick={openImport} className="gap-2">
             <Upload className="w-4 h-4" /> Import
           </Button>
@@ -384,7 +412,7 @@ export default function Leads() {
           <div className="relative flex-1 min-w-48">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
             <Input
-              placeholder="Search company, contact..."
+              placeholder="Search company, contact, customer ID..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9"
@@ -465,7 +493,7 @@ export default function Leads() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-outline-variant/20 bg-surface-container/50">
-                  {['Company', 'Contact', 'Phone', 'Entity Type', 'Sector', 'Governorate', 'City / Area', 'Status', 'Priority', 'Assigned To', 'Last Call', 'Next Follow-up', ''].map((h) => (
+                  {['Customer ID', 'Company', 'Contact', 'Phone', 'Entity Type', 'Sector', 'Governorate', 'City / Area', 'Status', 'Priority', 'Assigned To', 'Last Call', 'Next Follow-up', ''].map((h) => (
                     <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wide whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -473,6 +501,9 @@ export default function Leads() {
               <tbody className="divide-y divide-outline-variant/10">
                 {leads.map((lead) => (
                   <tr key={lead._id} className="hover:bg-surface-container/40 transition-colors">
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className="font-mono text-xs text-on-surface-variant">{lead.customerId || '—'}</span>
+                    </td>
                     <td className="px-4 py-3 font-medium text-on-surface whitespace-nowrap">{lead.companyName}</td>
                     <td className="px-4 py-3 text-on-surface-variant whitespace-nowrap">
                       <div className="flex items-center gap-1">
@@ -606,9 +637,14 @@ export default function Leads() {
             {/* Header */}
             <div className="flex items-center justify-between px-7 py-5 border-b border-outline-variant/20 bg-surface-container-lowest">
               <div className="min-w-0">
-                <h2 className="text-xl font-bold text-on-surface truncate">{editingLead ? 'Edit Lead' : 'New Lead'}</h2>
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <h2 className="text-xl font-bold text-on-surface truncate">{editingLead ? 'Edit Lead' : 'New Lead'}</h2>
+                  {editingLead?.customerId && (
+                    <span className="font-mono text-xs px-2 py-0.5 rounded-md bg-surface-container-high text-on-surface-variant">{editingLead.customerId}</span>
+                  )}
+                </div>
                 <p className="text-sm text-on-surface-variant mt-0.5">
-                  {editingLead ? 'Update this lead’s details' : 'Capture a new business lead'}
+                  {editingLead ? 'Update this lead’s details' : 'A customer ID is assigned automatically on save'}
                 </p>
               </div>
               <button onClick={() => setIsDialogOpen(false)} className="p-2 rounded-xl hover:bg-surface-container text-on-surface-variant transition-colors shrink-0">

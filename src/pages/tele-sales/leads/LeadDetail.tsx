@@ -178,6 +178,9 @@ export default function LeadDetail() {
         <div className="flex-1">
           <div className="flex items-center gap-3 flex-wrap">
             <h1 className="text-2xl font-bold text-on-surface">{lead.companyName}</h1>
+            {lead.customerId && (
+              <span className="font-mono text-xs px-2 py-1 rounded-md bg-surface-container-high text-on-surface-variant">{lead.customerId}</span>
+            )}
             <span className={`text-sm font-medium px-3 py-1 rounded-full ${STATUS_COLORS[lead.status] ?? 'bg-gray-100 text-gray-600'}`}>
               {lead.status}
             </span>

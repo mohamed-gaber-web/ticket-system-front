@@ -179,6 +179,7 @@ export function normalizeEgyptPhone(raw: string | null | undefined): string {
 
 export interface Lead {
   _id: string;
+  customerId?: string; // auto-generated reference, e.g. CUST-2026-00042 (read-only)
   companyName: string;
   contactPersonName: string;
   email?: string;

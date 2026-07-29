@@ -63,6 +63,9 @@ export const deleteLead = (id: string): Promise<{ success: boolean; message: str
 export const importLeads = (data: ImportLeadsRequest): Promise<ImportLeadsResponse> =>
   api.post('/leads/import', data).then((r) => r.data);
 
+export const backfillCustomerIds = (): Promise<{ success: boolean; message: string; updated: number; total?: number }> =>
+  api.post('/leads/backfill-customer-ids').then((r) => r.data);
+
 // ── Call Logs ─────────────────────────────────────────────────────────────────
 
 export const getCallsByLead = (leadId: string): Promise<CallLogsResponse> =>
