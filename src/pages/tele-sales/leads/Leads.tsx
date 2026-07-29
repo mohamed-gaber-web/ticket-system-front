@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchLeads, createLead, updateLead, deleteLead, importLeads } from '@/redux/slices/teleSalesLeadsSlice';
 import { fetchAgents } from '@/redux/slices/teleSalesAgentsSlice';
-import * as teleSalesApi from '@/api/teleSalesApi';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
@@ -11,7 +10,7 @@ import Swal from 'sweetalert2';
 import {
   Plus, Search, Phone, User, Eye, Pencil, Trash2,
   ChevronLeft, ChevronRight, Filter, X, Upload, FileSpreadsheet, CheckCircle2, AlertTriangle,
-  Building2, MapPin, ClipboardList, StickyNote, Tags, ChevronDown, Hash,
+  Building2, MapPin, ClipboardList, StickyNote, Tags, ChevronDown,
 } from 'lucide-react';
 import type {
   Lead, LeadStatus, LeadPriority, LeadSource, CreateLeadData, ImportLeadsResponse,
@@ -249,28 +248,6 @@ export default function Leads() {
     setIsDialogOpen(true);
   };
 
-  const [backfilling, setBackfilling] = useState(false);
-  const handleBackfillIds = async () => {
-    const r = await Swal.fire({
-      title: 'Generate missing Customer IDs?',
-      text: 'Assigns a CUST-YYYY-NNNNN reference to every lead that doesn’t have one yet. Existing IDs are left unchanged.',
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonText: 'Generate',
-    });
-    if (!r.isConfirmed) return;
-    setBackfilling(true);
-    try {
-      const res = await teleSalesApi.backfillCustomerIds();
-      toast.success(res.message || 'Customer IDs generated');
-      load();
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to generate customer IDs');
-    } finally {
-      setBackfilling(false);
-    }
-  };
-
   const handleDelete = async (lead: Lead) => {
     const result = await Swal.fire({
       title: 'Delete Lead?',
@@ -392,11 +369,6 @@ export default function Leads() {
           <p className="text-sm text-on-surface-variant mt-0.5">{total} total leads</p>
         </div>
         <div className="flex items-center gap-2">
-          {isAdmin && (
-            <Button variant="outline" onClick={handleBackfillIds} disabled={backfilling} className="gap-2">
-              <Hash className="w-4 h-4" /> {backfilling ? 'Generating…' : 'Generate IDs'}
-            </Button>
-          )}
           <Button variant="outline" onClick={openImport} className="gap-2">
             <Upload className="w-4 h-4" /> Import
           </Button>
