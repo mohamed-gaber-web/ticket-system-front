@@ -8,7 +8,7 @@ import {
   CalendarDays,
   // UsersRound, // Hidden - not in use
   // UserCheck, // Hidden - not in use
-  // Clock,        // Hidden - SLA not in use
+  Clock,
   // BarChart3,    // Hidden - Reports not in use
   // FileBarChart, // Hidden - Consultant Reports not in use
   FolderKanban,
@@ -151,6 +151,7 @@ const TEAM_MEMBER_LINKS = [
 const TELE_SALES_ADMIN_LINKS = [
   { name: "Dashboard", path: "/tele-sales", icon: LayoutDashboard },
   { name: "Leads", path: "/tele-sales/leads", icon: PhoneCall },
+  { name: "Recent Calls", path: "/tele-sales/calls/recent", icon: Clock },
   { name: "Agents", path: "/tele-sales/agents", icon: UserPlus },
 ];
 
@@ -158,6 +159,7 @@ const TELE_SALES_ADMIN_LINKS = [
 const TELE_SALES_USER_LINKS = [
   { name: "Dashboard", path: "/tele-sales", icon: LayoutDashboard },
   { name: "Leads", path: "/tele-sales/leads", icon: PhoneCall },
+  { name: "Recent Calls", path: "/tele-sales/calls/recent", icon: Clock },
 ];
 
 // Employee Requests — full group for admins (only admins can approve requests)
@@ -211,6 +213,7 @@ const TELE_SALES_GROUP = {
   children: [
     { name: "Dashboard", path: "/tele-sales", icon: LayoutDashboard },
     { name: "Leads", path: "/tele-sales/leads", icon: PhoneCall },
+    { name: "Recent Calls", path: "/tele-sales/calls/recent", icon: Clock },
     { name: "Agents", path: "/tele-sales/agents", icon: UserPlus },
   ],
 };
@@ -299,6 +302,7 @@ const buildConsultantLinks = (consultantRole?: string | null, department?: strin
     return [
       { name: "Dashboard", path: "/tele-sales", icon: LayoutDashboard },
       { name: "Leads", path: "/tele-sales/leads", icon: PhoneCall },
+      { name: "Recent Calls", path: "/tele-sales/calls/recent", icon: Clock },
       EMPLOYEE_REQUESTS_GROUP_LITE,
     ];
   }

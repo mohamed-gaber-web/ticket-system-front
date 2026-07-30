@@ -14,6 +14,7 @@ import type {
   ImportLeadsRequest,
   ImportLeadsResponse,
   CallLogsResponse,
+  RecentCallsResponse,
   CreateCallLogData,
   FollowUpsResponse,
   CreateFollowUpData,
@@ -79,6 +80,9 @@ export const updateCall = (leadId: string, callId: string, data: Partial<CreateC
 
 export const deleteCall = (leadId: string, callId: string) =>
   api.delete(`/leads/${leadId}/calls/${callId}`).then((r) => r.data);
+
+export const getRecentCalls = (limit = 50): Promise<RecentCallsResponse> =>
+  api.get('/calls/recent', { params: { limit } }).then((r) => r.data);
 
 // ── Follow-ups ────────────────────────────────────────────────────────────────
 

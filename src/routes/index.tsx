@@ -158,6 +158,7 @@ const TeleSalesSignin = lazy(() => import("@/pages/tele-sales/auth/TeleSalesSign
 const TeleSalesDashboard = lazy(() => import("@/pages/tele-sales/TeleSalesDashboard"));
 const Leads = lazy(() => import("@/pages/tele-sales/leads/Leads"));
 const LeadDetail = lazy(() => import("@/pages/tele-sales/leads/LeadDetail"));
+const RecentCalls = lazy(() => import("@/pages/tele-sales/leads/RecentCalls"));
 const TeleSalesAgents = lazy(() => import("@/pages/tele-sales/agents/Agents"));
 
 // Tasks Module
@@ -197,6 +198,7 @@ export const routes: RouteObject[] = [
       { index: true, element: <Lazy><TeleSalesDashboard /></Lazy> },
       { path: "leads", element: <Lazy><Leads /></Lazy> },
       { path: "leads/:id", element: <Lazy><LeadDetail /></Lazy> },
+      { path: "calls/recent", element: <Lazy><RecentCalls /></Lazy> },
       { path: "agents", element: <Lazy><TeleSalesAgents /></Lazy> },
     ],
   },

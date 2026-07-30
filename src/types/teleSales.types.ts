@@ -329,6 +329,17 @@ export interface CallLogsResponse {
   data: CallLog[];
 }
 
+// Recent Calls: a global, cross-lead view where `lead` is populated
+export interface RecentCall extends Omit<CallLog, 'lead'> {
+  lead: Pick<Lead, '_id' | 'companyName' | 'contactPersonName' | 'phonePrimary' | 'phoneSecondary' | 'status'>;
+}
+
+export interface RecentCallsResponse {
+  success: boolean;
+  total: number;
+  data: RecentCall[];
+}
+
 // ── Follow-up ─────────────────────────────────────────────────────────────────
 
 export type FollowUpType = 'Call' | 'WhatsApp' | 'Email' | 'Meeting';
