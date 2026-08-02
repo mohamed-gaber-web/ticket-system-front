@@ -485,7 +485,7 @@ export default function Leads() {
                       </div>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <PhoneLink number={lead.phonePrimary || lead.phoneSecondary} />
+                      <PhoneLink number={lead.phonePrimary || lead.phoneSecondary} leadId={lead._id} />
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       {lead.entityType

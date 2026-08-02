@@ -67,3 +67,21 @@ export function isInRange(range: DateRange, date?: string): boolean {
   const ms = new Date(date).getTime();
   return ms >= range.fromMs && ms <= range.toMs;
 }
+
+/** A single calendar month [1st 00:00 … last day 23:59:59.999], both inclusive. */
+export function monthRange(year: number, monthIndex: number): DateRange {
+  return {
+    active: true,
+    fromMs: new Date(year, monthIndex, 1, 0, 0, 0, 0).getTime(),
+    toMs: new Date(year, monthIndex + 1, 0, 23, 59, 59, 999).getTime(),
+  };
+}
+
+/** Year-to-date: Jan 1 of `year` … end of `monthIndex` (inclusive). */
+export function ytdRange(year: number, monthIndex: number): DateRange {
+  return {
+    active: true,
+    fromMs: new Date(year, 0, 1, 0, 0, 0, 0).getTime(),
+    toMs: new Date(year, monthIndex + 1, 0, 23, 59, 59, 999).getTime(),
+  };
+}

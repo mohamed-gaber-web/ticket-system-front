@@ -94,6 +94,12 @@ export default function LeadDetail() {
     try { const r = await teleSalesApi.getFollowUpsByLead(id); setFollowUps(r.data); } catch {}
   };
 
+  // Refresh calls + lead stats after a call is auto-logged from a phone link.
+  const handleCallLogged = () => {
+    loadCalls();
+    if (id) dispatch(fetchLeadById(id));
+  };
+
   const handleStatusUpdate = async () => {
     if (!id) return;
     await dispatch(updateLead({ id, data: { status: newStatus } }));
@@ -194,7 +200,7 @@ export default function LeadDetail() {
             {(lead.phonePrimary || lead.phoneSecondary) && (
               <>
                 <span aria-hidden>·</span>
-                <PhoneLink number={lead.phonePrimary || lead.phoneSecondary} showIcon={false} />
+                <PhoneLink number={lead.phonePrimary || lead.phoneSecondary} showIcon={false} leadId={lead._id} onLogged={handleCallLogged} />
               </>
             )}
           </p>
@@ -258,13 +264,13 @@ export default function LeadDetail() {
             <InfoRow icon={<User className="w-4 h-4" />} label="Contact Person" value={lead.contactPersonName} />
             {lead.email && <InfoRow icon={<Mail className="w-4 h-4" />} label="Email" value={lead.email} />}
             {lead.website && <InfoRow icon={<Globe className="w-4 h-4" />} label="Website" value={lead.website} />}
-            {lead.phonePrimary && <InfoRow icon={<Phone className="w-4 h-4" />} label="Phone (Primary)" value={<PhoneLink number={lead.phonePrimary} showIcon={false} />} />}
-            {lead.phoneSecondary && <InfoRow icon={<Phone className="w-4 h-4" />} label="Phone (Secondary)" value={<PhoneLink number={lead.phoneSecondary} showIcon={false} />} />}
+            {lead.phonePrimary && <InfoRow icon={<Phone className="w-4 h-4" />} label="Phone (Primary)" value={<PhoneLink number={lead.phonePrimary} showIcon={false} leadId={lead._id} onLogged={handleCallLogged} />} />}
+            {lead.phoneSecondary && <InfoRow icon={<Phone className="w-4 h-4" />} label="Phone (Secondary)" value={<PhoneLink number={lead.phoneSecondary} showIcon={false} leadId={lead._id} onLogged={handleCallLogged} />} />}
             {lead.phoneOther && (
               <InfoRow icon={<Phone className="w-4 h-4" />} label="Phone (Other)" value={
                 <span className="flex flex-wrap gap-x-2 gap-y-0.5">
                   {lead.phoneOther.split(/[,/]/).map((n) => n.trim()).filter(Boolean).map((n, i) => (
-                    <PhoneLink key={`${n}-${i}`} number={n} showIcon={false} />
+                    <PhoneLink key={`${n}-${i}`} number={n} showIcon={false} leadId={lead._id} onLogged={handleCallLogged} />
                   ))}
                 </span>
               } />

@@ -101,7 +101,7 @@ export default function RecentCalls() {
                       </div>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <PhoneLink number={call.lead?.phonePrimary || call.lead?.phoneSecondary} />
+                      <PhoneLink number={call.lead?.phonePrimary || call.lead?.phoneSecondary} leadId={call.lead?._id} onLogged={loadCalls} />
                     </td>
                     <td className="px-4 py-3">
                       {call.lead?.status

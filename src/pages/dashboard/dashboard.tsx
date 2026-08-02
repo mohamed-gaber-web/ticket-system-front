@@ -21,9 +21,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks/hooks";
 import { fetchTickets } from "@/redux/slices/ticketSlice";
 import { fetchCustomers } from "@/redux/slices/customerSlice";
+import { fetchConsultants } from "@/redux/slices/consultantSlice";
 import { activityDate, activityMs, buildRange, isInRange, DATE_BASIS } from "@/lib/ticketActivity";
 import { Input } from "@/components/ui/input";
 import { CustomSelect } from "@/components/ui/custom-select";
+import { ConsultantSelect } from "@/components/ui/consultant-select";
+import { YtdComparison } from "@/components/dashboard/YtdComparison";
+import type { Ticket as TicketRecord } from "@/types/ticket";
 import {
   motion,
   useMotionValue,
@@ -42,6 +46,16 @@ const SKELETON_KEYS_4 = Array.from({ length: 4 }, (_, i) => i);
 ───────────────────────────────────────────────────────────── */
 const SP = { type: "spring" as const, stiffness: 260, damping: 22 };
 const SP_FAST = { type: "spring" as const, stiffness: 400, damping: 30 };
+
+/** The consultant ids involved with a ticket (accepted / assigned / created by). */
+function ticketConsultantIds(t: TicketRecord): string[] {
+  const ids: string[] = [];
+  for (const f of [t.acceptedBy, t.assignedBy, t.createdByConsultant]) {
+    if (!f) continue;
+    ids.push(typeof f === "string" ? f : f._id);
+  }
+  return ids;
+}
 
 /* ─────────────────────────────────────────────────────────────
    Animated counter — Framer Motion spring-based
@@ -369,6 +383,8 @@ export default function Dashboard() {
   } = useAppSelector((s) => s.tickets);
   const { total: totalCustomers, loading: customersLoading } =
     useAppSelector((s) => s.customers);
+  const { consultants, loading: consultantsLoading } =
+    useAppSelector((s) => s.consultants);
 
   /* ── Filters (company + date range) ──
      Every status figure is measured by the date it reached that status (see
@@ -377,12 +393,14 @@ export default function Dashboard() {
      delivered, and so on for every status. The three totals stay on createdAt —
      they answer "how many tickets came in during the range". */
   const [company, setCompany] = useState("");
+  const [consultant, setConsultant] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
 
   useEffect(() => {
     dispatch(fetchTickets({ limit: 10000, includeSubTickets: true }));
     dispatch(fetchCustomers());
+    dispatch(fetchConsultants({ limit: 1000 }));
   }, [dispatch]);
 
   // Company options derived from the loaded tickets (their customer's companyName),
@@ -404,34 +422,41 @@ export default function Dashboard() {
   const range = useMemo(() => buildRange(dateFrom, dateTo), [dateFrom, dateTo]);
   const inRange = useCallback((date?: string) => isInRange(range, date), [range]);
 
-  // The company filter applies to every figure; the date range then splits this set.
-  const companyTickets = useMemo(() => {
-    if (!company) return tickets;
-    return tickets.filter((t) => {
-      const name = typeof t.customer === "object" && t.customer ? t.customer.companyName : "";
-      return name === company;
-    });
-  }, [tickets, company]);
+  // The company + consultant filters apply to every figure; the date range then
+  // splits this set.
+  const filteredTickets = useMemo(() => {
+    let arr = tickets;
+    if (company) {
+      arr = arr.filter((t) => {
+        const name = typeof t.customer === "object" && t.customer ? t.customer.companyName : "";
+        return name === company;
+      });
+    }
+    if (consultant) {
+      arr = arr.filter((t) => ticketConsultantIds(t).includes(consultant));
+    }
+    return arr;
+  }, [tickets, company, consultant]);
 
   // Tickets created in the range — basis for the three "what came in" totals.
   const createdTickets = useMemo(
-    () => companyTickets.filter((t) => inRange(t.createdAt)),
-    [companyTickets, inRange]
+    () => filteredTickets.filter((t) => inRange(t.createdAt)),
+    [filteredTickets, inRange]
   );
 
   // Tickets that reached their current status inside the range — basis for every
   // per-status figure, whenever the ticket itself was created.
   const activityTickets = useMemo(
-    () => companyTickets.filter((t) => inRange(activityDate(t))),
-    [companyTickets, inRange]
+    () => filteredTickets.filter((t) => inRange(activityDate(t))),
+    [filteredTickets, inRange]
   );
 
   // Every distinct ticket the range touches, most recent activity first.
   const shownTickets = useMemo(() => {
-    if (!range.active) return companyTickets;
+    if (!range.active) return filteredTickets;
     const byId = new Map([...createdTickets, ...activityTickets].map((t) => [t._id, t]));
     return [...byId.values()].toSorted((a, b) => activityMs(b) - activityMs(a));
-  }, [range.active, companyTickets, createdTickets, activityTickets]);
+  }, [range.active, filteredTickets, createdTickets, activityTickets]);
 
   // Quick presets — fill From/To relative to today (local date, yyyy-mm-dd).
   const applyPreset = (preset: "today" | "7d" | "30d" | "month" | "year") => {
@@ -450,11 +475,12 @@ export default function Dashboard() {
 
   const clearFilters = () => {
     setCompany("");
+    setConsultant("");
     setDateFrom("");
     setDateTo("");
   };
 
-  const hasActiveFilter = Boolean(company || dateFrom || dateTo);
+  const hasActiveFilter = Boolean(company || consultant || dateFrom || dateTo);
 
   /* ── Derived data ── */
   const stats = useMemo(() => {
@@ -505,10 +531,10 @@ export default function Dashboard() {
 
   // Averages cover the work done in the range: tickets resolved / first answered in it.
   const metrics = useMemo(() => {
-    const resolved = companyTickets.filter(
+    const resolved = filteredTickets.filter(
       (t) => t.resolvedAt && t.createdAt && inRange(t.resolvedAt)
     );
-    const withResponse = companyTickets.filter(
+    const withResponse = filteredTickets.filter(
       (t) => t.firstResponseAt && t.createdAt && inRange(t.firstResponseAt)
     );
     const avg = (arr: typeof tickets, field: "firstResponseAt" | "resolvedAt") =>
@@ -526,7 +552,7 @@ export default function Dashboard() {
         : "N/A",
       totalResolved: resolved.length,
     };
-  }, [companyTickets, inRange]);
+  }, [filteredTickets, inRange]);
 
   const recentlyClosed = useMemo(
     () =>
@@ -586,6 +612,20 @@ export default function Dashboard() {
                 onChange={setCompany}
                 options={companyOptions}
                 placeholder="All companies"
+              />
+            </div>
+          </div>
+
+          {/* Consultant */}
+          <div className="flex items-center gap-2 h-10">
+            <Users className="h-4 w-4 shrink-0 text-on-surface-variant" />
+            <div className="w-56">
+              <ConsultantSelect
+                consultants={consultants}
+                loading={consultantsLoading}
+                value={consultant}
+                onChange={setConsultant}
+                placeholder="All consultants"
               />
             </div>
           </div>
@@ -701,6 +741,9 @@ export default function Dashboard() {
         <StatCard label="Not Related"      value={stats.notRelated}      icon={Ban}           numberColor="text-slate-600"        iconBg="bg-slate-100"               iconColor="text-slate-600"           bar="bg-slate-500"          loading={ticketsLoading}   idx={13} hint={basis("not_related")} />
 
       </motion.div>
+
+      {/* ── Month vs YTD comparison ── */}
+      <YtdComparison tickets={filteredTickets} />
 
       {/* ── Main 2-col layout ── */}
       <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
