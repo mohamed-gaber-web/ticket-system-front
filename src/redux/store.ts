@@ -19,6 +19,9 @@ import erpTypeReducer from './slices/erpTypeSlice';
 import versionNumberReducer from './slices/versionNumberSlice';
 import departmentReducer from './slices/departmentSlice';
 import sourceReducer from './slices/sourceSlice';
+import industrySectorReducer from './slices/industrySectorSlice';
+import countryReducer from './slices/countrySlice';
+import businessClassificationReducer from './slices/businessClassificationSlice';
 import companyReducer from './slices/companySlice';
 import companyUserReducer from './slices/companyUserSlice';
 import workingHoursReducer from './slices/workingHoursSlice';
@@ -55,6 +58,9 @@ export const store = configureStore({
     versionNumbers: versionNumberReducer,
     departments: departmentReducer,
     sources: sourceReducer,
+    industrySectors: industrySectorReducer,
+    countries: countryReducer,
+    businessClassifications: businessClassificationReducer,
     companies: companyReducer,
     companyUsers: companyUserReducer,
     workingHours: workingHoursReducer,

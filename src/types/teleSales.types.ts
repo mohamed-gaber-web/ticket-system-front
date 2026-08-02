@@ -120,7 +120,10 @@ export const INDUSTRY_SECTORS = [
   'Chemicals',
   'Unclassified',
 ] as const;
-export type IndustrySector = (typeof INDUSTRY_SECTORS)[number];
+// Industry_Sector is now an admin-managed lookup (see IndustrySector setup screen),
+// so the stored value is any active sector name — a plain string, not a fixed union.
+// INDUSTRY_SECTORS above is kept only as the default seed list / import fallback.
+export type IndustrySector = string;
 
 // Field 5: Governorate — 27 Egyptian governorates, normalised English.
 export const GOVERNORATES = [

@@ -147,6 +147,9 @@ const ErpTypes = lazy(() => import("@/pages/erp-types/ErpTypes"));
 const VersionNumbers = lazy(() => import("@/pages/version-numbers/VersionNumbers"));
 const Departments = lazy(() => import("@/pages/departments/Departments"));
 const Sources = lazy(() => import("@/pages/sources/Sources"));
+const IndustrySectors = lazy(() => import("@/pages/industry-sectors/IndustrySectors"));
+const Countries = lazy(() => import("@/pages/countries/Countries"));
+const BusinessClassifications = lazy(() => import("@/pages/business-classifications/BusinessClassifications"));
 const Companies = lazy(() => import("@/pages/companies/Companies"));
 const WorkingHoursPage = lazy(() => import("@/pages/working-hours/WorkingHoursPage"));
 
@@ -197,6 +200,7 @@ export const routes: RouteObject[] = [
     children: [
       { index: true, element: <Lazy><TeleSalesDashboard /></Lazy> },
       { path: "leads", element: <Lazy><Leads /></Lazy> },
+      { path: "interested", element: <Lazy><Leads lockedStatus="Interested" title="Interested Leads" /></Lazy> },
       { path: "leads/:id", element: <Lazy><LeadDetail /></Lazy> },
       { path: "calls/recent", element: <Lazy><RecentCalls /></Lazy> },
       { path: "agents", element: <Lazy><TeleSalesAgents /></Lazy> },
@@ -323,6 +327,9 @@ export const routes: RouteObject[] = [
       { path: "/version-numbers", element: <Lazy><VersionNumbers /></Lazy> },
       { path: "/departments", element: <Lazy><Departments /></Lazy> },
       { path: "/sources", element: <Lazy><Sources /></Lazy> },
+      { path: "/industry-sectors", element: <Lazy><IndustrySectors /></Lazy> },
+      { path: "/countries", element: <Lazy><Countries /></Lazy> },
+      { path: "/business-classifications", element: <Lazy><BusinessClassifications /></Lazy> },
       { path: "/companies", element: <Lazy><Companies /></Lazy> },
       { path: "/working-hours", element: <Lazy><WorkingHoursPage /></Lazy> },
 

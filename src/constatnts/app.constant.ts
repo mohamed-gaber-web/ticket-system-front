@@ -24,6 +24,9 @@ import {
   Building2,
   Layers,
   Globe,
+  Factory,
+  Star,
+  Briefcase,
   Building,
   CalendarClock,
   PhoneCall,
@@ -51,6 +54,20 @@ const MODULES_GROUP = {
     { name: "Version Numbers", path: "/version-numbers", icon: Hash },
     { name: "Sources", path: "/sources", icon: Globe },
     { name: "Companies", path: "/companies", icon: Building },
+  ],
+};
+
+// TeleSales setup lookups — admin-managed lists that feed the lead form
+// (Industry Sector, and future lead setup fields). Shown as a collapsible
+// "Modules" tab inside every TeleSales sidebar variant.
+const TELE_SALES_MODULES_GROUP = {
+  name: "Modules",
+  icon: Layers,
+  isGroup: true as const,
+  children: [
+    { name: "Industry Sectors", path: "/industry-sectors", icon: Factory },
+    { name: "Countries", path: "/countries", icon: Globe },
+    { name: "Business Classifications", path: "/business-classifications", icon: Briefcase },
   ],
 };
 
@@ -151,15 +168,19 @@ const TEAM_MEMBER_LINKS = [
 const TELE_SALES_ADMIN_LINKS = [
   { name: "Dashboard", path: "/tele-sales", icon: LayoutDashboard },
   { name: "Leads", path: "/tele-sales/leads", icon: PhoneCall },
+  { name: "Interested", path: "/tele-sales/interested", icon: Star },
   { name: "Recent Calls", path: "/tele-sales/calls/recent", icon: Clock },
   { name: "Agents", path: "/tele-sales/agents", icon: UserPlus },
+  TELE_SALES_MODULES_GROUP,
 ];
 
 // TeleSales user links
 const TELE_SALES_USER_LINKS = [
   { name: "Dashboard", path: "/tele-sales", icon: LayoutDashboard },
   { name: "Leads", path: "/tele-sales/leads", icon: PhoneCall },
+  { name: "Interested", path: "/tele-sales/interested", icon: Star },
   { name: "Recent Calls", path: "/tele-sales/calls/recent", icon: Clock },
+  TELE_SALES_MODULES_GROUP,
 ];
 
 // Employee Requests — full group for admins (only admins can approve requests)
@@ -213,8 +234,19 @@ const TELE_SALES_GROUP = {
   children: [
     { name: "Dashboard", path: "/tele-sales", icon: LayoutDashboard },
     { name: "Leads", path: "/tele-sales/leads", icon: PhoneCall },
+    { name: "Interested", path: "/tele-sales/interested", icon: Star },
     { name: "Recent Calls", path: "/tele-sales/calls/recent", icon: Clock },
     { name: "Agents", path: "/tele-sales/agents", icon: UserPlus },
+    {
+      name: "Modules",
+      icon: Layers,
+      isSubGroup: true as const,
+      children: [
+        { name: "Industry Sectors", path: "/industry-sectors", icon: Factory },
+        { name: "Countries", path: "/countries", icon: Globe },
+        { name: "Business Classifications", path: "/business-classifications", icon: Briefcase },
+      ],
+    },
   ],
 };
 
@@ -302,7 +334,9 @@ const buildConsultantLinks = (consultantRole?: string | null, department?: strin
     return [
       { name: "Dashboard", path: "/tele-sales", icon: LayoutDashboard },
       { name: "Leads", path: "/tele-sales/leads", icon: PhoneCall },
+      { name: "Interested", path: "/tele-sales/interested", icon: Star },
       { name: "Recent Calls", path: "/tele-sales/calls/recent", icon: Clock },
+      TELE_SALES_MODULES_GROUP,
       EMPLOYEE_REQUESTS_GROUP_LITE,
     ];
   }

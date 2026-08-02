@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchLeads, createLead, updateLead, deleteLead, importLeads } from '@/redux/slices/teleSalesLeadsSlice';
 import { fetchAgents } from '@/redux/slices/teleSalesAgentsSlice';
+import { fetchIndustrySectors } from '@/redux/slices/industrySectorSlice';
+import { fetchCountries } from '@/redux/slices/countrySlice';
+import { fetchBusinessClassifications } from '@/redux/slices/businessClassificationSlice';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PhoneLink } from '@/components/PhoneLink';
@@ -138,16 +141,46 @@ const emptyForm: CreateLeadData = {
   tags: [],
 };
 
-export default function Leads() {
+interface LeadsProps {
+  /** When set, the page is locked to this status (used by the "Interested" tab):
+   *  the status filter is fixed and hidden, and the list only shows those leads. */
+  lockedStatus?: LeadStatus;
+  /** Optional page heading override (defaults to "Leads"). */
+  title?: string;
+}
+
+export default function Leads({ lockedStatus, title }: LeadsProps = {}) {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { leads, loading, total, pages } = useAppSelector((s) => s.teleSalesLeads);
   const { agents } = useAppSelector((s) => s.teleSalesAgents);
+  const { industrySectors } = useAppSelector((s) => s.industrySectors);
+  const { countries } = useAppSelector((s) => s.countries);
+  const { businessClassifications } = useAppSelector((s) => s.businessClassifications);
   const { user } = useAppSelector((s) => s.auth);
   const isAdmin = (user as any)?.role === 'admin';
 
+  // Admin-managed Industry Sector lookup drives the sector dropdowns. Only active
+  // sectors are offered for new selections; INDUSTRY_SECTORS is the fallback while
+  // the list is still loading (or empty before it's been seeded).
+  const sectorOptions = industrySectors.length
+    ? industrySectors.filter((s) => s.isActive).map((s) => s.name)
+    : [...INDUSTRY_SECTORS];
+
+  // Admin-managed Country lookup (seeded with "Egypt"). Falls back to just Egypt
+  // while loading so the dropdown is never empty.
+  const countryOptions = countries.length
+    ? countries.filter((c) => c.isActive).map((c) => c.name)
+    : ['Egypt'];
+
+  // Admin-managed Business Classification lookup. Starts empty until an admin adds
+  // values; the edit form still preserves whatever a lead already has stored.
+  const classificationOptions = businessClassifications
+    .filter((c) => c.isActive)
+    .map((c) => c.name);
+
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState(lockedStatus ?? '');
   const [priorityFilter, setPriorityFilter] = useState('');
   const [entityTypeFilter, setEntityTypeFilter] = useState('');
   const [sectorFilter, setSectorFilter] = useState('');
@@ -176,7 +209,7 @@ export default function Leads() {
   const load = useCallback(() => {
     dispatch(fetchLeads({
       search: search || undefined,
-      status: statusFilter as LeadStatus || undefined,
+      status: (lockedStatus ?? (statusFilter as LeadStatus)) || undefined,
       priority: priorityFilter as LeadPriority || undefined,
       entityType: entityTypeFilter as EntityType || undefined,
       industrySector: sectorFilter as IndustrySector || undefined,
@@ -184,10 +217,14 @@ export default function Leads() {
       page,
       limit: itemsPerPage,
     }));
-  }, [dispatch, search, statusFilter, priorityFilter, entityTypeFilter, sectorFilter, governorateFilter, page, itemsPerPage]);
+  }, [dispatch, lockedStatus, search, statusFilter, priorityFilter, entityTypeFilter, sectorFilter, governorateFilter, page, itemsPerPage]);
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { if (isAdmin) dispatch(fetchAgents(undefined)); }, [isAdmin, dispatch]);
+  // Load the full lookup lists once so the filter and form dropdowns can render them.
+  useEffect(() => { dispatch(fetchIndustrySectors({ limit: 1000 })); }, [dispatch]);
+  useEffect(() => { dispatch(fetchCountries({ limit: 1000 })); }, [dispatch]);
+  useEffect(() => { dispatch(fetchBusinessClassifications({ limit: 1000 })); }, [dispatch]);
 
   // Reset page on filter / page-size change
   useEffect(() => { setPage(1); }, [search, statusFilter, priorityFilter, entityTypeFilter, sectorFilter, governorateFilter, itemsPerPage]);
@@ -366,8 +403,10 @@ export default function Leads() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-on-surface">Leads</h1>
-          <p className="text-sm text-on-surface-variant mt-0.5">{total} total leads</p>
+          <h1 className="text-2xl font-bold text-on-surface">{title ?? 'Leads'}</h1>
+          <p className="text-sm text-on-surface-variant mt-0.5">
+            {total} {lockedStatus ? `${lockedStatus.toLowerCase()} leads` : 'total leads'}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={openImport} className="gap-2">
@@ -399,14 +438,16 @@ export default function Leads() {
 
         {showFilters && (
           <div className="flex gap-3 flex-wrap">
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
-            >
-              <option value="">All Statuses</option>
-              {ALL_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
+            {!lockedStatus && (
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+              >
+                <option value="">All Statuses</option>
+                {ALL_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+            )}
             <select
               value={priorityFilter}
               onChange={(e) => setPriorityFilter(e.target.value)}
@@ -429,7 +470,7 @@ export default function Leads() {
               className="px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
             >
               <option value="">All Sectors</option>
-              {INDUSTRY_SECTORS.map((s) => <option key={s} value={s}>{s}</option>)}
+              {sectorOptions.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
             <select
               value={governorateFilter}
@@ -652,14 +693,29 @@ export default function Leads() {
                   <Field label="Industry Sector">
                     <SelectField value={form.industrySector || ''} onChange={(e) => setForm(p => ({ ...p, industrySector: (e.target.value as IndustrySector) || undefined }))}>
                       <option value="">Select sector</option>
-                      {INDUSTRY_SECTORS.map((s) => <option key={s} value={s}>{s}</option>)}
+                      {(form.industrySector && !sectorOptions.includes(form.industrySector)
+                        ? [form.industrySector, ...sectorOptions]
+                        : sectorOptions
+                      ).map((s) => <option key={s} value={s}>{s}</option>)}
                     </SelectField>
                   </Field>
-                  <Field label="Business Classification" className="sm:col-span-2" hint="Specific activity in English — product details may stay in Arabic.">
-                    <Input value={form.businessClassification} onChange={(e) => setForm(p => ({ ...p, businessClassification: e.target.value }))} placeholder="e.g. Seafood restaurant" />
+                  <Field label="Business Classification" className="sm:col-span-2" hint="Specific activity — managed from Modules ▸ Business Classifications.">
+                    <SelectField value={form.businessClassification || ''} onChange={(e) => setForm(p => ({ ...p, businessClassification: e.target.value }))}>
+                      <option value="">Select classification</option>
+                      {(form.businessClassification && !classificationOptions.includes(form.businessClassification)
+                        ? [form.businessClassification, ...classificationOptions]
+                        : classificationOptions
+                      ).map((c) => <option key={c} value={c}>{c}</option>)}
+                    </SelectField>
                   </Field>
                   <Field label="Country">
-                    <Input value={form.country} onChange={(e) => setForm(p => ({ ...p, country: e.target.value }))} placeholder="Egypt" />
+                    <SelectField value={form.country || ''} onChange={(e) => setForm(p => ({ ...p, country: e.target.value }))}>
+                      <option value="">Select country</option>
+                      {(form.country && !countryOptions.includes(form.country)
+                        ? [form.country, ...countryOptions]
+                        : countryOptions
+                      ).map((c) => <option key={c} value={c}>{c}</option>)}
+                    </SelectField>
                   </Field>
                   <Field label="Governorate">
                     <SelectField value={form.governorate || ''} onChange={(e) => setForm(p => ({ ...p, governorate: (e.target.value as Governorate) || undefined }))}>
