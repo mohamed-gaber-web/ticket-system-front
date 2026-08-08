@@ -21,8 +21,9 @@ import type {
   EntityType, IndustrySector, Governorate,
 } from '@/types/teleSales.types';
 import {
-  ENTITY_TYPES, INDUSTRY_SECTORS, GOVERNORATES, PHONE_E164_EG_REGEX, normalizeEgyptPhone,
+  ENTITY_TYPES, INDUSTRY_SECTORS, GOVERNORATES,
 } from '@/types/teleSales.types';
+import { dialCodeForCountry, isValidPhoneForCountry } from '@/utils/countryPhone';
 import { parseLeadsFile, FIELD_LABELS, type ParsedImport } from '@/utils/leadImport';
 
 const ALL_STATUSES: LeadStatus[] = [
@@ -307,14 +308,23 @@ export default function Leads({ lockedStatus, title }: LeadsProps = {}) {
       toast.error('Company name and contact person are required');
       return;
     }
-    // Normalise local Egyptian numbers (01…, 02…) to E.164 before validating.
-    const primary = form.phonePrimary?.trim() ? normalizeEgyptPhone(form.phonePrimary) : '';
+    // Phone_Primary is stored as entered; validated leniently so numbers from any
+    // country are accepted (KSA, Bahrain, USA, …). Include the country code for
+    // non-Egypt numbers.
+    const primary = form.phonePrimary?.trim() || '';
     if (!primary) {
       toast.error('A primary phone number is required');
       return;
     }
-    if (!PHONE_E164_EG_REGEX.test(primary)) {
-      toast.error('Primary phone must be a valid Egypt number, e.g. +20 1XX XXX XXXX or 01XXXXXXXXX');
+    // Validate against the selected country's rules (falls back to a lenient
+    // international check for countries not in the built-in table).
+    if (!isValidPhoneForCountry(primary, form.country)) {
+      const dc = dialCodeForCountry(form.country);
+      toast.error(
+        form.country && dc
+          ? `Enter a valid ${form.country} phone number (dialing code ${dc})`
+          : 'Enter a valid phone number (include the country code, e.g. +966 5X XXX XXXX)'
+      );
       return;
     }
     const payload = { ...form, phonePrimary: primary };
@@ -734,8 +744,14 @@ export default function Leads({ lockedStatus, title }: LeadsProps = {}) {
 
               <SectionCard icon={<Phone className="w-5 h-5" />} title="Contact">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Field label="Phone — Primary" required hint="Egypt format, e.g. +20 1XX XXX XXXX or 01XXXXXXXXX.">
-                    <Input value={form.phonePrimary} onChange={(e) => setForm(p => ({ ...p, phonePrimary: e.target.value }))} placeholder="+20 1XX XXX XXXX" />
+                  <Field
+                    label="Phone — Primary"
+                    required
+                    hint={dialCodeForCountry(form.country)
+                      ? `${form.country} dialing code ${dialCodeForCountry(form.country)} — enter the local number or the full ${dialCodeForCountry(form.country)} form`
+                      : undefined}
+                  >
+                    <Input value={form.phonePrimary} onChange={(e) => setForm(p => ({ ...p, phonePrimary: e.target.value }))} />
                   </Field>
                   <Field label="Phone — Secondary">
                     <Input value={form.phoneSecondary} onChange={(e) => setForm(p => ({ ...p, phoneSecondary: e.target.value }))} placeholder="Secondary number" />

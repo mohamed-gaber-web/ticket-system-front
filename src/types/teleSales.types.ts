@@ -157,8 +157,22 @@ export const GOVERNORATES = [
 ] as const;
 export type Governorate = (typeof GOVERNORATES)[number];
 
-// Field 8: Phone_Primary — E.164 Egypt format (matches the backend validator).
+// Field 8: Phone_Primary — E.164 Egypt format. Kept for the bulk-import normaliser.
 export const PHONE_E164_EG_REGEX = /^\+20[\s-]?\d(?:[\s-]?\d){6,10}$/;
+
+/**
+ * Validate a Phone_Primary for manual create/update. International: accepts any
+ * country (KSA, Bahrain, USA, …) — an optional leading "+" then 6–15 digits with
+ * spaces, hyphens, dots or parentheses as separators. Mirrors the backend.
+ */
+export function isValidPhone(raw: string | null | undefined): boolean {
+  if (raw == null) return false;
+  const str = String(raw).trim();
+  if (!str) return false;
+  if (!/^\+?[0-9\s().-]+$/.test(str)) return false;
+  const digits = str.replace(/\D/g, '');
+  return digits.length >= 6 && digits.length <= 15;
+}
 
 /**
  * Normalise an Egyptian phone number to compact E.164 (+20…) when possible so
