@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchLeadById, updateLead } from '@/redux/slices/teleSalesLeadsSlice';
@@ -11,9 +11,19 @@ import Swal from 'sweetalert2';
 import {
   ArrowLeft, Phone, Mail, Building2, User, Briefcase, Tag, Edit2, X,
   PhoneCall, Calendar, Paperclip, Plus, CheckCircle2, Trash2, MapPin,
-  Globe, Landmark, FileText,
+  Globe, Landmark, FileText, Upload, Download, File as FileIcon, Image as ImageIcon,
 } from 'lucide-react';
-import type { CallLog, FollowUp, LeadStatus, FollowUpType, CreateCallLogData, CreateFollowUpData } from '@/types/teleSales.types';
+import type { CallLog, FollowUp, LeadStatus, FollowUpType, CreateCallLogData, CreateFollowUpData, LeadAttachment } from '@/types/teleSales.types';
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
+const formatFileSize = (bytes?: number) => {
+  if (!bytes) return '';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${Math.round((bytes / Math.pow(k, i)) * 100) / 100} ${sizes[i]}`;
+};
 
 const STATUS_COLORS: Record<string, string> = {
   'New Lead': 'bg-blue-100 text-blue-700',
@@ -56,6 +66,11 @@ export default function LeadDetail() {
   const [callLogs, setCallLogs] = useState<CallLog[]>([]);
   const [followUps, setFollowUps] = useState<FollowUp[]>([]);
 
+  // Attachments
+  const [attachments, setAttachments] = useState<LeadAttachment[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   // Call form
   const [callForm, setCallForm] = useState<CreateCallLogData>({ notes: '', duration: undefined });
   const [showCallForm, setShowCallForm] = useState(false);
@@ -81,6 +96,7 @@ export default function LeadDetail() {
       setNewStatus(currentLead.status);
       loadCalls();
       loadFollowUps();
+      loadAttachments();
     }
   }, [currentLead?._id]);
 
@@ -92,6 +108,59 @@ export default function LeadDetail() {
   const loadFollowUps = async () => {
     if (!id) return;
     try { const r = await teleSalesApi.getFollowUpsByLead(id); setFollowUps(r.data); } catch {}
+  };
+
+  const loadAttachments = async () => {
+    if (!id) return;
+    try { const r = await teleSalesApi.getAttachments(id); setAttachments(r.data); } catch {}
+  };
+
+  // Two-step add: upload the raw file to GridFS, then link the returned fileId to this lead.
+  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) await handleUploadAttachment(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleUploadAttachment = async (file: File) => {
+    if (!id) return;
+    if (file.size > MAX_FILE_SIZE) { toast.error('File too large. Maximum size is 10MB.'); return; }
+    setUploading(true);
+    try {
+      const uploaded = await teleSalesApi.uploadFile(file);
+      const { fileId, fileName, fileType, fileSize } = uploaded.data;
+      await teleSalesApi.addAttachment(id, { fileId, fileName, fileType, fileSize });
+      toast.success('Attachment uploaded');
+      await loadAttachments();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to upload attachment');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDownloadAttachment = async (att: LeadAttachment) => {
+    try {
+      const blob = await teleSalesApi.downloadFile(att.fileId);
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = objectUrl;
+      a.download = att.fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(objectUrl);
+    } catch {
+      toast.error('Failed to download file');
+    }
+  };
+
+  const handleDeleteAttachment = async (attachmentId: string) => {
+    const r = await Swal.fire({ title: 'Delete attachment?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444', confirmButtonText: 'Delete' });
+    if (r.isConfirmed && id) {
+      try { await teleSalesApi.deleteAttachment(id, attachmentId); toast.success('Deleted'); await loadAttachments(); }
+      catch (err: any) { toast.error(err.response?.data?.message || 'Failed'); }
+    }
   };
 
   // Refresh calls + lead stats after a call is auto-logged from a phone link.
@@ -249,7 +318,7 @@ export default function LeadDetail() {
           {(['info', 'calls', 'followups', 'attachments'] as Tab[]).map((t) => (
             <button key={t} onClick={() => setTab(t)}
               className={`px-5 py-3 text-sm font-medium transition-colors border-b-2 -mb-px ${tab === t ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant hover:text-on-surface'}`}>
-              {t === 'info' ? 'Info' : t === 'calls' ? `Calls (${callLogs.length})` : t === 'followups' ? `Follow-ups (${followUps.length})` : 'Attachments'}
+              {t === 'info' ? 'Info' : t === 'calls' ? `Calls (${callLogs.length})` : t === 'followups' ? `Follow-ups (${followUps.length})` : `Attachments (${attachments.length})`}
             </button>
           ))}
         </div>
@@ -465,10 +534,66 @@ export default function LeadDetail() {
 
       {/* Tab: Attachments */}
       {tab === 'attachments' && (
-        <div className="flex flex-col items-center py-16 text-on-surface-variant bg-surface-container-lowest rounded-2xl border border-outline-variant/20">
-          <Paperclip className="w-8 h-8 mb-2 opacity-30" />
-          <p className="text-sm font-medium">Attachments</p>
-          <p className="text-xs mt-1">Upload a file via the upload endpoint, then link it here</p>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-on-surface-variant">Images, PDF, Word, Excel, PowerPoint, TXT, Video, ZIP · Max 10MB</p>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,text/plain,video/*,application/zip,application/x-zip-compressed,application/x-zip,.zip"
+              onChange={handleFileSelected}
+              disabled={uploading}
+              className="hidden"
+            />
+            <Button onClick={() => fileInputRef.current?.click()} disabled={uploading} className="gap-2">
+              {uploading ? (
+                <>
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <Upload className="w-4 h-4" /> Upload File
+                </>
+              )}
+            </Button>
+          </div>
+
+          {attachments.length === 0 ? (
+            <div className="flex flex-col items-center py-16 text-on-surface-variant bg-surface-container-lowest rounded-2xl border border-outline-variant/20">
+              <Paperclip className="w-8 h-8 mb-2 opacity-30" />
+              <p className="text-sm font-medium">No attachments yet</p>
+              <p className="text-xs mt-1">Click “Upload File” to attach a file to this lead</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {attachments.map((att) => (
+                <div key={att._id} className="group flex items-center gap-3 p-3 bg-surface-container-lowest rounded-2xl border border-outline-variant/20 hover:bg-surface-container transition-colors">
+                  <div className="w-11 h-11 rounded-xl bg-surface-container-high flex items-center justify-center flex-shrink-0">
+                    {att.fileType?.startsWith('image/')
+                      ? <ImageIcon className="w-5 h-5 text-brand-500" />
+                      : <FileIcon className="w-5 h-5 text-on-surface-variant" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-on-surface truncate">{att.fileName}</p>
+                    <p className="text-xs text-on-surface-variant mt-0.5">
+                      {formatFileSize(att.fileSize)}
+                      {att.uploadedBy?.firstName && ` · ${att.uploadedBy.firstName} ${att.uploadedBy.lastName}`}
+                      {att.createdAt && ` · ${formatDate(att.createdAt)}`}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => handleDownloadAttachment(att)} className="p-1.5 rounded-lg hover:bg-brand-50 text-on-surface-variant hover:text-brand-600" title="Download">
+                      <Download className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => handleDeleteAttachment(att._id)} className="p-1.5 rounded-lg hover:bg-error/10 text-on-surface-variant hover:text-error" title="Delete">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

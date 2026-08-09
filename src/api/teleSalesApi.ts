@@ -111,3 +111,19 @@ export const addAttachment = (leadId: string, data: { fileId: string; fileName: 
 
 export const deleteAttachment = (leadId: string, attachmentId: string) =>
   api.delete(`/leads/${leadId}/attachments/${attachmentId}`).then((r) => r.data);
+
+// Step 1 of adding an attachment: push the raw file to GridFS and get back its fileId.
+export const uploadFile = (
+  file: File,
+): Promise<{
+  success: boolean;
+  data: { fileId: string; fileName: string; filePath: string; fileSize: number; fileType: string; url: string };
+}> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  return api.post('/upload', formData).then((r) => r.data);
+};
+
+// Fetch a stored file as a blob (auth header is added by the axios interceptor).
+export const downloadFile = (fileId: string): Promise<Blob> =>
+  api.get(`/files/${fileId}`, { responseType: 'blob' }).then((r) => r.data);
