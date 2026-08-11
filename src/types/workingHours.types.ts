@@ -8,6 +8,8 @@ export interface WorkingHours {
   reminderBeforeDays: number;
   autoCloseDays: number;
   pendingReminderIntervalDays: number;
+  /** Date new tickets are recorded on; null = always use today */
+  dataEntryDate: string | null;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -21,6 +23,8 @@ export interface UpdateWorkingHoursData {
   reminderBeforeDays?: number;
   autoCloseDays?: number;
   pendingReminderIntervalDays?: number;
+  /** "YYYY-MM-DD", or null to clear it and fall back to today */
+  dataEntryDate?: string | null;
 }
 
 export interface Holiday {

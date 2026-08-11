@@ -93,7 +93,6 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
           internalDeliveryDate: '',
           scheduledWeek: undefined,
           durationHours: undefined,
-          createdAt: '',
           resolvedAt: '',
           closedAt: '',
         }
@@ -115,7 +114,6 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
           internalDeliveryDate: '',
           scheduledWeek: undefined,
           durationHours: undefined,
-          createdAt: '',
           resolvedAt: '',
           closedAt: '',
         }
@@ -258,7 +256,6 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
           internalDeliveryDate: toDateInput(initialData.internalDeliveryDate),
           scheduledWeek: initialData.scheduledWeek,
           durationHours: initialData.durationHours,
-          createdAt: toDateInput(initialData.createdAt),
           resolvedAt: toDateInput(initialData.resolvedAt),
           closedAt: toDateInput(initialData.closedAt),
         });
@@ -281,7 +278,6 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
           internalDeliveryDate: toDateInput(initialData.internalDeliveryDate),
           scheduledWeek: initialData.scheduledWeek,
           durationHours: initialData.durationHours,
-          createdAt: toDateInput(initialData.createdAt),
           resolvedAt: toDateInput(initialData.resolvedAt),
           closedAt: toDateInput(initialData.closedAt),
         });
@@ -782,17 +778,6 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
                 placeholder="e.g. 4"
               />
               <p className="mt-1 text-xs text-on-surface-variant">Total hours actually spent working on this ticket.</p>
-            </div>
-
-            <div>
-              <label className="form-label">Created Date</label>
-              <Input
-                type="date"
-                name="createdAt"
-                value={(formData as any).createdAt || ''}
-                onChange={handleChange}
-              />
-              <p className="mt-1 text-xs text-on-surface-variant">Override the ticket creation date.</p>
             </div>
 
             <div>

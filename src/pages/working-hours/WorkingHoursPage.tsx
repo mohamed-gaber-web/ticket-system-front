@@ -17,13 +17,19 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Save, Trash2, Plus, CalendarDays, Download } from 'lucide-react';
+import { Save, Trash2, Plus, CalendarDays, CalendarCheck, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
 import type { UpdateWorkingHoursData } from '@/types/workingHours.types';
 
 const MySwal = withReactContent(Swal);
+
+// Today as "YYYY-MM-DD" in the user's own timezone — what a <input type="date"> expects
+const todayInputValue = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
 
 const DAY_OPTIONS = [
   { label: 'Sunday', value: 0 },
@@ -67,6 +73,7 @@ export default function WorkingHoursPage() {
     reminderBeforeDays: 1,
     autoCloseDays: 3,
     pendingReminderIntervalDays: 2,
+    dataEntryDate: null,
   });
 
   // New holiday form state
@@ -97,6 +104,7 @@ export default function WorkingHoursPage() {
         reminderBeforeDays: config.reminderBeforeDays,
         autoCloseDays: config.autoCloseDays,
         pendingReminderIntervalDays: config.pendingReminderIntervalDays,
+        dataEntryDate: config.dataEntryDate ? config.dataEntryDate.slice(0, 10) : null,
       });
     }
   }, [config]);
@@ -119,7 +127,8 @@ export default function WorkingHoursPage() {
       toast.error('Work Start Time must be earlier than Work End Time.');
       return;
     }
-    dispatch(saveWorkingHours(form));
+    // An empty date input means "no override" — send null so the backend clears it
+    dispatch(saveWorkingHours({ ...form, dataEntryDate: form.dataEntryDate || null }));
   };
 
   const handleAddHoliday = () => {
@@ -293,6 +302,57 @@ export default function WorkingHoursPage() {
             />
           </div>
         </div>
+      </div>
+
+      {/* Data Entry Section */}
+      <div className="bg-surface-container-lowest rounded-[1rem] p-6 space-y-4">
+        <div className="flex items-center gap-2">
+          <CalendarCheck className="h-5 w-5 text-on-surface-variant" />
+          <h2 className="text-lg font-semibold text-on-surface">Ticket Data Entry</h2>
+        </div>
+        <p className="text-sm text-on-surface-variant -mt-1">
+          New tickets are recorded on this date. Set it to the day being worked on so entry stays
+          daily instead of retroactive — nobody can change a ticket's date from the ticket form.
+        </p>
+
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="space-y-1.5">
+            <label className="form-label">Data Entry Date</label>
+            <Input
+              type="date"
+              value={form.dataEntryDate ?? ''}
+              onChange={(e) => setForm((p) => ({ ...p, dataEntryDate: e.target.value || null }))}
+              className="w-48"
+            />
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => setForm((p) => ({ ...p, dataEntryDate: todayInputValue() }))}
+            disabled={form.dataEntryDate === todayInputValue()}
+          >
+            Set to Today
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() => setForm((p) => ({ ...p, dataEntryDate: null }))}
+            disabled={!form.dataEntryDate}
+          >
+            Clear
+          </Button>
+        </div>
+
+        {!form.dataEntryDate ? (
+          <p className="text-xs text-on-surface-variant">
+            No date set — every new ticket is recorded with the current date automatically.
+          </p>
+        ) : form.dataEntryDate !== todayInputValue() ? (
+          <p className="text-xs text-error">
+            New tickets will be recorded on {formatDate(form.dataEntryDate)}, not today. Remember to
+            move this forward when you're done catching up.
+          </p>
+        ) : (
+          <p className="text-xs text-on-surface-variant">New tickets will be recorded on today's date.</p>
+        )}
       </div>
 
       {/* Holidays Section */}
