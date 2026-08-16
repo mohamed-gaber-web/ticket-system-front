@@ -12,10 +12,11 @@ import { PhoneLink } from '@/components/PhoneLink';
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import {
-  Plus, Search, Phone, User, Eye, Pencil, Trash2,
+  Plus, Search, Phone, User, Eye, Pencil, Trash2, Send,
   ChevronLeft, ChevronRight, Filter, X, Upload, FileSpreadsheet, CheckCircle2, AlertTriangle,
   Building2, MapPin, ClipboardList, StickyNote, Tags, ChevronDown,
 } from 'lucide-react';
+import GmailCompose from '@/components/tele-sales/GmailCompose';
 import type {
   Lead, LeadStatus, LeadPriority, LeadSource, CreateLeadData, ImportLeadsResponse,
   EntityType, IndustrySector, Governorate,
@@ -179,6 +180,9 @@ export default function Leads({ lockedStatus, title }: LeadsProps = {}) {
   const classificationOptions = businessClassifications
     .filter((c) => c.isActive)
     .map((c) => c.name);
+
+  // Lead whose compose window is open, if any.
+  const [emailLead, setEmailLead] = useState<Lead | null>(null);
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState(lockedStatus ?? '');
@@ -568,6 +572,12 @@ export default function Leads({ lockedStatus, title }: LeadsProps = {}) {
                         <button onClick={() => navigate(`/tele-sales/leads/${lead._id}`)}
                           className="p-1.5 rounded-lg hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-colors" title="View">
                           <Eye className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => setEmailLead(lead)}
+                          className="p-1.5 rounded-lg hover:bg-surface-container text-on-surface-variant hover:text-brand-500 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                          title={lead.email ? `Send email to ${lead.email}` : 'This lead has no email address'}
+                          disabled={!lead.email}>
+                          <Send className="w-4 h-4" />
                         </button>
                         <button onClick={() => openEdit(lead)}
                           className="p-1.5 rounded-lg hover:bg-surface-container text-on-surface-variant hover:text-brand-500 transition-colors" title="Edit">
@@ -1045,6 +1055,19 @@ export default function Leads({ lockedStatus, title }: LeadsProps = {}) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Gmail-style compose window, opened from a row's send action */}
+      {emailLead && (
+        <GmailCompose
+          key={emailLead._id}
+          leadId={emailLead._id}
+          open
+          onClose={() => setEmailLead(null)}
+          defaultTo={emailLead.email ? [emailLead.email] : []}
+          contextLabel={emailLead.contactPersonName || emailLead.companyName}
+          fromLabel={user?.email}
+        />
       )}
     </div>
   );

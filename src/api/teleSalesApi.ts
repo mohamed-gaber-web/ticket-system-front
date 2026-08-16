@@ -19,6 +19,9 @@ import type {
   FollowUpsResponse,
   CreateFollowUpData,
   AttachmentsResponse,
+  LeadEmailsResponse,
+  LeadEmailResponse,
+  SendLeadEmailData,
 } from '@/types/teleSales.types';
 
 // ── Agents ────────────────────────────────────────────────────────────────────
@@ -111,6 +114,17 @@ export const addAttachment = (leadId: string, data: { fileId: string; fileName: 
 
 export const deleteAttachment = (leadId: string, attachmentId: string) =>
   api.delete(`/leads/${leadId}/attachments/${attachmentId}`).then((r) => r.data);
+
+// ── Emails ────────────────────────────────────────────────────────────────────
+
+export const getLeadEmails = (leadId: string): Promise<LeadEmailsResponse> =>
+  api.get(`/leads/${leadId}/emails`).then((r) => r.data);
+
+export const sendLeadEmail = (leadId: string, data: SendLeadEmailData): Promise<LeadEmailResponse> =>
+  api.post(`/leads/${leadId}/emails`, data).then((r) => r.data);
+
+export const deleteLeadEmail = (leadId: string, emailId: string) =>
+  api.delete(`/leads/${leadId}/emails/${emailId}`).then((r) => r.data);
 
 // Step 1 of adding an attachment: push the raw file to GridFS and get back its fileId.
 export const uploadFile = (

@@ -12,8 +12,10 @@ import {
   ArrowLeft, Phone, Mail, Building2, User, Briefcase, Tag, Edit2, X,
   PhoneCall, Calendar, Paperclip, Plus, CheckCircle2, Trash2, MapPin,
   Globe, Landmark, FileText, Upload, Download, File as FileIcon, Image as ImageIcon,
+  Send, AlertCircle, ChevronDown, ChevronRight,
 } from 'lucide-react';
-import type { CallLog, FollowUp, LeadStatus, FollowUpType, CreateCallLogData, CreateFollowUpData, LeadAttachment } from '@/types/teleSales.types';
+import GmailCompose from '@/components/tele-sales/GmailCompose';
+import type { CallLog, FollowUp, LeadStatus, FollowUpType, CreateCallLogData, CreateFollowUpData, LeadAttachment, LeadEmail } from '@/types/teleSales.types';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
@@ -54,17 +56,23 @@ const ALL_STATUSES: LeadStatus[] = [
   'Meeting Scheduled', 'Proposal Sent', 'Negotiation', 'Closed Won', 'Closed Lost',
 ];
 
-type Tab = 'info' | 'calls' | 'followups' | 'attachments';
+type Tab = 'info' | 'calls' | 'followups' | 'emails' | 'attachments';
 
 export default function LeadDetail() {
   const { id } = useParams<{ id: string }>();
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { currentLead, loading } = useAppSelector((s) => s.teleSalesLeads);
+  const { user } = useAppSelector((s) => s.auth);
 
   const [tab, setTab] = useState<Tab>('info');
   const [callLogs, setCallLogs] = useState<CallLog[]>([]);
   const [followUps, setFollowUps] = useState<FollowUp[]>([]);
+
+  // Emails
+  const [emails, setEmails] = useState<LeadEmail[]>([]);
+  const [composeOpen, setComposeOpen] = useState(false);
+  const [expandedEmail, setExpandedEmail] = useState<string | null>(null);
 
   // Attachments
   const [attachments, setAttachments] = useState<LeadAttachment[]>([]);
@@ -97,6 +105,7 @@ export default function LeadDetail() {
       loadCalls();
       loadFollowUps();
       loadAttachments();
+      loadEmails();
     }
   }, [currentLead?._id]);
 
@@ -113,6 +122,42 @@ export default function LeadDetail() {
   const loadAttachments = async () => {
     if (!id) return;
     try { const r = await teleSalesApi.getAttachments(id); setAttachments(r.data); } catch {}
+  };
+
+  const loadEmails = async () => {
+    if (!id) return;
+    try { const r = await teleSalesApi.getLeadEmails(id); setEmails(r.data); } catch {}
+  };
+
+  const handleDeleteEmail = async (emailId: string) => {
+    const r = await Swal.fire({
+      title: 'Remove from history?',
+      text: 'The message stays delivered — this only clears the record here.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      confirmButtonText: 'Remove',
+    });
+    if (r.isConfirmed && id) {
+      try { await teleSalesApi.deleteLeadEmail(id, emailId); toast.success('Removed'); await loadEmails(); }
+      catch (err: any) { toast.error(err.response?.data?.message || 'Failed'); }
+    }
+  };
+
+  const handleDownloadEmailAttachment = async (att: { fileId: string; fileName: string }) => {
+    try {
+      const blob = await teleSalesApi.downloadFile(att.fileId);
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = objectUrl;
+      a.download = att.fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(objectUrl);
+    } catch {
+      toast.error('Failed to download file');
+    }
   };
 
   // Two-step add: upload the raw file to GridFS, then link the returned fileId to this lead.
@@ -275,8 +320,17 @@ export default function LeadDetail() {
           </p>
         </div>
 
-        {/* Quick status change */}
+        {/* Quick actions */}
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setComposeOpen(true)}
+            className="gap-2"
+            title={lead.email ? `Email ${lead.email}` : 'Compose an email for this lead'}
+          >
+            <Send className="w-4 h-4" /> Send Email
+          </Button>
           {editingStatus ? (
             <>
               <select value={newStatus} onChange={(e) => setNewStatus(e.target.value as LeadStatus)}
@@ -315,10 +369,14 @@ export default function LeadDetail() {
       {/* Tabs */}
       <div className="border-b border-outline-variant/20">
         <div className="flex gap-1">
-          {(['info', 'calls', 'followups', 'attachments'] as Tab[]).map((t) => (
+          {(['info', 'calls', 'followups', 'emails', 'attachments'] as Tab[]).map((t) => (
             <button key={t} onClick={() => setTab(t)}
               className={`px-5 py-3 text-sm font-medium transition-colors border-b-2 -mb-px ${tab === t ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant hover:text-on-surface'}`}>
-              {t === 'info' ? 'Info' : t === 'calls' ? `Calls (${callLogs.length})` : t === 'followups' ? `Follow-ups (${followUps.length})` : `Attachments (${attachments.length})`}
+              {t === 'info' ? 'Info'
+                : t === 'calls' ? `Calls (${callLogs.length})`
+                : t === 'followups' ? `Follow-ups (${followUps.length})`
+                : t === 'emails' ? `Emails (${emails.length})`
+                : `Attachments (${attachments.length})`}
             </button>
           ))}
         </div>
@@ -532,6 +590,113 @@ export default function LeadDetail() {
         </div>
       )}
 
+      {/* Tab: Emails */}
+      {tab === 'emails' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-on-surface-variant">
+              Messages sent to this lead. Replies go to your own inbox.
+            </p>
+            <Button onClick={() => setComposeOpen(true)} className="gap-2">
+              <Send className="w-4 h-4" /> Compose
+            </Button>
+          </div>
+
+          {emails.length === 0 ? (
+            <div className="flex flex-col items-center py-16 text-on-surface-variant bg-surface-container-lowest rounded-2xl border border-outline-variant/20">
+              <Mail className="w-8 h-8 mb-2 opacity-30" />
+              <p className="text-sm font-medium">No emails sent yet</p>
+              <p className="text-xs mt-1">Click “Compose” to write the first message</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {emails.map((email) => {
+                const expanded = expandedEmail === email._id;
+                return (
+                  <div key={email._id} className="bg-surface-container-lowest rounded-2xl border border-outline-variant/20 overflow-hidden">
+                    <div className="flex items-start gap-3 p-4">
+                      <button
+                        onClick={() => setExpandedEmail(expanded ? null : email._id)}
+                        className="p-1 rounded-lg hover:bg-surface-container text-on-surface-variant mt-0.5 shrink-0"
+                        aria-label={expanded ? 'Collapse message' : 'Expand message'}
+                      >
+                        {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                      </button>
+
+                      <button
+                        onClick={() => setExpandedEmail(expanded ? null : email._id)}
+                        className="flex-1 min-w-0 text-left"
+                      >
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-semibold text-on-surface truncate">{email.subject}</span>
+                          {email.status === 'failed' && (
+                            <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-error/10 text-error">
+                              <AlertCircle className="w-3 h-3" /> Failed
+                            </span>
+                          )}
+                          {email.attachments.length > 0 && (
+                            <span className="inline-flex items-center gap-1 text-xs text-on-surface-variant">
+                              <Paperclip className="w-3 h-3" /> {email.attachments.length}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-on-surface-variant mt-1 truncate">
+                          To {email.to.join(', ')}
+                          {email.cc.length > 0 && ` · Cc ${email.cc.join(', ')}`}
+                          {email.bcc.length > 0 && ` · Bcc ${email.bcc.join(', ')}`}
+                        </p>
+                        <p className="text-xs text-on-surface-variant mt-0.5">
+                          {email.sentByName || '—'} · {formatDateTime(email.sentAt || email.createdAt)}
+                        </p>
+                      </button>
+
+                      <button
+                        onClick={() => handleDeleteEmail(email._id)}
+                        className="p-1.5 rounded-lg hover:bg-error/10 text-on-surface-variant hover:text-error shrink-0"
+                        title="Remove from history"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    {expanded && (
+                      <div className="border-t border-outline-variant/20 px-4 py-4 space-y-3">
+                        {email.status === 'failed' && email.errorMessage && (
+                          <p className="text-xs text-error bg-error/5 rounded-xl px-3 py-2">{email.errorMessage}</p>
+                        )}
+                        {/* Body is sanitised server-side before it is stored. */}
+                        <div
+                          className="email-body-content text-sm text-on-surface"
+                          dangerouslySetInnerHTML={{ __html: email.body || '<p><em>(no message body)</em></p>' }}
+                        />
+                        {email.attachments.length > 0 && (
+                          <div className="flex flex-wrap gap-2 pt-2 border-t border-outline-variant/20">
+                            {email.attachments.map((att) => (
+                              <button
+                                key={att.fileId}
+                                onClick={() => handleDownloadEmailAttachment(att)}
+                                className="inline-flex items-center gap-2 rounded-xl border border-outline-variant/40 px-3 py-2 text-xs text-on-surface hover:bg-surface-container transition-colors"
+                              >
+                                {att.fileType?.startsWith('image/')
+                                  ? <ImageIcon className="w-3.5 h-3.5 text-brand-500" />
+                                  : <FileIcon className="w-3.5 h-3.5 text-on-surface-variant" />}
+                                <span className="truncate max-w-[200px]">{att.fileName}</span>
+                                <span className="text-on-surface-variant">{formatFileSize(att.fileSize)}</span>
+                                <Download className="w-3.5 h-3.5 text-on-surface-variant" />
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Tab: Attachments */}
       {tab === 'attachments' && (
         <div className="space-y-4">
@@ -596,6 +761,17 @@ export default function LeadDetail() {
           )}
         </div>
       )}
+
+      {/* Gmail-style compose window */}
+      <GmailCompose
+        leadId={lead._id}
+        open={composeOpen}
+        onClose={() => setComposeOpen(false)}
+        defaultTo={lead.email ? [lead.email] : []}
+        contextLabel={lead.contactPersonName || lead.companyName}
+        fromLabel={user?.email}
+        onSent={() => { loadEmails(); setTab('emails'); }}
+      />
     </div>
   );
 }

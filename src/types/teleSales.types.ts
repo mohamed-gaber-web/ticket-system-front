@@ -406,6 +406,59 @@ export interface AttachmentsResponse {
   data: LeadAttachment[];
 }
 
+// ── Lead Email ────────────────────────────────────────────────────────────────
+
+/** A file already stored in GridFS, referenced by an outgoing email. */
+export interface EmailAttachment {
+  fileId: string;
+  fileName: string;
+  fileType?: string;
+  fileSize?: number;
+}
+
+export interface LeadEmail {
+  _id: string;
+  lead: string;
+  to: string[];
+  cc: string[];
+  bcc: string[];
+  subject: string;
+  /** Sanitised HTML exactly as it was sent. */
+  body: string;
+  attachments: EmailAttachment[];
+  sentBy: Pick<TeleSalesAgent, '_id' | 'firstName' | 'lastName' | 'email'> | string;
+  sentByType: 'TeleSalesAgent' | 'Consultant';
+  sentByName?: string;
+  sentByEmail?: string;
+  status: 'sent' | 'failed';
+  errorMessage?: string;
+  messageId?: string;
+  sentAt: string;
+  createdAt: string;
+}
+
+export interface SendLeadEmailData {
+  to: string[];
+  cc?: string[];
+  bcc?: string[];
+  subject: string;
+  /** HTML body from the compose editor. Sanitised server-side. */
+  message: string;
+  attachments?: EmailAttachment[];
+}
+
+export interface LeadEmailsResponse {
+  success: boolean;
+  total: number;
+  data: LeadEmail[];
+}
+
+export interface LeadEmailResponse {
+  success: boolean;
+  message: string;
+  data: LeadEmail;
+}
+
 // ── Import ────────────────────────────────────────────────────────────────────
 
 /** A single parsed row ready to be imported. Mirrors the importable Lead fields. */
