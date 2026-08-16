@@ -30,8 +30,9 @@ interface PendingAttachment {
 }
 
 export interface GmailComposeProps {
-  /** Lead the message is sent from — scopes the API call and the history tab. */
-  leadId: string;
+  /** Lead the message is sent from — scopes the API call and the history tab.
+   *  Omit for a standalone message composed from the leads toolbar. */
+  leadId?: string;
   open: boolean;
   onClose: () => void;
   defaultTo?: string[];
@@ -358,14 +359,17 @@ export default function GmailCompose({
 
     setSending(true);
     try {
-      const response = await teleSalesApi.sendLeadEmail(leadId, {
+      const payload = {
         to,
         cc,
         bcc,
         subject: subject.trim() || '(no subject)',
         message: editorRef.current?.innerHTML ?? '',
         attachments: ready,
-      });
+      };
+      const response = leadId
+        ? await teleSalesApi.sendLeadEmail(leadId, payload)
+        : await teleSalesApi.sendComposedEmail(payload);
       toast.success('Message sent');
       onSent?.(response.data);
       onClose();

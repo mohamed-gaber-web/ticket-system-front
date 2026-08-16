@@ -181,8 +181,10 @@ export default function Leads({ lockedStatus, title }: LeadsProps = {}) {
     .filter((c) => c.isActive)
     .map((c) => c.name);
 
-  // Lead whose compose window is open, if any.
+  // Lead whose compose window is open, if any. `composeOpen` is the toolbar's
+  // blank compose, which isn't tied to a lead.
   const [emailLead, setEmailLead] = useState<Lead | null>(null);
+  const [composeOpen, setComposeOpen] = useState(false);
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState(lockedStatus ?? '');
@@ -423,6 +425,9 @@ export default function Leads({ lockedStatus, title }: LeadsProps = {}) {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setComposeOpen(true)} className="gap-2">
+            <Send className="w-4 h-4" /> Send Email
+          </Button>
           <Button variant="outline" onClick={openImport} className="gap-2">
             <Upload className="w-4 h-4" /> Import
           </Button>
@@ -1066,6 +1071,15 @@ export default function Leads({ lockedStatus, title }: LeadsProps = {}) {
           onClose={() => setEmailLead(null)}
           defaultTo={emailLead.email ? [emailLead.email] : []}
           contextLabel={emailLead.contactPersonName || emailLead.companyName}
+          fromLabel={user?.email}
+        />
+      )}
+
+      {/* Blank compose, opened from the toolbar — not tied to any lead */}
+      {composeOpen && (
+        <GmailCompose
+          open
+          onClose={() => setComposeOpen(false)}
           fromLabel={user?.email}
         />
       )}

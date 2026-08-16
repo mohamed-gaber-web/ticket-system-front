@@ -123,6 +123,10 @@ export const getLeadEmails = (leadId: string): Promise<LeadEmailsResponse> =>
 export const sendLeadEmail = (leadId: string, data: SendLeadEmailData): Promise<LeadEmailResponse> =>
   api.post(`/leads/${leadId}/emails`, data).then((r) => r.data);
 
+/** Send a message that isn't tied to a specific lead (leads toolbar compose). */
+export const sendComposedEmail = (data: SendLeadEmailData): Promise<LeadEmailResponse> =>
+  api.post('/emails/compose', data).then((r) => r.data);
+
 export const deleteLeadEmail = (leadId: string, emailId: string) =>
   api.delete(`/leads/${leadId}/emails/${emailId}`).then((r) => r.data);
 
