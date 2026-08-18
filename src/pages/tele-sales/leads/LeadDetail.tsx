@@ -17,7 +17,7 @@ import {
 import GmailCompose from '@/components/tele-sales/GmailCompose';
 import type { CallLog, FollowUp, LeadStatus, FollowUpType, CreateCallLogData, CreateFollowUpData, LeadAttachment, LeadEmail } from '@/types/teleSales.types';
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15MB
 
 const formatFileSize = (bytes?: number) => {
   if (!bytes) return '';
@@ -169,7 +169,7 @@ export default function LeadDetail() {
 
   const handleUploadAttachment = async (file: File) => {
     if (!id) return;
-    if (file.size > MAX_FILE_SIZE) { toast.error('File too large. Maximum size is 10MB.'); return; }
+    if (file.size > MAX_FILE_SIZE) { toast.error('File too large. Maximum size is 15MB.'); return; }
     setUploading(true);
     try {
       const uploaded = await teleSalesApi.uploadFile(file);
@@ -701,7 +701,7 @@ export default function LeadDetail() {
       {tab === 'attachments' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <p className="text-xs text-on-surface-variant">Images, PDF, Word, Excel, PowerPoint, TXT, Video, ZIP · Max 10MB</p>
+            <p className="text-xs text-on-surface-variant">Images, PDF, Word, Excel, PowerPoint, TXT, Video, ZIP · Max 15MB</p>
             <input
               ref={fileInputRef}
               type="file"

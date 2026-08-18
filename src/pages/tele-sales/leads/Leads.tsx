@@ -314,17 +314,13 @@ export default function Leads({ lockedStatus, title }: LeadsProps = {}) {
       toast.error('Company name and contact person are required');
       return;
     }
-    // Phone_Primary is stored as entered; validated leniently so numbers from any
-    // country are accepted (KSA, Bahrain, USA, …). Include the country code for
-    // non-Egypt numbers.
+    // Phone_Primary is optional; when given it is stored as entered and validated
+    // leniently so numbers from any country are accepted (KSA, Bahrain, USA, …).
+    // Include the country code for non-Egypt numbers.
     const primary = form.phonePrimary?.trim() || '';
-    if (!primary) {
-      toast.error('A primary phone number is required');
-      return;
-    }
     // Validate against the selected country's rules (falls back to a lenient
     // international check for countries not in the built-in table).
-    if (!isValidPhoneForCountry(primary, form.country)) {
+    if (primary && !isValidPhoneForCountry(primary, form.country)) {
       const dc = dialCodeForCountry(form.country);
       toast.error(
         form.country && dc
@@ -761,7 +757,6 @@ export default function Leads({ lockedStatus, title }: LeadsProps = {}) {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Field
                     label="Phone — Primary"
-                    required
                     hint={dialCodeForCountry(form.country)
                       ? `${form.country} dialing code ${dialCodeForCountry(form.country)} — enter the local number or the full ${dialCodeForCountry(form.country)} form`
                       : undefined}
