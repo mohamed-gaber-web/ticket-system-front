@@ -69,7 +69,7 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
     dispatch(fetchErpTypes({ isActive: true }));
     dispatch(fetchVersionNumbers({ isActive: true }));
     dispatch(fetchConsultants({ status: 'active', limit: 500 }));
-    dispatch(fetchCompanies({ isActive: true }));
+    dispatch(fetchCompanies({ isActive: true, limit: 1000 }));
     dispatch(fetchProductTypes({ isActive: true }));
   }, [dispatch]);
 
@@ -289,6 +289,8 @@ export default function CustomerForm({ customer, onSubmit, isLoading, isEditMode
                     { value: '', label: 'Select a company' },
                     ...companies
                       .filter((c) => c.isActive)
+                      .slice()
+                      .sort((a, b) => a.name.localeCompare(b.name))
                       .map((c) => ({ value: c._id, label: c.name })),
                   ]}
                 />
