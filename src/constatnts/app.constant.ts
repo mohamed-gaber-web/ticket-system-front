@@ -168,7 +168,7 @@ const TEAM_MEMBER_LINKS = [
 const TELE_SALES_ADMIN_LINKS = [
   { name: "Dashboard", path: "/tele-sales", icon: LayoutDashboard },
   { name: "Leads", path: "/tele-sales/leads", icon: PhoneCall },
-  { name: "Interested", path: "/tele-sales/interested", icon: Star },
+  { name: "Opportunities", path: "/tele-sales/opportunities", icon: Star },
   { name: "Recent Calls", path: "/tele-sales/calls/recent", icon: Clock },
   { name: "Agents", path: "/tele-sales/agents", icon: UserPlus },
   TELE_SALES_MODULES_GROUP,
@@ -178,7 +178,7 @@ const TELE_SALES_ADMIN_LINKS = [
 const TELE_SALES_USER_LINKS = [
   { name: "Dashboard", path: "/tele-sales", icon: LayoutDashboard },
   { name: "Leads", path: "/tele-sales/leads", icon: PhoneCall },
-  { name: "Interested", path: "/tele-sales/interested", icon: Star },
+  { name: "Opportunities", path: "/tele-sales/opportunities", icon: Star },
   { name: "Recent Calls", path: "/tele-sales/calls/recent", icon: Clock },
   TELE_SALES_MODULES_GROUP,
 ];
@@ -234,7 +234,7 @@ const TELE_SALES_GROUP = {
   children: [
     { name: "Dashboard", path: "/tele-sales", icon: LayoutDashboard },
     { name: "Leads", path: "/tele-sales/leads", icon: PhoneCall },
-    { name: "Interested", path: "/tele-sales/interested", icon: Star },
+    { name: "Opportunities", path: "/tele-sales/opportunities", icon: Star },
     { name: "Recent Calls", path: "/tele-sales/calls/recent", icon: Clock },
     { name: "Agents", path: "/tele-sales/agents", icon: UserPlus },
     {
@@ -334,7 +334,7 @@ const buildConsultantLinks = (consultantRole?: string | null, department?: strin
     return [
       { name: "Dashboard", path: "/tele-sales", icon: LayoutDashboard },
       { name: "Leads", path: "/tele-sales/leads", icon: PhoneCall },
-      { name: "Interested", path: "/tele-sales/interested", icon: Star },
+      { name: "Opportunities", path: "/tele-sales/opportunities", icon: Star },
       { name: "Recent Calls", path: "/tele-sales/calls/recent", icon: Clock },
       TELE_SALES_MODULES_GROUP,
       EMPLOYEE_REQUESTS_GROUP_LITE,

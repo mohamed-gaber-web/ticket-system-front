@@ -85,7 +85,34 @@ export type LeadSource =
   | 'Partner'
   | 'Other';
 
+/**
+ * The one extra detail each lead source asks for. Sources missing from this map
+ * ('Website', 'Other') take no detail — the field is hidden and cleared.
+ * Mirrors LEAD_SOURCE_DETAILS on the backend.
+ */
+export const LEAD_SOURCE_DETAILS: Partial<
+  Record<LeadSource, { label: string; type: 'text' | 'url'; placeholder: string }>
+> = {
+  Referral: { label: 'Referrer Name', type: 'text', placeholder: 'Who referred this lead' },
+  LinkedIn: { label: 'LinkedIn URL', type: 'url', placeholder: 'https://linkedin.com/in/jane-doe' },
+  'Cold Call': { label: 'Data Source', type: 'text', placeholder: 'Where the number came from' },
+  Exhibition: { label: 'Exhibition Name', type: 'text', placeholder: 'e.g. Cairo ICT 2026' },
+  Partner: { label: 'Partner Name', type: 'text', placeholder: 'Partner company or contact' },
+};
+
+// Lenient http(s) URL check — scheme optional, host needs a dot and a 2+ char TLD.
+// Mirrors URL_REGEX on the backend.
+export const URL_REGEX = /^(https?:\/\/)?([\w-]+\.)+[a-z]{2,}(\/[^\s]*)?$/i;
+
+export function isValidUrl(raw: string | null | undefined): boolean {
+  return URL_REGEX.test(String(raw ?? '').trim());
+}
+
 // ── Spec enums (tele-sales lead field specification) ──────────────────────────
+
+// Sales_Type — where the record sits in the pipeline.
+export const SALES_TYPES = ['Lead', 'Opportunity'] as const;
+export type SalesType = (typeof SALES_TYPES)[number];
 
 // Field 1: Entity_Type
 export const ENTITY_TYPES = ['Hotel', 'Restaurant', 'Cafe', 'Factory', 'Company'] as const;
@@ -124,38 +151,6 @@ export const INDUSTRY_SECTORS = [
 // so the stored value is any active sector name — a plain string, not a fixed union.
 // INDUSTRY_SECTORS above is kept only as the default seed list / import fallback.
 export type IndustrySector = string;
-
-// Field 5: Governorate — 27 Egyptian governorates, normalised English.
-export const GOVERNORATES = [
-  'Cairo',
-  'Giza',
-  'Alexandria',
-  'Qalyubia',
-  'Port Said',
-  'Suez',
-  'Dakahlia',
-  'Sharqia',
-  'Gharbia',
-  'Monufia',
-  'Beheira',
-  'Kafr El Sheikh',
-  'Damietta',
-  'Ismailia',
-  'Fayoum',
-  'Beni Suef',
-  'Minya',
-  'Asyut',
-  'Sohag',
-  'Qena',
-  'Luxor',
-  'Aswan',
-  'Red Sea',
-  'New Valley',
-  'Matrouh',
-  'North Sinai',
-  'South Sinai',
-] as const;
-export type Governorate = (typeof GOVERNORATES)[number];
 
 // Field 8: Phone_Primary — E.164 Egypt format. Kept for the bulk-import normaliser.
 export const PHONE_E164_EG_REGEX = /^\+20[\s-]?\d(?:[\s-]?\d){6,10}$/;
@@ -212,14 +207,12 @@ export interface Lead {
   email?: string;
   jobTitle?: string;
   industry?: string;
-  companySize?: string;
   // ── Spec fields ─────────────────────────────────────────────────────────────
+  salesType?: SalesType;
   entityType?: EntityType;
   businessClassification?: string;
   industrySector?: IndustrySector;
   country?: string;
-  governorate?: Governorate;
-  cityArea?: string;
   fullAddress?: string;
   phonePrimary?: string;
   phoneSecondary?: string;
@@ -228,6 +221,7 @@ export interface Lead {
   dataSource?: string;
   // ────────────────────────────────────────────────────────────────────────────
   leadSource?: LeadSource;
+  leadSourceDetail?: string;
   assignedTo?: TeleSalesAgent | null;
   priority: LeadPriority;
   potentialValue?: number;
@@ -254,14 +248,12 @@ export interface CreateLeadData {
   email?: string;
   jobTitle?: string;
   industry?: string;
-  companySize?: string;
   // ── Spec fields ─────────────────────────────────────────────────────────────
+  salesType?: SalesType;
   entityType?: EntityType;
   businessClassification?: string;
   industrySector?: IndustrySector;
   country?: string;
-  governorate?: Governorate;
-  cityArea?: string;
   fullAddress?: string;
   phonePrimary?: string;
   phoneSecondary?: string;
@@ -270,6 +262,7 @@ export interface CreateLeadData {
   dataSource?: string;
   // ────────────────────────────────────────────────────────────────────────────
   leadSource?: LeadSource;
+  leadSourceDetail?: string;
   assignedTo?: string;
   priority?: LeadPriority;
   potentialValue?: number;
@@ -289,9 +282,9 @@ export interface LeadQueryParams {
   priority?: LeadPriority;
   assignedTo?: string;
   tags?: string;
+  salesType?: SalesType;
   entityType?: EntityType;
   industrySector?: IndustrySector;
-  governorate?: Governorate;
   country?: string;
   from?: string;
   to?: string;
@@ -468,15 +461,13 @@ export interface ImportLeadRow {
   email?: string;
   jobTitle?: string;
   industry?: string;
-  companySize?: string;
   department?: string;
   // ── Spec fields ─────────────────────────────────────────────────────────────
+  salesType?: string;
   entityType?: string;
   businessClassification?: string;
   industrySector?: string;
   country?: string;
-  governorate?: string;
-  cityArea?: string;
   fullAddress?: string;
   phonePrimary?: string;
   phoneSecondary?: string;
@@ -485,6 +476,7 @@ export interface ImportLeadRow {
   dataSource?: string;
   // ────────────────────────────────────────────────────────────────────────────
   leadSource?: LeadSource;
+  leadSourceDetail?: string;
   priority?: LeadPriority;
   status?: LeadStatus;
   tags?: string[];

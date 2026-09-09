@@ -11,11 +11,12 @@ import Swal from 'sweetalert2';
 import {
   ArrowLeft, Phone, Mail, Building2, User, Briefcase, Tag, Edit2, X,
   PhoneCall, Calendar, Paperclip, Plus, CheckCircle2, Trash2, MapPin,
-  Globe, Landmark, FileText, Upload, Download, File as FileIcon, Image as ImageIcon,
+  Globe, FileText, Upload, Download, File as FileIcon, Image as ImageIcon,
   Send, AlertCircle, ChevronDown, ChevronRight,
 } from 'lucide-react';
 import GmailCompose from '@/components/tele-sales/GmailCompose';
 import type { CallLog, FollowUp, LeadStatus, FollowUpType, CreateCallLogData, CreateFollowUpData, LeadAttachment, LeadEmail } from '@/types/teleSales.types';
+import { LEAD_SOURCE_DETAILS } from '@/types/teleSales.types';
 
 const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15MB
 
@@ -286,6 +287,8 @@ export default function LeadDetail() {
   if (!currentLead) return <div className="p-6 text-on-surface-variant">Lead not found.</div>;
 
   const lead = currentLead;
+  // The follow-up detail's meaning depends on the source it was captured under.
+  const sourceDetailSpec = lead.leadSource ? LEAD_SOURCE_DETAILS[lead.leadSource] : undefined;
   const assignedName = (lead.assignedTo as any)?.firstName
     ? `${(lead.assignedTo as any).firstName} ${(lead.assignedTo as any).lastName}` : '—';
 
@@ -404,27 +407,36 @@ export default function LeadDetail() {
             )}
             {lead.jobTitle && <InfoRow icon={<Briefcase className="w-4 h-4" />} label="Job Title" value={lead.jobTitle} />}
             {lead.industry && <InfoRow icon={<Building2 className="w-4 h-4" />} label="Industry" value={lead.industry} />}
-            {lead.companySize && <InfoRow icon={<User className="w-4 h-4" />} label="Company Size" value={lead.companySize} />}
           </div>
           <div className="space-y-5">
             <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/20 p-5 space-y-4">
               <h3 className="font-semibold text-on-surface text-sm uppercase tracking-wide text-on-surface-variant">Lead Details</h3>
+              <InfoRow icon={<Tag className="w-4 h-4" />} label="Sales Type" value={lead.salesType || 'Lead'} />
               {lead.leadSource && <InfoRow icon={<Tag className="w-4 h-4" />} label="Source" value={lead.leadSource} />}
+              {lead.leadSource && lead.leadSourceDetail && sourceDetailSpec && (
+                <InfoRow
+                  icon={<Tag className="w-4 h-4" />}
+                  label={sourceDetailSpec.label}
+                  value={sourceDetailSpec.type === 'url'
+                    ? <a href={lead.leadSourceDetail.startsWith('http') ? lead.leadSourceDetail : `https://${lead.leadSourceDetail}`}
+                         target="_blank" rel="noreferrer noopener"
+                         className="text-primary hover:underline break-all">{lead.leadSourceDetail}</a>
+                    : lead.leadSourceDetail}
+                />
+              )}
               <InfoRow icon={<User className="w-4 h-4" />} label="Assigned To" value={assignedName} />
               {lead.potentialValue != null && <InfoRow icon={<Tag className="w-4 h-4" />} label="Potential Value" value={`$${lead.potentialValue.toLocaleString()}`} />}
               {lead.isDecisionMaker != null && <InfoRow icon={<CheckCircle2 className="w-4 h-4" />} label="Decision Maker" value={lead.isDecisionMaker ? 'Yes' : 'No'} />}
               {lead.dataSource && <InfoRow icon={<FileText className="w-4 h-4" />} label="Data Source" value={lead.dataSource} />}
             </div>
             {(lead.entityType || lead.industrySector || lead.businessClassification ||
-              lead.country || lead.governorate || lead.cityArea || lead.fullAddress) && (
+              lead.country || lead.fullAddress) && (
               <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/20 p-5 space-y-4">
                 <h3 className="font-semibold text-on-surface text-sm uppercase tracking-wide text-on-surface-variant">Classification &amp; Location</h3>
                 {lead.entityType && <InfoRow icon={<Building2 className="w-4 h-4" />} label="Entity Type" value={lead.entityType} />}
                 {lead.industrySector && <InfoRow icon={<Briefcase className="w-4 h-4" />} label="Industry Sector" value={lead.industrySector} />}
                 {lead.businessClassification && <InfoRow icon={<Tag className="w-4 h-4" />} label="Business Classification" value={lead.businessClassification} />}
                 {lead.country && <InfoRow icon={<Globe className="w-4 h-4" />} label="Country" value={lead.country} />}
-                {lead.governorate && <InfoRow icon={<Landmark className="w-4 h-4" />} label="Governorate" value={lead.governorate} />}
-                {lead.cityArea && <InfoRow icon={<MapPin className="w-4 h-4" />} label="City / Area" value={lead.cityArea} />}
                 {lead.fullAddress && <InfoRow icon={<MapPin className="w-4 h-4" />} label="Full Address" value={lead.fullAddress} />}
               </div>
             )}

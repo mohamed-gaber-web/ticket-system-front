@@ -14,14 +14,12 @@ export type ImportFieldKey =
   | 'jobTitle'
   | 'department'
   | 'industry'
-  | 'companySize'
   // Spec fields
+  | 'salesType'
   | 'entityType'
   | 'businessClassification'
   | 'industrySector'
   | 'country'
-  | 'governorate'
-  | 'cityArea'
   | 'fullAddress'
   | 'website'
   | 'dataSource';
@@ -37,14 +35,12 @@ export const FIELD_LABELS: Record<ImportFieldKey, string> = {
   jobTitle: 'Job Title',
   department: 'Department',
   industry: 'Industry',
-  companySize: 'Company Size',
   // Spec fields
+  salesType: 'Sales Type',
   entityType: 'Entity Type',
   businessClassification: 'Business Classification',
   industrySector: 'Industry Sector',
   country: 'Country',
-  governorate: 'Governorate',
-  cityArea: 'City / Area',
   fullAddress: 'Full Address',
   website: 'Website',
   dataSource: 'Data Source',
@@ -73,18 +69,17 @@ export function classifyHeader(raw: string): ImportFieldKey | null {
   // Spec fields — checked first so they win over the more generic legacy rules.
   if (h.includes('data source') || h.includes('source file') || h.includes('originating') || h === 'source')
     return 'dataSource';
+  if (h.includes('sales type') || h.includes('opportunity') || h === 'salestype') return 'salesType';
   if (h.includes('entity') || h.includes('venue type') || h.includes('establishment')) return 'entityType';
   if (h.includes('classif') || h.includes('activity') || h.includes('activit')) return 'businessClassification';
   if (h.includes('sector')) return 'industrySector';
-  if (h.includes('governorate') || h.includes('governate') || h.includes('muhafaza') || h.includes('محافظ'))
-    return 'governorate';
-  if (h.includes('city') || h.includes('district') || h.includes('area') || h.includes('town') || h.includes('resort') || h.includes('zone'))
-    return 'cityArea';
   if (h.includes('country')) return 'country';
   if (h.includes('website') || h.includes('web') || h.includes('url') || h.includes('site')) return 'website';
   if (h.includes('full address') || h.includes('street') || h.includes('address')) return 'fullAddress';
   // Legacy rules.
-  if (h.includes('size')) return 'companySize';
+  // "Company Size" is no longer a lead field — ignore it explicitly so it doesn't
+  // fall through to the generic "company" rule below and land in Company Name.
+  if (h.includes('size')) return null;
   // Phone columns — distinguish primary / secondary / other, else generic.
   {
     const phoneish =
@@ -197,19 +192,17 @@ export async function parseLeadsFile(file: File): Promise<ParsedImport> {
       email: cell(row, firstCol('email')) || undefined,
       jobTitle: cell(row, firstCol('jobTitle')) || undefined,
       industry: cell(row, firstCol('industry')) || undefined,
-      companySize: cell(row, firstCol('companySize')) || undefined,
       department: cell(row, firstCol('department')) || undefined,
       // Structured phones (spec fields 8-10)
       phonePrimary: phonePrimary || undefined,
       phoneSecondary: phoneSecondary || undefined,
       phoneOther: phoneOther || undefined,
       // Spec fields
+      salesType: cell(row, firstCol('salesType')) || undefined,
       entityType: cell(row, firstCol('entityType')) || undefined,
       businessClassification: cell(row, firstCol('businessClassification')) || undefined,
       industrySector: cell(row, firstCol('industrySector')) || undefined,
       country: cell(row, firstCol('country')) || undefined,
-      governorate: cell(row, firstCol('governorate')) || undefined,
-      cityArea: cell(row, firstCol('cityArea')) || undefined,
       fullAddress: cell(row, firstCol('fullAddress')) || undefined,
       website: cell(row, firstCol('website')) || undefined,
       dataSource: cell(row, firstCol('dataSource')) || undefined,

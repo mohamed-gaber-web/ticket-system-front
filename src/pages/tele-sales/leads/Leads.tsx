@@ -19,10 +19,10 @@ import {
 import GmailCompose from '@/components/tele-sales/GmailCompose';
 import type {
   Lead, LeadStatus, LeadPriority, LeadSource, CreateLeadData, ImportLeadsResponse,
-  EntityType, IndustrySector, Governorate,
+  EntityType, IndustrySector, SalesType,
 } from '@/types/teleSales.types';
 import {
-  ENTITY_TYPES, INDUSTRY_SECTORS, GOVERNORATES,
+  ENTITY_TYPES, INDUSTRY_SECTORS, SALES_TYPES, LEAD_SOURCE_DETAILS, isValidUrl,
 } from '@/types/teleSales.types';
 import { dialCodeForCountry, isValidPhoneForCountry } from '@/utils/countryPhone';
 import { parseLeadsFile, FIELD_LABELS, type ParsedImport } from '@/utils/leadImport';
@@ -36,6 +36,18 @@ const ALL_STATUSES: LeadStatus[] = [
 const LEAD_SOURCES: LeadSource[] = ['LinkedIn', 'Website', 'Referral', 'Cold Call', 'Exhibition', 'Partner', 'Other'];
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 200];
+
+/** Fields the lead form requires on both add and update (mirrors the backend). */
+const REQUIRED_FIELDS: { key: keyof CreateLeadData; label: string }[] = [
+  { key: 'companyName', label: 'Company name' },
+  { key: 'contactPersonName', label: 'Contact person' },
+  { key: 'phonePrimary', label: 'Phone (primary)' },
+  { key: 'email', label: 'Email' },
+  { key: 'website', label: 'Website' },
+  { key: 'leadSource', label: 'Lead source' },
+];
+
+const EMAIL_REGEX = /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/;
 
 const STATUS_COLORS: Record<string, string> = {
   'New Lead': 'bg-blue-100 text-blue-700',
@@ -52,12 +64,6 @@ const STATUS_COLORS: Record<string, string> = {
   'Not Interested': 'bg-red-50 text-red-500',
   'Wrong Number': 'bg-gray-50 text-gray-400',
   'Invalid Lead': 'bg-gray-50 text-gray-400',
-};
-
-const PRIORITY_COLORS: Record<string, string> = {
-  High: 'bg-red-100 text-red-700',
-  Medium: 'bg-yellow-100 text-yellow-700',
-  Low: 'bg-gray-100 text-gray-600',
 };
 
 // Shared field styling so inputs, selects and textareas read as one system.
@@ -117,14 +123,12 @@ const emptyForm: CreateLeadData = {
   email: '',
   jobTitle: '',
   industry: '',
-  companySize: '',
+  salesType: 'Lead',
   // Spec fields
   entityType: undefined,
   businessClassification: '',
   industrySector: undefined,
   country: 'Egypt',
-  governorate: undefined,
-  cityArea: '',
   fullAddress: '',
   phonePrimary: '',
   phoneSecondary: '',
@@ -132,6 +136,7 @@ const emptyForm: CreateLeadData = {
   website: '',
   dataSource: '',
   leadSource: undefined,
+  leadSourceDetail: '',
   assignedTo: '',
   priority: 'Medium',
   potentialValue: undefined,
@@ -144,14 +149,18 @@ const emptyForm: CreateLeadData = {
 };
 
 interface LeadsProps {
-  /** When set, the page is locked to this status (used by the "Interested" tab):
-   *  the status filter is fixed and hidden, and the list only shows those leads. */
+  /** When set, the page is locked to this status: the status filter is fixed and
+   *  hidden, and the list only shows those leads. */
   lockedStatus?: LeadStatus;
+  /** When set, the page is locked to this sales type (used by the "Opportunities"
+   *  tab): the sales-type filter is fixed and hidden, and new leads created from
+   *  this page default to it. */
+  lockedSalesType?: SalesType;
   /** Optional page heading override (defaults to "Leads"). */
   title?: string;
 }
 
-export default function Leads({ lockedStatus, title }: LeadsProps = {}) {
+export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsProps = {}) {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { leads, loading, total, pages } = useAppSelector((s) => s.teleSalesLeads);
@@ -189,9 +198,9 @@ export default function Leads({ lockedStatus, title }: LeadsProps = {}) {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState(lockedStatus ?? '');
   const [priorityFilter, setPriorityFilter] = useState('');
+  const [salesTypeFilter, setSalesTypeFilter] = useState<string>(lockedSalesType ?? '');
   const [entityTypeFilter, setEntityTypeFilter] = useState('');
   const [sectorFilter, setSectorFilter] = useState('');
-  const [governorateFilter, setGovernorateFilter] = useState('');
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(PAGE_SIZE_OPTIONS[0]);
   const [showFilters, setShowFilters] = useState(false);
@@ -218,13 +227,13 @@ export default function Leads({ lockedStatus, title }: LeadsProps = {}) {
       search: search || undefined,
       status: (lockedStatus ?? (statusFilter as LeadStatus)) || undefined,
       priority: priorityFilter as LeadPriority || undefined,
+      salesType: (lockedSalesType ?? (salesTypeFilter as SalesType)) || undefined,
       entityType: entityTypeFilter as EntityType || undefined,
       industrySector: sectorFilter as IndustrySector || undefined,
-      governorate: governorateFilter as Governorate || undefined,
       page,
       limit: itemsPerPage,
     }));
-  }, [dispatch, lockedStatus, search, statusFilter, priorityFilter, entityTypeFilter, sectorFilter, governorateFilter, page, itemsPerPage]);
+  }, [dispatch, lockedStatus, lockedSalesType, search, statusFilter, priorityFilter, salesTypeFilter, entityTypeFilter, sectorFilter, page, itemsPerPage]);
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { if (isAdmin) dispatch(fetchAgents(undefined)); }, [isAdmin, dispatch]);
@@ -234,7 +243,7 @@ export default function Leads({ lockedStatus, title }: LeadsProps = {}) {
   useEffect(() => { dispatch(fetchBusinessClassifications({ limit: 1000 })); }, [dispatch]);
 
   // Reset page on filter / page-size change
-  useEffect(() => { setPage(1); }, [search, statusFilter, priorityFilter, entityTypeFilter, sectorFilter, governorateFilter, itemsPerPage]);
+  useEffect(() => { setPage(1); }, [search, statusFilter, priorityFilter, salesTypeFilter, entityTypeFilter, sectorFilter, itemsPerPage]);
 
   const handlePageChange = (newPage: number) => {
     if (newPage < 1 || newPage > pages || newPage === page) return;
@@ -255,7 +264,15 @@ export default function Leads({ lockedStatus, title }: LeadsProps = {}) {
   const startItem = total === 0 ? 0 : (page - 1) * itemsPerPage + 1;
   const endItem = Math.min(page * itemsPerPage, total);
 
-  const openCreate = () => { setEditingLead(null); setForm(emptyForm); setTagInput(''); setIsDialogOpen(true); };
+  // Which follow-up field (if any) the currently selected lead source asks for.
+  const sourceDetailSpec = form.leadSource ? LEAD_SOURCE_DETAILS[form.leadSource] : undefined;
+
+  const openCreate = () => {
+    setEditingLead(null);
+    setForm({ ...emptyForm, salesType: lockedSalesType ?? emptyForm.salesType });
+    setTagInput('');
+    setIsDialogOpen(true);
+  };
   const openEdit = (lead: Lead) => {
     setEditingLead(lead);
     setForm({
@@ -264,14 +281,12 @@ export default function Leads({ lockedStatus, title }: LeadsProps = {}) {
       email: lead.email || '',
       jobTitle: lead.jobTitle || '',
       industry: lead.industry || '',
-      companySize: lead.companySize || '',
+      salesType: lead.salesType || 'Lead',
       // Spec fields
       entityType: lead.entityType,
       businessClassification: lead.businessClassification || '',
       industrySector: lead.industrySector,
       country: lead.country || 'Egypt',
-      governorate: lead.governorate,
-      cityArea: lead.cityArea || '',
       fullAddress: lead.fullAddress || '',
       phonePrimary: lead.phonePrimary || '',
       phoneSecondary: lead.phoneSecondary || '',
@@ -279,6 +294,7 @@ export default function Leads({ lockedStatus, title }: LeadsProps = {}) {
       website: lead.website || '',
       dataSource: lead.dataSource || '',
       leadSource: lead.leadSource,
+      leadSourceDetail: lead.leadSourceDetail || '',
       assignedTo: (lead.assignedTo as any)?._id || '',
       priority: lead.priority,
       potentialValue: lead.potentialValue,
@@ -310,17 +326,38 @@ export default function Leads({ lockedStatus, title }: LeadsProps = {}) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.companyName || !form.contactPersonName) {
-      toast.error('Company name and contact person are required');
+    // Mandatory on both add and update — mirrors the backend's required-field check.
+    const missing = REQUIRED_FIELDS.filter(({ key }) => !String(form[key] ?? '').trim());
+    if (missing.length > 0) {
+      toast.error(`${missing.map((m) => m.label).join(', ')} ${missing.length > 1 ? 'are' : 'is'} required`);
       return;
     }
-    // Phone_Primary is optional; when given it is stored as entered and validated
-    // leniently so numbers from any country are accepted (KSA, Bahrain, USA, …).
-    // Include the country code for non-Egypt numbers.
+    if (!EMAIL_REGEX.test(form.email!.trim())) {
+      toast.error('Enter a valid email address');
+      return;
+    }
+    // Each lead source asks for one follow-up detail (referrer name, LinkedIn URL,
+    // cold-call data source, exhibition name, partner name). Website / Other ask
+    // for none, so `sourceDetailSpec` is undefined and the field isn't rendered.
+    const detailSpec = form.leadSource ? LEAD_SOURCE_DETAILS[form.leadSource] : undefined;
+    const detail = form.leadSourceDetail?.trim() || '';
+    if (detailSpec) {
+      if (!detail) {
+        toast.error(`${detailSpec.label} is required for the "${form.leadSource}" lead source`);
+        return;
+      }
+      if (detailSpec.type === 'url' && !isValidUrl(detail)) {
+        toast.error('Enter a valid LinkedIn URL (e.g. https://linkedin.com/in/jane-doe)');
+        return;
+      }
+    }
+    // Phone_Primary is stored as entered and validated leniently so numbers from
+    // any country are accepted (KSA, Bahrain, USA, …). Include the country code
+    // for non-Egypt numbers.
     const primary = form.phonePrimary?.trim() || '';
     // Validate against the selected country's rules (falls back to a lenient
     // international check for countries not in the built-in table).
-    if (primary && !isValidPhoneForCountry(primary, form.country)) {
+    if (!isValidPhoneForCountry(primary, form.country)) {
       const dc = dialCodeForCountry(form.country);
       toast.error(
         form.country && dc
@@ -329,7 +366,7 @@ export default function Leads({ lockedStatus, title }: LeadsProps = {}) {
       );
       return;
     }
-    const payload = { ...form, phonePrimary: primary };
+    const payload = { ...form, phonePrimary: primary, leadSourceDetail: detailSpec ? detail : '' };
     if (!payload.assignedTo) delete payload.assignedTo;
     if (!payload.potentialValue) delete payload.potentialValue;
 
@@ -417,7 +454,9 @@ export default function Leads({ lockedStatus, title }: LeadsProps = {}) {
         <div>
           <h1 className="text-2xl font-bold text-on-surface">{title ?? 'Leads'}</h1>
           <p className="text-sm text-on-surface-variant mt-0.5">
-            {total} {lockedStatus ? `${lockedStatus.toLowerCase()} leads` : 'total leads'}
+            {total} {lockedSalesType
+              ? `${lockedSalesType.toLowerCase()} record${total === 1 ? '' : 's'}`
+              : lockedStatus ? `${lockedStatus.toLowerCase()} leads` : 'total leads'}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -471,6 +510,16 @@ export default function Leads({ lockedStatus, title }: LeadsProps = {}) {
               <option value="">All Priorities</option>
               {(['High', 'Medium', 'Low'] as LeadPriority[]).map((p) => <option key={p} value={p}>{p}</option>)}
             </select>
+            {!lockedSalesType && (
+              <select
+                value={salesTypeFilter}
+                onChange={(e) => setSalesTypeFilter(e.target.value)}
+                className="px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+              >
+                <option value="">All Sales Types</option>
+                {SALES_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+            )}
             <select
               value={entityTypeFilter}
               onChange={(e) => setEntityTypeFilter(e.target.value)}
@@ -487,16 +536,8 @@ export default function Leads({ lockedStatus, title }: LeadsProps = {}) {
               <option value="">All Sectors</option>
               {sectorOptions.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
-            <select
-              value={governorateFilter}
-              onChange={(e) => setGovernorateFilter(e.target.value)}
-              className="px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
-            >
-              <option value="">All Governorates</option>
-              {GOVERNORATES.map((g) => <option key={g} value={g}>{g}</option>)}
-            </select>
-            {(statusFilter || priorityFilter || entityTypeFilter || sectorFilter || governorateFilter) && (
-              <button onClick={() => { setStatusFilter(''); setPriorityFilter(''); setEntityTypeFilter(''); setSectorFilter(''); setGovernorateFilter(''); }}
+            {((!lockedStatus && statusFilter) || priorityFilter || (!lockedSalesType && salesTypeFilter) || entityTypeFilter || sectorFilter) && (
+              <button onClick={() => { if (!lockedStatus) setStatusFilter(''); setPriorityFilter(''); if (!lockedSalesType) setSalesTypeFilter(''); setEntityTypeFilter(''); setSectorFilter(''); }}
                 className="flex items-center gap-1 text-sm text-error hover:text-error/80">
                 <X className="w-3.5 h-3.5" /> Clear
               </button>
@@ -522,7 +563,7 @@ export default function Leads({ lockedStatus, title }: LeadsProps = {}) {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-outline-variant/20 bg-surface-container/50">
-                  {['Customer ID', 'Company', 'Contact', 'Phone', 'Entity Type', 'Sector', 'Governorate', 'City / Area', 'Status', 'Priority', 'Assigned To', 'Last Call', 'Next Follow-up', ''].map((h) => (
+                  {['Customer ID', 'Company Name', 'Contact Person', 'Phone', 'Entity Type', 'Sector', 'Status', 'Sales Type', 'Source', 'Next Follow-up', 'Assigned To', ''].map((h) => (
                     <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wide whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -533,7 +574,15 @@ export default function Leads({ lockedStatus, title }: LeadsProps = {}) {
                     <td className="px-4 py-3 whitespace-nowrap">
                       <span className="font-mono text-xs text-on-surface-variant">{lead.customerId || '—'}</span>
                     </td>
-                    <td className="px-4 py-3 font-medium text-on-surface whitespace-nowrap">{lead.companyName}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <button
+                        onClick={() => navigate(`/tele-sales/leads/${lead._id}`)}
+                        className="font-medium text-on-surface hover:text-primary hover:underline underline-offset-2 transition-colors text-left cursor-pointer rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                        title={`View ${lead.companyName}`}
+                      >
+                        {lead.companyName}
+                      </button>
+                    </td>
                     <td className="px-4 py-3 text-on-surface-variant whitespace-nowrap">
                       <div className="flex items-center gap-1">
                         <User className="w-3.5 h-3.5" />
@@ -549,25 +598,25 @@ export default function Leads({ lockedStatus, title }: LeadsProps = {}) {
                         : <span className="text-on-surface-variant">—</span>}
                     </td>
                     <td className="px-4 py-3 text-on-surface-variant whitespace-nowrap">{lead.industrySector || '—'}</td>
-                    <td className="px-4 py-3 text-on-surface-variant whitespace-nowrap">{lead.governorate || '—'}</td>
-                    <td className="px-4 py-3 text-on-surface-variant whitespace-nowrap">{lead.cityArea || '—'}</td>
                     <td className="px-4 py-3">
                       <span className={`text-xs font-medium px-2.5 py-1 rounded-full whitespace-nowrap ${STATUS_COLORS[lead.status] ?? 'bg-gray-100 text-gray-600'}`}>
                         {lead.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
-                      <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${PRIORITY_COLORS[lead.priority]}`}>
-                        {lead.priority}
-                      </span>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${
+                        lead.salesType === 'Opportunity'
+                          ? 'bg-emerald-100 text-emerald-700'
+                          : 'bg-sky-100 text-sky-700'
+                      }`}>{lead.salesType || 'Lead'}</span>
                     </td>
+                    <td className="px-4 py-3 text-on-surface-variant whitespace-nowrap">{lead.leadSource || '—'}</td>
+                    <td className="px-4 py-3 text-on-surface-variant whitespace-nowrap">{formatDate(lead.nextFollowUpDate)}</td>
                     <td className="px-4 py-3 text-on-surface-variant whitespace-nowrap">
                       {(lead.assignedTo as any)?.firstName
                         ? `${(lead.assignedTo as any).firstName} ${(lead.assignedTo as any).lastName}`
                         : '—'}
                     </td>
-                    <td className="px-4 py-3 text-on-surface-variant whitespace-nowrap">{formatDate(lead.lastCallDate)}</td>
-                    <td className="px-4 py-3 text-on-surface-variant whitespace-nowrap">{formatDate(lead.nextFollowUpDate)}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
                         <button onClick={() => navigate(`/tele-sales/leads/${lead._id}`)}
@@ -697,9 +746,6 @@ export default function Leads({ lockedStatus, title }: LeadsProps = {}) {
                   <Field label="Job Title">
                     <Input value={form.jobTitle} onChange={(e) => setForm(p => ({ ...p, jobTitle: e.target.value }))} placeholder="CEO" />
                   </Field>
-                  <Field label="Company Size">
-                    <Input value={form.companySize} onChange={(e) => setForm(p => ({ ...p, companySize: e.target.value }))} placeholder="50-200" />
-                  </Field>
                 </div>
               </SectionCard>
 
@@ -738,15 +784,6 @@ export default function Leads({ lockedStatus, title }: LeadsProps = {}) {
                       ).map((c) => <option key={c} value={c}>{c}</option>)}
                     </SelectField>
                   </Field>
-                  <Field label="Governorate">
-                    <SelectField value={form.governorate || ''} onChange={(e) => setForm(p => ({ ...p, governorate: (e.target.value as Governorate) || undefined }))}>
-                      <option value="">Select governorate</option>
-                      {GOVERNORATES.map((g) => <option key={g} value={g}>{g}</option>)}
-                    </SelectField>
-                  </Field>
-                  <Field label="City / Area">
-                    <Input value={form.cityArea} onChange={(e) => setForm(p => ({ ...p, cityArea: e.target.value }))} placeholder="District, resort zone, or town" />
-                  </Field>
                   <Field label="Full Address">
                     <Input value={form.fullAddress} onChange={(e) => setForm(p => ({ ...p, fullAddress: e.target.value }))} placeholder="Cleaned street address" />
                   </Field>
@@ -757,6 +794,7 @@ export default function Leads({ lockedStatus, title }: LeadsProps = {}) {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Field
                     label="Phone — Primary"
+                    required
                     hint={dialCodeForCountry(form.country)
                       ? `${form.country} dialing code ${dialCodeForCountry(form.country)} — enter the local number or the full ${dialCodeForCountry(form.country)} form`
                       : undefined}
@@ -769,10 +807,10 @@ export default function Leads({ lockedStatus, title }: LeadsProps = {}) {
                   <Field label="Phone — Other" hint="Hotlines, 0800 toll-free numbers.">
                     <Input value={form.phoneOther} onChange={(e) => setForm(p => ({ ...p, phoneOther: e.target.value }))} placeholder="19XXX, 0800 XXX XXXX" />
                   </Field>
-                  <Field label="Email">
+                  <Field label="Email" required>
                     <Input type="email" value={form.email} onChange={(e) => setForm(p => ({ ...p, email: e.target.value }))} placeholder="john@example.com" />
                   </Field>
-                  <Field label="Website" className="sm:col-span-2">
+                  <Field label="Website" required className="sm:col-span-2">
                     <Input value={form.website} onChange={(e) => setForm(p => ({ ...p, website: e.target.value }))} placeholder="https://example.com" />
                   </Field>
                 </div>
@@ -780,12 +818,36 @@ export default function Leads({ lockedStatus, title }: LeadsProps = {}) {
 
               <SectionCard icon={<ClipboardList className="w-5 h-5" />} title="Lead Details">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Field label="Lead Source">
-                    <SelectField value={form.leadSource || ''} onChange={(e) => setForm(p => ({ ...p, leadSource: e.target.value as LeadSource || undefined }))}>
+                  <Field label="Sales Type" hint="Lead = unqualified, Opportunity = qualified.">
+                    <SelectField value={form.salesType || 'Lead'} onChange={(e) => setForm(p => ({ ...p, salesType: e.target.value as SalesType }))}>
+                      {SALES_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                    </SelectField>
+                  </Field>
+                  <Field label="Lead Source" required>
+                    <SelectField
+                      value={form.leadSource || ''}
+                      onChange={(e) => setForm(p => ({
+                        ...p,
+                        leadSource: e.target.value as LeadSource || undefined,
+                        // A detail belongs to the source it was entered under, so
+                        // switching source always starts the follow-up field empty.
+                        leadSourceDetail: '',
+                      }))}
+                    >
                       <option value="">Select source</option>
                       {LEAD_SOURCES.map((s) => <option key={s} value={s}>{s}</option>)}
                     </SelectField>
                   </Field>
+                  {sourceDetailSpec && (
+                    <Field label={sourceDetailSpec.label} required className="sm:col-span-2">
+                      <Input
+                        type={sourceDetailSpec.type === 'url' ? 'url' : 'text'}
+                        value={form.leadSourceDetail}
+                        onChange={(e) => setForm(p => ({ ...p, leadSourceDetail: e.target.value }))}
+                        placeholder={sourceDetailSpec.placeholder}
+                      />
+                    </Field>
+                  )}
                   <Field label="Priority">
                     <SelectField value={form.priority || 'Medium'} onChange={(e) => setForm(p => ({ ...p, priority: e.target.value as LeadPriority }))}>
                       {(['High', 'Medium', 'Low'] as LeadPriority[]).map((pv) => <option key={pv} value={pv}>{pv}</option>)}

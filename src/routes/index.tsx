@@ -200,7 +200,9 @@ export const routes: RouteObject[] = [
     children: [
       { index: true, element: <Lazy><TeleSalesDashboard /></Lazy> },
       { path: "leads", element: <Lazy><Leads /></Lazy> },
-      { path: "interested", element: <Lazy><Leads lockedStatus="Interested" title="Interested Leads" /></Lazy> },
+      { path: "opportunities", element: <Lazy><Leads lockedSalesType="Opportunity" title="Opportunities" /></Lazy> },
+      // The Interested tab was replaced by Opportunities; keep old links working.
+      { path: "interested", element: <Navigate to="/tele-sales/opportunities" replace /> },
       { path: "leads/:id", element: <Lazy><LeadDetail /></Lazy> },
       { path: "calls/recent", element: <Lazy><RecentCalls /></Lazy> },
       { path: "agents", element: <Lazy><TeleSalesAgents /></Lazy> },
