@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { toast } from 'sonner';
 import * as teleSalesApi from '@/api/teleSalesApi';
-import type { Lead, LeadStats, LeadQueryParams, CreateLeadData, UpdateLeadData, ImportLeadsRequest } from '@/types/teleSales.types';
+import type { Lead, LeadStats, LeadQueryParams, CreateLeadData, UpdateLeadData, ImportLeadsRequest, ChangeLeadStatusData } from '@/types/teleSales.types';
 
 interface TeleSalesLeadsState {
   leads: Lead[];
@@ -113,6 +113,21 @@ export const updateLead = createAsyncThunk(
   }
 );
 
+export const changeLeadStatus = createAsyncThunk(
+  'teleSalesLeads/changeLeadStatus',
+  async ({ id, data }: { id: string; data: ChangeLeadStatusData }, { rejectWithValue }) => {
+    try {
+      const response = await teleSalesApi.changeLeadStatus(id, data);
+      toast.success(response.message || 'Status updated!');
+      return response.data.lead;
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Failed to change lead status';
+      toast.error(message);
+      return rejectWithValue(error.response?.data ?? { message });
+    }
+  }
+);
+
 export const deleteLead = createAsyncThunk(
   'teleSalesLeads/deleteLead',
   async (id: string, { rejectWithValue }) => {
@@ -174,6 +189,19 @@ const teleSalesLeadsSlice = createSlice({
         if (idx !== -1) state.leads[idx] = action.payload;
       })
       .addCase(updateLead.rejected, (state, action) => { state.loading = false; state.error = action.payload as string; });
+
+    builder
+      .addCase(changeLeadStatus.pending, (state) => { state.loading = true; state.error = null; })
+      .addCase(changeLeadStatus.fulfilled, (state, action) => {
+        state.loading = false;
+        state.currentLead = action.payload;
+        const idx = state.leads.findIndex((l) => l._id === action.payload._id);
+        if (idx !== -1) state.leads[idx] = action.payload;
+      })
+      .addCase(changeLeadStatus.rejected, (state, action) => {
+        state.loading = false;
+        state.error = (action.payload as any)?.message ?? 'Failed to change lead status';
+      });
 
     builder
       .addCase(deleteLead.pending, (state) => { state.loading = true; state.error = null; })

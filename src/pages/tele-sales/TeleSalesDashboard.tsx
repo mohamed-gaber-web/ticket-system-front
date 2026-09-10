@@ -7,6 +7,7 @@ import * as teleSalesApi from '@/api/teleSalesApi';
 import { useState } from 'react';
 import { PhoneLink } from '@/components/PhoneLink';
 import type { FollowUp, LeadStatus } from '@/types/teleSales.types';
+import { STATUS_COLORS } from '@/config/leadStatusWorkflow';
 import {
   PhoneCall,
   TrendingUp,
@@ -17,23 +18,6 @@ import {
   ArrowRight,
   Users,
 } from 'lucide-react';
-
-const STATUS_COLORS: Record<string, string> = {
-  'New Lead': 'bg-blue-100 text-blue-700',
-  'Interested': 'bg-green-100 text-green-700',
-  'Follow-up': 'bg-yellow-100 text-yellow-700',
-  'Meeting Scheduled': 'bg-purple-100 text-purple-700',
-  'Proposal Sent': 'bg-indigo-100 text-indigo-700',
-  'Negotiation': 'bg-orange-100 text-orange-700',
-  'Closed Won': 'bg-emerald-100 text-emerald-700',
-  'Closed Lost': 'bg-red-100 text-red-700',
-  'No Answer': 'bg-gray-100 text-gray-600',
-  'Not Available': 'bg-gray-100 text-gray-600',
-  'Call Back Later': 'bg-yellow-100 text-yellow-700',
-  'Not Interested': 'bg-red-100 text-red-600',
-  'Wrong Number': 'bg-gray-100 text-gray-500',
-  'Invalid Lead': 'bg-gray-100 text-gray-500',
-};
 
 const KEY_STATS: { status: LeadStatus; label: string; icon: React.ReactNode; color: string }[] = [
   { status: 'New Lead', label: 'New Leads', icon: <PhoneCall className="w-5 h-5" />, color: 'text-blue-600 bg-blue-50' },

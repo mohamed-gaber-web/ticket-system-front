@@ -5,23 +5,7 @@ import { PhoneLink } from '@/components/PhoneLink';
 import { Button } from '@/components/ui/button';
 import { PhoneCall, RefreshCw, User, Eye } from 'lucide-react';
 import type { RecentCall } from '@/types/teleSales.types';
-
-const STATUS_COLORS: Record<string, string> = {
-  'New Lead': 'bg-blue-100 text-blue-700',
-  'Interested': 'bg-green-100 text-green-700',
-  'Follow-up': 'bg-yellow-100 text-yellow-700',
-  'Meeting Scheduled': 'bg-purple-100 text-purple-700',
-  'Proposal Sent': 'bg-indigo-100 text-indigo-700',
-  'Negotiation': 'bg-orange-100 text-orange-700',
-  'Closed Won': 'bg-emerald-100 text-emerald-700',
-  'Closed Lost': 'bg-red-100 text-red-700',
-  'No Answer': 'bg-gray-100 text-gray-600',
-  'Not Available': 'bg-gray-100 text-gray-600',
-  'Call Back Later': 'bg-yellow-50 text-yellow-600',
-  'Not Interested': 'bg-red-50 text-red-500',
-  'Wrong Number': 'bg-gray-50 text-gray-400',
-  'Invalid Lead': 'bg-gray-50 text-gray-400',
-};
+import { STATUS_COLORS } from '@/config/leadStatusWorkflow';
 
 const formatDateTime = (d?: string) =>
   !d ? '—' : new Date(d).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
