@@ -50,6 +50,7 @@ export default function AssignmentTrendChart({
             <YAxis />
             <Tooltip
               labelFormatter={(value) => {
+                if (typeof value !== 'string' && typeof value !== 'number') return '';
                 const date = new Date(value);
                 return date.toLocaleDateString('en-US', {
                   month: 'long',

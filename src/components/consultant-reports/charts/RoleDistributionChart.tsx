@@ -87,10 +87,10 @@ export default function RoleDistributionChart({ data }: RoleDistributionChartPro
               ))}
             </Pie>
             <Tooltip
-              formatter={(value: number) => [
-                `${value} (${((value / total) * 100).toFixed(1)}%)`,
-                'Count',
-              ]}
+              formatter={(value) => {
+                const num = typeof value === 'number' ? value : Number(value) || 0;
+                return [`${num} (${((num / total) * 100).toFixed(1)}%)`, 'Count'] as [string, string];
+              }}
             />
             <Legend />
           </PieChart>
