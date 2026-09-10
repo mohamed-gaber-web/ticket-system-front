@@ -17,8 +17,10 @@ import {
   Building2, MapPin, ClipboardList, StickyNote, Tags, ChevronDown,
 } from 'lucide-react';
 import GmailCompose from '@/components/tele-sales/GmailCompose';
+import { StatusRulesModal } from '@/components/tele-sales/StatusRulesModal';
+import { LEAD_STATUSES, STATUS_COLORS, type LeadStatus } from '@/config/leadStatusWorkflow';
 import type {
-  Lead, LeadStatus, LeadPriority, LeadSource, CreateLeadData, ImportLeadsResponse,
+  Lead, LeadPriority, LeadSource, CreateLeadData, ImportLeadsResponse,
   EntityType, IndustrySector, SalesType,
 } from '@/types/teleSales.types';
 import {
@@ -26,12 +28,6 @@ import {
 } from '@/types/teleSales.types';
 import { dialCodeForCountry, isValidPhoneForCountry } from '@/utils/countryPhone';
 import { parseLeadsFile, FIELD_LABELS, type ParsedImport } from '@/utils/leadImport';
-
-const ALL_STATUSES: LeadStatus[] = [
-  'New Lead', 'No Answer', 'Not Available', 'Call Back Later', 'Interested',
-  'Not Interested', 'Wrong Number', 'Invalid Lead', 'Follow-up',
-  'Meeting Scheduled', 'Proposal Sent', 'Negotiation', 'Closed Won', 'Closed Lost',
-];
 
 const LEAD_SOURCES: LeadSource[] = ['LinkedIn', 'Website', 'Referral', 'Cold Call', 'Exhibition', 'Partner', 'Other'];
 
@@ -48,23 +44,6 @@ const REQUIRED_FIELDS: { key: keyof CreateLeadData; label: string }[] = [
 ];
 
 const EMAIL_REGEX = /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/;
-
-const STATUS_COLORS: Record<string, string> = {
-  'New Lead': 'bg-blue-100 text-blue-700',
-  'Interested': 'bg-green-100 text-green-700',
-  'Follow-up': 'bg-yellow-100 text-yellow-700',
-  'Meeting Scheduled': 'bg-purple-100 text-purple-700',
-  'Proposal Sent': 'bg-indigo-100 text-indigo-700',
-  'Negotiation': 'bg-orange-100 text-orange-700',
-  'Closed Won': 'bg-emerald-100 text-emerald-700',
-  'Closed Lost': 'bg-red-100 text-red-700',
-  'No Answer': 'bg-gray-100 text-gray-600',
-  'Not Available': 'bg-gray-100 text-gray-600',
-  'Call Back Later': 'bg-yellow-50 text-yellow-600',
-  'Not Interested': 'bg-red-50 text-red-500',
-  'Wrong Number': 'bg-gray-50 text-gray-400',
-  'Invalid Lead': 'bg-gray-50 text-gray-400',
-};
 
 // Shared field styling so inputs, selects and textareas read as one system.
 const selectCls =
@@ -194,6 +173,7 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
   // blank compose, which isn't tied to a lead.
   const [emailLead, setEmailLead] = useState<Lead | null>(null);
   const [composeOpen, setComposeOpen] = useState(false);
+  const [statusRulesOpen, setStatusRulesOpen] = useState(false);
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState(lockedStatus ?? '');
@@ -371,6 +351,9 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
     if (!payload.potentialValue) delete payload.potentialValue;
 
     if (editingLead) {
+      // Status changes go exclusively through the "Change Status" workflow now
+      // (see LeadDetail's StatusChangeModal) — the edit form no longer sends it.
+      delete (payload as any).status;
       await dispatch(updateLead({ id: editingLead._id, data: payload }));
     } else {
       await dispatch(createLead(payload));
@@ -466,6 +449,9 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
           <Button variant="outline" onClick={openImport} className="gap-2">
             <Upload className="w-4 h-4" /> Import
           </Button>
+          <Button variant="outline" onClick={() => setStatusRulesOpen(true)} className="gap-2">
+            <ClipboardList className="w-4 h-4" /> Status Rules
+          </Button>
           <Button onClick={openCreate} className="gap-2">
             <Plus className="w-4 h-4" /> New Lead
           </Button>
@@ -499,7 +485,7 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
                 className="px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
               >
                 <option value="">All Statuses</option>
-                {ALL_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                {LEAD_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
             )}
             <select
@@ -853,11 +839,13 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
                       {(['High', 'Medium', 'Low'] as LeadPriority[]).map((pv) => <option key={pv} value={pv}>{pv}</option>)}
                     </SelectField>
                   </Field>
-                  <Field label="Status">
-                    <SelectField value={form.status || 'New Lead'} onChange={(e) => setForm(p => ({ ...p, status: e.target.value as LeadStatus }))}>
-                      {ALL_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-                    </SelectField>
-                  </Field>
+                  {!editingLead && (
+                    <Field label="Status">
+                      <SelectField value={form.status || 'New Lead'} onChange={(e) => setForm(p => ({ ...p, status: e.target.value as LeadStatus }))}>
+                        {LEAD_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                      </SelectField>
+                    </Field>
+                  )}
                   <Field label="Potential Value">
                     <Input type="number" value={form.potentialValue || ''} onChange={(e) => setForm(p => ({ ...p, potentialValue: e.target.value ? Number(e.target.value) : undefined }))} placeholder="0" />
                   </Field>
@@ -1074,7 +1062,7 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
                           <label className="text-sm font-medium text-on-surface mb-1 block">Default Status</label>
                           <select value={importStatus} onChange={(e) => setImportStatus(e.target.value as LeadStatus)}
                             className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
-                            {ALL_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                            {LEAD_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
                           </select>
                         </div>
                         <div>
@@ -1140,6 +1128,8 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
           fromLabel={user?.email}
         />
       )}
+
+      <StatusRulesModal open={statusRulesOpen} onClose={() => setStatusRulesOpen(false)} />
     </div>
   );
 }

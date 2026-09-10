@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
-import { fetchLeadById, updateLead } from '@/redux/slices/teleSalesLeadsSlice';
+import { fetchLeadById } from '@/redux/slices/teleSalesLeadsSlice';
 import * as teleSalesApi from '@/api/teleSalesApi';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,13 +9,18 @@ import { PhoneLink } from '@/components/PhoneLink';
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import {
-  ArrowLeft, Phone, Mail, Building2, User, Briefcase, Tag, Edit2, X,
+  ArrowLeft, Phone, Mail, Building2, User, Briefcase, Tag, Edit2,
   PhoneCall, Calendar, Paperclip, Plus, CheckCircle2, Trash2, MapPin,
   Globe, FileText, Upload, Download, File as FileIcon, Image as ImageIcon,
   Send, AlertCircle, ChevronDown, ChevronRight,
 } from 'lucide-react';
 import GmailCompose from '@/components/tele-sales/GmailCompose';
-import type { CallLog, FollowUp, LeadStatus, FollowUpType, CreateCallLogData, CreateFollowUpData, LeadAttachment, LeadEmail } from '@/types/teleSales.types';
+import { StatusChangeModal } from '@/components/tele-sales/StatusChangeModal';
+import { PipelineStepper } from '@/components/tele-sales/PipelineStepper';
+import { StatusHistoryTab } from '@/components/tele-sales/StatusHistoryTab';
+import { mergeCallEntries, mergeFollowUpEntries } from '@/utils/leadActivityMerge';
+import { STATUS_COLORS, LEAD_STATUS_WORKFLOW } from '@/config/leadStatusWorkflow';
+import type { CallLog, FollowUp, FollowUpType, CreateCallLogData, CreateFollowUpData, LeadAttachment, LeadEmail, LeadStatusHistoryEntry } from '@/types/teleSales.types';
 import { LEAD_SOURCE_DETAILS } from '@/types/teleSales.types';
 
 const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15MB
@@ -28,36 +33,13 @@ const formatFileSize = (bytes?: number) => {
   return `${Math.round((bytes / Math.pow(k, i)) * 100) / 100} ${sizes[i]}`;
 };
 
-const STATUS_COLORS: Record<string, string> = {
-  'New Lead': 'bg-blue-100 text-blue-700',
-  'Interested': 'bg-green-100 text-green-700',
-  'Follow-up': 'bg-yellow-100 text-yellow-700',
-  'Meeting Scheduled': 'bg-purple-100 text-purple-700',
-  'Proposal Sent': 'bg-indigo-100 text-indigo-700',
-  'Negotiation': 'bg-orange-100 text-orange-700',
-  'Closed Won': 'bg-emerald-100 text-emerald-700',
-  'Closed Lost': 'bg-red-100 text-red-700',
-  'No Answer': 'bg-gray-100 text-gray-600',
-  'Not Available': 'bg-gray-100 text-gray-600',
-  'Call Back Later': 'bg-yellow-50 text-yellow-600',
-  'Not Interested': 'bg-red-50 text-red-500',
-  'Wrong Number': 'bg-gray-50 text-gray-400',
-  'Invalid Lead': 'bg-gray-50 text-gray-400',
-};
-
 const PRIORITY_COLORS: Record<string, string> = {
   High: 'bg-red-100 text-red-700',
   Medium: 'bg-yellow-100 text-yellow-700',
   Low: 'bg-gray-100 text-gray-600',
 };
 
-const ALL_STATUSES: LeadStatus[] = [
-  'New Lead', 'No Answer', 'Not Available', 'Call Back Later', 'Interested',
-  'Not Interested', 'Wrong Number', 'Invalid Lead', 'Follow-up',
-  'Meeting Scheduled', 'Proposal Sent', 'Negotiation', 'Closed Won', 'Closed Lost',
-];
-
-type Tab = 'info' | 'calls' | 'followups' | 'emails' | 'attachments';
+type Tab = 'info' | 'calls' | 'followups' | 'emails' | 'attachments' | 'hist';
 
 export default function LeadDetail() {
   const { id } = useParams<{ id: string }>();
@@ -89,9 +71,9 @@ export default function LeadDetail() {
   const [fuForm, setFuForm] = useState<CreateFollowUpData>(emptyFuForm);
   const [showFuForm, setShowFuForm] = useState(false);
 
-  // Status quick-change
-  const [editingStatus, setEditingStatus] = useState(false);
-  const [newStatus, setNewStatus] = useState<LeadStatus>('New Lead');
+  // Status change modal + history
+  const [statusModalOpen, setStatusModalOpen] = useState(false);
+  const [statusHistory, setStatusHistory] = useState<LeadStatusHistoryEntry[]>([]);
 
   // isAdmin reserved for future use (e.g. reassign controls)
   // const isAdmin = (user as any)?.role === 'admin';
@@ -102,11 +84,11 @@ export default function LeadDetail() {
 
   useEffect(() => {
     if (currentLead?._id) {
-      setNewStatus(currentLead.status);
       loadCalls();
       loadFollowUps();
       loadAttachments();
       loadEmails();
+      loadStatusHistory();
     }
   }, [currentLead?._id]);
 
@@ -118,6 +100,11 @@ export default function LeadDetail() {
   const loadFollowUps = async () => {
     if (!id) return;
     try { const r = await teleSalesApi.getFollowUpsByLead(id); setFollowUps(r.data); } catch {}
+  };
+
+  const loadStatusHistory = async () => {
+    if (!id) return;
+    try { const r = await teleSalesApi.getLeadStatusHistory(id); setStatusHistory(r.data); } catch {}
   };
 
   const loadAttachments = async () => {
@@ -215,10 +202,9 @@ export default function LeadDetail() {
     if (id) dispatch(fetchLeadById(id));
   };
 
-  const handleStatusUpdate = async () => {
-    if (!id) return;
-    await dispatch(updateLead({ id, data: { status: newStatus } }));
-    setEditingStatus(false);
+  const handleStatusChanged = () => {
+    loadStatusHistory();
+    loadFollowUps();
   };
 
   const handleAddCall = async (e: React.FormEvent) => {
@@ -280,6 +266,20 @@ export default function LeadDetail() {
   const formatDate = (d?: string) => !d ? '—' : new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   const formatDateTime = (d?: string) => !d ? '—' : new Date(d).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
+  // One-line summary of a status-history entry's field values, for the merged Calls/Follow-ups tabs.
+  const summarizeFieldValues = (entry: LeadStatusHistoryEntry) => {
+    const config = LEAD_STATUS_WORKFLOW[entry.newStatus];
+    return Object.entries(entry.fieldValues || {})
+      .filter(([k, v]) => v !== '' && v != null && config?.fields.find((f) => f.k === k)?.type !== 'auto')
+      .slice(0, 3)
+      .map(([k, v]) => {
+        const field = config?.fields.find((f) => f.k === k);
+        const val = typeof v === 'object' ? (v?.fileName || v?.link || '') : String(v);
+        return `${field?.label || k}: ${val}`;
+      })
+      .join(' · ');
+  };
+
   if (loading && !currentLead) {
     return <div className="flex justify-center items-center h-64"><div className="h-8 w-8 animate-spin rounded-full border-2 border-primary/20 border-t-primary" /></div>;
   }
@@ -334,22 +334,12 @@ export default function LeadDetail() {
           >
             <Send className="w-4 h-4" /> Send Email
           </Button>
-          {editingStatus ? (
-            <>
-              <select value={newStatus} onChange={(e) => setNewStatus(e.target.value as LeadStatus)}
-                className="px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
-                {ALL_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-              </select>
-              <Button size="sm" onClick={handleStatusUpdate}>Save</Button>
-              <button onClick={() => setEditingStatus(false)} className="p-2 rounded-lg hover:bg-surface-container text-on-surface-variant">
-                <X className="w-4 h-4" />
-              </button>
-            </>
-          ) : (
-            <Button variant="outline" size="sm" onClick={() => setEditingStatus(true)} className="gap-2">
-              <Edit2 className="w-4 h-4" /> Change Status
-            </Button>
-          )}
+          <Button
+            variant="outline" size="sm" onClick={() => setStatusModalOpen(true)} className="gap-2"
+            disabled={lead.status === 'Closed Won'}
+          >
+            <Edit2 className="w-4 h-4" /> Change Status
+          </Button>
         </div>
       </div>
 
@@ -369,17 +359,20 @@ export default function LeadDetail() {
         </div>
       </div>
 
+      <PipelineStepper status={lead.status} />
+
       {/* Tabs */}
       <div className="border-b border-outline-variant/20">
         <div className="flex gap-1">
-          {(['info', 'calls', 'followups', 'emails', 'attachments'] as Tab[]).map((t) => (
+          {(['info', 'calls', 'followups', 'emails', 'attachments', 'hist'] as Tab[]).map((t) => (
             <button key={t} onClick={() => setTab(t)}
               className={`px-5 py-3 text-sm font-medium transition-colors border-b-2 -mb-px ${tab === t ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant hover:text-on-surface'}`}>
               {t === 'info' ? 'Info'
-                : t === 'calls' ? `Calls (${callLogs.length})`
-                : t === 'followups' ? `Follow-ups (${followUps.length})`
+                : t === 'calls' ? `Calls (${mergeCallEntries(callLogs, statusHistory).length})`
+                : t === 'followups' ? `Follow-ups (${mergeFollowUpEntries(followUps, statusHistory).length})`
                 : t === 'emails' ? `Emails (${emails.length})`
-                : `Attachments (${attachments.length})`}
+                : t === 'attachments' ? `Attachments (${attachments.length})`
+                : `Status History (${statusHistory.length})`}
             </button>
           ))}
         </div>
@@ -497,30 +490,47 @@ export default function LeadDetail() {
             </form>
           )}
 
-          {callLogs.length === 0 ? (
+          {mergeCallEntries(callLogs, statusHistory).length === 0 ? (
             <div className="flex flex-col items-center py-12 text-on-surface-variant bg-surface-container-lowest rounded-2xl border border-outline-variant/20">
               <PhoneCall className="w-8 h-8 mb-2 opacity-30" />
               <p className="text-sm">No call logs yet</p>
             </div>
           ) : (
             <div className="space-y-3">
-              {callLogs.map((call) => (
-                <div key={call._id} className="bg-surface-container-lowest rounded-2xl border border-outline-variant/20 p-5">
+              {mergeCallEntries(callLogs, statusHistory).map((row) => row.kind === 'manual' && row.manual ? (
+                <div key={row.id} className="bg-surface-container-lowest rounded-2xl border border-outline-variant/20 p-5">
                   <div className="flex items-start justify-between">
                     <div>
-                      <p className="text-sm font-medium text-on-surface">{formatDateTime(call.callDate)}</p>
+                      <p className="text-sm font-medium text-on-surface">{formatDateTime(row.manual.callDate)}</p>
                       <p className="text-xs text-on-surface-variant mt-0.5">
-                        by {call.calledBy?.firstName} {call.calledBy?.lastName}
-                        {call.duration ? ` · ${call.duration} min` : ''}
+                        by {row.manual.calledBy?.firstName} {row.manual.calledBy?.lastName}
+                        {row.manual.duration ? ` · ${row.manual.duration} min` : ''}
                       </p>
                     </div>
-                    <button onClick={() => handleDeleteCall(call._id)} className="p-1.5 rounded-lg hover:bg-error/10 text-on-surface-variant hover:text-error">
+                    <button onClick={() => handleDeleteCall(row.manual!._id)} className="p-1.5 rounded-lg hover:bg-error/10 text-on-surface-variant hover:text-error">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
-                  {call.notes && <p className="mt-3 text-sm text-on-surface bg-surface-container rounded-xl p-3">{call.notes}</p>}
+                  {row.manual.notes && <p className="mt-3 text-sm text-on-surface bg-surface-container rounded-xl p-3">{row.manual.notes}</p>}
                 </div>
-              ))}
+              ) : row.statusEntry ? (
+                <div key={row.id} className="bg-surface-container-lowest rounded-2xl border border-outline-variant/20 p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span
+                          className="text-xs font-semibold px-2 py-0.5 rounded-full"
+                          style={{ background: LEAD_STATUS_WORKFLOW[row.statusEntry.newStatus]?.bg, color: LEAD_STATUS_WORKFLOW[row.statusEntry.newStatus]?.color }}
+                        >
+                          {row.statusEntry.newStatus}
+                        </span>
+                        <span className="text-xs text-on-surface-variant">{formatDateTime(row.statusEntry.changedAt)}</span>
+                      </div>
+                      <p className="text-xs text-on-surface-variant mt-1 truncate">{summarizeFieldValues(row.statusEntry)}</p>
+                    </div>
+                  </div>
+                </div>
+              ) : null)}
             </div>
           )}
         </div>
@@ -564,39 +574,52 @@ export default function LeadDetail() {
             </form>
           )}
 
-          {followUps.length === 0 ? (
+          {mergeFollowUpEntries(followUps, statusHistory).length === 0 ? (
             <div className="flex flex-col items-center py-12 text-on-surface-variant bg-surface-container-lowest rounded-2xl border border-outline-variant/20">
               <Calendar className="w-8 h-8 mb-2 opacity-30" />
               <p className="text-sm">No follow-ups yet</p>
             </div>
           ) : (
             <div className="space-y-3">
-              {followUps.map((fu) => (
-                <div key={fu._id} className={`rounded-2xl border p-5 ${fu.status === 'Done' ? 'bg-surface-container/50 border-outline-variant/10 opacity-60' : 'bg-surface-container-lowest border-outline-variant/20'}`}>
+              {mergeFollowUpEntries(followUps, statusHistory).map((row) => row.kind === 'manual' && row.manual ? (
+                <div key={row.id} className={`rounded-2xl border p-5 ${row.manual.status === 'Done' ? 'bg-surface-container/50 border-outline-variant/10 opacity-60' : 'bg-surface-container-lowest border-outline-variant/20'}`}>
                   <div className="flex items-start justify-between">
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-on-surface">{formatDateTime(fu.reminderDate)}</span>
-                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${fu.status === 'Done' ? 'bg-emerald-100 text-emerald-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                          {fu.status}
+                        <span className="text-sm font-medium text-on-surface">{formatDateTime(row.manual.reminderDate)}</span>
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${row.manual.status === 'Done' ? 'bg-emerald-100 text-emerald-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                          {row.manual.status}
                         </span>
-                        <span className="text-xs text-on-surface-variant bg-surface-container px-2 py-0.5 rounded-full">{fu.followUpType}</span>
+                        <span className="text-xs text-on-surface-variant bg-surface-container px-2 py-0.5 rounded-full">{row.manual.followUpType}</span>
                       </div>
-                      {fu.notes && <p className="text-sm text-on-surface-variant mt-2">{fu.notes}</p>}
+                      {row.manual.notes && <p className="text-sm text-on-surface-variant mt-2">{row.manual.notes}</p>}
                     </div>
                     <div className="flex items-center gap-1">
-                      {fu.status === 'Pending' && (
-                        <button onClick={() => handleMarkFollowUpDone(fu._id)} className="p-1.5 rounded-lg hover:bg-emerald-50 text-on-surface-variant hover:text-emerald-600" title="Mark Done">
+                      {row.manual.status === 'Pending' && (
+                        <button onClick={() => handleMarkFollowUpDone(row.manual!._id)} className="p-1.5 rounded-lg hover:bg-emerald-50 text-on-surface-variant hover:text-emerald-600" title="Mark Done">
                           <CheckCircle2 className="w-4 h-4" />
                         </button>
                       )}
-                      <button onClick={() => handleDeleteFollowUp(fu._id)} className="p-1.5 rounded-lg hover:bg-error/10 text-on-surface-variant hover:text-error" title="Delete">
+                      <button onClick={() => handleDeleteFollowUp(row.manual!._id)} className="p-1.5 rounded-lg hover:bg-error/10 text-on-surface-variant hover:text-error" title="Delete">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
                 </div>
-              ))}
+              ) : row.statusEntry ? (
+                <div key={row.id} className="bg-surface-container-lowest rounded-2xl border border-outline-variant/20 p-5">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span
+                      className="text-xs font-semibold px-2 py-0.5 rounded-full"
+                      style={{ background: LEAD_STATUS_WORKFLOW[row.statusEntry.newStatus]?.bg, color: LEAD_STATUS_WORKFLOW[row.statusEntry.newStatus]?.color }}
+                    >
+                      {row.statusEntry.newStatus}
+                    </span>
+                    <span className="text-xs text-on-surface-variant">{formatDateTime(row.statusEntry.changedAt)}</span>
+                  </div>
+                  <p className="text-xs text-on-surface-variant mt-1.5">{summarizeFieldValues(row.statusEntry)}</p>
+                </div>
+              ) : null)}
             </div>
           )}
         </div>
@@ -773,6 +796,16 @@ export default function LeadDetail() {
           )}
         </div>
       )}
+
+      {/* Tab: Status History */}
+      {tab === 'hist' && id && <StatusHistoryTab leadId={id} />}
+
+      <StatusChangeModal
+        lead={lead}
+        open={statusModalOpen}
+        onClose={() => setStatusModalOpen(false)}
+        onChanged={handleStatusChanged}
+      />
 
       {/* Gmail-style compose window */}
       <GmailCompose

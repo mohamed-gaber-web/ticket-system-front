@@ -58,21 +58,11 @@ export interface AgentQueryParams {
 
 // ── Lead ─────────────────────────────────────────────────────────────────────
 
-export type LeadStatus =
-  | 'New Lead'
-  | 'No Answer'
-  | 'Not Available'
-  | 'Call Back Later'
-  | 'Interested'
-  | 'Not Interested'
-  | 'Wrong Number'
-  | 'Invalid Lead'
-  | 'Follow-up'
-  | 'Meeting Scheduled'
-  | 'Proposal Sent'
-  | 'Negotiation'
-  | 'Closed Won'
-  | 'Closed Lost';
+// The status union + full per-status workflow (transitions, mandatory fields,
+// auto tasks) lives in src/config/leadStatusWorkflow.ts — that's the single
+// source of truth, re-exported here so existing `LeadStatus` imports keep working.
+import type { LeadStatus } from '@/config/leadStatusWorkflow';
+export type { LeadStatus };
 
 export type LeadPriority = 'High' | 'Medium' | 'Low';
 
@@ -229,6 +219,8 @@ export interface Lead {
   lastCallDate?: string;
   nextFollowUpDate?: string;
   callAttempts: number;
+  meetingsCount: number;
+  firstContactDeadline?: string;
   painPoints?: string;
   customerNeeds?: string;
   budget?: string;
@@ -312,6 +304,49 @@ export interface LeadStatsResponse {
     total: number;
     byStatus: { _id: LeadStatus; count: number }[];
   };
+}
+
+// ── Status History ────────────────────────────────────────────────────────────
+
+/** One status change, with the dynamic field values captured for that status. */
+export interface LeadStatusHistoryEntry {
+  _id: string;
+  lead: string;
+  oldStatus: LeadStatus | null;
+  newStatus: LeadStatus;
+  changedBy: Pick<TeleSalesAgent, '_id' | 'firstName' | 'lastName' | 'email'> | null;
+  changedByUserType: 'tele_sales' | 'consultant';
+  fieldValues: Record<string, any>;
+  changedAt: string;
+  createdAt: string;
+}
+
+export interface LeadStatusHistoryResponse {
+  success: boolean;
+  total: number;
+  data: LeadStatusHistoryEntry[];
+}
+
+export interface ChangeLeadStatusData {
+  newStatus: LeadStatus;
+  values: Record<string, any>;
+}
+
+export interface ChangeLeadStatusResponse {
+  success: boolean;
+  message: string;
+  data: {
+    lead: Lead;
+    historyEntry: LeadStatusHistoryEntry;
+    followUp: FollowUp | null;
+  };
+}
+
+export interface ChangeLeadStatusError {
+  success: false;
+  message: string;
+  errors?: { field: string; label: string; message: string }[];
+  allowed?: LeadStatus[];
 }
 
 // ── Call Log ──────────────────────────────────────────────────────────────────

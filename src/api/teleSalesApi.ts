@@ -22,6 +22,9 @@ import type {
   LeadEmailsResponse,
   LeadEmailResponse,
   SendLeadEmailData,
+  ChangeLeadStatusData,
+  ChangeLeadStatusResponse,
+  LeadStatusHistoryResponse,
 } from '@/types/teleSales.types';
 
 // ── Agents ────────────────────────────────────────────────────────────────────
@@ -69,6 +72,14 @@ export const importLeads = (data: ImportLeadsRequest): Promise<ImportLeadsRespon
 
 export const backfillCustomerIds = (): Promise<{ success: boolean; message: string; updated: number; total?: number }> =>
   api.post('/leads/backfill-customer-ids').then((r) => r.data);
+
+// ── Status Workflow ───────────────────────────────────────────────────────────
+
+export const changeLeadStatus = (leadId: string, data: ChangeLeadStatusData): Promise<ChangeLeadStatusResponse> =>
+  api.post(`/leads/${leadId}/status`, data).then((r) => r.data);
+
+export const getLeadStatusHistory = (leadId: string): Promise<LeadStatusHistoryResponse> =>
+  api.get(`/leads/${leadId}/status-history`).then((r) => r.data);
 
 // ── Call Logs ─────────────────────────────────────────────────────────────────
 
