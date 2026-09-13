@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchLeads, deleteLead, importLeads } from '@/redux/slices/teleSalesLeadsSlice';
 import { fetchAgents } from '@/redux/slices/teleSalesAgentsSlice';
+import { fetchTeams } from '@/redux/slices/teleSalesTeamsSlice';
 import { fetchIndustrySectors } from '@/redux/slices/industrySectorSlice';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,8 +23,9 @@ import type {
   Lead, LeadPriority, LeadSource, ImportLeadsResponse,
   EntityType, IndustrySector, SalesType,
 } from '@/types/teleSales.types';
-import { ENTITY_TYPES, INDUSTRY_SECTORS, SALES_TYPES } from '@/types/teleSales.types';
+import { ENTITY_TYPES, INDUSTRY_SECTORS, SALES_TYPES, teamName } from '@/types/teleSales.types';
 import { parseLeadsFile, FIELD_LABELS, type ParsedImport } from '@/utils/leadImport';
+import { isSuperAdmin, canManageTeam, ownTeamId, ownTeamName } from '@/lib/teleSalesRole';
 
 const LEAD_SOURCES: LeadSource[] = ['LinkedIn', 'Website', 'Referral', 'Cold Call', 'Exhibition', 'Partner', 'Other'];
 
@@ -46,9 +48,13 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
   const navigate = useNavigate();
   const { leads, loading, total, pages } = useAppSelector((s) => s.teleSalesLeads);
   const { agents } = useAppSelector((s) => s.teleSalesAgents);
+  const { teams } = useAppSelector((s) => s.teleSalesTeams);
   const { industrySectors } = useAppSelector((s) => s.industrySectors);
   const { user } = useAppSelector((s) => s.auth);
-  const isAdmin = (user as any)?.role === 'admin';
+
+  // Super admins span every team; managers run one; agents work inside one.
+  const superAdmin = isSuperAdmin(user);
+  const canManage = canManageTeam(user);
 
   // Admin-managed Industry Sector lookup drives the sector filter. Only active
   // sectors are offered; INDUSTRY_SECTORS is the fallback while the list is
@@ -69,6 +75,10 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
   const [salesTypeFilter, setSalesTypeFilter] = useState<string>(lockedSalesType ?? '');
   const [entityTypeFilter, setEntityTypeFilter] = useState('');
   const [sectorFilter, setSectorFilter] = useState('');
+  // Super admin only — everyone else is pinned to their own team by the API.
+  const [teamFilter, setTeamFilter] = useState('');
+  // Narrows the shared team pipeline by owner; 'unassigned' shows the unclaimed pool.
+  const [ownerFilter, setOwnerFilter] = useState('');
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(PAGE_SIZE_OPTIONS[0]);
   const [showFilters, setShowFilters] = useState(false);
@@ -83,6 +93,7 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<ImportLeadsResponse | null>(null);
   const [importAssignedTo, setImportAssignedTo] = useState('');
+  const [importTeam, setImportTeam] = useState('');
   const [importStatus, setImportStatus] = useState<LeadStatus>('New Lead');
   const [importSource, setImportSource] = useState<string>('');
   const [skipDuplicates, setSkipDuplicates] = useState(true);
@@ -96,18 +107,23 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
       salesType: (lockedSalesType ?? (salesTypeFilter as SalesType)) || undefined,
       entityType: entityTypeFilter as EntityType || undefined,
       industrySector: sectorFilter as IndustrySector || undefined,
+      team: superAdmin && teamFilter ? teamFilter : undefined,
+      assignedTo: ownerFilter || undefined,
       page,
       limit: itemsPerPage,
     }));
-  }, [dispatch, lockedStatus, lockedSalesType, search, statusFilter, priorityFilter, salesTypeFilter, entityTypeFilter, sectorFilter, page, itemsPerPage]);
+  }, [dispatch, lockedStatus, lockedSalesType, search, statusFilter, priorityFilter, salesTypeFilter, entityTypeFilter, sectorFilter, teamFilter, ownerFilter, superAdmin, page, itemsPerPage]);
 
   useEffect(() => { load(); }, [load]);
-  useEffect(() => { if (isAdmin) dispatch(fetchAgents(undefined)); }, [isAdmin, dispatch]);
-  // Load the sector lookup once so the filter dropdown can render it.
+  // Every member of a team now needs the roster: the table shows assignee names
+  // and the owner filter lists colleagues. The API returns only this team's agents.
+  useEffect(() => { dispatch(fetchAgents(undefined)); }, [dispatch]);
+  // Load the sector + team lookups once so the filter dropdowns can render them.
   useEffect(() => { dispatch(fetchIndustrySectors({ limit: 1000 })); }, [dispatch]);
+  useEffect(() => { dispatch(fetchTeams(undefined)); }, [dispatch]);
 
   // Reset page on filter / page-size change
-  useEffect(() => { setPage(1); }, [search, statusFilter, priorityFilter, salesTypeFilter, entityTypeFilter, sectorFilter, itemsPerPage]);
+  useEffect(() => { setPage(1); }, [search, statusFilter, priorityFilter, salesTypeFilter, entityTypeFilter, sectorFilter, teamFilter, ownerFilter, itemsPerPage]);
 
   const handlePageChange = (newPage: number) => {
     if (newPage < 1 || newPage > pages || newPage === page) return;
@@ -158,6 +174,7 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
     setFileName('');
     setImportResult(null);
     setImportAssignedTo('');
+    setImportTeam(superAdmin ? '' : ownTeamId(user));
     setImportStatus('New Lead');
     setImportSource('');
     setSkipDuplicates(true);
@@ -195,7 +212,10 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
     try {
       const action = await dispatch(importLeads({
         leads: parsed.rows,
-        assignedTo: isAdmin && importAssignedTo ? importAssignedTo : undefined,
+        assignedTo: canManage && importAssignedTo ? importAssignedTo : undefined,
+        // Only a super admin picks the destination team; for everyone else the
+        // API pins the batch to their own and ignores whatever is sent.
+        team: superAdmin && importTeam ? importTeam : undefined,
         status: importStatus,
         leadSource: (importSource as LeadSource) || undefined,
         skipDuplicates,
@@ -221,6 +241,9 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
             {total} {lockedSalesType
               ? `${lockedSalesType.toLowerCase()} record${total === 1 ? '' : 's'}`
               : lockedStatus ? `${lockedStatus.toLowerCase()} leads` : 'total leads'}
+            {/* Makes it obvious whose pipeline is on screen — the whole point of
+                the separation is that this is never "everyone's". */}
+            {!superAdmin && <> in <span className="font-medium text-on-surface">{ownTeamName(user)}</span></>}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -303,8 +326,32 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
               <option value="">All Sectors</option>
               {sectorOptions.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
-            {((!lockedStatus && statusFilter) || priorityFilter || (!lockedSalesType && salesTypeFilter) || entityTypeFilter || sectorFilter) && (
-              <button onClick={() => { if (!lockedStatus) setStatusFilter(''); setPriorityFilter(''); if (!lockedSalesType) setSalesTypeFilter(''); setEntityTypeFilter(''); setSectorFilter(''); }}
+            {/* The team pipeline is shared, so everyone can narrow it by owner —
+                including to the unclaimed pool, which is what agents pick from. */}
+            <select
+              value={ownerFilter}
+              onChange={(e) => setOwnerFilter(e.target.value)}
+              className="px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+            >
+              <option value="">Anyone</option>
+              <option value="unassigned">Unassigned</option>
+              {agents.filter((a) => a.status === 'active').map((a) => (
+                <option key={a._id} value={a._id}>{a.firstName} {a.lastName}</option>
+              ))}
+            </select>
+            {/* Only a super admin sees more than one team's leads. */}
+            {superAdmin && (
+              <select
+                value={teamFilter}
+                onChange={(e) => setTeamFilter(e.target.value)}
+                className="px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+              >
+                <option value="">All Teams</option>
+                {teams.map((t) => <option key={t._id} value={t._id}>{t.name}</option>)}
+              </select>
+            )}
+            {((!lockedStatus && statusFilter) || priorityFilter || (!lockedSalesType && salesTypeFilter) || entityTypeFilter || sectorFilter || ownerFilter || teamFilter) && (
+              <button onClick={() => { if (!lockedStatus) setStatusFilter(''); setPriorityFilter(''); if (!lockedSalesType) setSalesTypeFilter(''); setEntityTypeFilter(''); setSectorFilter(''); setOwnerFilter(''); setTeamFilter(''); }}
                 className="flex items-center gap-1 text-sm text-error hover:text-error/80">
                 <X className="w-3.5 h-3.5" /> Clear
               </button>
@@ -330,7 +377,11 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-outline-variant/20 bg-surface-container/50">
-                  {['Customer ID', 'Company Name', 'Contact Person', 'Phone', 'Entity Type', 'Sector', 'Status', 'Sales Type', 'Source', 'Next Follow-up', 'Assigned To', ''].map((h) => (
+                  {['Customer ID', 'Company Name', 'Contact Person', 'Phone', 'Entity Type', 'Sector', 'Status', 'Sales Type', 'Source', 'Next Follow-up', 'Assigned To',
+                    // Every lead on screen belongs to the viewer's own team unless
+                    // they are a super admin, so the column would be one repeated
+                    // value for everyone else.
+                    ...(superAdmin ? ['Team'] : []), ''].map((h) => (
                     <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wide whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -392,8 +443,15 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
                     <td className="px-4 py-3 text-on-surface-variant whitespace-nowrap">
                       {(lead.assignedTo as any)?.firstName
                         ? `${(lead.assignedTo as any).firstName} ${(lead.assignedTo as any).lastName}`
-                        : '—'}
+                        : <span className="text-xs italic opacity-70">Unassigned</span>}
                     </td>
+                    {superAdmin && (
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-surface-container-high text-on-surface-variant">
+                          {teamName(lead.team)}
+                        </span>
+                      </td>
+                    )}
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
                         <button onClick={() => navigate(`/tele-sales/leads/${lead._id}`)}
@@ -410,7 +468,8 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
                           className="p-1.5 rounded-lg hover:bg-surface-container text-on-surface-variant hover:text-brand-500 transition-colors" title="Edit">
                           <Pencil className="w-4 h-4" />
                         </button>
-                        {isAdmin && (
+                        {/* Deleting is a manager's call inside their own team. */}
+                        {canManage && (
                           <button onClick={() => handleDelete(lead)}
                             className="p-1.5 rounded-lg hover:bg-error/10 text-on-surface-variant hover:text-error transition-colors" title="Delete">
                             <Trash2 className="w-4 h-4" />
@@ -653,21 +712,43 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
                             {LEAD_SOURCES.map((s) => <option key={s} value={s}>{s}</option>)}
                           </select>
                         </div>
-                        {isAdmin && (
+                        {/* Super admins import into any team and must say which;
+                            everyone else's batch lands in their own. */}
+                        {superAdmin && (
+                          <div className="col-span-2">
+                            <label className="text-sm font-medium text-on-surface mb-1 block">Import Into Team *</label>
+                            <select value={importTeam} onChange={(e) => setImportTeam(e.target.value)}
+                              className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
+                              <option value="">Select a team</option>
+                              {teams.filter((t) => t.isActive).map((t) => (
+                                <option key={t._id} value={t._id}>{t.name}</option>
+                              ))}
+                            </select>
+                            <p className="text-xs text-on-surface-variant mt-1">
+                              Only this team will see the imported leads.
+                            </p>
+                          </div>
+                        )}
+                        {canManage && (
                           <div className="col-span-2">
                             <label className="text-sm font-medium text-on-surface mb-1 block">Assign All To</label>
                             <select value={importAssignedTo} onChange={(e) => setImportAssignedTo(e.target.value)}
                               className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
-                              <option value="">Unassigned</option>
+                              <option value="">Unassigned — leave in the team pool</option>
                               {agents.filter((a) => a.status === 'active').map((a) => (
                                 <option key={a._id} value={a._id}>{a.firstName} {a.lastName}</option>
                               ))}
                             </select>
                           </div>
                         )}
-                        <div className="col-span-2 flex items-center gap-3">
-                          <input type="checkbox" id="skipDup" checked={skipDuplicates} onChange={(e) => setSkipDuplicates(e.target.checked)} className="w-4 h-4" />
-                          <label htmlFor="skipDup" className="text-sm text-on-surface">Skip duplicates (by phone number)</label>
+                        <div className="col-span-2 flex items-start gap-3">
+                          <input type="checkbox" id="skipDup" checked={skipDuplicates} onChange={(e) => setSkipDuplicates(e.target.checked)} className="w-4 h-4 mt-0.5" />
+                          <label htmlFor="skipDup" className="text-sm text-on-surface">
+                            Skip duplicates (by phone number)
+                            <span className="block text-xs text-on-surface-variant mt-0.5">
+                              Checked within this team only — another team holding the same number will not block the import.
+                            </span>
+                          </label>
                         </div>
                       </div>
                     </>
@@ -676,7 +757,13 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
                   {/* Actions */}
                   <div className="flex justify-end gap-3 pt-2 border-t border-outline-variant/20">
                     <Button variant="outline" onClick={() => setIsImportOpen(false)}>Cancel</Button>
-                    <Button onClick={handleImport} disabled={!parsed || parsed.rows.length === 0 || importing}>
+                    <Button
+                      onClick={handleImport}
+                      // A super admin has no home team to fall back on, so the
+                      // batch would have nowhere to land.
+                      disabled={!parsed || parsed.rows.length === 0 || importing || (superAdmin && !importTeam)}
+                      title={superAdmin && !importTeam ? 'Choose which team these leads belong to' : undefined}
+                    >
                       {importing ? 'Importing…' : parsed?.rows.length ? `Import ${parsed.rows.length} Lead${parsed.rows.length === 1 ? '' : 's'}` : 'Import'}
                     </Button>
                   </div>

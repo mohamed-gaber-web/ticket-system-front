@@ -1,7 +1,78 @@
+// ── TeleSales Team ───────────────────────────────────────────────────────────
+
+/**
+ * The tenant boundary of the tele-sales module: Egypt, UAE and KSA each own their
+ * own leads, agents and pipeline and cannot see each other's data. Every lead and
+ * agent belongs to exactly one, and the backend scopes every query by it.
+ */
+export interface TeleSalesTeam {
+  _id: string;
+  name: string;
+  /** Short uppercase identifier — EG / AE / SA. */
+  code: string;
+  description?: string;
+  isActive: boolean;
+  /** Only returned by the single-team endpoint, for the management screen. */
+  agentCount?: number;
+  leadCount?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateTeamData {
+  name: string;
+  code: string;
+  description?: string;
+  isActive?: boolean;
+}
+
+export type UpdateTeamData = Partial<CreateTeamData>;
+
+export interface TeamsListResponse {
+  success: boolean;
+  total: number;
+  data: TeleSalesTeam[];
+}
+
+export interface TeamResponse {
+  success: boolean;
+  message: string;
+  data: TeleSalesTeam;
+}
+
+/**
+ * A team reference as it arrives on a lead or agent: populated by the API, but
+ * typed loosely because an un-populated payload is still just an id string.
+ */
+export type TeamRef = TeleSalesTeam | string | null;
+
+/** The team's display name, whatever shape the reference arrived in. */
+export function teamName(ref: TeamRef | undefined): string {
+  if (!ref || typeof ref === 'string') return '—';
+  return ref.name;
+}
+
+/** The team's id, whatever shape the reference arrived in. */
+export function teamId(ref: TeamRef | undefined): string {
+  if (!ref) return '';
+  return typeof ref === 'string' ? ref : ref._id;
+}
+
 // ── TeleSales Agent ──────────────────────────────────────────────────────────
 
-export type TeleSalesRole = 'user' | 'admin';
+/**
+ * user    → agent:       sees their whole team, works their own + unassigned leads
+ * manager → team head:   sees and works the whole team, manages its agents
+ * admin   → super admin: works across every team
+ */
+export type TeleSalesRole = 'user' | 'manager' | 'admin';
 export type TeleSalesStatus = 'active' | 'inactive';
+
+export const TELE_SALES_ROLE_LABELS: Record<TeleSalesRole, string> = {
+  user: 'Agent',
+  manager: 'Team Manager',
+  admin: 'Super Admin',
+};
 
 export interface TeleSalesAgent {
   _id: string;
@@ -12,6 +83,8 @@ export interface TeleSalesAgent {
   phone?: string;
   role: TeleSalesRole;
   status: TeleSalesStatus;
+  /** Null only for super admins, who work across every team. */
+  team?: TeamRef;
   lastLogin?: string;
   createdAt: string;
   updatedAt: string;
@@ -24,6 +97,8 @@ export interface CreateAgentData {
   password: string;
   phone?: string;
   role?: TeleSalesRole;
+  /** Ignored unless the caller is a super admin — managers always create in their own team. */
+  team?: string;
 }
 
 export interface UpdateAgentData {
@@ -32,6 +107,8 @@ export interface UpdateAgentData {
   phone?: string;
   status?: TeleSalesStatus;
   role?: TeleSalesRole;
+  /** Super admin only. */
+  team?: string;
 }
 
 export interface AgentsListResponse {
@@ -52,6 +129,8 @@ export interface AgentQueryParams {
   search?: string;
   status?: TeleSalesStatus;
   role?: TeleSalesRole;
+  /** Honoured for super admins only; everyone else is pinned to their own team. */
+  team?: string;
   page?: number;
   limit?: number;
 }
@@ -212,6 +291,12 @@ export interface Lead {
   // ────────────────────────────────────────────────────────────────────────────
   leadSource?: LeadSource;
   leadSourceDetail?: string;
+  /**
+   * The team that owns this lead — the access boundary. Distinct from `country`
+   * above, which says where the customer is: the Egypt team may own a Saudi
+   * prospect. Only a super admin can move a lead between teams.
+   */
+  team?: TeamRef;
   assignedTo?: TeleSalesAgent | null;
   priority: LeadPriority;
   potentialValue?: number;
@@ -255,6 +340,8 @@ export interface CreateLeadData {
   // ────────────────────────────────────────────────────────────────────────────
   leadSource?: LeadSource;
   leadSourceDetail?: string;
+  /** Ignored unless the caller is a super admin — everyone else creates in their own team. */
+  team?: string;
   assignedTo?: string;
   priority?: LeadPriority;
   potentialValue?: number;
@@ -272,7 +359,10 @@ export interface LeadQueryParams {
   search?: string;
   status?: LeadStatus;
   priority?: LeadPriority;
+  /** An agent id, or the literal 'unassigned' for the team's unclaimed pool. */
   assignedTo?: string;
+  /** Honoured for super admins only; everyone else is pinned to their own team. */
+  team?: string;
   tags?: string;
   salesType?: SalesType;
   entityType?: EntityType;
@@ -522,6 +612,9 @@ export interface ImportLeadsRequest {
   assignedTo?: string;
   status?: LeadStatus;
   leadSource?: LeadSource;
+  /** Ignored unless the caller is a super admin — everyone else imports into their own team. */
+  team?: string;
+  /** Duplicates are detected within the importing team only, not across teams. */
   skipDuplicates?: boolean;
 }
 

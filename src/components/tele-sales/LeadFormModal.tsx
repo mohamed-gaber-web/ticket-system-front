@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { createLead, updateLead } from '@/redux/slices/teleSalesLeadsSlice';
 import { fetchAgents } from '@/redux/slices/teleSalesAgentsSlice';
+import { fetchTeams } from '@/redux/slices/teleSalesTeamsSlice';
 import { fetchIndustrySectors } from '@/redux/slices/industrySectorSlice';
 import { fetchCountries } from '@/redux/slices/countrySlice';
 import { fetchBusinessClassifications } from '@/redux/slices/businessClassificationSlice';
@@ -13,8 +14,9 @@ import { LEAD_STATUSES, type LeadStatus } from '@/config/leadStatusWorkflow';
 import type {
   Lead, LeadPriority, LeadSource, CreateLeadData, EntityType, IndustrySector, SalesType,
 } from '@/types/teleSales.types';
-import { ENTITY_TYPES, INDUSTRY_SECTORS, SALES_TYPES, LEAD_SOURCE_DETAILS, isValidUrl } from '@/types/teleSales.types';
+import { ENTITY_TYPES, INDUSTRY_SECTORS, SALES_TYPES, LEAD_SOURCE_DETAILS, isValidUrl, teamId } from '@/types/teleSales.types';
 import { dialCodeForCountry, isValidPhoneForCountry } from '@/utils/countryPhone';
+import { isSuperAdmin, canManageTeam } from '@/lib/teleSalesRole';
 
 const LEAD_SOURCES: LeadSource[] = ['LinkedIn', 'Website', 'Referral', 'Cold Call', 'Exhibition', 'Partner', 'Other'];
 
@@ -100,6 +102,7 @@ const emptyForm: CreateLeadData = {
   dataSource: '',
   leadSource: undefined,
   leadSourceDetail: '',
+  team: '',
   assignedTo: '',
   priority: 'Medium',
   potentialValue: undefined,
@@ -130,6 +133,7 @@ const buildFormFromLead = (lead: Lead): CreateLeadData => ({
   dataSource: lead.dataSource || '',
   leadSource: lead.leadSource,
   leadSourceDetail: lead.leadSourceDetail || '',
+  team: teamId(lead.team),
   assignedTo: (lead.assignedTo as any)?._id || '',
   priority: lead.priority,
   potentialValue: lead.potentialValue,
@@ -159,8 +163,14 @@ export function LeadFormModal({ open, lead, defaultSalesType, onClose, onSaved }
   const { industrySectors } = useAppSelector((s) => s.industrySectors);
   const { countries } = useAppSelector((s) => s.countries);
   const { businessClassifications } = useAppSelector((s) => s.businessClassifications);
+  const { teams } = useAppSelector((s) => s.teleSalesTeams);
   const { user } = useAppSelector((s) => s.auth);
-  const isAdmin = (user as any)?.role === 'admin';
+
+  // Reassigning a lead between agents is a manager's call; moving one to another
+  // team is a super admin's. Both are enforced server-side — this only decides
+  // which controls are worth showing.
+  const superAdmin = isSuperAdmin(user);
+  const canAssign = canManageTeam(user);
 
   const sectorOptions = industrySectors.length
     ? industrySectors.filter((s) => s.isActive).map((s) => s.name)
@@ -186,11 +196,14 @@ export function LeadFormModal({ open, lead, defaultSalesType, onClose, onSaved }
   // Load the lookup lists the dropdowns need. Cheap enough to refetch per open.
   useEffect(() => {
     if (!open) return;
-    if (isAdmin) dispatch(fetchAgents(undefined));
+    // The roster is team-scoped server-side, so this is safe to load for anyone
+    // who might need the assignee picker.
+    if (canAssign) dispatch(fetchAgents(undefined));
+    if (superAdmin) dispatch(fetchTeams(undefined));
     dispatch(fetchIndustrySectors({ limit: 1000 }));
     dispatch(fetchCountries({ limit: 1000 }));
     dispatch(fetchBusinessClassifications({ limit: 1000 }));
-  }, [open, isAdmin, dispatch]);
+  }, [open, canAssign, superAdmin, dispatch]);
 
   // Which follow-up field (if any) the currently selected lead source asks for.
   const sourceDetailSpec = form.leadSource ? LEAD_SOURCE_DETAILS[form.leadSource] : undefined;
@@ -246,9 +259,19 @@ export function LeadFormModal({ open, lead, defaultSalesType, onClose, onSaved }
       );
       return;
     }
+    // A super admin has no home team for the backend to fall back on, so the lead
+    // would have nowhere to live and would be invisible to every agent.
+    if (superAdmin && !form.team) {
+      toast.error('Choose which team owns this lead');
+      return;
+    }
+
     const payload = { ...form, phonePrimary: primary, leadSourceDetail: detailSpec ? detail : '' };
     if (!payload.assignedTo) delete payload.assignedTo;
     if (!payload.potentialValue) delete payload.potentialValue;
+    // Everyone else works inside their own team; the server ignores the field for
+    // them, so sending it would only be misleading.
+    if (!superAdmin) delete payload.team;
 
     setSubmitting(true);
     try {
@@ -421,12 +444,30 @@ export function LeadFormModal({ open, lead, defaultSalesType, onClose, onSaved }
               <Field label="Potential Value">
                 <Input type="number" value={form.potentialValue || ''} onChange={(e) => setForm(p => ({ ...p, potentialValue: e.target.value ? Number(e.target.value) : undefined }))} placeholder="0" />
               </Field>
-              {isAdmin && (
-                <Field label="Assign To">
+              {canAssign && (
+                <Field label="Assign To" hint="Only agents on the owning team can be assigned.">
                   <SelectField value={form.assignedTo || ''} onChange={(e) => setForm(p => ({ ...p, assignedTo: e.target.value }))}>
-                    <option value="">Unassigned</option>
+                    <option value="">Unassigned — leave in the team pool</option>
                     {agents.filter((a) => a.status === 'active').map((a) => (
                       <option key={a._id} value={a._id}>{a.firstName} {a.lastName}</option>
+                    ))}
+                  </SelectField>
+                </Field>
+              )}
+              {/* Moving a lead across the tenant boundary removes it from its
+                  current team's view entirely, so only a super admin sees this. */}
+              {superAdmin && (
+                <Field
+                  label="Owning Team"
+                  required
+                  hint={lead
+                    ? 'Changing this hands the lead to another team. If its current owner is not on that team, it becomes unassigned.'
+                    : 'Only this team will see the lead.'}
+                >
+                  <SelectField value={form.team || ''} onChange={(e) => setForm(p => ({ ...p, team: e.target.value }))}>
+                    <option value="">Select a team</option>
+                    {teams.filter((t) => t.isActive || teamId(lead?.team) === t._id).map((t) => (
+                      <option key={t._id} value={t._id}>{t.name}</option>
                     ))}
                   </SelectField>
                 </Field>

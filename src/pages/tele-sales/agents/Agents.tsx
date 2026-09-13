@@ -1,35 +1,75 @@
 import { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchAgents, createAgent, updateAgent, deleteAgent, toggleAgentStatus } from '@/redux/slices/teleSalesAgentsSlice';
+import { fetchTeams } from '@/redux/slices/teleSalesTeamsSlice';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import Swal from 'sweetalert2';
-import { Plus, Search, Pencil, Trash2, ToggleLeft, ToggleRight, X, Shield, User } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, ToggleLeft, ToggleRight, X, Shield, User, Users, ShieldAlert } from 'lucide-react';
+import { isSuperAdmin, canManageTeam, ownTeamId, ownTeamName } from '@/lib/teleSalesRole';
+import { teamName, TELE_SALES_ROLE_LABELS } from '@/types/teleSales.types';
 import type { TeleSalesAgent, CreateAgentData, UpdateAgentData, TeleSalesRole } from '@/types/teleSales.types';
+
+/** Visual treatment per role, so the roster reads at a glance. */
+const ROLE_STYLES: Record<TeleSalesRole, string> = {
+  admin: 'bg-purple-100 text-purple-700',
+  manager: 'bg-amber-100 text-amber-700',
+  user: 'bg-blue-100 text-blue-700',
+};
 
 export default function Agents() {
   const dispatch = useAppDispatch();
   const { agents, loading, total } = useAppSelector((s) => s.teleSalesAgents);
+  const { teams } = useAppSelector((s) => s.teleSalesTeams);
+  const { user } = useAppSelector((s) => s.auth);
+
+  const superAdmin = isSuperAdmin(user);
+  const canManage = canManageTeam(user);
+
+  // A manager creates inside their own team and cannot choose another; only a
+  // super admin picks. Inactive teams stay out of the picker but existing
+  // assignments to them keep working.
+  const teamOptions = teams.filter((t) => t.isActive);
 
   const [search, setSearch] = useState('');
+  const [teamFilter, setTeamFilter] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingAgent, setEditingAgent] = useState<TeleSalesAgent | null>(null);
-  const [form, setForm] = useState<CreateAgentData>({ firstName: '', lastName: '', email: '', password: '', phone: '', role: 'user' });
+  const [form, setForm] = useState<CreateAgentData>({ firstName: '', lastName: '', email: '', password: '', phone: '', role: 'user', team: '' });
   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
-    dispatch(fetchAgents({ search: search || undefined, limit: 50 }));
-  }, [dispatch, search]);
+    dispatch(fetchAgents({
+      search: search || undefined,
+      team: superAdmin && teamFilter ? teamFilter : undefined,
+      limit: 50,
+    }));
+  }, [dispatch, search, teamFilter, superAdmin]);
+
+  // The team list drives both the filter and the form picker. Non-super-admins
+  // get back exactly one team — their own — which is what pins the form.
+  useEffect(() => { dispatch(fetchTeams(undefined)); }, [dispatch]);
 
   const openCreate = () => {
     setEditingAgent(null);
-    setForm({ firstName: '', lastName: '', email: '', password: '', phone: '', role: 'user' });
+    setForm({
+      firstName: '', lastName: '', email: '', password: '', phone: '', role: 'user',
+      team: superAdmin ? '' : ownTeamId(user),
+    });
     setIsDialogOpen(true);
   };
 
   const openEdit = (agent: TeleSalesAgent) => {
     setEditingAgent(agent);
-    setForm({ firstName: agent.firstName, lastName: agent.lastName, email: agent.email, password: '', phone: agent.phone || '', role: agent.role });
+    setForm({
+      firstName: agent.firstName,
+      lastName: agent.lastName,
+      email: agent.email,
+      password: '',
+      phone: agent.phone || '',
+      role: agent.role,
+      team: typeof agent.team === 'object' && agent.team ? agent.team._id : (agent.team as string) || '',
+    });
     setIsDialogOpen(true);
   };
 
@@ -51,8 +91,22 @@ export default function Agents() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.firstName || !form.lastName || !form.email) return;
+
+    // Super admins work across every team and so have no mandatory team; everyone
+    // else must sit in one or they would log in to an empty module.
+    const needsTeam = form.role !== 'admin';
+    if (needsTeam && !form.team) return;
+
     if (editingAgent) {
-      const updateData: UpdateAgentData = { firstName: form.firstName, lastName: form.lastName, phone: form.phone, role: form.role };
+      const updateData: UpdateAgentData = {
+        firstName: form.firstName,
+        lastName: form.lastName,
+        phone: form.phone,
+        role: form.role,
+      };
+      // Only a super admin may move someone between teams; the API ignores the
+      // field for anyone else, so there is no point sending it.
+      if (superAdmin) updateData.team = form.team || undefined;
       await dispatch(updateAgent({ id: editingAgent._id, data: updateData }));
     } else {
       if (!form.password) return;
@@ -66,17 +120,35 @@ export default function Agents() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-on-surface">Agents</h1>
-          <p className="text-sm text-on-surface-variant mt-0.5">{total} total agents</p>
+          <p className="text-sm text-on-surface-variant mt-0.5">
+            {total} agent{total === 1 ? '' : 's'}
+            {!superAdmin && <> in <span className="font-medium text-on-surface">{ownTeamName(user)}</span></>}
+          </p>
         </div>
-        <Button onClick={openCreate} className="gap-2">
-          <Plus className="w-4 h-4" /> New Agent
-        </Button>
+        {canManage && (
+          <Button onClick={openCreate} className="gap-2">
+            <Plus className="w-4 h-4" /> New Agent
+          </Button>
+        )}
       </div>
 
-      {/* Search */}
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
-        <Input placeholder="Search agents..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+      {/* Search + team filter */}
+      <div className="flex gap-3 flex-wrap">
+        <div className="relative max-w-sm flex-1 min-w-48">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
+          <Input placeholder="Search agents..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+        </div>
+        {/* Only a super admin spans more than one team, so only they get the filter. */}
+        {superAdmin && (
+          <select
+            value={teamFilter}
+            onChange={(e) => setTeamFilter(e.target.value)}
+            className="px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+          >
+            <option value="">All Teams</option>
+            {teams.map((t) => <option key={t._id} value={t._id}>{t.name}</option>)}
+          </select>
+        )}
       </div>
 
       {/* Table */}
@@ -94,7 +166,7 @@ export default function Agents() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-outline-variant/20 bg-surface-container/50">
-                {['Name', 'Email', 'Phone', 'Role', 'Status', ''].map((h) => (
+                {['Name', 'Email', 'Phone', 'Team', 'Role', 'Status', ''].map((h) => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
@@ -108,9 +180,20 @@ export default function Agents() {
                   <td className="px-4 py-3 text-on-surface-variant">{agent.email}</td>
                   <td className="px-4 py-3 text-on-surface-variant">{agent.phone || '—'}</td>
                   <td className="px-4 py-3">
-                    <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${agent.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
-                      {agent.role === 'admin' ? <Shield className="w-3 h-3" /> : <User className="w-3 h-3" />}
-                      {agent.role}
+                    {agent.role === 'admin' && !agent.team ? (
+                      <span className="text-xs text-on-surface-variant italic">All teams</span>
+                    ) : (
+                      <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-surface-container-high text-on-surface-variant">
+                        {teamName(agent.team)}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${ROLE_STYLES[agent.role] ?? ROLE_STYLES.user}`}>
+                      {agent.role === 'admin' ? <Shield className="w-3 h-3" />
+                        : agent.role === 'manager' ? <Users className="w-3 h-3" />
+                        : <User className="w-3 h-3" />}
+                      {TELE_SALES_ROLE_LABELS[agent.role] ?? agent.role}
                     </span>
                   </td>
                   <td className="px-4 py-3">
@@ -119,17 +202,23 @@ export default function Agents() {
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-1">
-                      <button onClick={() => openEdit(agent)} className="p-1.5 rounded-lg hover:bg-surface-container text-on-surface-variant hover:text-brand-500 transition-colors" title="Edit">
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                      <button onClick={() => handleToggle(agent)} className={`p-1.5 rounded-lg hover:bg-surface-container transition-colors ${agent.status === 'active' ? 'text-emerald-600 hover:text-emerald-700' : 'text-gray-400 hover:text-gray-600'}`} title="Toggle Status">
-                        {agent.status === 'active' ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
-                      </button>
-                      <button onClick={() => handleDelete(agent)} className="p-1.5 rounded-lg hover:bg-error/10 text-on-surface-variant hover:text-error transition-colors" title="Delete">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+                    {/* A manager may run their own team's roster but never touch a
+                        super admin's account — the API refuses it either way. */}
+                    {canManage && !(agent.role === 'admin' && !superAdmin) ? (
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => openEdit(agent)} className="p-1.5 rounded-lg hover:bg-surface-container text-on-surface-variant hover:text-brand-500 transition-colors" title="Edit">
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => handleToggle(agent)} className={`p-1.5 rounded-lg hover:bg-surface-container transition-colors ${agent.status === 'active' ? 'text-emerald-600 hover:text-emerald-700' : 'text-gray-400 hover:text-gray-600'}`} title="Toggle Status">
+                          {agent.status === 'active' ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
+                        </button>
+                        <button onClick={() => handleDelete(agent)} className="p-1.5 rounded-lg hover:bg-error/10 text-on-surface-variant hover:text-error transition-colors" title="Delete">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-on-surface-variant">—</span>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -182,10 +271,43 @@ export default function Agents() {
                 <label className="text-sm font-medium text-on-surface mb-1 block">Role</label>
                 <select value={form.role || 'user'} onChange={(e) => setForm(p => ({ ...p, role: e.target.value as TeleSalesRole }))}
                   className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
-                  <option value="user">User</option>
-                  <option value="admin">Admin</option>
+                  <option value="user">Agent — works their own leads, sees the whole team</option>
+                  <option value="manager">Team Manager — runs one team and its agents</option>
+                  {/* Minting an account that sees every team is a super admin's
+                      call alone; the API rejects it from anyone else. */}
+                  {superAdmin && <option value="admin">Super Admin — works across all teams</option>}
                 </select>
               </div>
+
+              {form.role === 'admin' ? (
+                <div className="flex items-start gap-2.5 rounded-xl bg-purple-50 border border-purple-200 px-3 py-2.5">
+                  <ShieldAlert className="w-4 h-4 text-purple-600 mt-0.5 shrink-0" />
+                  <p className="text-xs text-purple-800">
+                    A super admin sees and edits every team's leads and agents. Use sparingly.
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <label className="text-sm font-medium text-on-surface mb-1 block">Team *</label>
+                  <select
+                    value={form.team || ''}
+                    onChange={(e) => setForm(p => ({ ...p, team: e.target.value }))}
+                    // A manager's agents always land in the manager's own team, so
+                    // the control is fixed rather than offered.
+                    disabled={!superAdmin}
+                    required
+                    className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    <option value="">Select a team</option>
+                    {teamOptions.map((t) => <option key={t._id} value={t._id}>{t.name}</option>)}
+                  </select>
+                  <p className="text-xs text-on-surface-variant mt-1">
+                    {superAdmin
+                      ? 'This agent will only ever see the leads of this team.'
+                      : `New agents join your team, ${ownTeamName(user)}.`}
+                  </p>
+                </div>
+              )}
               <div className="flex justify-end gap-3 pt-2 border-t border-outline-variant/20">
                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
                 <Button type="submit" disabled={loading}>

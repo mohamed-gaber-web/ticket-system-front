@@ -163,6 +163,7 @@ const Leads = lazy(() => import("@/pages/tele-sales/leads/Leads"));
 const LeadDetail = lazy(() => import("@/pages/tele-sales/leads/LeadDetail"));
 const RecentCalls = lazy(() => import("@/pages/tele-sales/leads/RecentCalls"));
 const TeleSalesAgents = lazy(() => import("@/pages/tele-sales/agents/Agents"));
+const TeleSalesTeams = lazy(() => import("@/pages/tele-sales/teams/Teams"));
 
 // Tasks Module
 const Tasks = lazy(() => import("@/pages/tasks/Tasks"));
@@ -206,6 +207,9 @@ export const routes: RouteObject[] = [
       { path: "leads/:id", element: <Lazy><LeadDetail /></Lazy> },
       { path: "calls/recent", element: <Lazy><RecentCalls /></Lazy> },
       { path: "agents", element: <Lazy><TeleSalesAgents /></Lazy> },
+      // Team management is super-admin only; the page itself says so to anyone
+      // else who reaches it, and the API refuses every write regardless.
+      { path: "teams", element: <Lazy><TeleSalesTeams /></Lazy> },
     ],
   },
 
