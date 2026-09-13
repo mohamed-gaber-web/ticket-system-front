@@ -24,16 +24,19 @@ export function mergeCallEntries(callLogs: CallLog[], history: LeadStatusHistory
 
 export interface MergedFollowUpRow {
   id: string;
-  kind: 'manual' | 'status';
+  kind: 'manual';
   ts: string;
-  manual?: FollowUp;
-  statusEntry?: LeadStatusHistoryEntry;
+  manual: FollowUp;
 }
 
-export function mergeFollowUpEntries(followUps: FollowUp[], history: LeadStatusHistoryEntry[]): MergedFollowUpRow[] {
-  const manualRows: MergedFollowUpRow[] = followUps.map((f) => ({ id: `fu-${f._id}`, kind: 'manual', ts: f.reminderDate, manual: f }));
-  const statusRows: MergedFollowUpRow[] = history
-    .filter((h) => LEAD_STATUS_WORKFLOW[h.newStatus]?.fu)
-    .map((h) => ({ id: `status-${h._id}`, kind: 'status', ts: h.changedAt, statusEntry: h }));
-  return [...manualRows, ...statusRows].sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime());
+// Unlike calls, every `fu`-flagged status change (Follow-up, Meeting Scheduled,
+// Negotiation) always creates a real FollowUp document via the workflow's
+// `task()` hook — so there's nothing to fold in from status history here. A
+// synthetic row per status change used to be added on top of it, which just
+// showed the same follow-up twice (once fully interactive, once as a
+// read-only, icon-less duplicate). Follow-ups are just the manual list, sorted.
+export function mergeFollowUpEntries(followUps: FollowUp[]): MergedFollowUpRow[] {
+  return followUps
+    .map((f) => ({ id: `fu-${f._id}`, kind: 'manual' as const, ts: f.reminderDate, manual: f }))
+    .sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime());
 }

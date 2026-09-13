@@ -9,18 +9,19 @@ import { PhoneLink } from '@/components/PhoneLink';
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import {
-  ArrowLeft, Phone, Mail, Building2, User, Briefcase, Tag, Edit2,
+  ArrowLeft, Phone, Mail, Building2, User, Briefcase, Tag, Edit2, Pencil,
   PhoneCall, Calendar, Paperclip, Plus, CheckCircle2, Trash2, MapPin,
   Globe, FileText, Upload, Download, File as FileIcon, Image as ImageIcon,
   Send, AlertCircle, ChevronDown, ChevronRight,
 } from 'lucide-react';
 import GmailCompose from '@/components/tele-sales/GmailCompose';
 import { StatusChangeModal } from '@/components/tele-sales/StatusChangeModal';
+import { LeadFormModal } from '@/components/tele-sales/LeadFormModal';
 import { PipelineStepper } from '@/components/tele-sales/PipelineStepper';
 import { StatusHistoryTab } from '@/components/tele-sales/StatusHistoryTab';
 import { mergeCallEntries, mergeFollowUpEntries } from '@/utils/leadActivityMerge';
 import { STATUS_COLORS, LEAD_STATUS_WORKFLOW } from '@/config/leadStatusWorkflow';
-import type { CallLog, FollowUp, FollowUpType, CreateCallLogData, CreateFollowUpData, LeadAttachment, LeadEmail, LeadStatusHistoryEntry } from '@/types/teleSales.types';
+import type { CallLog, FollowUp, CreateCallLogData, LeadAttachment, LeadEmail, LeadStatusHistoryEntry } from '@/types/teleSales.types';
 import { LEAD_SOURCE_DETAILS } from '@/types/teleSales.types';
 
 const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15MB
@@ -66,14 +67,12 @@ export default function LeadDetail() {
   const [callForm, setCallForm] = useState<CreateCallLogData>({ notes: '', duration: undefined });
   const [showCallForm, setShowCallForm] = useState(false);
 
-  // Follow-up form
-  const emptyFuForm: CreateFollowUpData = { reminderDate: '', followUpType: 'Call', notes: '', status: 'Pending' };
-  const [fuForm, setFuForm] = useState<CreateFollowUpData>(emptyFuForm);
-  const [showFuForm, setShowFuForm] = useState(false);
-
   // Status change modal + history
   const [statusModalOpen, setStatusModalOpen] = useState(false);
   const [statusHistory, setStatusHistory] = useState<LeadStatusHistoryEntry[]>([]);
+
+  // Edit lead modal
+  const [editOpen, setEditOpen] = useState(false);
 
   // isAdmin reserved for future use (e.g. reassign controls)
   // const isAdmin = (user as any)?.role === 'admin';
@@ -230,21 +229,6 @@ export default function LeadDetail() {
     }
   };
 
-  const handleAddFollowUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!id || !fuForm.reminderDate || !fuForm.followUpType) { toast.error('Date and type are required'); return; }
-    try {
-      await teleSalesApi.addFollowUp(id, fuForm);
-      toast.success('Follow-up added');
-      setFuForm(emptyFuForm);
-      setShowFuForm(false);
-      await loadFollowUps();
-      dispatch(fetchLeadById(id));
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed');
-    }
-  };
-
   const handleMarkFollowUpDone = async (fuId: string) => {
     if (!id) return;
     try {
@@ -325,6 +309,9 @@ export default function LeadDetail() {
 
         {/* Quick actions */}
         <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setEditOpen(true)} className="gap-2">
+            <Pencil className="w-4 h-4" /> Edit Lead
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -369,7 +356,7 @@ export default function LeadDetail() {
               className={`px-5 py-3 text-sm font-medium transition-colors border-b-2 -mb-px ${tab === t ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant hover:text-on-surface'}`}>
               {t === 'info' ? 'Info'
                 : t === 'calls' ? `Calls (${mergeCallEntries(callLogs, statusHistory).length})`
-                : t === 'followups' ? `Follow-ups (${mergeFollowUpEntries(followUps, statusHistory).length})`
+                : t === 'followups' ? `Follow-ups (${mergeFollowUpEntries(followUps).length})`
                 : t === 'emails' ? `Emails (${emails.length})`
                 : t === 'attachments' ? `Attachments (${attachments.length})`
                 : `Status History (${statusHistory.length})`}
@@ -539,49 +526,14 @@ export default function LeadDetail() {
       {/* Tab: Follow-ups */}
       {tab === 'followups' && (
         <div className="space-y-4">
-          <div className="flex justify-end">
-            <Button onClick={() => setShowFuForm(!showFuForm)} variant="outline" className="gap-2">
-              <Plus className="w-4 h-4" /> Add Follow-up
-            </Button>
-          </div>
-
-          {showFuForm && (
-            <form onSubmit={handleAddFollowUp} className="bg-surface-container-lowest rounded-2xl border border-outline-variant/20 p-5 space-y-4">
-              <h3 className="font-semibold text-on-surface">New Follow-up</h3>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-sm font-medium text-on-surface mb-1 block">Reminder Date *</label>
-                  <input type="datetime-local" value={fuForm.reminderDate} onChange={(e) => setFuForm(p => ({ ...p, reminderDate: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30" />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-on-surface mb-1 block">Type *</label>
-                  <select value={fuForm.followUpType} onChange={(e) => setFuForm(p => ({ ...p, followUpType: e.target.value as FollowUpType }))}
-                    className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
-                    {(['Call', 'WhatsApp', 'Email', 'Meeting'] as FollowUpType[]).map((t) => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-on-surface mb-1 block">Notes</label>
-                <textarea value={fuForm.notes || ''} onChange={(e) => setFuForm(p => ({ ...p, notes: e.target.value }))}
-                  rows={2} className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none" placeholder="What to discuss..." />
-              </div>
-              <div className="flex justify-end gap-3">
-                <Button type="button" variant="outline" size="sm" onClick={() => setShowFuForm(false)}>Cancel</Button>
-                <Button type="submit" size="sm">Save Follow-up</Button>
-              </div>
-            </form>
-          )}
-
-          {mergeFollowUpEntries(followUps, statusHistory).length === 0 ? (
+          {mergeFollowUpEntries(followUps).length === 0 ? (
             <div className="flex flex-col items-center py-12 text-on-surface-variant bg-surface-container-lowest rounded-2xl border border-outline-variant/20">
               <Calendar className="w-8 h-8 mb-2 opacity-30" />
               <p className="text-sm">No follow-ups yet</p>
             </div>
           ) : (
             <div className="space-y-3">
-              {mergeFollowUpEntries(followUps, statusHistory).map((row) => row.kind === 'manual' && row.manual ? (
+              {mergeFollowUpEntries(followUps).map((row) => (
                 <div key={row.id} className={`rounded-2xl border p-5 ${row.manual.status === 'Done' ? 'bg-surface-container/50 border-outline-variant/10 opacity-60' : 'bg-surface-container-lowest border-outline-variant/20'}`}>
                   <div className="flex items-start justify-between">
                     <div>
@@ -596,30 +548,17 @@ export default function LeadDetail() {
                     </div>
                     <div className="flex items-center gap-1">
                       {row.manual.status === 'Pending' && (
-                        <button onClick={() => handleMarkFollowUpDone(row.manual!._id)} className="p-1.5 rounded-lg hover:bg-emerald-50 text-on-surface-variant hover:text-emerald-600" title="Mark Done">
+                        <button onClick={() => handleMarkFollowUpDone(row.manual._id)} className="p-1.5 rounded-lg hover:bg-emerald-50 text-on-surface-variant hover:text-emerald-600" title="Mark Done">
                           <CheckCircle2 className="w-4 h-4" />
                         </button>
                       )}
-                      <button onClick={() => handleDeleteFollowUp(row.manual!._id)} className="p-1.5 rounded-lg hover:bg-error/10 text-on-surface-variant hover:text-error" title="Delete">
+                      <button onClick={() => handleDeleteFollowUp(row.manual._id)} className="p-1.5 rounded-lg hover:bg-error/10 text-on-surface-variant hover:text-error" title="Delete">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
                 </div>
-              ) : row.statusEntry ? (
-                <div key={row.id} className="bg-surface-container-lowest rounded-2xl border border-outline-variant/20 p-5">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span
-                      className="text-xs font-semibold px-2 py-0.5 rounded-full"
-                      style={{ background: LEAD_STATUS_WORKFLOW[row.statusEntry.newStatus]?.bg, color: LEAD_STATUS_WORKFLOW[row.statusEntry.newStatus]?.color }}
-                    >
-                      {row.statusEntry.newStatus}
-                    </span>
-                    <span className="text-xs text-on-surface-variant">{formatDateTime(row.statusEntry.changedAt)}</span>
-                  </div>
-                  <p className="text-xs text-on-surface-variant mt-1.5">{summarizeFieldValues(row.statusEntry)}</p>
-                </div>
-              ) : null)}
+              ))}
             </div>
           )}
         </div>
@@ -805,6 +744,12 @@ export default function LeadDetail() {
         open={statusModalOpen}
         onClose={() => setStatusModalOpen(false)}
         onChanged={handleStatusChanged}
+      />
+
+      <LeadFormModal
+        open={editOpen}
+        lead={lead}
+        onClose={() => setEditOpen(false)}
       />
 
       {/* Gmail-style compose window */}

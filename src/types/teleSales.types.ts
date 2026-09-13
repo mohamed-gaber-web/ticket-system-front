@@ -302,7 +302,7 @@ export interface LeadStatsResponse {
   success: boolean;
   data: {
     total: number;
-    byStatus: { _id: LeadStatus; count: number }[];
+    byStatus: { _id: LeadStatus; count: number; value: number }[];
   };
 }
 
@@ -545,5 +545,5 @@ export interface ImportLeadsResponse {
 
 export interface LeadStats {
   total: number;
-  byStatus: { _id: LeadStatus; count: number }[];
+  byStatus: { _id: LeadStatus; count: number; value: number }[];
 }
