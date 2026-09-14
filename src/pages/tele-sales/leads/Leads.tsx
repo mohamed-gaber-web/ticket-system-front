@@ -117,7 +117,11 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
   useEffect(() => { load(); }, [load]);
   // Every member of a team now needs the roster: the table shows assignee names
   // and the owner filter lists colleagues. The API returns only this team's agents.
-  useEffect(() => { dispatch(fetchAgents(undefined)); }, [dispatch]);
+  //
+  // The explicit limit matters — the endpoint defaults to 20, which would silently
+  // drop everyone but the 20 newest hires from the owner filter and the assignee
+  // picker, with no indication the list was truncated.
+  useEffect(() => { dispatch(fetchAgents({ limit: 200 })); }, [dispatch]);
   // Load the sector + team lookups once so the filter dropdowns can render them.
   useEffect(() => { dispatch(fetchIndustrySectors({ limit: 1000 })); }, [dispatch]);
   useEffect(() => { dispatch(fetchTeams(undefined)); }, [dispatch]);

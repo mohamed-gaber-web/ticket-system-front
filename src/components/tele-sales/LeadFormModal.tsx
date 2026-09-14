@@ -197,8 +197,9 @@ export function LeadFormModal({ open, lead, defaultSalesType, onClose, onSaved }
   useEffect(() => {
     if (!open) return;
     // The roster is team-scoped server-side, so this is safe to load for anyone
-    // who might need the assignee picker.
-    if (canAssign) dispatch(fetchAgents(undefined));
+    // who might need the assignee picker. The limit is explicit because the
+    // endpoint defaults to 20, which would quietly hide older colleagues from it.
+    if (canAssign) dispatch(fetchAgents({ limit: 200 }));
     if (superAdmin) dispatch(fetchTeams(undefined));
     dispatch(fetchIndustrySectors({ limit: 1000 }));
     dispatch(fetchCountries({ limit: 1000 }));

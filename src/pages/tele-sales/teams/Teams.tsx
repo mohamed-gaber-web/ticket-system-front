@@ -30,8 +30,13 @@ export default function Teams() {
   const [editingTeam, setEditingTeam] = useState<TeleSalesTeam | null>(null);
   const [form, setForm] = useState<CreateTeamData>(emptyForm);
 
+  // Debounced: the effect keys off `search`, so without this every keystroke
+  // would fire its own request.
   useEffect(() => {
-    dispatch(fetchTeams(search ? { search } : undefined));
+    const t = setTimeout(() => {
+      dispatch(fetchTeams(search ? { search } : undefined));
+    }, 300);
+    return () => clearTimeout(t);
   }, [dispatch, search]);
 
   const openCreate = () => {

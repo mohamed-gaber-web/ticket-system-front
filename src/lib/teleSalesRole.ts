@@ -27,8 +27,18 @@ export const isTeamManager = (user: MaybeUser): boolean => (user as any)?.role =
  */
 export const canManageTeam = (user: MaybeUser): boolean => isSuperAdmin(user) || isTeamManager(user);
 
+/**
+ * The caller's own team reference.
+ *
+ * Tele-sales agents carry `team`; consultants who reach the module carry
+ * `teleSalesTeam`. Both are checked here for the same reason `callerTeamId` does
+ * on the backend — a sales-department consultant has only the second one, and
+ * reading just `team` would report them as having no team at all.
+ */
+const ownTeamRef = (user: MaybeUser) => (user as any)?.team ?? (user as any)?.teleSalesTeam;
+
 /** The caller's own team id, or '' for a super admin with no home team. */
-export const ownTeamId = (user: MaybeUser): string => teamId((user as any)?.team);
+export const ownTeamId = (user: MaybeUser): string => teamId(ownTeamRef(user));
 
 /** The caller's own team name, for the header badge. */
-export const ownTeamName = (user: MaybeUser): string => teamName((user as any)?.team);
+export const ownTeamName = (user: MaybeUser): string => teamName(ownTeamRef(user));
