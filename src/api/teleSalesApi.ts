@@ -25,7 +25,34 @@ import type {
   ChangeLeadStatusData,
   ChangeLeadStatusResponse,
   LeadStatusHistoryResponse,
+  TeamsListResponse,
+  TeamResponse,
+  CreateTeamData,
+  UpdateTeamData,
 } from '@/types/teleSales.types';
+
+// ── Teams ─────────────────────────────────────────────────────────────────────
+// Readable by everyone in the module (the UI needs team names to label records),
+// but the API only ever returns the caller's own team unless they are a super
+// admin. Creating and editing teams is super-admin only.
+
+export const getTeams = (params?: { isActive?: boolean; search?: string }): Promise<TeamsListResponse> =>
+  api.get('/tele-sales-teams', { params }).then((r) => r.data);
+
+export const getTeamById = (id: string): Promise<TeamResponse> =>
+  api.get(`/tele-sales-teams/${id}`).then((r) => r.data);
+
+export const createTeam = (data: CreateTeamData): Promise<TeamResponse> =>
+  api.post('/tele-sales-teams', data).then((r) => r.data);
+
+export const updateTeam = (id: string, data: UpdateTeamData): Promise<TeamResponse> =>
+  api.patch(`/tele-sales-teams/${id}`, data).then((r) => r.data);
+
+export const deleteTeam = (id: string): Promise<{ success: boolean; message: string }> =>
+  api.delete(`/tele-sales-teams/${id}`).then((r) => r.data);
+
+export const toggleTeamStatus = (id: string): Promise<TeamResponse> =>
+  api.patch(`/tele-sales-teams/${id}/toggle-status`).then((r) => r.data);
 
 // ── Agents ────────────────────────────────────────────────────────────────────
 

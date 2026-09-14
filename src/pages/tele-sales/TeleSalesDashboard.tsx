@@ -25,7 +25,9 @@ import {
   Users,
   Wallet,
   Target,
+  Globe,
 } from 'lucide-react';
+import { isSuperAdmin, ownTeamName } from '@/lib/teleSalesRole';
 
 /* ─────────────────────────────────────────────────────────────
    Spring presets — matches the main Tickets dashboard's motion language.
@@ -203,8 +205,20 @@ export default function TeleSalesDashboard() {
     <div className="p-6 space-y-6">
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={SP}>
-        <h1 className="text-2xl font-bold text-on-surface">Welcome back, {agentName}</h1>
-        <p className="text-on-surface-variant text-sm mt-1">Here's your TeleSales overview</p>
+        <div className="flex items-center gap-3 flex-wrap">
+          <h1 className="text-2xl font-bold text-on-surface">Welcome back, {agentName}</h1>
+          {/* Every number below is scoped to one team. Naming it stops an agent
+              reading these totals as company-wide. */}
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-primary/10 text-primary">
+            <Globe className="w-3 h-3" />
+            {isSuperAdmin(user) ? 'All teams' : ownTeamName(user)}
+          </span>
+        </div>
+        <p className="text-on-surface-variant text-sm mt-1">
+          {isSuperAdmin(user)
+            ? "Here's the TeleSales overview across every team"
+            : "Here's your team's TeleSales overview"}
+        </p>
       </motion.div>
 
       {/* Key Stats */}

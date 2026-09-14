@@ -164,22 +164,33 @@ const TEAM_MEMBER_LINKS = [
   { name: "My Assignments", path: "/my-assignments", icon: ClipboardList },
 ];
 
-// TeleSales admin links
-const TELE_SALES_ADMIN_LINKS = [
+// Shared by every tele-sales role — the day-to-day pipeline screens.
+const TELE_SALES_CORE_LINKS = [
   { name: "Dashboard", path: "/tele-sales", icon: LayoutDashboard },
   { name: "Leads", path: "/tele-sales/leads", icon: PhoneCall },
   { name: "Opportunities", path: "/tele-sales/opportunities", icon: Star },
   { name: "Recent Calls", path: "/tele-sales/calls/recent", icon: Clock },
+];
+
+// TeleSales super admin — the only role that manages the teams themselves.
+const TELE_SALES_ADMIN_LINKS = [
+  ...TELE_SALES_CORE_LINKS,
+  { name: "Agents", path: "/tele-sales/agents", icon: UserPlus },
+  { name: "Teams", path: "/tele-sales/teams", icon: Globe },
+  TELE_SALES_MODULES_GROUP,
+];
+
+// TeleSales team manager — runs one team's roster, but cannot create or rename
+// the teams themselves, so no Teams entry.
+const TELE_SALES_MANAGER_LINKS = [
+  ...TELE_SALES_CORE_LINKS,
   { name: "Agents", path: "/tele-sales/agents", icon: UserPlus },
   TELE_SALES_MODULES_GROUP,
 ];
 
-// TeleSales user links
+// TeleSales agent — pipeline screens only.
 const TELE_SALES_USER_LINKS = [
-  { name: "Dashboard", path: "/tele-sales", icon: LayoutDashboard },
-  { name: "Leads", path: "/tele-sales/leads", icon: PhoneCall },
-  { name: "Opportunities", path: "/tele-sales/opportunities", icon: Star },
-  { name: "Recent Calls", path: "/tele-sales/calls/recent", icon: Clock },
+  ...TELE_SALES_CORE_LINKS,
   TELE_SALES_MODULES_GROUP,
 ];
 
@@ -237,6 +248,7 @@ const TELE_SALES_GROUP = {
     { name: "Opportunities", path: "/tele-sales/opportunities", icon: Star },
     { name: "Recent Calls", path: "/tele-sales/calls/recent", icon: Clock },
     { name: "Agents", path: "/tele-sales/agents", icon: UserPlus },
+    { name: "Teams", path: "/tele-sales/teams", icon: Globe },
     {
       name: "Modules",
       icon: Layers,
@@ -372,7 +384,10 @@ export const getRouterLinksByUserType = (
     return TEAM_MEMBER_LINKS;
   }
   if (userType === 'tele_sales') {
-    return userRole === 'admin' ? TELE_SALES_ADMIN_LINKS : TELE_SALES_USER_LINKS;
+    if (userRole === 'admin') return TELE_SALES_ADMIN_LINKS;
+    // A team manager gets the roster screen, scoped by the API to their own team.
+    if (userRole === 'manager') return TELE_SALES_MANAGER_LINKS;
+    return TELE_SALES_USER_LINKS;
   }
   // For admins, show all links
   return ROUTERLINKS;
