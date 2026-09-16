@@ -42,3 +42,18 @@ Mixed roles use this system: support agents triaging and resolving tickets, mana
 - **State:** Redux Toolkit
 - **Charts:** Recharts
 - **Theme:** next-themes (light/dark)
+
+## Access model (who sees what)
+
+Two user types (`employee` | `customer`) and one flat employee role list —
+`admin`, `consultant`, `sales`, `sales_manager`, `marketing`, `marketing_manager`.
+Roles unlock **modules** (`tickets`, `telesales`, `tasks`, `admin`); an admin may
+override the module list per employee. The API is the authority; the client only
+mirrors it so the sidebar, guards and buttons agree.
+
+- `src/lib/access.ts` — role/module vocabulary and `effectiveModules`. Keep in step with the backend's `src/utils/roles.js`.
+- `useAccess()` (`src/redux/hooks/useAccess.ts`) — `isAdmin`, `isManager`, `hasModule(m)`, `isMarketing`, `isCrossTeam`… Use it instead of reading `state.auth.consultantRole` directly.
+- `ProtectedRoute` + `EmployeeRoute` / `ModuleRoute` / `ManagerRoute` / `AdminRoute` — route guards in `src/components/auth/ProtectedRoute.tsx`.
+- Sidebar: `EMPLOYEE_NAV` in `src/constatnts/app.constant.ts` — every entry is tagged with its module and optional `minRole`; add a link there, never a per-role array.
+- One login page (`/login`) for everyone; the e-mail decides. Customers land on the "Customer Portal" shell (same `Layout`, customer link set).
+- Tele-sales role helpers live in `src/lib/teleSalesRole.ts` (`isSuperAdmin` = admin or sales manager, `isReadOnly` = marketing).
