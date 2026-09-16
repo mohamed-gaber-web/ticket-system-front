@@ -28,6 +28,9 @@ const REQUIRED_FIELDS: { key: keyof CreateLeadData; label: string }[] = [
   { key: 'email', label: 'Email' },
   { key: 'website', label: 'Website' },
   { key: 'leadSource', label: 'Lead source' },
+  { key: 'entityType', label: 'Entity type' },
+  { key: 'industrySector', label: 'Industry sector' },
+  { key: 'businessClassification', label: 'Business classification' },
 ];
 
 const EMAIL_REGEX = /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/;
@@ -260,6 +263,12 @@ export function LeadFormModal({ open, lead, defaultSalesType, onClose, onSaved }
       );
       return;
     }
+    // Only rendered for managers/admins — a plain agent is auto-assigned to
+    // themselves server-side instead. See LeadFormModal's Assign To field.
+    if (canAssign && !form.assignedTo) {
+      toast.error('Choose who this lead is assigned to');
+      return;
+    }
     // A super admin has no home team for the backend to fall back on, so the lead
     // would have nowhere to live and would be invisible to every agent.
     if (superAdmin && !form.team) {
@@ -333,13 +342,13 @@ export function LeadFormModal({ open, lead, defaultSalesType, onClose, onSaved }
 
           <SectionCard icon={<MapPin className="w-5 h-5" />} title="Classification & Location">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field label="Entity Type">
+              <Field label="Entity Type" required>
                 <SelectField value={form.entityType || ''} onChange={(e) => setForm(p => ({ ...p, entityType: (e.target.value as EntityType) || undefined }))}>
                   <option value="">Select type</option>
                   {ENTITY_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
                 </SelectField>
               </Field>
-              <Field label="Industry Sector">
+              <Field label="Industry Sector" required>
                 <SelectField value={form.industrySector || ''} onChange={(e) => setForm(p => ({ ...p, industrySector: (e.target.value as IndustrySector) || undefined }))}>
                   <option value="">Select sector</option>
                   {(form.industrySector && !sectorOptions.includes(form.industrySector)
@@ -348,7 +357,7 @@ export function LeadFormModal({ open, lead, defaultSalesType, onClose, onSaved }
                   ).map((s) => <option key={s} value={s}>{s}</option>)}
                 </SelectField>
               </Field>
-              <Field label="Business Classification" className="sm:col-span-2" hint="Specific activity — managed from Modules ▸ Business Classifications.">
+              <Field label="Business Classification" required className="sm:col-span-2" hint="Specific activity — managed from Modules ▸ Business Classifications.">
                 <SelectField value={form.businessClassification || ''} onChange={(e) => setForm(p => ({ ...p, businessClassification: e.target.value }))}>
                   <option value="">Select classification</option>
                   {(form.businessClassification && !classificationOptions.includes(form.businessClassification)
@@ -446,9 +455,9 @@ export function LeadFormModal({ open, lead, defaultSalesType, onClose, onSaved }
                 <Input type="number" value={form.potentialValue || ''} onChange={(e) => setForm(p => ({ ...p, potentialValue: e.target.value ? Number(e.target.value) : undefined }))} placeholder="0" />
               </Field>
               {canAssign && (
-                <Field label="Assign To" hint="Only agents on the owning team can be assigned.">
+                <Field label="Assign To" required hint="Only agents on the owning team can be assigned.">
                   <SelectField value={form.assignedTo || ''} onChange={(e) => setForm(p => ({ ...p, assignedTo: e.target.value }))}>
-                    <option value="">Unassigned — leave in the team pool</option>
+                    <option value="">Select agent</option>
                     {agents.filter((a) => a.status === 'active').map((a) => (
                       <option key={a._id} value={a._id}>{a.firstName} {a.lastName}</option>
                     ))}
