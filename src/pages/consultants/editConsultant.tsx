@@ -8,7 +8,9 @@ import { Input } from '@/components/ui/input';
 import { CustomSelect } from '@/components/ui/custom-select';
 import { ProfilePictureUpload } from '@/components/ui/profile-picture-upload';
 import { ArrowLeft, Save } from 'lucide-react';
-import type { UpdateConsultantData, ConsultantRole, ConsultantStatus } from '@/types/consultant.types';
+import type { UpdateConsultantData, ConsultantStatus } from '@/types/consultant.types';
+import { EmployeeAccessFields } from '@/components/employees/EmployeeAccessFields';
+import { useAccess } from '@/redux/hooks/useAccess';
 
 export default function EditConsultant() {
   const { id } = useParams<{ id: string }>();
@@ -16,9 +18,9 @@ export default function EditConsultant() {
   const dispatch = useAppDispatch();
   const { currentConsultant, loading } = useAppSelector((state) => state.consultants);
   const { departments } = useAppSelector((state) => state.departments);
-  const isAdmin = useAppSelector((state) => state.auth.consultantRole) === 'admin';
+  const access = useAccess();
 
-  if (!isAdmin) {
+  if (!access.isManagerOrAdmin) {
     return <Navigate to="/unauthorized" replace />;
   }
 
@@ -30,6 +32,8 @@ export default function EditConsultant() {
     position: '',
     role: 'consultant',
     department: undefined,
+    teleSalesTeam: null,
+    modules: [],
     status: 'active',
     monthlyTargetHours: null,
     profilePicture: null,
@@ -55,6 +59,10 @@ export default function EditConsultant() {
         department: typeof currentConsultant.department === 'object' && currentConsultant.department
           ? (currentConsultant.department as any)._id
           : (currentConsultant.department as string | undefined),
+        teleSalesTeam: typeof currentConsultant.teleSalesTeam === 'object' && currentConsultant.teleSalesTeam
+          ? (currentConsultant.teleSalesTeam as any)._id
+          : (currentConsultant.teleSalesTeam as string | null | undefined) ?? null,
+        modules: currentConsultant.modules ?? [],
         status: currentConsultant.status,
         monthlyTargetHours: currentConsultant.monthlyTargetHours ?? null,
         profilePicture: currentConsultant.profilePicture ?? null,
@@ -231,31 +239,18 @@ export default function EditConsultant() {
             </p>
           </div>
 
+          <EmployeeAccessFields
+            value={{
+              role: formData.role || 'consultant',
+              department: formData.department,
+              teleSalesTeam: formData.teleSalesTeam,
+              modules: formData.modules,
+            }}
+            onChange={(next) => setFormData((prev) => ({ ...prev, ...next }))}
+            departments={departments}
+          />
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="form-label">Role</label>
-              <CustomSelect
-                value={formData.role || 'consultant'}
-                onChange={(val) => handleChange('role', val as ConsultantRole)}
-                options={[
-                  { value: 'consultant', label: 'Consultant' },
-                  { value: 'admin', label: 'Admin' },
-                ]}
-              />
-            </div>
-
-            <div>
-              <label className="form-label">Department</label>
-              <CustomSelect
-                value={formData.department ?? ''}
-                onChange={(val) => setFormData((prev) => ({ ...prev, department: val || undefined }))}
-                options={[
-                  { value: '', label: 'None' },
-                  ...departments.map((d) => ({ value: d._id, label: d.name })),
-                ]}
-              />
-            </div>
-
             <div>
               <label className="form-label">Status</label>
               <CustomSelect

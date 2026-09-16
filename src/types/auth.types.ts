@@ -1,9 +1,28 @@
-// User Types
-export type UserType = 'customer' | 'consultant' | 'team_member' | 'tele_sales';
+// User Types — two kinds of people log in. The token carries `userType`; every
+// member of staff is an "employee" whatever their role.
+export type UserType = 'employee' | 'customer';
 
 export type { CustomerRole } from './customer.types';
 
-export type UserStatus = 'active' | 'inactive' | 'suspended' | 'pending';
+export type UserStatus = 'active' | 'inactive' | 'suspended' | 'pending' | 'on_leave';
+
+/**
+ * Employee roles — one flat list. The role decides which modules open by
+ * default (see src/lib/access.ts); an admin may override the module list per
+ * employee. Roles ending in `_manager` run their "family" (sales_manager runs
+ * the sales people).
+ */
+export type EmployeeRole =
+  | 'admin'
+  | 'consultant'
+  | 'sales'
+  | 'sales_manager'
+  | 'marketing'
+  | 'marketing_manager';
+
+export type RoleFamily = 'admin' | 'consultant' | 'sales' | 'marketing';
+
+export type ModuleKey = 'tickets' | 'telesales' | 'tasks' | 'admin';
 
 // Base User Interface
 export interface User {
@@ -30,21 +49,29 @@ export interface Customer extends User {
   role?: import('./customer.types').CustomerRole;
 }
 
-// Consultant specific fields
-export interface Consultant extends User {
-  userType: 'consultant';
-  expertise?: string[];
-  availabilityStatus?: string;
-  role?: 'consultant' | 'admin';
-  department?: 'sales' | 'marketing' | 'administration';
+export interface TeleSalesTeamRef {
+  _id: string;
+  name: string;
+  code?: string;
+  isActive?: boolean;
 }
 
-// Team Member specific fields
-export interface TeamMember extends User {
-  userType: 'team_member';
-  team?: string;
-  role?: string;
+// Employee specific fields
+export interface Employee extends User {
+  userType: 'employee';
+  firstName?: string;
+  lastName?: string;
+  position?: string;
+  role: EmployeeRole;
+  /** Resolved by the API: the role defaults, or the admin's override. */
+  modules?: ModuleKey[];
+  department?: { _id: string; name: string } | string | null;
+  teleSalesTeam?: TeleSalesTeamRef | string | null;
+  monthlyTargetHours?: number | null;
 }
+
+/** @deprecated use Employee */
+export type Consultant = Employee;
 
 // Authentication Request/Response Types
 export interface SignupRequest {
@@ -59,16 +86,17 @@ export interface SignupRequest {
   userType: UserType;
 }
 
+// The e-mail alone decides the account; userType is optional (legacy clients).
 export interface SigninRequest {
   email: string;
   password: string;
-  userType: UserType;
+  userType?: UserType;
 }
 
 export interface AuthResponse {
   success: boolean;
   message: string;
-  data: User | Customer | Consultant | TeamMember;
+  data: User | Customer | Employee;
   token: string;
   refreshToken?: string;
   userType: UserType;
@@ -77,7 +105,7 @@ export interface AuthResponse {
 export interface ProfileResponse {
   success: boolean;
   userType: UserType;
-  data: User | Customer | Consultant | TeamMember;
+  data: User | Customer | Employee;
 }
 
 export interface UpdateProfileRequest {
@@ -99,7 +127,7 @@ export interface ChangePasswordRequest {
 
 export interface ForgotPasswordRequest {
   email: string;
-  userType: UserType;
+  userType?: UserType;
 }
 
 export interface ResetPasswordRequest {
@@ -109,21 +137,25 @@ export interface ResetPasswordRequest {
 
 export interface RefreshTokenRequest {
   refreshToken: string;
-  userType: UserType;
+  userType?: UserType;
 }
 
-export type ConsultantRole = 'consultant' | 'admin';
-export type ConsultantDepartment = 'sales' | 'marketing' | 'administration';
+/** @deprecated use EmployeeRole */
+export type ConsultantRole = EmployeeRole;
 
 // Auth State Interface
 export interface AuthState {
-  user: User | Customer | Consultant | TeamMember | null;
+  user: User | Customer | Employee | null;
   token: string | null;
   refreshToken: string | null;
   userType: UserType | null;
   customerRole: import('./customer.types').CustomerRole | null;
-  consultantRole: ConsultantRole | null;
-  consultantDepartment: ConsultantDepartment | null;
+  /** The employee's role (null for customers). Kept under its historical name. */
+  consultantRole: EmployeeRole | null;
+  /** The employee's department name, lowercased (display only — never gates access). */
+  consultantDepartment: string | null;
+  /** The modules this employee may open, as resolved by the API. */
+  modules: ModuleKey[];
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;

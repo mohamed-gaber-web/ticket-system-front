@@ -111,16 +111,14 @@ api.interceptors.response.use(
         } catch (err) {
           // Refresh token failed - redirect to login
           if (import.meta.env.DEV) console.error('Token refresh failed:', err);
-          const storedUserType = localStorage.getItem('userType');
           localStorage.clear();
-          window.location.href = storedUserType === 'tele_sales' ? '/tele-sales/login' : '/signin';
+          window.location.href = '/login';
           return Promise.reject(err);
         }
       } else {
         // No refresh token - redirect to login
-        const storedUserType = localStorage.getItem('userType');
         localStorage.clear();
-        window.location.href = storedUserType === 'tele_sales' ? '/tele-sales/login' : '/signin';
+        window.location.href = '/login';
       }
     }
 

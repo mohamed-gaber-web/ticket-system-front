@@ -33,7 +33,7 @@ export default function Tickets() {
   const dispatch = useAppDispatch();
   const { tickets, loading, total, page, pages } = useAppSelector((state) => state.tickets);
   const { user, userType } = useAppSelector((state) => state.auth);
-  const isConsultant = userType === 'consultant';
+  const isConsultant = userType === 'employee';
   const { sources } = useAppSelector((state) => state.sources);
   const { consultants } = useAppSelector((state) => state.consultants);
   const { customers } = useAppSelector((state) => state.customers);

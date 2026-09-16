@@ -6,14 +6,22 @@ interface RoleDistributionChartProps {
   data: RoleCount[];
 }
 
-const COLORS = {
+const COLORS: Record<string, string> = {
   admin: '#8b5cf6',
   consultant: '#6b7280',
+  sales: '#3b82f6',
+  sales_manager: '#f59e0b',
+  marketing: '#10b981',
+  marketing_manager: '#d97706',
 };
 
-const ROLE_LABELS = {
+const ROLE_LABELS: Record<string, string> = {
   admin: 'Admin',
   consultant: 'Consultant',
+  sales: 'Sales',
+  sales_manager: 'Sales Manager',
+  marketing: 'Marketing',
+  marketing_manager: 'Marketing Manager',
 };
 
 export default function RoleDistributionChart({ data }: RoleDistributionChartProps) {

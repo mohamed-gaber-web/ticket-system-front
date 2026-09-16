@@ -1,4 +1,7 @@
-export type ConsultantRole = 'consultant' | 'admin';
+import type { EmployeeRole, ModuleKey } from './auth.types';
+
+/** The employee role list — see src/lib/access.ts. */
+export type ConsultantRole = EmployeeRole;
 export type ConsultantDepartment = string;
 
 export interface ConsultantDepartmentObject {
@@ -17,6 +20,10 @@ export interface Consultant {
   position?: string;
   role: ConsultantRole;
   department?: ConsultantDepartmentObject | string | null;
+  /** Sales family only — the tele-sales team (country) this person works in. */
+  teleSalesTeam?: { _id: string; name: string; code?: string; isActive?: boolean } | string | null;
+  /** Admin-set override of the role's default modules; empty = defaults. */
+  modules?: ModuleKey[];
   status: ConsultantStatus;
   fullName: string;
   monthlyTargetHours?: number | null;
@@ -31,6 +38,11 @@ export interface ConsultantQueryParams {
   limit?: number;
   status?: ConsultantStatus;
   role?: ConsultantRole;
+  /** A whole role family, e.g. "sales" = sales + sales_manager. */
+  family?: string;
+  /** Employees who can open this module. */
+  module?: ModuleKey;
+  teleSalesTeam?: string;
   search?: string;
 }
 
@@ -76,6 +88,8 @@ export interface CreateConsultantData {
   position?: string;
   role: ConsultantRole;
   department?: string | null;
+  teleSalesTeam?: string | null;
+  modules?: ModuleKey[];
   status: ConsultantStatus;
   monthlyTargetHours?: number | null;
   profilePicture?: string | null;
@@ -89,6 +103,8 @@ export interface UpdateConsultantData {
   position?: string;
   role?: ConsultantRole;
   department?: string | null;
+  teleSalesTeam?: string | null;
+  modules?: ModuleKey[];
   status?: ConsultantStatus;
   monthlyTargetHours?: number | null;
   profilePicture?: string | null;

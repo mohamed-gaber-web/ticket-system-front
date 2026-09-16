@@ -6,7 +6,7 @@ export interface TicketAttachment {
   fileSize: number;
   fileType: string;
   uploadedByUserId: string;
-  uploadedByUserType: 'customer' | 'consultant' | 'team_member';
+  uploadedByUserType: 'customer' | 'employee' | 'consultant' | 'team_member';
   uploadedAt: string;
   createdAt: string;
   updatedAt: string;
@@ -59,12 +59,12 @@ export interface CreateAttachmentParams {
   fileSize: number;
   fileType: string;
   uploadedByUserId: string;
-  uploadedByUserType: 'customer' | 'consultant' | 'team_member';
+  uploadedByUserType: 'customer' | 'employee' | 'consultant' | 'team_member';
 }
 
 export interface UploadAttachmentParams {
   ticketId: string;
   file: File;
   uploadedByUserId: string;
-  uploadedByUserType: 'customer' | 'consultant' | 'team_member';
+  uploadedByUserType: 'customer' | 'employee' | 'consultant' | 'team_member';
 }

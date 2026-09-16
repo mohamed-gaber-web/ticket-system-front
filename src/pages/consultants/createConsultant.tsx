@@ -9,20 +9,24 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CustomSelect } from '@/components/ui/custom-select';
 import { ProfilePictureUpload } from '@/components/ui/profile-picture-upload';
 import { ArrowLeft, Save } from 'lucide-react';
-import type { CreateConsultantData, ConsultantRole } from '@/types/consultant.types';
+import type { CreateConsultantData } from '@/types/consultant.types';
+import { EmployeeAccessFields } from '@/components/employees/EmployeeAccessFields';
+import { useAccess } from '@/redux/hooks/useAccess';
 
 export default function CreateConsultant() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { loading } = useAppSelector((state) => state.consultants);
   const { departments } = useAppSelector((state) => state.departments);
-  const isAdmin = useAppSelector((state) => state.auth.consultantRole) === 'admin';
+  const access = useAccess();
 
   useEffect(() => {
     dispatch(fetchDepartments({ isActive: true, limit: 999 } as any));
   }, []);
 
-  if (!isAdmin) {
+  // Managers and admins create employees; a manager only ever mints the plain
+  // role of their own family, which is also the form's starting point.
+  if (!access.isManagerOrAdmin) {
     return <Navigate to="/unauthorized" replace />;
   }
 
@@ -33,8 +37,10 @@ export default function CreateConsultant() {
     password: '',
     phone: '',
     position: '',
-    role: 'consultant',
+    role: access.isAdmin ? 'consultant' : ((access.family ?? 'consultant') as CreateConsultantData['role']),
     department: undefined,
+    teleSalesTeam: null,
+    modules: [],
     status: 'active',
     monthlyTargetHours: null,
     profilePicture: null,
@@ -209,30 +215,20 @@ export default function CreateConsultant() {
               />
             </div>
 
-            {/* Role & Status */}
+            {/* Access — role, team, department, module override */}
+            <EmployeeAccessFields
+              value={{
+                role: formData.role,
+                department: formData.department,
+                teleSalesTeam: formData.teleSalesTeam,
+                modules: formData.modules,
+              }}
+              onChange={(next) => setFormData((prev) => ({ ...prev, ...next }))}
+              departments={departments}
+            />
+
+            {/* Status */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="form-label">Role</label>
-                <CustomSelect
-                  value={formData.role}
-                  onChange={(val) => setFormData((prev) => ({ ...prev, role: val as ConsultantRole }))}
-                  options={[
-                    { value: 'consultant', label: 'Consultant' },
-                    { value: 'admin', label: 'Admin' },
-                  ]}
-                />
-              </div>
-              <div>
-                <label className="form-label">Department</label>
-                <CustomSelect
-                  value={formData.department ?? ''}
-                  onChange={(val) => setFormData((prev) => ({ ...prev, department: val || undefined }))}
-                  options={[
-                    { value: '', label: 'None' },
-                    ...departments.map((d) => ({ value: d._id, label: d.name })),
-                  ]}
-                />
-              </div>
               <div>
                 <label className="form-label">Status</label>
                 <CustomSelect

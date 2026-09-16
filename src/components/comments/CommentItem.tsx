@@ -52,8 +52,7 @@ const CommentItem: React.FC<CommentItemProps> = ({
   const getUserTypeBadgeVariant = (userType: UserType) => {
     switch (userType) {
       case 'customer': return 'default';
-      case 'consultant': return 'secondary';
-      case 'team_member': return 'outline';
+      case 'employee': return 'secondary';
       default: return 'default';
     }
   };

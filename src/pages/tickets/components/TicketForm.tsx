@@ -70,7 +70,7 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
   const { user, userType, consultantRole } = useAppSelector((state) => state.auth);
 
   // Get customer ID - if consultant, leave empty for selection; if customer, use their ID
-  const isConsultant = userType === 'consultant';
+  const isConsultant = userType === 'employee';
   const isAdmin = isConsultant && consultantRole === 'admin';
   const customerId = isConsultant ? '' : (user?._id || '');
 

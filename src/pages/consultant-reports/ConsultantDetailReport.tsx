@@ -45,9 +45,13 @@ export default function ConsultantDetailReport() {
     on_leave: 'bg-yellow-100 text-yellow-800 border-yellow-200',
   };
 
-  const ROLE_STYLES = {
+  const ROLE_STYLES: Record<string, string> = {
     admin: 'bg-accent-orange-100 text-purple-800 border-accent-orange-200',
     consultant: 'bg-gray-100 text-gray-800 border-gray-200',
+    sales: 'bg-blue-100 text-blue-800 border-blue-200',
+    sales_manager: 'bg-amber-100 text-amber-800 border-amber-200',
+    marketing: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+    marketing_manager: 'bg-amber-100 text-amber-800 border-amber-200',
   };
 
   const formatDate = (dateString?: string) => {

@@ -61,17 +61,18 @@ export function teamId(ref: TeamRef | undefined): string {
 // ── TeleSales Agent ──────────────────────────────────────────────────────────
 
 /**
- * user    → agent:       sees their whole team, works their own + unassigned leads
- * manager → team head:   sees and works the whole team, manages its agents
- * admin   → super admin: works across every team
+ * The tele-sales "agents" are the employees of the sales family:
+ *   sales          → agent:         sees their whole team, works their own + unassigned leads
+ *   sales_manager  → runs the dept: sees and works every team, manages the roster
+ *   admin          → system admin:  everything, plus the teams themselves
  */
-export type TeleSalesRole = 'user' | 'manager' | 'admin';
-export type TeleSalesStatus = 'active' | 'inactive';
+export type TeleSalesRole = 'sales' | 'sales_manager' | 'admin';
+export type TeleSalesStatus = 'active' | 'inactive' | 'on_leave';
 
 export const TELE_SALES_ROLE_LABELS: Record<TeleSalesRole, string> = {
-  user: 'Agent',
-  manager: 'Team Manager',
-  admin: 'Super Admin',
+  sales: 'Agent',
+  sales_manager: 'Sales Manager',
+  admin: 'Administrator',
 };
 
 export interface TeleSalesAgent {
@@ -83,7 +84,7 @@ export interface TeleSalesAgent {
   phone?: string;
   role: TeleSalesRole;
   status: TeleSalesStatus;
-  /** Null only for super admins, who work across every team. */
+  /** Null for admins and the sales manager, who work across every team. */
   team?: TeamRef;
   lastLogin?: string;
   createdAt: string;

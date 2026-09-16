@@ -14,7 +14,7 @@ const ACTIVITY_EVENTS = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scr
 export function useSessionTimeout() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { isAuthenticated, userType } = useAppSelector((state) => state.auth);
+  const { isAuthenticated } = useAppSelector((state) => state.auth);
   const warnedRef = useRef(false);
   const warnToastIdRef = useRef<string | number | undefined>(undefined);
 
@@ -34,9 +34,8 @@ export function useSessionTimeout() {
     localStorage.removeItem(STORAGE_KEY);
     dispatch(logout());
     toast.error('Your session has expired. Please sign in again.', { duration: 6000 });
-    const loginPath = userType === 'tele_sales' ? '/tele-sales/login' : '/signin';
-    navigate(loginPath, { replace: true });
-  }, [dispatch, navigate, userType]);
+    navigate('/login', { replace: true });
+  }, [dispatch, navigate]);
 
   useEffect(() => {
     if (!isAuthenticated) return;

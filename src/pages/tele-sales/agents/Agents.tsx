@@ -6,15 +6,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import Swal from 'sweetalert2';
 import { Plus, Search, Pencil, Trash2, ToggleLeft, ToggleRight, X, Shield, User, Users, ShieldAlert } from 'lucide-react';
-import { isSuperAdmin, canManageTeam, ownTeamId, ownTeamName } from '@/lib/teleSalesRole';
+import { isSuperAdmin, isSystemAdmin, canManageTeam, ownTeamId, ownTeamName } from '@/lib/teleSalesRole';
 import { teamName, TELE_SALES_ROLE_LABELS } from '@/types/teleSales.types';
 import type { TeleSalesAgent, CreateAgentData, UpdateAgentData, TeleSalesRole } from '@/types/teleSales.types';
 
 /** Visual treatment per role, so the roster reads at a glance. */
 const ROLE_STYLES: Record<TeleSalesRole, string> = {
   admin: 'bg-purple-100 text-purple-700',
-  manager: 'bg-amber-100 text-amber-700',
-  user: 'bg-blue-100 text-blue-700',
+  sales_manager: 'bg-amber-100 text-amber-700',
+  sales: 'bg-blue-100 text-blue-700',
 };
 
 export default function Agents() {
@@ -24,6 +24,7 @@ export default function Agents() {
   const { user } = useAppSelector((s) => s.auth);
 
   const superAdmin = isSuperAdmin(user);
+  const systemAdmin = isSystemAdmin(user);
   const canManage = canManageTeam(user);
 
   // A manager creates inside their own team and cannot choose another; only a
@@ -35,7 +36,7 @@ export default function Agents() {
   const [teamFilter, setTeamFilter] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingAgent, setEditingAgent] = useState<TeleSalesAgent | null>(null);
-  const [form, setForm] = useState<CreateAgentData>({ firstName: '', lastName: '', email: '', password: '', phone: '', role: 'user', team: '' });
+  const [form, setForm] = useState<CreateAgentData>({ firstName: '', lastName: '', email: '', password: '', phone: '', role: 'sales', team: '' });
   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
@@ -53,7 +54,7 @@ export default function Agents() {
   const openCreate = () => {
     setEditingAgent(null);
     setForm({
-      firstName: '', lastName: '', email: '', password: '', phone: '', role: 'user',
+      firstName: '', lastName: '', email: '', password: '', phone: '', role: 'sales',
       team: superAdmin ? '' : ownTeamId(user),
     });
     setIsDialogOpen(true);
@@ -92,9 +93,10 @@ export default function Agents() {
     e.preventDefault();
     if (!form.firstName || !form.lastName || !form.email) return;
 
-    // Super admins work across every team and so have no mandatory team; everyone
-    // else must sit in one or they would log in to an empty module.
-    const needsTeam = form.role !== 'admin';
+    // Admins and the sales manager work across every team and so have no
+    // mandatory team; a plain agent must sit in one or they would log in to an
+    // empty module.
+    const needsTeam = form.role === 'sales';
     if (needsTeam && !form.team) return;
 
     if (editingAgent) {
@@ -180,7 +182,7 @@ export default function Agents() {
                   <td className="px-4 py-3 text-on-surface-variant">{agent.email}</td>
                   <td className="px-4 py-3 text-on-surface-variant">{agent.phone || '—'}</td>
                   <td className="px-4 py-3">
-                    {agent.role === 'admin' && !agent.team ? (
+                    {agent.role !== 'sales' && !agent.team ? (
                       <span className="text-xs text-on-surface-variant italic">All teams</span>
                     ) : (
                       <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-surface-container-high text-on-surface-variant">
@@ -189,9 +191,9 @@ export default function Agents() {
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${ROLE_STYLES[agent.role] ?? ROLE_STYLES.user}`}>
+                    <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${ROLE_STYLES[agent.role] ?? ROLE_STYLES.sales}`}>
                       {agent.role === 'admin' ? <Shield className="w-3 h-3" />
-                        : agent.role === 'manager' ? <Users className="w-3 h-3" />
+                        : agent.role === 'sales_manager' ? <Users className="w-3 h-3" />
                         : <User className="w-3 h-3" />}
                       {TELE_SALES_ROLE_LABELS[agent.role] ?? agent.role}
                     </span>
@@ -202,9 +204,9 @@ export default function Agents() {
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    {/* A manager may run their own team's roster but never touch a
-                        super admin's account — the API refuses it either way. */}
-                    {canManage && !(agent.role === 'admin' && !superAdmin) ? (
+                    {/* The sales manager runs the agents but never touches an admin
+                        or another manager — the API refuses it either way. */}
+                    {canManage && (systemAdmin || agent.role === 'sales') ? (
                       <div className="flex items-center gap-1">
                         <button onClick={() => openEdit(agent)} className="p-1.5 rounded-lg hover:bg-surface-container text-on-surface-variant hover:text-brand-500 transition-colors" title="Edit">
                           <Pencil className="w-4 h-4" />
@@ -269,21 +271,23 @@ export default function Agents() {
               </div>
               <div>
                 <label className="text-sm font-medium text-on-surface mb-1 block">Role</label>
-                <select value={form.role || 'user'} onChange={(e) => setForm(p => ({ ...p, role: e.target.value as TeleSalesRole }))}
+                <select value={form.role || 'sales'} onChange={(e) => setForm(p => ({ ...p, role: e.target.value as TeleSalesRole }))}
                   className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
-                  <option value="user">Agent — works their own leads, sees the whole team</option>
-                  <option value="manager">Team Manager — runs one team and its agents</option>
-                  {/* Minting an account that sees every team is a super admin's
+                  <option value="sales">Agent — works their own leads, sees the whole team</option>
+                  {/* Minting an account that outranks a manager is an admin's
                       call alone; the API rejects it from anyone else. */}
-                  {superAdmin && <option value="admin">Super Admin — works across all teams</option>}
+                  {systemAdmin && <option value="sales_manager">Sales Manager — runs every team and its agents</option>}
+                  {systemAdmin && <option value="admin">Administrator — works across all modules</option>}
                 </select>
               </div>
 
-              {form.role === 'admin' ? (
+              {form.role !== 'sales' ? (
                 <div className="flex items-start gap-2.5 rounded-xl bg-purple-50 border border-purple-200 px-3 py-2.5">
                   <ShieldAlert className="w-4 h-4 text-purple-600 mt-0.5 shrink-0" />
                   <p className="text-xs text-purple-800">
-                    A super admin sees and edits every team's leads and agents. Use sparingly.
+                    {form.role === 'admin'
+                      ? "An administrator sees and edits every team's leads and agents, and every other module. Use sparingly."
+                      : "The sales manager sees and edits every team's leads and manages every agent."}
                   </p>
                 </div>
               ) : (

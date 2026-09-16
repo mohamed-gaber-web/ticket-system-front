@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
+import { useAccess } from '@/redux/hooks/useAccess';
 import { createTask, updateTask, fetchTaskById, clearCurrentTask } from '@/redux/slices/tasksSlice';
 import { fetchDepartments } from '@/redux/slices/departmentSlice';
 import { fetchConsultants } from '@/redux/slices/consultantSlice';
@@ -28,12 +29,19 @@ export default function TaskForm() {
   const { departments } = useAppSelector((state) => state.departments);
   const { consultants } = useAppSelector((state) => state.consultants);
   const { taskCategories } = useAppSelector((state) => state.taskCategories);
-  const { consultantDepartment, user } = useAppSelector((state) => state.auth);
+  const { user } = useAppSelector((state) => state.auth);
+  const { isAdmin } = useAccess();
+  // Non-admins always file under their own department (the API enforces it);
+  // the auth slice carries it populated as { _id, name }.
+  const ownDepartmentId = (() => {
+    const d = (user as any)?.department;
+    return d ? (typeof d === 'object' ? d._id : d) : '';
+  })();
 
   const [form, setForm] = useState({
     name: '',
     description: '',
-    department: consultantDepartment ?? '',
+    department: ownDepartmentId,
     category: '',
     startDate: '',
     endDate: '',
@@ -191,7 +199,9 @@ export default function TaskForm() {
             <select
               value={form.department}
               onChange={(e) => set('department', e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+              // Only an admin files a task under another department
+              disabled={!isAdmin}
+              className="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-60 disabled:cursor-not-allowed"
             >
               <option value="">Select department…</option>
               {departments.map((d) => (

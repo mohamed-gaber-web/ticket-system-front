@@ -6,21 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
-import { Mail, Sparkles, CheckCircle, Users } from 'lucide-react';
-
-type UserTypeOption = 'customer' | 'consultant';
-
-const USER_TYPE_OPTIONS: { value: UserTypeOption; label: string }[] = [
-  { value: 'customer', label: 'Customer' },
-  { value: 'consultant', label: 'Consultant' },
-];
+import { Mail, Sparkles, CheckCircle } from 'lucide-react';
 
 const ForgotPasswordPage = () => {
   const dispatch = useAppDispatch();
   const { isLoading } = useAppSelector((state) => state.auth);
 
   const [email, setEmail] = useState('');
-  const [userType, setUserType] = useState<UserTypeOption>('customer');
   const [emailSent, setEmailSent] = useState(false);
   const [validationError, setValidationError] = useState('');
 
@@ -46,10 +38,8 @@ const ForgotPasswordPage = () => {
 
     try {
       await dispatch(
-        forgotPassword({
-          email,
-          userType,
-        })
+        // The e-mail alone identifies the account
+        forgotPassword({ email })
       ).unwrap();
 
       setEmailSent(true);
@@ -105,7 +95,7 @@ const ForgotPasswordPage = () => {
                 The link will expire in <strong>10 minutes</strong>.
               </p>
               <div className="text-center">
-                <Link to="/signin" className="text-sm font-medium text-brand-500 hover:text-brand-600 transition-colors">
+                <Link to="/login" className="text-sm font-medium text-brand-500 hover:text-brand-600 transition-colors">
                   Return to Sign In
                 </Link>
               </div>
@@ -158,30 +148,6 @@ const ForgotPasswordPage = () => {
           className="glass rounded-[1.5rem] shadow-ambient p-8"
         >
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* User Type Selector */}
-            <div className="space-y-2">
-              <label className="label-technical flex items-center gap-2">
-                <Users className="w-4 h-4 text-brand-500" />
-                I am a
-              </label>
-              <div className="grid grid-cols-2 gap-3">
-                {USER_TYPE_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => setUserType(opt.value)}
-                    className={`h-11 rounded-[1rem] font-semibold text-sm transition-all duration-200 ${
-                      userType === opt.value
-                        ? 'bg-primary-fixed text-on-primary-fixed'
-                        : 'bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest'
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
             {/* Email Field */}
             <div className="space-y-2">
               <label htmlFor="email" className="form-label flex items-center gap-2">
@@ -229,7 +195,7 @@ const ForgotPasswordPage = () => {
 
             <div className="text-center">
               <Link
-                to="/signin"
+                to="/login"
                 className="inline-flex items-center gap-2 text-sm font-medium text-on-surface-variant hover:text-brand-500 transition-colors"
               >
                 Sign In

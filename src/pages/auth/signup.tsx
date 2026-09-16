@@ -574,7 +574,7 @@ const SignupPage = () => {
             {/* Sign In Link */}
             <div className="text-center">
               <Link
-                to="/signin"
+                to="/login"
                 className="inline-flex items-center gap-2 text-sm font-medium text-on-surface-variant hover:text-brand-500 transition-colors"
               >
                 Sign in instead

@@ -34,7 +34,7 @@ const TicketComments: React.FC<TicketCommentsProps> = ({ ticketId }) => {
   const { currentTicket } = useSelector((state: RootState) => state.tickets);
   const { currentAssignment } = useSelector((state: RootState) => state.assignments);
 
-  const isStaff = userType === 'consultant' || userType === 'team_member';
+  const isStaff = userType === 'employee';
   const isCustomer = userType === 'customer';
   const isAdmin = (user as any)?.role === 'admin';
 

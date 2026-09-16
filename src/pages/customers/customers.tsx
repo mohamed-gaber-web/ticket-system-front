@@ -20,7 +20,7 @@ export default function Customers() {
   const navigate = useNavigate();
   const { customers, loading, total, page, pages } = useAppSelector((state) => state.customers);
   const { userType, consultantRole } = useAppSelector((state) => state.auth);
-  const isAdmin = userType === 'consultant' && consultantRole === 'admin';
+  const isAdmin = userType === 'employee' && consultantRole === 'admin';
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -154,7 +154,7 @@ export default function Customers() {
           <h1 className="display-sm text-on-surface">Customers</h1>
           <p className="text-on-surface-variant mt-1">Manage your customer accounts</p>
         </div>
-        {userType === 'consultant' && (
+        {userType === 'employee' && (
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={() => navigate('/customers/summary')} className="gap-2">
               <BarChart2 className="h-4 w-4" />

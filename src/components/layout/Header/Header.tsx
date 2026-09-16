@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/redux/hooks/useAuth";
+import { useAccess } from "@/redux/hooks/useAccess";
 import { useNavigate } from "react-router-dom";
 import { NotificationDropdown } from "@/components/notifications/NotificationDropdown";
 import { useAppSelector } from "@/redux/hooks/hooks";
@@ -24,7 +25,8 @@ export default function Header() {
   // const [isDark, setIsDark] = useState(false);           // dark mode hidden
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
-  const { user, userType, logout } = useAuth();
+  const { user, logout } = useAuth();
+  const access = useAccess();
   const navigate = useNavigate();
   const { items } = useAppSelector((state) => state.notifications);
 
@@ -38,11 +40,8 @@ export default function Header() {
   const userEmail = user?.email || '';
   const u = user as any;
   const avatarUrl = getAvatarUrl(u?.profilePicture);
-  const userRole = userType === 'tele_sales'
-    ? (u?.role === 'admin' ? 'Admin' : 'User')
-    : userType === 'customer' ? 'Customer'
-    : userType === 'consultant' ? 'Consultant'
-    : 'User';
+  // "Customer" for the portal; the role label ("Sales Manager", …) for staff
+  const userRole = access.isCustomer ? 'Customer' : access.roleLabel || 'Employee';
 
   // Notifications are loaded centrally by useNotificationSocket (it baselines
   // the list on every socket (re)connect, which covers mount/reload). The badge
@@ -95,8 +94,8 @@ export default function Header() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-on-surface-variant" aria-hidden="true" />
           <Input
             type="search"
-            placeholder="Search tickets, customers, consultants..."
-            aria-label="Search tickets, customers, consultants"
+            placeholder={access.isCustomer ? "Search your tickets..." : "Search tickets, customers, consultants..."}
+            aria-label={access.isCustomer ? "Search your tickets" : "Search tickets, customers, consultants"}
             className="pl-10 pr-4 py-2 w-full"
           />
         </div>

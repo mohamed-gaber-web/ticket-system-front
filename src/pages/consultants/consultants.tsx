@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
+import { useAccess } from '@/redux/hooks/useAccess';
+import { ROLES, ROLE_LABELS, roleFamily, isManagerRole, roleLabel } from '@/lib/access';
+import type { EmployeeRole } from '@/types/auth.types';
 import { fetchConsultants, deleteConsultant, adminResetConsultantPassword, updateConsultant } from '@/redux/slices/consultantSlice';
 import { fetchDepartments } from '@/redux/slices/departmentSlice';
 import { Button } from '@/components/ui/button';
@@ -19,8 +22,12 @@ export default function Consultants() {
   const dispatch = useAppDispatch();
   const { consultants, loading, total, pages } = useAppSelector((state) => state.consultants);
   const { departments } = useAppSelector((state) => state.departments);
-  const { consultantRole } = useAppSelector((state) => state.auth);
-  const isAdmin = consultantRole === 'admin';
+  const access = useAccess();
+  const isAdmin = access.isAdmin;
+  // Managers manage the plain employees of their own family; the API answers
+  // 404 for anyone else, so the buttons follow the same rule.
+  const canManage = (c: { role: string }) =>
+    isAdmin || (access.isManager && roleFamily(c.role) === access.family && !isManagerRole(c.role) && c.role !== 'admin');
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -98,9 +105,13 @@ export default function Consultants() {
     on_leave: 'bg-yellow-100 text-yellow-800 border-yellow-200',
   };
 
-  const ROLE_STYLES = {
+  const ROLE_STYLES: Record<string, string> = {
     admin: 'bg-accent-orange-100 text-purple-800 border-accent-orange-200',
     consultant: 'bg-surface-container-high text-on-surface border-surface-container-high',
+    sales: 'bg-blue-100 text-blue-800 border-blue-200',
+    sales_manager: 'bg-amber-100 text-amber-800 border-amber-200',
+    marketing: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+    marketing_manager: 'bg-amber-100 text-amber-800 border-amber-200',
   };
 
   const DEPT_STYLES: Record<string, string> = {
@@ -116,9 +127,7 @@ export default function Consultants() {
   const getDeptStyle = (dept: any): string =>
     DEPT_STYLES[(getDeptName(dept) || '').toLowerCase()] ?? 'bg-surface-container text-on-surface-variant border-outline-variant';
 
-  const formatRole = (role: string) => {
-    return role.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-  };
+  const formatRole = (role: string) => roleLabel(role) || role;
 
   const formatStatus = (status: string) => {
     return status.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase());
@@ -129,13 +138,13 @@ export default function Consultants() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="display-sm text-on-surface">Consultants</h1>
-          <p className="text-on-surface-variant mt-1">Manage consultant accounts and permissions</p>
+          <h1 className="display-sm text-on-surface">Employees</h1>
+          <p className="text-on-surface-variant mt-1">Manage employee accounts, roles and module access</p>
         </div>
-        {isAdmin && (
+        {access.isManagerOrAdmin && (
           <Button onClick={() => navigate('/consultants/create')}>
             <Plus className="w-4 h-4 mr-2" />
-            Add Consultant
+            Add Employee
           </Button>
         )}
       </div>
@@ -170,8 +179,7 @@ export default function Consultants() {
             label="Role"
             options={[
               { value: '', label: 'All' },
-              { value: 'consultant', label: 'Consultant' },
-              { value: 'admin', label: 'Admin' },
+              ...ROLES.map((r) => ({ value: r, label: ROLE_LABELS[r] })),
             ]}
           />
           <CustomSelect
@@ -240,7 +248,7 @@ export default function Consultants() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase tracking-wider">
                       Target / Month
                     </th>
-                    {isAdmin && (
+                    {access.isManagerOrAdmin && (
                       <th className="px-6 py-3 text-center text-xs font-medium text-on-surface-variant uppercase tracking-wider">
                         Actions
                       </th>
@@ -273,23 +281,24 @@ export default function Consultants() {
                           <select
                             value={consultant.role}
                             onChange={async (e) => {
-                              const newRole = e.target.value as 'consultant' | 'admin';
+                              const newRole = e.target.value as EmployeeRole;
                               await dispatch(updateConsultant({ id: consultant._id, data: { role: newRole } }));
                               loadConsultants(currentPage);
                             }}
                             className={cn(
                               'px-2 py-1 text-xs font-medium rounded-md border cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-500/30 transition-colors',
-                              ROLE_STYLES[consultant.role as keyof typeof ROLE_STYLES]
+                              ROLE_STYLES[consultant.role] ?? ROLE_STYLES.consultant
                             )}
                           >
-                            <option value="consultant">Consultant</option>
-                            <option value="admin">Admin</option>
+                            {ROLES.map((r) => (
+                              <option key={r} value={r}>{ROLE_LABELS[r]}</option>
+                            ))}
                           </select>
                         ) : (
                           <span
                             className={cn(
                               'px-2 py-1 text-xs font-medium rounded-md border',
-                              ROLE_STYLES[consultant.role as keyof typeof ROLE_STYLES]
+                              ROLE_STYLES[consultant.role] ?? ROLE_STYLES.consultant
                             )}
                           >
                             {formatRole(consultant.role)}
@@ -355,8 +364,9 @@ export default function Consultants() {
                           <span className="text-on-surface-variant/40 text-sm">&mdash;</span>
                         )}
                       </td>
-                      {isAdmin && (
+                      {access.isManagerOrAdmin && (
                         <td className="px-6 py-4 whitespace-nowrap text-center">
+                          {canManage(consultant) && (
                           <div className="flex items-center justify-center gap-1">
                             <Button
                               size="icon"
@@ -385,6 +395,7 @@ export default function Consultants() {
                               <Trash2 className="w-4 h-4" />
                             </Button>
                           </div>
+                          )}
                         </td>
                       )}
                     </tr>

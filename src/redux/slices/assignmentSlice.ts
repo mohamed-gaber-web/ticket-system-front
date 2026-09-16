@@ -99,21 +99,6 @@ export const createAssignment = createAsyncThunk(
   }
 );
 
-export const acceptAssignment = createAsyncThunk(
-  'assignment/acceptAssignment',
-  async ({ assignmentId, teamMemberId }: { assignmentId: string; teamMemberId: string }, { rejectWithValue }) => {
-    try {
-      const response = await assignmentApi.acceptAssignment(assignmentId, teamMemberId);
-      toast.success('Assignment accepted successfully!');
-      return response.data;
-    } catch (error: any) {
-      const message = error.response?.data?.message || 'Failed to accept assignment';
-      toast.error(message);
-      return rejectWithValue(message);
-    }
-  }
-);
-
 export const fetchCurrentAssignment = createAsyncThunk(
   'assignment/fetchCurrentAssignment',
   async (ticketId: string, { rejectWithValue }) => {
@@ -140,20 +125,6 @@ export const fetchAssignmentsByTeam = createAsyncThunk(
       return response;
     } catch (error: any) {
       const message = error.response?.data?.message || 'Failed to fetch team assignments';
-      toast.error(message);
-      return rejectWithValue(message);
-    }
-  }
-);
-
-export const fetchAssignmentsByTeamMember = createAsyncThunk(
-  'assignment/fetchAssignmentsByTeamMember',
-  async ({ memberId, params }: { memberId: string; params?: AssignmentQueryParams }, { rejectWithValue }) => {
-    try {
-      const response = await assignmentApi.getAssignmentsByTeamMember(memberId, params);
-      return response;
-    } catch (error: any) {
-      const message = error.response?.data?.message || 'Failed to fetch member assignments';
       toast.error(message);
       return rejectWithValue(message);
     }
@@ -343,26 +314,6 @@ const assignmentSlice = createSlice({
         state.error = action.payload as string;
       })
 
-      // Accept Assignment
-      .addCase(acceptAssignment.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(acceptAssignment.fulfilled, (state, action) => {
-        state.loading = false;
-        const index = state.assignments.findIndex(a => a._id === action.payload._id);
-        if (index !== -1) {
-          state.assignments[index] = action.payload;
-        }
-        if (state.currentAssignment && state.currentAssignment._id === action.payload._id) {
-          state.currentAssignment = action.payload;
-        }
-      })
-      .addCase(acceptAssignment.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload as string;
-      })
-
       // Fetch Current Assignment
       .addCase(fetchCurrentAssignment.pending, (state) => {
         state.loading = true;
@@ -392,23 +343,6 @@ const assignmentSlice = createSlice({
         state.pages = action.payload.pages;
       })
       .addCase(fetchAssignmentsByTeam.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload as string;
-      })
-
-      // Fetch Assignments by Team Member
-      .addCase(fetchAssignmentsByTeamMember.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(fetchAssignmentsByTeamMember.fulfilled, (state, action) => {
-        state.loading = false;
-        state.assignments = action.payload.data;
-        state.total = action.payload.total;
-        state.page = action.payload.page;
-        state.pages = action.payload.pages;
-      })
-      .addCase(fetchAssignmentsByTeamMember.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       })

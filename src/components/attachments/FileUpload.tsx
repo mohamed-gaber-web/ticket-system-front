@@ -44,7 +44,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ ticketId, onUploadSuccess }) =>
         ticketId,
         file: selectedFile,
         uploadedByUserId: user._id,
-        uploadedByUserType: userType as 'customer' | 'consultant' | 'team_member',
+        uploadedByUserType: userType as 'customer' | 'employee',
       })
     );
 

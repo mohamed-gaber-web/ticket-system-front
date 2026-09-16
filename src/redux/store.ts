@@ -5,8 +5,6 @@ import ticketReducer from './slices/ticketSlice';
 import categoryReducer from './slices/categorySlice';
 import consultantReducer from './slices/consultantSlice';
 import assignmentReducer from './slices/assignmentSlice';
-import teamReducer from './slices/teamSlice';
-import teamMemberReducer from './slices/teamMemberSlice';
 import notificationReducer from './slices/notificationSlice';
 import attachmentReducer from './slices/attachmentSlice';
 import commentReducer from './slices/commentSlice';
@@ -45,8 +43,6 @@ export const store = configureStore({
     categories: categoryReducer,
     consultants: consultantReducer,
     assignments: assignmentReducer,
-    teams: teamReducer,
-    teamMembers: teamMemberReducer,
     notifications: notificationReducer,
     attachments: attachmentReducer,
     comments: commentReducer,

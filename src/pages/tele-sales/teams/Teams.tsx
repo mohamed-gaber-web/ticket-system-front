@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import Swal from 'sweetalert2';
 import { Plus, Search, Pencil, Trash2, ToggleLeft, ToggleRight, X, Globe, ShieldAlert } from 'lucide-react';
-import { isSuperAdmin } from '@/lib/teleSalesRole';
+import { isSystemAdmin } from '@/lib/teleSalesRole';
 import type { TeleSalesTeam, CreateTeamData } from '@/types/teleSales.types';
 
 const emptyForm: CreateTeamData = { name: '', code: '', description: '', isActive: true };
@@ -23,7 +23,7 @@ export default function Teams() {
   const dispatch = useAppDispatch();
   const { teams, loading, total } = useAppSelector((s) => s.teleSalesTeams);
   const { user } = useAppSelector((s) => s.auth);
-  const superAdmin = isSuperAdmin(user);
+  const superAdmin = isSystemAdmin(user);
 
   const [search, setSearch] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);

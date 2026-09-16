@@ -36,14 +36,6 @@ export const assignmentApi = {
     return response.data;
   },
 
-  acceptAssignment: async (assignmentId: string, teamMemberId: string): Promise<AssignmentResponse> => {
-    const response = await api.patch<AssignmentResponse>(
-      `/ticket-assignments/${assignmentId}/accept`,
-      { teamMemberId }
-    );
-    return response.data;
-  },
-
   getCurrentAssignment: async (ticketId: string): Promise<AssignmentResponse> => {
     const response = await api.get<AssignmentResponse>(
       `/ticket-assignments/ticket/${ticketId}/current`
@@ -54,14 +46,6 @@ export const assignmentApi = {
   getAssignmentsByTeam: async (teamId: string, params?: AssignmentQueryParams): Promise<AssignmentListResponse> => {
     const response = await api.get<AssignmentListResponse>(
       `/ticket-assignments/team/${teamId}`,
-      { params }
-    );
-    return response.data;
-  },
-
-  getAssignmentsByTeamMember: async (memberId: string, params?: AssignmentQueryParams): Promise<AssignmentListResponse> => {
-    const response = await api.get<AssignmentListResponse>(
-      `/ticket-assignments/team-member/${memberId}`,
       { params }
     );
     return response.data;

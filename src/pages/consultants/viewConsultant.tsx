@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
+import { ROLES, ROLE_LABELS } from '@/lib/access';
 import { fetchConsultantById, updateConsultant, clearCurrentConsultant } from '@/redux/slices/consultantSlice';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -611,10 +612,7 @@ export default function ViewConsultant() {
                 <CustomSelect
                   value={formData.role || 'consultant'}
                   onChange={(val) => handleChange('role', val as ConsultantRole)}
-                  options={[
-                    { value: 'consultant', label: 'Consultant' },
-                    { value: 'admin', label: 'Admin' },
-                  ]}
+                  options={ROLES.map((r) => ({ value: r, label: ROLE_LABELS[r] }))}
                 />
               </div>
               <div>

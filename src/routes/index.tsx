@@ -1,9 +1,16 @@
 import { lazy, Suspense, type ReactNode } from "react";
 import { useAppSelector } from "@/redux/hooks/hooks";
-import { Navigate, useLocation } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import type { RouteObject } from "react-router-dom";
 import Layout from "@/components/layout/layout";
-import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import ProtectedRoute, {
+  EmployeeRoute,
+  ModuleRoute,
+  ManagerRoute,
+  AdminRoute,
+} from "@/components/auth/ProtectedRoute";
+import { useAccess } from "@/redux/hooks/useAccess";
+import { homePathFor } from "@/lib/access";
 
 // Dashboard — eager (landing page, should load fast)
 import Dashboard from "@/pages/dashboard/dashboard";
@@ -21,57 +28,16 @@ function Lazy({ children }: { children: ReactNode }) {
   return <Suspense fallback={<PageLoader />}>{children}</Suspense>;
 }
 
-const TELE_SALES_DEPARTMENTS = ['sales'];
-const TASK_DEPARTMENTS = ['administration', 'marketing'];
-
-// Guard: tele_sales userType OR consultant admin OR consultant in Sales/Marketing
-function TeleSalesRoute({ children }: { children: ReactNode }) {
-  const { isAuthenticated, userType, consultantRole, consultantDepartment } = useAppSelector((state) => state.auth);
-  const location = useLocation();
-  if (!isAuthenticated) {
-    const storedType = localStorage.getItem('userType');
-    const loginPath = storedType === 'tele_sales' ? '/tele-sales/login' : '/signin';
-    return <Navigate to={loginPath} state={{ from: location }} replace />;
-  }
-  const allowed =
-    userType === 'tele_sales' ||
-    (userType === 'consultant' && (
-      consultantRole === 'admin' ||
-      TELE_SALES_DEPARTMENTS.includes(consultantDepartment ?? '')
-    ));
-  if (!allowed) return <Navigate to="/unauthorized" replace />;
-  return <>{children}</>;
-}
-
-// Guard: consultant admin OR consultant with Administration department
-function TasksRoute({ children }: { children: ReactNode }) {
-  const { isAuthenticated, userType, consultantDepartment, consultantRole } = useAppSelector((state) => state.auth);
-  const location = useLocation();
-  if (!isAuthenticated) return <Navigate to="/signin" state={{ from: location }} replace />;
-  const allowed =
-    userType === 'consultant' &&
-    (consultantRole === 'admin' || TASK_DEPARTMENTS.includes(consultantDepartment ?? ''));
-  if (!allowed) return <Navigate to="/unauthorized" replace />;
-  return <>{children}</>;
-}
-
-// Routes to correct dashboard based on userType / department
+// Routes to the right dashboard: customers get the portal, employees the first
+// module they can open (tickets → telesales → tasks → requests).
 function DashboardRouter() {
-  const { userType, consultantDepartment, consultantRole } = useAppSelector((state) => state.auth);
+  const { userType } = useAppSelector((state) => state.auth);
+  const access = useAccess();
   if (!userType) return <PageLoader />;
   if (userType === "customer") return <Lazy><CustomerDashboard /></Lazy>;
-  if (userType === "tele_sales") return <Lazy><TeleSalesDashboard /></Lazy>;
-  if (
-    userType === "consultant" &&
-    consultantRole !== "admin" &&
-    TASK_DEPARTMENTS.includes(consultantDepartment ?? '')
-  ) return <Lazy><TasksDashboard /></Lazy>;
-  if (
-    userType === "consultant" &&
-    consultantRole !== "admin" &&
-    TELE_SALES_DEPARTMENTS.includes(consultantDepartment ?? '')
-  ) return <Navigate to="/tele-sales" replace />;
-  return <Dashboard />;
+  if (access.hasModule("tickets")) return <Dashboard />;
+  const home = homePathFor(access.modules);
+  return <Navigate to={home === "/" ? "/employee-requests" : home} replace />;
 }
 
 // Auth Module
@@ -157,7 +123,6 @@ const WorkingHoursPage = lazy(() => import("@/pages/working-hours/WorkingHoursPa
 const CompanyUsers = lazy(() => import("@/pages/company-users/companyUsers"));
 
 // TeleSales Module
-const TeleSalesSignin = lazy(() => import("@/pages/tele-sales/auth/TeleSalesSignin"));
 const TeleSalesDashboard = lazy(() => import("@/pages/tele-sales/TeleSalesDashboard"));
 const Leads = lazy(() => import("@/pages/tele-sales/leads/Leads"));
 const LeadDetail = lazy(() => import("@/pages/tele-sales/leads/LeadDetail"));
@@ -180,23 +145,23 @@ const RequestApprovals = lazy(() => import("@/pages/employee-requests/Approvals"
 const EmployeeBalance = lazy(() => import("@/pages/employee-requests/EmployeeBalance"));
 
 export const routes: RouteObject[] = [
-  // Public Routes (Authentication — Ticket System)
-  { path: "/signin", element: <Lazy><SigninPage /></Lazy> },
+  // Public Routes — one login for everyone; the e-mail decides the account type
+  { path: "/login", element: <Lazy><SigninPage /></Lazy> },
   { path: "/signup", element: <Lazy><SignupPage /></Lazy> },
   { path: "/forgot-password", element: <Lazy><ForgotPasswordPage /></Lazy> },
   { path: "/reset-password/:userType/:token", element: <Lazy><ResetPasswordPage /></Lazy> },
   { path: "/unauthorized", element: <Lazy><UnauthorizedPage /></Lazy> },
+  // Old login URLs (bookmarks, e-mails) keep working
+  { path: "/signin", element: <Navigate to="/login" replace /> },
+  { path: "/tele-sales/login", element: <Navigate to="/login" replace /> },
 
-  // Public Routes (Authentication — TeleSales Portal)
-  { path: "/tele-sales/login", element: <Lazy><TeleSalesSignin /></Lazy> },
-
-  // TeleSales Protected Routes — accessible to tele_sales users AND consultants with sales department
+  // TeleSales — anyone with the telesales module (sales, marketing read-only, admin)
   {
     path: "/tele-sales",
     element: (
-      <TeleSalesRoute>
+      <ModuleRoute module="telesales">
         <Layout />
-      </TeleSalesRoute>
+      </ModuleRoute>
     ),
     children: [
       { index: true, element: <Lazy><TeleSalesDashboard /></Lazy> },
@@ -206,10 +171,9 @@ export const routes: RouteObject[] = [
       { path: "interested", element: <Navigate to="/tele-sales/opportunities" replace /> },
       { path: "leads/:id", element: <Lazy><LeadDetail /></Lazy> },
       { path: "calls/recent", element: <Lazy><RecentCalls /></Lazy> },
-      { path: "agents", element: <Lazy><TeleSalesAgents /></Lazy> },
-      // Team management is super-admin only; the page itself says so to anyone
-      // else who reaches it, and the API refuses every write regardless.
-      { path: "teams", element: <Lazy><TeleSalesTeams /></Lazy> },
+      { path: "agents", element: <ManagerRoute><Lazy><TeleSalesAgents /></Lazy></ManagerRoute> },
+      // Team management is admin-only; the API refuses every write regardless.
+      { path: "teams", element: <AdminRoute><Lazy><TeleSalesTeams /></Lazy></AdminRoute> },
     ],
   },
 
@@ -230,26 +194,12 @@ export const routes: RouteObject[] = [
       { path: "/profile", element: <Lazy><ProfilePage /></Lazy> },
       { path: "/change-password", element: <Lazy><ChangePasswordPage /></Lazy> },
 
-      // Customer Routes
-      { path: "/customers", element: <Lazy><Customers /></Lazy> },
-      {
-        path: "/customers/create",
-        element: (
-          <ProtectedRoute allowedUserTypes={["consultant"]}>
-            <Lazy><CreateCustomer /></Lazy>
-          </ProtectedRoute>
-        ),
-      },
-      { path: "/customers/edit/:id", element: <Lazy><EditCustomer /></Lazy> },
-      { path: "/customers/view/:id", element: <Lazy><ViewCustomer /></Lazy> },
-      {
-        path: "/customers/summary",
-        element: (
-          <ProtectedRoute allowedUserTypes={["consultant"]}>
-            <Lazy><CustomerSummary /></Lazy>
-          </ProtectedRoute>
-        ),
-      },
+      // Customer Routes — ticketing module
+      { path: "/customers", element: <ModuleRoute module="tickets"><Lazy><Customers /></Lazy></ModuleRoute> },
+      { path: "/customers/create", element: <ModuleRoute module="tickets"><Lazy><CreateCustomer /></Lazy></ModuleRoute> },
+      { path: "/customers/edit/:id", element: <ModuleRoute module="tickets"><Lazy><EditCustomer /></Lazy></ModuleRoute> },
+      { path: "/customers/view/:id", element: <ModuleRoute module="tickets"><Lazy><ViewCustomer /></Lazy></ModuleRoute> },
+      { path: "/customers/summary", element: <ModuleRoute module="tickets"><Lazy><CustomerSummary /></Lazy></ModuleRoute> },
 
       // Ticket Routes
       { path: "/tickets", element: <Lazy><Tickets /></Lazy> },
@@ -261,83 +211,57 @@ export const routes: RouteObject[] = [
       { path: "/projects", element: <Lazy><ProjectTickets /></Lazy> },
       { path: "/meetings", element: <Lazy><MeetingTickets /></Lazy> },
 
-      // Consultant Routes
-      { path: "/consultants", element: <Lazy><Consultants /></Lazy> },
-      {
-        path: "/consultants/create",
-        element: (
-          <ProtectedRoute allowedUserTypes={["consultant"]}>
-            <Lazy><CreateConsultant /></Lazy>
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: "/consultants/edit/:id",
-        element: (
-          <ProtectedRoute allowedUserTypes={["consultant"]}>
-            <Lazy><EditConsultant /></Lazy>
-          </ProtectedRoute>
-        ),
-      },
-      { path: "/consultants/view/:id", element: <Lazy><ViewConsultant /></Lazy> },
-      { path: "/consultants/dashboard", element: <Lazy><ConsultantDashboard /></Lazy> },
-      { path: "/consultants/weekly-hours", element: <Lazy><WeeklyHoursPage /></Lazy> },
-      {
-        path: "/consultants/evaluation/:id",
-        element: (
-          <ProtectedRoute allowedUserTypes={["consultant"]}>
-            <Lazy><EmployeeEvaluationPage /></Lazy>
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: "/consultants/evaluations",
-        element: (
-          <ProtectedRoute allowedUserTypes={["consultant"]}>
-            <Lazy><EvaluationsOverviewPage /></Lazy>
-          </ProtectedRoute>
-        ),
-      },
+      // Employee Routes — the roster is readable by any employee (pickers need
+      // it); creating and editing is for managers and admins
+      { path: "/consultants", element: <EmployeeRoute><Lazy><Consultants /></Lazy></EmployeeRoute> },
+      { path: "/consultants/create", element: <ManagerRoute><Lazy><CreateConsultant /></Lazy></ManagerRoute> },
+      { path: "/consultants/edit/:id", element: <ManagerRoute><Lazy><EditConsultant /></Lazy></ManagerRoute> },
+      { path: "/consultants/view/:id", element: <EmployeeRoute><Lazy><ViewConsultant /></Lazy></EmployeeRoute> },
+      { path: "/consultants/dashboard", element: <ModuleRoute module="tickets"><Lazy><ConsultantDashboard /></Lazy></ModuleRoute> },
+      { path: "/consultants/weekly-hours", element: <ModuleRoute module="tickets"><Lazy><WeeklyHoursPage /></Lazy></ModuleRoute> },
+      { path: "/consultants/evaluation/:id", element: <EmployeeRoute><Lazy><EmployeeEvaluationPage /></Lazy></EmployeeRoute> },
+      { path: "/consultants/evaluations", element: <AdminRoute><Lazy><EvaluationsOverviewPage /></Lazy></AdminRoute> },
 
-      // Category Routes
-      { path: "/categories", element: <Lazy><Categories /></Lazy> },
-      { path: "/categories/create", element: <Lazy><CreateCategory /></Lazy> },
-      { path: "/categories/edit/:id", element: <Lazy><EditCategory /></Lazy> },
+      // Category Routes — ticketing setup
+      { path: "/categories", element: <ModuleRoute module="tickets"><Lazy><Categories /></Lazy></ModuleRoute> },
+      { path: "/categories/create", element: <AdminRoute><Lazy><CreateCategory /></Lazy></AdminRoute> },
+      { path: "/categories/edit/:id", element: <AdminRoute><Lazy><EditCategory /></Lazy></AdminRoute> },
 
       // SLA Routes
-      { path: "/sla", element: <Lazy><SLA /></Lazy> },
-      { path: "/sla/create", element: <Lazy><CreateSLA /></Lazy> },
-      { path: "/sla/edit/:id", element: <Lazy><EditSLA /></Lazy> },
-      { path: "/sla/monitoring", element: <Lazy><SLAMonitoring /></Lazy> },
+      { path: "/sla", element: <ModuleRoute module="tickets"><Lazy><SLA /></Lazy></ModuleRoute> },
+      { path: "/sla/create", element: <AdminRoute><Lazy><CreateSLA /></Lazy></AdminRoute> },
+      { path: "/sla/edit/:id", element: <AdminRoute><Lazy><EditSLA /></Lazy></AdminRoute> },
+      { path: "/sla/monitoring", element: <ModuleRoute module="tickets"><Lazy><SLAMonitoring /></Lazy></ModuleRoute> },
 
       // Report Routes
-      { path: "/reports", element: <Lazy><Reports /></Lazy> },
-      { path: "/reports/tickets", element: <Lazy><TicketReports /></Lazy> },
-      { path: "/reports/team-performance", element: <Lazy><TeamPerformance /></Lazy> },
-      { path: "/reports/customer-satisfaction", element: <Lazy><CustomerReports /></Lazy> },
+      { path: "/reports", element: <ModuleRoute module="tickets"><Lazy><Reports /></Lazy></ModuleRoute> },
+      { path: "/reports/tickets", element: <ModuleRoute module="tickets"><Lazy><TicketReports /></Lazy></ModuleRoute> },
+      { path: "/reports/team-performance", element: <ModuleRoute module="tickets"><Lazy><TeamPerformance /></Lazy></ModuleRoute> },
+      { path: "/reports/customer-satisfaction", element: <ModuleRoute module="tickets"><Lazy><CustomerReports /></Lazy></ModuleRoute> },
 
       // Consultant Report Routes
-      { path: "/consultant-reports", element: <Lazy><ConsultantReportsDashboard /></Lazy> },
-      { path: "/consultant-reports/list", element: <Lazy><ConsultantListReport /></Lazy> },
-      { path: "/consultant-reports/weekly", element: <Lazy><WeeklyConsultantReport /></Lazy> },
-      { path: "/consultant-reports/analytics", element: <Lazy><AssignmentAnalytics /></Lazy> },
-      { path: "/consultant-reports/:id", element: <Lazy><ConsultantDetailReport /></Lazy> },
+      { path: "/consultant-reports", element: <ModuleRoute module="tickets"><Lazy><ConsultantReportsDashboard /></Lazy></ModuleRoute> },
+      { path: "/consultant-reports/list", element: <ModuleRoute module="tickets"><Lazy><ConsultantListReport /></Lazy></ModuleRoute> },
+      { path: "/consultant-reports/weekly", element: <ModuleRoute module="tickets"><Lazy><WeeklyConsultantReport /></Lazy></ModuleRoute> },
+      { path: "/consultant-reports/analytics", element: <ModuleRoute module="tickets"><Lazy><AssignmentAnalytics /></Lazy></ModuleRoute> },
+      { path: "/consultant-reports/:id", element: <ModuleRoute module="tickets"><Lazy><ConsultantDetailReport /></Lazy></ModuleRoute> },
 
-      // Config Routes
-      { path: "/environments", element: <Lazy><Environments /></Lazy> },
-      { path: "/customized-solutions", element: <Lazy><CustomizedSolutions /></Lazy> },
-      { path: "/product-types", element: <Lazy><ProductTypes /></Lazy> },
-      { path: "/modules", element: <Lazy><Modules /></Lazy> },
-      { path: "/service-types", element: <Lazy><ServiceTypes /></Lazy> },
-      { path: "/erp-types", element: <Lazy><ErpTypes /></Lazy> },
-      { path: "/version-numbers", element: <Lazy><VersionNumbers /></Lazy> },
-      { path: "/departments", element: <Lazy><Departments /></Lazy> },
-      { path: "/sources", element: <Lazy><Sources /></Lazy> },
-      { path: "/industry-sectors", element: <Lazy><IndustrySectors /></Lazy> },
-      { path: "/countries", element: <Lazy><Countries /></Lazy> },
-      { path: "/business-classifications", element: <Lazy><BusinessClassifications /></Lazy> },
-      { path: "/companies", element: <Lazy><Companies /></Lazy> },
-      { path: "/working-hours", element: <Lazy><WorkingHoursPage /></Lazy> },
+      // Config Routes — the lists are readable by whoever uses the module that
+      // needs them; editing is admin-only inside each page
+      { path: "/environments", element: <ModuleRoute module="tickets"><Lazy><Environments /></Lazy></ModuleRoute> },
+      { path: "/customized-solutions", element: <ModuleRoute module="tickets"><Lazy><CustomizedSolutions /></Lazy></ModuleRoute> },
+      { path: "/product-types", element: <ModuleRoute module="tickets"><Lazy><ProductTypes /></Lazy></ModuleRoute> },
+      { path: "/modules", element: <ModuleRoute module="tickets"><Lazy><Modules /></Lazy></ModuleRoute> },
+      { path: "/service-types", element: <ModuleRoute module="tickets"><Lazy><ServiceTypes /></Lazy></ModuleRoute> },
+      { path: "/erp-types", element: <ModuleRoute module="tickets"><Lazy><ErpTypes /></Lazy></ModuleRoute> },
+      { path: "/version-numbers", element: <ModuleRoute module="tickets"><Lazy><VersionNumbers /></Lazy></ModuleRoute> },
+      { path: "/departments", element: <AdminRoute><Lazy><Departments /></Lazy></AdminRoute> },
+      { path: "/sources", element: <ModuleRoute module="tickets"><Lazy><Sources /></Lazy></ModuleRoute> },
+      { path: "/industry-sectors", element: <ModuleRoute module="telesales"><Lazy><IndustrySectors /></Lazy></ModuleRoute> },
+      { path: "/countries", element: <ModuleRoute module="telesales"><Lazy><Countries /></Lazy></ModuleRoute> },
+      { path: "/business-classifications", element: <ModuleRoute module="telesales"><Lazy><BusinessClassifications /></Lazy></ModuleRoute> },
+      { path: "/companies", element: <ModuleRoute module="tickets"><Lazy><Companies /></Lazy></ModuleRoute> },
+      { path: "/working-hours", element: <ModuleRoute module="tickets"><Lazy><WorkingHoursPage /></Lazy></ModuleRoute> },
 
       // Company Users — company_admin customers only
       {
@@ -349,67 +273,37 @@ export const routes: RouteObject[] = [
         ),
       },
 
-      // Tasks Module — admin or tasks-department consultants only
+      // Tasks Module — anyone with the tasks module
       {
         path: "/tasks/dashboard",
-        element: <TasksRoute><Lazy><TasksDashboard /></Lazy></TasksRoute>,
+        element: <ModuleRoute module="tasks"><Lazy><TasksDashboard /></Lazy></ModuleRoute>,
       },
       {
         path: "/tasks",
-        element: <TasksRoute><Lazy><Tasks /></Lazy></TasksRoute>,
+        element: <ModuleRoute module="tasks"><Lazy><Tasks /></Lazy></ModuleRoute>,
       },
       {
         path: "/tasks/create",
-        element: <TasksRoute><Lazy><TaskForm /></Lazy></TasksRoute>,
+        element: <ModuleRoute module="tasks"><Lazy><TaskForm /></Lazy></ModuleRoute>,
       },
       {
         path: "/tasks/edit/:id",
-        element: <TasksRoute><Lazy><TaskForm /></Lazy></TasksRoute>,
+        element: <ModuleRoute module="tasks"><Lazy><TaskForm /></Lazy></ModuleRoute>,
       },
       {
         path: "/tasks/:id",
-        element: <TasksRoute><Lazy><ViewTask /></Lazy></TasksRoute>,
+        element: <ModuleRoute module="tasks"><Lazy><ViewTask /></Lazy></ModuleRoute>,
       },
 
-      // Task Categories — admin or tasks-department consultants only
-      {
-        path: "/task-categories",
-        element: <TasksRoute><Lazy><TaskCategories /></Lazy></TasksRoute>,
-      },
-      {
-        path: "/task-categories/create",
-        element: <TasksRoute><Lazy><CreateTaskCategory /></Lazy></TasksRoute>,
-      },
-      {
-        path: "/task-categories/edit/:id",
-        element: <TasksRoute><Lazy><EditTaskCategory /></Lazy></TasksRoute>,
-      },
+      // Task Categories — shared by the module, so shaping them is a manager's job
+      { path: "/task-categories", element: <ModuleRoute module="tasks"><Lazy><TaskCategories /></Lazy></ModuleRoute> },
+      { path: "/task-categories/create", element: <ManagerRoute><Lazy><CreateTaskCategory /></Lazy></ManagerRoute> },
+      { path: "/task-categories/edit/:id", element: <ManagerRoute><Lazy><EditTaskCategory /></Lazy></ManagerRoute> },
 
-      // Employee Requests Module — internal staff only (consultant, team_member, tele_sales)
-      {
-        path: "/employee-requests",
-        element: (
-          <ProtectedRoute allowedUserTypes={["consultant", "team_member", "tele_sales"]}>
-            <Lazy><MyRequests /></Lazy>
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: "/employee-requests/approvals",
-        element: (
-          <ProtectedRoute allowedUserTypes={["consultant", "team_member", "tele_sales"]}>
-            <Lazy><RequestApprovals /></Lazy>
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: "/employee-requests/balances",
-        element: (
-          <ProtectedRoute allowedUserTypes={["consultant", "team_member", "tele_sales"]}>
-            <Lazy><EmployeeBalance /></Lazy>
-          </ProtectedRoute>
-        ),
-      },
+      // Employee Requests Module — every employee submits; managers and admins review
+      { path: "/employee-requests", element: <EmployeeRoute><Lazy><MyRequests /></Lazy></EmployeeRoute> },
+      { path: "/employee-requests/approvals", element: <ManagerRoute><Lazy><RequestApprovals /></Lazy></ManagerRoute> },
+      { path: "/employee-requests/balances", element: <EmployeeRoute><Lazy><EmployeeBalance /></Lazy></EmployeeRoute> },
 
     ],
   },

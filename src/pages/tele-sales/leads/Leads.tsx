@@ -25,7 +25,7 @@ import type {
 } from '@/types/teleSales.types';
 import { ENTITY_TYPES, INDUSTRY_SECTORS, SALES_TYPES, teamName } from '@/types/teleSales.types';
 import { parseLeadsFile, FIELD_LABELS, type ParsedImport } from '@/utils/leadImport';
-import { isSuperAdmin, canManageTeam, ownTeamId, ownTeamName } from '@/lib/teleSalesRole';
+import { isSuperAdmin, isCrossTeamReader, isReadOnly, canManageTeam, ownTeamId, ownTeamName } from '@/lib/teleSalesRole';
 
 const LEAD_SOURCES: LeadSource[] = ['LinkedIn', 'Website', 'Referral', 'Cold Call', 'Exhibition', 'Partner', 'Other'];
 
@@ -52,8 +52,11 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
   const { industrySectors } = useAppSelector((s) => s.industrySectors);
   const { user } = useAppSelector((s) => s.auth);
 
-  // Super admins span every team; managers run one; agents work inside one.
+  // Admins and the sales manager span every team with write access; marketing
+  // spans every team read-only; agents work inside one.
   const superAdmin = isSuperAdmin(user);
+  const crossTeam = isCrossTeamReader(user);
+  const readOnly = isReadOnly(user);
   const canManage = canManageTeam(user);
 
   // Admin-managed Industry Sector lookup drives the sector filter. Only active
@@ -107,12 +110,12 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
       salesType: (lockedSalesType ?? (salesTypeFilter as SalesType)) || undefined,
       entityType: entityTypeFilter as EntityType || undefined,
       industrySector: sectorFilter as IndustrySector || undefined,
-      team: superAdmin && teamFilter ? teamFilter : undefined,
+      team: crossTeam && teamFilter ? teamFilter : undefined,
       assignedTo: ownerFilter || undefined,
       page,
       limit: itemsPerPage,
     }));
-  }, [dispatch, lockedStatus, lockedSalesType, search, statusFilter, priorityFilter, salesTypeFilter, entityTypeFilter, sectorFilter, teamFilter, ownerFilter, superAdmin, page, itemsPerPage]);
+  }, [dispatch, lockedStatus, lockedSalesType, search, statusFilter, priorityFilter, salesTypeFilter, entityTypeFilter, sectorFilter, teamFilter, ownerFilter, crossTeam, page, itemsPerPage]);
 
   useEffect(() => { load(); }, [load]);
   // Every member of a team now needs the roster: the table shows assignee names
@@ -247,22 +250,29 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
               : lockedStatus ? `${lockedStatus.toLowerCase()} leads` : 'total leads'}
             {/* Makes it obvious whose pipeline is on screen — the whole point of
                 the separation is that this is never "everyone's". */}
-            {!superAdmin && <> in <span className="font-medium text-on-surface">{ownTeamName(user)}</span></>}
+            {!crossTeam && <> in <span className="font-medium text-on-surface">{ownTeamName(user)}</span></>}
+            {readOnly && <> · <span className="font-medium text-on-surface">read-only</span></>}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => setComposeOpen(true)} className="gap-2">
-            <Send className="w-4 h-4" /> Send Email
-          </Button>
-          <Button variant="outline" onClick={openImport} className="gap-2">
-            <Upload className="w-4 h-4" /> Import
-          </Button>
           <Button variant="outline" onClick={() => setStatusRulesOpen(true)} className="gap-2">
             <ClipboardList className="w-4 h-4" /> Status Rules
           </Button>
-          <Button onClick={openCreate} className="gap-2">
-            <Plus className="w-4 h-4" /> New Lead
-          </Button>
+          {/* Marketing reads the pipeline; every control that changes it is hidden
+              (and refused by the API regardless). */}
+          {!readOnly && (
+            <>
+              <Button variant="outline" onClick={() => setComposeOpen(true)} className="gap-2">
+                <Send className="w-4 h-4" /> Send Email
+              </Button>
+              <Button variant="outline" onClick={openImport} className="gap-2">
+                <Upload className="w-4 h-4" /> Import
+              </Button>
+              <Button onClick={openCreate} className="gap-2">
+                <Plus className="w-4 h-4" /> New Lead
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -343,8 +353,8 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
                 <option key={a._id} value={a._id}>{a.firstName} {a.lastName}</option>
               ))}
             </select>
-            {/* Only a super admin sees more than one team's leads. */}
-            {superAdmin && (
+            {/* Only cross-team readers see more than one team's leads. */}
+            {crossTeam && (
               <select
                 value={teamFilter}
                 onChange={(e) => setTeamFilter(e.target.value)}
@@ -385,7 +395,7 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
                     // Every lead on screen belongs to the viewer's own team unless
                     // they are a super admin, so the column would be one repeated
                     // value for everyone else.
-                    ...(superAdmin ? ['Team'] : []), ''].map((h) => (
+                    ...(crossTeam ? ['Team'] : []), ''].map((h) => (
                     <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wide whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -449,7 +459,7 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
                         ? `${(lead.assignedTo as any).firstName} ${(lead.assignedTo as any).lastName}`
                         : <span className="text-xs italic opacity-70">Unassigned</span>}
                     </td>
-                    {superAdmin && (
+                    {crossTeam && (
                       <td className="px-4 py-3 whitespace-nowrap">
                         <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-surface-container-high text-on-surface-variant">
                           {teamName(lead.team)}
@@ -468,11 +478,13 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
                           disabled={!lead.email}>
                           <Send className="w-4 h-4" />
                         </button>
-                        <button onClick={() => openEdit(lead)}
-                          className="p-1.5 rounded-lg hover:bg-surface-container text-on-surface-variant hover:text-brand-500 transition-colors" title="Edit">
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                        {/* Deleting is a manager's call inside their own team. */}
+                        {!readOnly && (
+                          <button onClick={() => openEdit(lead)}
+                            className="p-1.5 rounded-lg hover:bg-surface-container text-on-surface-variant hover:text-brand-500 transition-colors" title="Edit">
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                        )}
+                        {/* Deleting is for admins and the sales manager. */}
                         {canManage && (
                           <button onClick={() => handleDelete(lead)}
                             className="p-1.5 rounded-lg hover:bg-error/10 text-on-surface-variant hover:text-error transition-colors" title="Delete">

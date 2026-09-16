@@ -1,46 +1,100 @@
 import { Navigate, useLocation } from 'react-router-dom';
+import type { ReactNode } from 'react';
 import { useAppSelector } from '@/redux/hooks/hooks';
-import type { UserType, ConsultantDepartment } from '@/types/auth.types';
+import { useAccess } from '@/redux/hooks/useAccess';
+import type { UserType, ModuleKey } from '@/types/auth.types';
 import type { CustomerRole } from '@/types/customer.types';
 
+export const LOGIN_PATH = '/login';
+
 interface ProtectedRouteProps {
-  children: React.ReactNode;
+  children: ReactNode;
   allowedUserTypes?: UserType[];
   requiredCustomerRole?: CustomerRole;
-  /** Consultant departments allowed. If set, only consultants with one of these departments (or admin role) can access. */
-  requiredDepartments?: ConsultantDepartment[];
-  loginPath?: string;
+  /** The employee must be able to open this module (admins always can). */
+  module?: ModuleKey;
+  /** The employee must hold at least this rank. */
+  minRole?: 'manager' | 'admin';
 }
 
-const ProtectedRoute = ({ children, allowedUserTypes, requiredCustomerRole, requiredDepartments, loginPath = '/signin' }: ProtectedRouteProps) => {
-  const { isAuthenticated, userType, customerRole, consultantDepartment, consultantRole } = useAppSelector((state) => state.auth);
+/**
+ * Route guard. Unauthenticated → /login; the wrong kind of user, a missing
+ * module or an insufficient role → /unauthorized. The API re-checks all of it,
+ * so this only decides what the browser shows, never what it may fetch.
+ */
+const ProtectedRoute = ({
+  children,
+  allowedUserTypes,
+  requiredCustomerRole,
+  module,
+  minRole,
+}: ProtectedRouteProps) => {
+  const { isAuthenticated, userType, customerRole } = useAppSelector((state) => state.auth);
+  const access = useAccess();
   const location = useLocation();
 
-  // If not authenticated, redirect to the appropriate login page
   if (!isAuthenticated) {
-    return <Navigate to={loginPath} state={{ from: location }} replace />;
+    return <Navigate to={LOGIN_PATH} state={{ from: location }} replace />;
   }
 
-  // If allowedUserTypes is specified, check if current user type is allowed
   if (allowedUserTypes && allowedUserTypes.length > 0) {
     if (!userType || !allowedUserTypes.includes(userType)) {
       return <Navigate to="/unauthorized" replace />;
     }
   }
 
-  // If a specific customer role is required, check it
   if (requiredCustomerRole && customerRole !== requiredCustomerRole) {
     return <Navigate to="/unauthorized" replace />;
   }
 
-  // If department restriction is set, check consultant department (admins bypass)
-  if (requiredDepartments && requiredDepartments.length > 0 && userType === 'consultant') {
-    if (consultantRole !== 'admin' && (!consultantDepartment || !requiredDepartments.includes(consultantDepartment))) {
-      return <Navigate to="/unauthorized" replace />;
-    }
+  if (module && !(access.isEmployee && access.hasModule(module))) {
+    return <Navigate to="/unauthorized" replace />;
+  }
+
+  if (minRole === 'admin' && !access.isAdmin) {
+    return <Navigate to="/unauthorized" replace />;
+  }
+  if (minRole === 'manager' && !access.isManagerOrAdmin) {
+    return <Navigate to="/unauthorized" replace />;
   }
 
   return <>{children}</>;
 };
 
 export default ProtectedRoute;
+
+// ── Named wrappers — read better in the route table ──────────────────────────
+
+export const EmployeeRoute = ({ children }: { children: ReactNode }) => (
+  <ProtectedRoute allowedUserTypes={['employee']}>{children}</ProtectedRoute>
+);
+
+export const CustomerRoute = ({
+  children,
+  role,
+}: {
+  children: ReactNode;
+  role?: CustomerRole;
+}) => (
+  <ProtectedRoute allowedUserTypes={['customer']} requiredCustomerRole={role}>
+    {children}
+  </ProtectedRoute>
+);
+
+export const ModuleRoute = ({ children, module }: { children: ReactNode; module: ModuleKey }) => (
+  <ProtectedRoute allowedUserTypes={['employee']} module={module}>
+    {children}
+  </ProtectedRoute>
+);
+
+export const ManagerRoute = ({ children }: { children: ReactNode }) => (
+  <ProtectedRoute allowedUserTypes={['employee']} minRole="manager">
+    {children}
+  </ProtectedRoute>
+);
+
+export const AdminRoute = ({ children }: { children: ReactNode }) => (
+  <ProtectedRoute allowedUserTypes={['employee']} minRole="admin">
+    {children}
+  </ProtectedRoute>
+);
