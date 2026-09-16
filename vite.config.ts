@@ -1,16 +1,23 @@
 import react from '@vitejs/plugin-react';
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import tailwindcss from '@tailwindcss/vite';
 import * as path from 'path';
 
-export default defineConfig({
+// Where the dev server forwards /api. Defaults to production; put
+// `VITE_PROXY_TARGET=http://localhost:5000` in .env.local (git-ignored) to
+// work against a backend running on this machine.
+const PRODUCTION_API = 'https://ticket-system-back-en-production.up.railway.app';
+
+export default defineConfig(({ mode }) => {
+  const proxyTarget = loadEnv(mode, process.cwd(), 'VITE_').VITE_PROXY_TARGET || PRODUCTION_API;
+  return {
   plugins: [react(), tailwindcss()],
   server: {
     proxy: {
       '/api': {
-        target: 'https://ticket-system-back-en-production.up.railway.app',
+        target: proxyTarget,
         changeOrigin: true,
-        secure: true,
+        secure: proxyTarget.startsWith('https'),
         configure: (proxy) => {
           // Backend's CORS middleware 500s on non-whitelisted origins.
           // Requests with no Origin header succeed, so strip it before forwarding.
@@ -43,4 +50,5 @@ export default defineConfig({
       },
     },
   },
-})
+  };
+});
