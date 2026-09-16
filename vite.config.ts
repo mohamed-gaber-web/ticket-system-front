@@ -12,6 +12,11 @@ export default defineConfig(({ mode }) => {
   const proxyTarget = loadEnv(mode, process.cwd(), 'VITE_').VITE_PROXY_TARGET || PRODUCTION_API;
   return {
   plugins: [react(), tailwindcss()],
+  // Pre-bundle deps that only lazy-loaded routes import, so Vite never has to
+  // re-optimize (and reload with mismatched chunks) the first time a route opens.
+  optimizeDeps: {
+    include: ['@dnd-kit/core', '@dnd-kit/sortable', '@dnd-kit/utilities', '@radix-ui/react-dialog'],
+  },
   server: {
     proxy: {
       '/api': {
