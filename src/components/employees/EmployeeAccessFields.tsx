@@ -34,6 +34,8 @@ const ROLE_HINTS: Record<EmployeeRole, string> = {
   sales_manager: 'Tele-sales across every team; runs the sales people.',
   marketing: 'Tele-sales (read-only, every team) and Tasks.',
   marketing_manager: 'The same as marketing, and runs the marketing people.',
+  developer: 'Development boards they create or are added to.',
+  developer_manager: 'Every development board; runs the developer people.',
 };
 
 /**
@@ -156,7 +158,7 @@ export function EmployeeAccessFields({ value, onChange, departments }: Props) {
               </span>
             )}
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             {MODULES.map((m) => (
               <label key={m} className="flex items-center gap-2 text-sm text-on-surface cursor-pointer select-none">
                 <input

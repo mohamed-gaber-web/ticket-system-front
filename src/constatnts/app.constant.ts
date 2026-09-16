@@ -31,6 +31,7 @@ import {
   PhoneCall,
   UserPlus,
   CheckSquare,
+  SquareKanban,
   CalendarHeart,
   Plane,
   ClipboardCheck,
@@ -212,6 +213,15 @@ const TASKS_GROUP: NavLink = {
   ],
 };
 
+const DEVELOPMENT_GROUP: NavLink = {
+  name: "Development",
+  icon: SquareKanban,
+  isGroup: true,
+  children: [
+    { name: "Boards", path: "/development", icon: SquareKanban },
+  ],
+};
+
 const EMPLOYEES_GROUP: NavLink = {
   name: "Employees",
   icon: UserCog,
@@ -237,6 +247,7 @@ const EMPLOYEE_NAV: NavEntry[] = [
   { module: "tickets", link: TICKETING_GROUP },
   { module: "telesales", link: TELE_SALES_GROUP },
   { module: "tasks", link: TASKS_GROUP },
+  { module: "development", link: DEVELOPMENT_GROUP },
   { module: "any", minRole: "manager", link: EMPLOYEES_GROUP },
   { module: "admin", link: TICKETING_CONFIG_GROUP },
   { module: "any", link: MY_REQUESTS_GROUP },

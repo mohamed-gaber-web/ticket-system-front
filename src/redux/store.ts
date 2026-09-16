@@ -30,6 +30,7 @@ import tasksReducer from './slices/tasksSlice';
 import taskCategoriesReducer from './slices/taskCategorySlice';
 import taskAttachmentsReducer from './slices/taskAttachmentSlice';
 import taskCommentsReducer from './slices/taskCommentSlice';
+import developmentReducer from './slices/developmentSlice';
 import employeeRequestsReducer from './slices/employeeRequestSlice';
 import employeeBalancesReducer from './slices/employeeBalanceSlice';
 import aiReducer from './slices/aiSlice';
@@ -68,6 +69,7 @@ export const store = configureStore({
     taskCategories: taskCategoriesReducer,
     taskAttachments: taskAttachmentsReducer,
     taskComments: taskCommentsReducer,
+    development: developmentReducer,
     employeeRequests: employeeRequestsReducer,
     employeeBalances: employeeBalancesReducer,
     ai: aiReducer,

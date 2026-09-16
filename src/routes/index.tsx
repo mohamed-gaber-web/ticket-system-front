@@ -137,6 +137,8 @@ const ViewTask = lazy(() => import("@/pages/tasks/ViewTask"));
 const TasksDashboard = lazy(() => import("@/pages/tasks/TasksDashboard"));
 const TaskCategories = lazy(() => import("@/pages/task-categories/taskCategories"));
 const CreateTaskCategory = lazy(() => import("@/pages/task-categories/createTaskCategory"));
+const DevelopmentBoards = lazy(() => import("@/pages/development/DevelopmentBoards"));
+const DevelopmentBoard = lazy(() => import("@/pages/development/DevelopmentBoard"));
 const EditTaskCategory = lazy(() => import("@/pages/task-categories/editTaskCategory"));
 
 // Employee Requests Module
@@ -298,6 +300,10 @@ export const routes: RouteObject[] = [
       // Task Categories — shared by the module, so shaping them is a manager's job
       { path: "/task-categories", element: <ModuleRoute module="tasks"><Lazy><TaskCategories /></Lazy></ModuleRoute> },
       { path: "/task-categories/create", element: <ManagerRoute><Lazy><CreateTaskCategory /></Lazy></ManagerRoute> },
+
+      // Development Module — kanban boards; who sees which board is decided per board by the API
+      { path: "/development", element: <ModuleRoute module="development"><Lazy><DevelopmentBoards /></Lazy></ModuleRoute> },
+      { path: "/development/boards/:id", element: <ModuleRoute module="development"><Lazy><DevelopmentBoard /></Lazy></ModuleRoute> },
       { path: "/task-categories/edit/:id", element: <ManagerRoute><Lazy><EditTaskCategory /></Lazy></ManagerRoute> },
 
       // Employee Requests Module — every employee submits; managers and admins review

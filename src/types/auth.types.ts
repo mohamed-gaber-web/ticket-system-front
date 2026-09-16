@@ -18,11 +18,13 @@ export type EmployeeRole =
   | 'sales'
   | 'sales_manager'
   | 'marketing'
-  | 'marketing_manager';
+  | 'marketing_manager'
+  | 'developer'
+  | 'developer_manager';
 
-export type RoleFamily = 'admin' | 'consultant' | 'sales' | 'marketing';
+export type RoleFamily = 'admin' | 'consultant' | 'sales' | 'marketing' | 'developer';
 
-export type ModuleKey = 'tickets' | 'telesales' | 'tasks' | 'admin';
+export type ModuleKey = 'tickets' | 'telesales' | 'tasks' | 'admin' | 'development';
 
 // Base User Interface
 export interface User {

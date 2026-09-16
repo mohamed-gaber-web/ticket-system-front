@@ -28,6 +28,8 @@ const ROLE_STYLES: Record<string, string> = {
   sales_manager: 'bg-amber-100 text-amber-800 border-amber-200',
   marketing: 'bg-emerald-100 text-emerald-800 border-emerald-200',
   marketing_manager: 'bg-amber-100 text-amber-800 border-amber-200',
+  developer: 'bg-cyan-100 text-cyan-800 border-cyan-200',
+  developer_manager: 'bg-amber-100 text-amber-800 border-amber-200',
 };
 
 export default function ConsultantTable({

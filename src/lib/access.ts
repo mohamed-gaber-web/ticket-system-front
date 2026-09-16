@@ -13,9 +13,11 @@ export const ROLES: EmployeeRole[] = [
   'sales_manager',
   'marketing',
   'marketing_manager',
+  'developer',
+  'developer_manager',
 ];
 
-export const MODULES: ModuleKey[] = ['tickets', 'telesales', 'tasks', 'admin'];
+export const MODULES: ModuleKey[] = ['tickets', 'telesales', 'tasks', 'admin', 'development'];
 
 export const ROLE_DEFAULT_MODULES: Record<EmployeeRole, ModuleKey[]> = {
   admin: MODULES,
@@ -24,6 +26,8 @@ export const ROLE_DEFAULT_MODULES: Record<EmployeeRole, ModuleKey[]> = {
   sales_manager: ['telesales'],
   marketing: ['telesales', 'tasks'],
   marketing_manager: ['telesales', 'tasks'],
+  developer: ['development'],
+  developer_manager: ['development'],
 };
 
 export const ROLE_LABELS: Record<EmployeeRole, string> = {
@@ -33,6 +37,8 @@ export const ROLE_LABELS: Record<EmployeeRole, string> = {
   sales_manager: 'Sales Manager',
   marketing: 'Marketing',
   marketing_manager: 'Marketing Manager',
+  developer: 'Developer',
+  developer_manager: 'Development Manager',
 };
 
 export const MODULE_LABELS: Record<ModuleKey, string> = {
@@ -40,6 +46,7 @@ export const MODULE_LABELS: Record<ModuleKey, string> = {
   telesales: 'Tele-sales',
   tasks: 'Tasks',
   admin: 'Administration',
+  development: 'Development',
 };
 
 export const isEmployeeRole = (role: unknown): role is EmployeeRole =>
@@ -75,5 +82,6 @@ export const homePathFor = (modules: ModuleKey[]): string => {
   if (modules.includes('tickets')) return '/';
   if (modules.includes('telesales')) return '/tele-sales';
   if (modules.includes('tasks')) return '/tasks/dashboard';
+  if (modules.includes('development')) return '/development';
   return '/employee-requests';
 };

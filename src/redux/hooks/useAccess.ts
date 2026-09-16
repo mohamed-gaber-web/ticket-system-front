@@ -19,6 +19,8 @@ export interface Access {
   isMarketing: boolean;
   /** Admins and sales managers: see and write every tele-sales team. */
   isCrossTeam: boolean;
+  /** Admins and the development manager: see and shape every development board. */
+  seesAllBoards: boolean;
   modules: ModuleKey[];
   hasModule: (m: ModuleKey) => boolean;
   teleSalesTeam: TeleSalesTeamRef | null;
@@ -55,6 +57,7 @@ export const useAccess = (): Access => {
       isSalesManager: role === 'sales_manager',
       isMarketing: family === 'marketing',
       isCrossTeam: isAdmin || role === 'sales_manager',
+      seesAllBoards: isAdmin || role === 'developer_manager',
       modules: resolved,
       hasModule: (m: ModuleKey) => resolved.includes(m),
       teleSalesTeam,

@@ -35,6 +35,7 @@ export default defineConfig({
           'vendor-redux': ['@reduxjs/toolkit', 'react-redux'],
           'vendor-charts': ['recharts'],
           'vendor-motion': ['framer-motion'],
+          'vendor-dnd': ['@dnd-kit/core', '@dnd-kit/sortable', '@dnd-kit/utilities'],
           'vendor-pdf': ['jspdf', 'jspdf-autotable', 'html2canvas'],
           'vendor-xlsx': ['xlsx'],
           'vendor-alerts': ['sweetalert2', 'sweetalert2-react-content'],

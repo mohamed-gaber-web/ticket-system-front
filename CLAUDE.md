@@ -46,8 +46,9 @@ Mixed roles use this system: support agents triaging and resolving tickets, mana
 ## Access model (who sees what)
 
 Two user types (`employee` | `customer`) and one flat employee role list —
-`admin`, `consultant`, `sales`, `sales_manager`, `marketing`, `marketing_manager`.
-Roles unlock **modules** (`tickets`, `telesales`, `tasks`, `admin`); an admin may
+`admin`, `consultant`, `sales`, `sales_manager`, `marketing`, `marketing_manager`,
+`developer`, `developer_manager`.
+Roles unlock **modules** (`tickets`, `telesales`, `tasks`, `admin`, `development`); an admin may
 override the module list per employee. The API is the authority; the client only
 mirrors it so the sidebar, guards and buttons agree.
 
@@ -57,3 +58,14 @@ mirrors it so the sidebar, guards and buttons agree.
 - Sidebar: `EMPLOYEE_NAV` in `src/constatnts/app.constant.ts` — every entry is tagged with its module and optional `minRole`; add a link there, never a per-role array.
 - One login page (`/login`) for everyone; the e-mail decides. Customers land on the "Customer Portal" shell (same `Layout`, customer link set).
 - Tele-sales role helpers live in `src/lib/teleSalesRole.ts` (`isSuperAdmin` = admin or sales manager, `isReadOnly` = marketing).
+
+## Development module (kanban)
+
+`/development` lists the boards the caller may see; `/development/boards/:id` is the board.
+State lives in `src/redux/slices/developmentSlice.ts`, normalised as `lists` + `cardIdsByList` +
+`cardsById` so a drag only touches id arrays. Drag-and-drop is `@dnd-kit` in
+`src/components/development/KanbanBoard.tsx`: `onDragOver` applies the move locally
+(`cardMovedLocally`), `onDragEnd` persists it (`moveCard` / `reorderLists`) and a failed save
+restores the snapshot taken at drag start. `useAccess().seesAllBoards` (admin or development
+manager) plus "is the creator" decides who gets the board-shaping controls; the API re-checks.
+Shared helpers (`personName`, `contrastText`, dnd ids) are in `src/lib/development.ts`.
