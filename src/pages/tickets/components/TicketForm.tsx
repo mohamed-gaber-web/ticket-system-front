@@ -19,6 +19,7 @@ import { toast } from 'sonner';
 import { validateFile, formatFileSize } from '@/api/attachmentApi';
 import { fetchAutoFillSuggestions, clearAutoFillSuggestions, acceptAutoFillField } from '@/redux/slices/aiSlice';
 import { suggestDescription as suggestDescriptionApi } from '@/api/aiApi';
+import { getWeekNumber } from '@/utils/weekUtils';
 
 interface Props {
   initialData?: Ticket;
@@ -48,6 +49,11 @@ const generateWeekOptions = () => {
   return options;
 };
 const WEEK_OPTIONS = generateWeekOptions();
+
+// Scheduled week is derived from the dates: the start date when set, otherwise
+// the internal delivery date. Returns undefined when neither is available.
+const autoWeek = (startDate?: string, internalDeliveryDate?: string): number | undefined =>
+  getWeekNumber(startDate || internalDeliveryDate, 53) ?? undefined;
 
 // Generate a unique ticket number
 const generateTicketNumber = () => {
@@ -254,7 +260,7 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
           scope: extractScopeIds(initialData.scope),
           source: extractId(initialData.source),
           internalDeliveryDate: toDateInput(initialData.internalDeliveryDate),
-          scheduledWeek: initialData.scheduledWeek,
+          scheduledWeek: initialData.scheduledWeek ?? autoWeek(toDateInput(initialData.startDate), toDateInput(initialData.internalDeliveryDate)),
           durationHours: initialData.durationHours,
           resolvedAt: toDateInput(initialData.resolvedAt),
           closedAt: toDateInput(initialData.closedAt),
@@ -276,7 +282,7 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
           scope: extractScopeIds(initialData.scope),
           source: extractId(initialData.source),
           internalDeliveryDate: toDateInput(initialData.internalDeliveryDate),
-          scheduledWeek: initialData.scheduledWeek,
+          scheduledWeek: initialData.scheduledWeek ?? autoWeek(toDateInput(initialData.startDate), toDateInput(initialData.internalDeliveryDate)),
           durationHours: initialData.durationHours,
           resolvedAt: toDateInput(initialData.resolvedAt),
           closedAt: toDateInput(initialData.closedAt),
@@ -287,7 +293,10 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    const updatedData = { ...formData, [name]: value };
+    const updatedData: any = { ...formData, [name]: value };
+    if (name === 'startDate' || name === 'internalDeliveryDate') {
+      updatedData.scheduledWeek = autoWeek(updatedData.startDate, updatedData.internalDeliveryDate);
+    }
     setFormData(updatedData);
     if (name === 'description') {
       triggerAnalysis(updatedData.subject || '', value);
@@ -762,8 +771,11 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
                 onChange={(val) => setFormData({ ...formData, scheduledWeek: val ? Number(val) : undefined })}
                 placeholder="-- Select Week --"
                 options={WEEK_OPTIONS}
+                disabled
               />
-              <p className="mt-1 text-xs text-on-surface-variant">Which week of the year this ticket is scheduled for.</p>
+              <p className="mt-1 text-xs text-on-surface-variant">
+                Set automatically from the start date (or the internal delivery date when there is no start date).
+              </p>
             </div>
 
             <div>

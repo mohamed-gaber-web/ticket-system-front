@@ -18,6 +18,15 @@ export interface TaskCategoryObject {
   name: string;
 }
 
+// Populated on single-task responses; the list endpoint returns the raw id.
+export interface TaskParentRef {
+  _id: string;
+  taskNumber?: string;
+  name: string;
+  startDate?: string;
+  endDate?: string;
+}
+
 export interface Task {
   _id: string;
   taskNumber?: string;
@@ -35,24 +44,26 @@ export interface Task {
   completedAt?: string | null;
   delayDays?: number;
   createdBy?: TaskConsultant | string | null;
-  parentTask?: string | null;
+  parentTask?: TaskParentRef | string | null;
   subTaskCount?: number;
   createdAt: string;
   updatedAt: string;
 }
 
+// Every field is mandatory when creating a task; only `parentTask` is optional
+// (set when creating a subtask from its main task).
 export interface CreateTaskData {
   name: string;
-  description?: string;
+  description: string;
   department: TaskDepartment;
   category: string;
-  startDate?: string;
-  endDate?: string;
-  assignedTo?: string | null;
-  responsible?: string | null;
-  scheduledWeek?: number | null;
-  duration?: number | null;
-  status?: TaskStatus;
+  startDate: string;
+  endDate: string;
+  assignedTo: string;
+  responsible: string;
+  scheduledWeek: number;
+  duration: number;
+  status: TaskStatus;
   parentTask?: string | null;
 }
 
@@ -126,4 +137,68 @@ export interface TaskStats {
 export interface TaskStatsResponse {
   success: boolean;
   data: TaskStats;
+}
+
+// ── Task report ─────────────────────────────────────────────────
+export type TaskReportScope = 'all' | 'main' | 'sub';
+
+export interface TaskReportParams {
+  department?: string;
+  category?: string;
+  status?: TaskStatus;
+  assignedTo?: string;
+  responsible?: string;
+  scheduledWeek?: number;
+  /** Tasks whose start–end range overlaps [from, to]. */
+  from?: string;
+  to?: string;
+  scope?: TaskReportScope;
+  search?: string;
+}
+
+export interface TaskReportBreakdown {
+  _id: string | number | null;
+  name: string;
+  total: number;
+  pending: number;
+  inProgress: number;
+  done: number;
+  overdue: number;
+  delayed: number;
+  totalDelayDays: number;
+  totalDuration: number;
+}
+
+export interface TaskReportSummary {
+  total: number;
+  mainTasks: number;
+  subTasks: number;
+  pending: number;
+  inProgress: number;
+  done: number;
+  overdue: number;
+  doneLate: number;
+  completionRate: number;
+  onTimeRate: number;
+  avgDelayDays: number;
+  totalDuration: number;
+}
+
+export interface TaskReport {
+  generatedAt: string;
+  filters: TaskReportParams;
+  summary: TaskReportSummary;
+  byStatus: { status: TaskStatus; count: number }[];
+  byDepartment: TaskReportBreakdown[];
+  byCategory: TaskReportBreakdown[];
+  byAssignee: TaskReportBreakdown[];
+  byResponsible: TaskReportBreakdown[];
+  byWeek: TaskReportBreakdown[];
+  tasks: Task[];
+  truncated: boolean;
+}
+
+export interface TaskReportResponse {
+  success: boolean;
+  data: TaskReport;
 }

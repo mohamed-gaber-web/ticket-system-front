@@ -107,9 +107,9 @@ export const createTicket = createAsyncThunk(
 
 export const changeTicketStatus = createAsyncThunk(
   'tickets/changeTicketStatus',
-  async ({ id, status }: { id: string; status: string }, { rejectWithValue }) => {
+  async ({ id, status, pendingOn }: { id: string; status: string; pendingOn?: string | null }, { rejectWithValue }) => {
     try {
-      const response = await ticketApi.updateTicketStatus(id, status);
+      const response = await ticketApi.updateTicketStatus(id, status, pendingOn);
       return response.data;
     } catch (error: any) {
       const message = error.response?.data?.message || 'Failed to update status';

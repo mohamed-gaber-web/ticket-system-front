@@ -3,6 +3,14 @@ import { toast } from 'sonner';
 import * as tasksApi from '@/api/tasksApi';
 import type { Task, TaskQueryParams, CreateTaskData, UpdateTaskData } from '@/types/task.types';
 
+// The API answers validation failures with { message: 'Validation error', errors: [...] };
+// surface the actual reasons instead of the generic message.
+const apiError = (error: any, fallback: string): string => {
+  const data = error.response?.data;
+  if (Array.isArray(data?.errors) && data.errors.length) return data.errors.join('. ');
+  return data?.message || fallback;
+};
+
 interface TasksState {
   tasks: Task[];
   currentTask: Task | null;
@@ -64,7 +72,7 @@ export const createTask = createAsyncThunk(
       toast.success('Task created successfully');
       return response.data;
     } catch (error: any) {
-      const message = error.response?.data?.message || 'Failed to create task';
+      const message = apiError(error, 'Failed to create task');
       toast.error(message);
       return rejectWithValue(message);
     }
@@ -79,7 +87,7 @@ export const updateTask = createAsyncThunk(
       toast.success('Task updated successfully');
       return response.data;
     } catch (error: any) {
-      const message = error.response?.data?.message || 'Failed to update task';
+      const message = apiError(error, 'Failed to update task');
       toast.error(message);
       return rejectWithValue(message);
     }
@@ -106,7 +114,7 @@ export const createSubTask = createAsyncThunk(
       toast.success('Subtask created successfully');
       return response.data;
     } catch (error: any) {
-      const message = error.response?.data?.message || 'Failed to create subtask';
+      const message = apiError(error, 'Failed to create subtask');
       toast.error(message);
       return rejectWithValue(message);
     }

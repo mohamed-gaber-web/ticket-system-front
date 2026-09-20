@@ -26,6 +26,7 @@ import { validateFile, formatFileSize } from '@/api/attachmentApi';
 import { getModules } from '@/api/moduleApi';
 import type { Module } from '@/types/module.types';
 import type { CreateSubTicketData } from '@/types/ticket';
+import { getWeekNumber } from '@/utils/weekUtils';
 
 // Generate week options for the current year (Saturday–Friday, Egypt calendar).
 // Mirrors the main ticket form so sub-tickets share the same scheduling UI.
@@ -49,6 +50,10 @@ const generateWeekOptions = () => {
   return options;
 };
 const WEEK_OPTIONS = generateWeekOptions();
+
+// Sub-tickets have no start date, so the week follows the internal delivery date.
+const autoWeek = (internalDeliveryDate?: string): number | undefined =>
+  getWeekNumber(internalDeliveryDate, 53) ?? undefined;
 
 interface CreateSubTicketDialogProps {
   parentTicketId: string;
@@ -388,7 +393,7 @@ export function CreateSubTicketDialog({
                       id="sub-internalDeliveryDate"
                       type="date"
                       value={formData.internalDeliveryDate || ''}
-                      onChange={(e) => setFormData({ ...formData, internalDeliveryDate: e.target.value })}
+                      onChange={(e) => setFormData({ ...formData, internalDeliveryDate: e.target.value, scheduledWeek: autoWeek(e.target.value) })}
                     />
                     <p className="text-xs text-on-surface-variant">Internal deadline — not visible to customers.</p>
                   </div>
@@ -403,7 +408,9 @@ export function CreateSubTicketDialog({
                       onChange={(val) => setFormData({ ...formData, scheduledWeek: val ? Number(val) : undefined })}
                       placeholder="-- Select Week --"
                       options={WEEK_OPTIONS}
+                      disabled
                     />
+                    <p className="text-xs text-on-surface-variant">Set automatically from the internal delivery date.</p>
                   </div>
 
                   <div className="grid gap-2">

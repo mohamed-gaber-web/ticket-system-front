@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "cross-env NODE_OPTIONS=--max-http-header-size=65536 vite",
+    "dev:local": "cross-env NODE_OPTIONS=--max-http-header-size=65536 VITE_PROXY_TARGET=http://localhost:5000 vite",
+    "dev:prod": "cross-env NODE_OPTIONS=--max-http-header-size=65536 VITE_PROXY_TARGET=https://ticket-system-back-en-production.up.railway.app vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"

@@ -55,6 +55,15 @@ function TasksRoute({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+// Guard: meeting book — internal staff (consultants, tele-sales) and customers (read-only)
+function CalendarRoute({ children }: { children: ReactNode }) {
+  const { isAuthenticated, userType } = useAppSelector((state) => state.auth);
+  const location = useLocation();
+  if (!isAuthenticated) return <Navigate to="/signin" state={{ from: location }} replace />;
+  if (!['consultant', 'tele_sales', 'customer'].includes(userType ?? '')) return <Navigate to="/unauthorized" replace />;
+  return <>{children}</>;
+}
+
 // Routes to correct dashboard based on userType / department
 function DashboardRouter() {
   const { userType, consultantDepartment, consultantRole } = useAppSelector((state) => state.auth);
@@ -170,6 +179,10 @@ const Tasks = lazy(() => import("@/pages/tasks/Tasks"));
 const TaskForm = lazy(() => import("@/pages/tasks/components/TaskForm"));
 const ViewTask = lazy(() => import("@/pages/tasks/ViewTask"));
 const TasksDashboard = lazy(() => import("@/pages/tasks/TasksDashboard"));
+const TaskReports = lazy(() => import("@/pages/tasks/TaskReports"));
+
+// Meeting Book (calendar)
+const MeetingCalendar = lazy(() => import("@/pages/calendar/MeetingCalendar"));
 const TaskCategories = lazy(() => import("@/pages/task-categories/taskCategories"));
 const CreateTaskCategory = lazy(() => import("@/pages/task-categories/createTaskCategory"));
 const EditTaskCategory = lazy(() => import("@/pages/task-categories/editTaskCategory"));
@@ -225,6 +238,9 @@ export const routes: RouteObject[] = [
       // Dashboard — CustomerDashboard for customers, consultant Dashboard for everyone else
       { path: "/", element: <DashboardRouter /> },
       { path: "/dashboard", element: <DashboardRouter /> },
+
+      // Meeting Book (calendar)
+      { path: "/calendar", element: <CalendarRoute><Lazy><MeetingCalendar /></Lazy></CalendarRoute> },
 
       // Profile
       { path: "/profile", element: <Lazy><ProfilePage /></Lazy> },
@@ -353,6 +369,10 @@ export const routes: RouteObject[] = [
       {
         path: "/tasks/dashboard",
         element: <TasksRoute><Lazy><TasksDashboard /></Lazy></TasksRoute>,
+      },
+      {
+        path: "/tasks/reports",
+        element: <TasksRoute><Lazy><TaskReports /></Lazy></TasksRoute>,
       },
       {
         path: "/tasks",

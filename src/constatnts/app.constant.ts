@@ -95,8 +95,13 @@ const SERVICES_GROUP_CUSTOMER = {
   ],
 };
 
+// Meeting Book — shared calendar for booking and tracking meetings with
+// customers and leads. Staff can book; customers see their own meetings.
+const MEETING_BOOK_LINK = { name: "Meeting Book", path: "/calendar", icon: CalendarDays };
+
 export const ROUTERLINKS = [
   { name: "Dashboard", path: "/", icon: LayoutDashboard },
+  MEETING_BOOK_LINK,
   {
     name: "Customers",
     icon: Users,
@@ -126,6 +131,7 @@ const buildCustomerLinks = (customerRole?: string | null) => {
   const links: any[] = [
     { name: "Dashboard", path: "/", icon: LayoutDashboard },
     SERVICES_GROUP_CUSTOMER,
+    MEETING_BOOK_LINK,
   ];
   if (customerRole === "company_admin") {
     links.push({ name: "Manage Users", path: "/company-users", icon: Users });
@@ -136,6 +142,7 @@ const buildCustomerLinks = (customerRole?: string | null) => {
 // Consultant (regular & senior) can see specific modules
 const CONSULTANT_LINKS = [
   { name: "Dashboard", path: "/", icon: LayoutDashboard },
+  MEETING_BOOK_LINK,
   {
     name: "Customers",
     icon: Users,
@@ -167,6 +174,7 @@ const TEAM_MEMBER_LINKS = [
 // Shared by every tele-sales role — the day-to-day pipeline screens.
 const TELE_SALES_CORE_LINKS = [
   { name: "Dashboard", path: "/tele-sales", icon: LayoutDashboard },
+  MEETING_BOOK_LINK,
   { name: "Leads", path: "/tele-sales/leads", icon: PhoneCall },
   { name: "Opportunities", path: "/tele-sales/opportunities", icon: Star },
   { name: "Recent Calls", path: "/tele-sales/calls/recent", icon: Clock },
@@ -234,6 +242,7 @@ const TASKS_GROUP = {
     { name: "All Tasks", path: "/tasks", icon: ListChecks },
     { name: "Create Task", path: "/tasks/create", icon: CheckSquare },
     { name: "Task Categories", path: "/task-categories", icon: FolderKanban },
+    { name: "Reports", path: "/tasks/reports", icon: BarChart2 },
   ],
 };
 
@@ -325,6 +334,7 @@ const TICKETING_ADMIN_GROUP = {
 
 const TASKS_ONLY_LINKS = [
   { name: "Dashboard", path: "/", icon: LayoutDashboard },
+  MEETING_BOOK_LINK,
   TASKS_GROUP,
 ];
 
@@ -333,6 +343,7 @@ const buildConsultantLinks = (consultantRole?: string | null, department?: strin
   // Admin → three collapsible module groups
   if (consultantRole === 'admin') {
     return [
+      MEETING_BOOK_LINK,
       TICKETING_ADMIN_GROUP,
       TASKS_GROUP,
       EMPLOYEE_REQUESTS_GROUP,
@@ -345,6 +356,7 @@ const buildConsultantLinks = (consultantRole?: string | null, department?: strin
   if (department === 'sales') {
     return [
       { name: "Dashboard", path: "/tele-sales", icon: LayoutDashboard },
+      MEETING_BOOK_LINK,
       { name: "Leads", path: "/tele-sales/leads", icon: PhoneCall },
       { name: "Opportunities", path: "/tele-sales/opportunities", icon: Star },
       { name: "Recent Calls", path: "/tele-sales/calls/recent", icon: Clock },

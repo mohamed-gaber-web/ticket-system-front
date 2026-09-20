@@ -1,16 +1,31 @@
 import react from '@vitejs/plugin-react';
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import tailwindcss from '@tailwindcss/vite';
 import * as path from 'path';
 
-export default defineConfig({
+const PRODUCTION_API = 'https://ticket-system-back-en-production.up.railway.app';
+
+// Where the dev server forwards /api (and the socket.io handshake).
+//   - default:               production (Railway)
+//   - VITE_PROXY_TARGET set: that backend, e.g. http://localhost:5000 for the
+//                            local server + local MongoDB (put it in .env.local,
+//                            which is git-ignored, or run `npm run dev:local`).
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), 'VITE_');
+  const target = env.VITE_PROXY_TARGET || PRODUCTION_API;
+  const isLocal = /localhost|127\.0\.0\.1/.test(target);
+  console.log(`
+  API proxy → ${target}${isLocal ? '  (LOCAL backend)' : '  (PRODUCTION backend)'}
+`);
+
+  return {
   plugins: [react(), tailwindcss()],
   server: {
     proxy: {
       '/api': {
-        target: 'https://ticket-system-back-en-production.up.railway.app',
+        target,
         changeOrigin: true,
-        secure: true,
+        secure: !isLocal,
         configure: (proxy) => {
           // Backend's CORS middleware 500s on non-whitelisted origins.
           // Requests with no Origin header succeed, so strip it before forwarding.
@@ -20,6 +35,8 @@ export default defineConfig({
           });
         },
       },
+      // Real-time notifications (socket.io) go to the same backend.
+      '/socket.io': { target, changeOrigin: true, secure: !isLocal, ws: true },
     },
   },
   resolve: {
@@ -42,4 +59,5 @@ export default defineConfig({
       },
     },
   },
-})
+};
+});

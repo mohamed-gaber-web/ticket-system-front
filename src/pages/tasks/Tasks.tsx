@@ -1,4 +1,6 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import { endOfMonth, endOfWeek, format, startOfMonth, startOfWeek } from 'date-fns';
+import { SearchSelect } from '@/components/ui/search-select';
 import { useSearchParams } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchTasks, deleteTask } from '@/redux/slices/tasksSlice';
@@ -12,6 +14,7 @@ import {
   Plus, CheckSquare, Search, Trash2, Eye, Edit,
   ChevronRight, ChevronDown, GitBranch, Loader2,
   Download, ArrowUp, ArrowDown, ChevronsUpDown,
+  X, SlidersHorizontal, CircleDot, FolderKanban, Building2, UserCheck, CalendarDays, RotateCcw,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
@@ -114,11 +117,63 @@ export default function Tasks() {
 
   useEffect(() => { load(); }, [page, statusFilter, deptFilter, categoryFilter, startDateFilter, endDateFilter, assignedToFilter, weekFilter, sortField, sortOrder]);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    setPage(1);
-    load();
+  // Live search: reload 350ms after the user stops typing (no Enter needed).
+  // Skips the mount run — the effect above already loads the first page.
+  const searchTouched = React.useRef(false);
+  useEffect(() => {
+    if (!searchTouched.current) { searchTouched.current = true; return; }
+    const t = setTimeout(() => { setPage(1); dispatch(fetchTasks(buildParams({ page: 1, limit }))); }, 350);
+    return () => clearTimeout(t);
+  }, [search]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const resetFilters = () => {
+    setSearch(''); setStatusFilter(''); setDeptFilter(''); setCategoryFilter('');
+    setStartDateFilter(''); setEndDateFilter('');
+    setAssignedToFilter(''); setWeekFilter(''); setPage(1);
   };
+
+  // Chips summarising what is applied, each removable on its own.
+  const activeChips = useMemo(() => {
+    const chips: { key: string; label: string; clear: () => void }[] = [];
+    if (search) chips.push({ key: 'search', label: `"${search}"`, clear: () => setSearch('') });
+    if (statusFilter) chips.push({ key: 'status', label: STATUS_LABELS[statusFilter], clear: () => setStatusFilter('') });
+    if (categoryFilter) chips.push({ key: 'category', label: taskCategories.find((c) => c._id === categoryFilter)?.name ?? 'Category', clear: () => setCategoryFilter('') });
+    if (deptFilter) chips.push({ key: 'dept', label: departments.find((d) => d._id === deptFilter)?.name ?? 'Department', clear: () => setDeptFilter('') });
+    if (assignedToFilter) chips.push({ key: 'assignee', label: consultants.find((c) => c._id === assignedToFilter)?.fullName ?? 'Assignee', clear: () => setAssignedToFilter('') });
+    if (weekFilter) chips.push({ key: 'week', label: `Week ${weekFilter}`, clear: () => setWeekFilter('') });
+    if (startDateFilter || endDateFilter) {
+      chips.push({
+        key: 'dates',
+        label: `${startDateFilter ? fmtDate(startDateFilter) : '…'} → ${endDateFilter ? fmtDate(endDateFilter) : '…'}`,
+        clear: () => { setStartDateFilter(''); setEndDateFilter(''); },
+      });
+    }
+    return chips;
+  }, [search, statusFilter, categoryFilter, deptFilter, assignedToFilter, weekFilter, startDateFilter, endDateFilter, taskCategories, departments, consultants]);
+
+  const setDateRange = (from: Date, to: Date) => {
+    setStartDateFilter(format(from, 'yyyy-MM-dd'));
+    setEndDateFilter(format(to, 'yyyy-MM-dd'));
+    setPage(1);
+  };
+  const today = new Date();
+  const DATE_PRESETS = [
+    { label: 'This week', apply: () => setDateRange(startOfWeek(today, { weekStartsOn: 6 }), endOfWeek(today, { weekStartsOn: 6 })) },
+    { label: 'This month', apply: () => setDateRange(startOfMonth(today), endOfMonth(today)) },
+    { label: 'Next month', apply: () => { const n = new Date(today.getFullYear(), today.getMonth() + 1, 1); setDateRange(startOfMonth(n), endOfMonth(n)); } },
+  ];
+
+  const weekOptions = useMemo(
+    () => Array.from({ length: 52 }, (_, i) => i + 1).map((w) => ({ value: String(w), label: `Week ${w}`, sub: getWeekDateRange(w) })),
+    []
+  );
+  const statusOptions = Object.entries(STATUS_LABELS).map(([value, label]) => ({ value, label }));
+  const categoryOptions = useMemo(() => taskCategories.map((c) => ({ value: c._id, label: c.name })), [taskCategories]);
+  const departmentOptions = useMemo(() => departments.map((d) => ({ value: d._id, label: d.name })), [departments]);
+  const assigneeOptions = useMemo(
+    () => consultants.map((c) => ({ value: c._id, label: c.fullName || `${c.firstName} ${c.lastName}`, sub: c.email })),
+    [consultants]
+  );
 
   const handleSort = (field: TaskSortField) => {
     if (sortField === field) {
@@ -448,105 +503,150 @@ export default function Tasks() {
 
       {/* Filters */}
       <div className="bg-surface-container-lowest rounded-[1rem] p-4 space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <form onSubmit={handleSearch} className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant pointer-events-none" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search tasks…"
-              className="w-full pl-9 pr-4 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
-            />
-          </form>
-
-          <select
-            value={statusFilter}
-            onChange={(e) => { setStatusFilter(e.target.value as TaskStatus | ''); setPage(1); }}
-            className="px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
-          >
-            <option value="">All Statuses</option>
-            {Object.entries(STATUS_LABELS).map(([v, l]) => (
-              <option key={v} value={v}>{l}</option>
-            ))}
-          </select>
-
-          <select
-            value={categoryFilter}
-            onChange={(e) => { setCategoryFilter(e.target.value); setPage(1); }}
-            className="px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
-          >
-            <option value="">All Categories</option>
-            {taskCategories.map((c) => (
-              <option key={c._id} value={c._id}>{c.name}</option>
-            ))}
-          </select>
-
-          {isAdmin && (
-            <select
-              value={deptFilter}
-              onChange={(e) => { setDeptFilter(e.target.value); setPage(1); }}
-              className="px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
-            >
-              <option value="">All Departments</option>
-              {departments.map((d) => (
-                <option key={d._id} value={d._id}>{d.name}</option>
-              ))}
-            </select>
+        <div className="flex items-center justify-between gap-3">
+          <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+            <SlidersHorizontal className="w-3.5 h-3.5" /> Filters
+            {activeChips.length > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full bg-primary text-on-primary text-[10px] font-bold">{activeChips.length}</span>
+            )}
+          </p>
+          {activeChips.length > 0 && (
+            <Button variant="ghost" size="sm" onClick={resetFilters} className="text-on-surface-variant">
+              <RotateCcw className="w-3.5 h-3.5 mr-1.5" /> Reset all
+            </Button>
           )}
-
-          <select
-            value={assignedToFilter}
-            onChange={(e) => { setAssignedToFilter(e.target.value); setPage(1); }}
-            className="px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
-          >
-            <option value="">All Assignees</option>
-            {consultants.map((c) => (
-              <option key={c._id} value={c._id}>{c.fullName}</option>
-            ))}
-          </select>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="relative">
-            <label className="absolute -top-2 left-2 px-1 text-xs text-on-surface-variant bg-surface rounded">Start Date</label>
+        {/* Row 1: search + who/what */}
+        <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3 ${isAdmin ? 'xl:grid-cols-6' : 'xl:grid-cols-5'}`}>
+          <div className="sm:col-span-2">
+            <label className="block text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant mb-1">Search</label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant pointer-events-none" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Task number, name or description…"
+                className="w-full pl-9 pr-9 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+              {search && (
+                <button type="button" onClick={() => setSearch('')} aria-label="Clear search" className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-surface-container text-on-surface-variant">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+          <SearchSelect
+            label="Status"
+            icon={<CircleDot className="w-4 h-4" />}
+            value={statusFilter}
+            onChange={(v) => { setStatusFilter(v as TaskStatus | ''); setPage(1); }}
+            options={statusOptions}
+            allLabel="All statuses"
+            placeholder="All statuses"
+          />
+          <SearchSelect
+            label="Category"
+            icon={<FolderKanban className="w-4 h-4" />}
+            value={categoryFilter}
+            onChange={(v) => { setCategoryFilter(v); setPage(1); }}
+            options={categoryOptions}
+            allLabel="All categories"
+            placeholder="All categories"
+          />
+          {isAdmin && (
+            <SearchSelect
+              label="Department"
+              icon={<Building2 className="w-4 h-4" />}
+              value={deptFilter}
+              onChange={(v) => { setDeptFilter(v); setPage(1); }}
+              options={departmentOptions}
+              allLabel="All departments"
+              placeholder="All departments"
+            />
+          )}
+          <SearchSelect
+            label="Assigned to"
+            icon={<UserCheck className="w-4 h-4" />}
+            value={assignedToFilter}
+            onChange={(v) => { setAssignedToFilter(v); setPage(1); }}
+            options={assigneeOptions}
+            allLabel="All assignees"
+            placeholder="All assignees"
+          />
+        </div>
+
+        {/* Row 2: when */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-3 items-end">
+          <SearchSelect
+            label="Week"
+            icon={<CalendarDays className="w-4 h-4" />}
+            value={weekFilter}
+            onChange={(v) => { setWeekFilter(v); setPage(1); }}
+            options={weekOptions}
+            allLabel="All weeks"
+            placeholder="All weeks"
+          />
+          <div>
+            <label className="block text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant mb-1">Start date from</label>
             <input
               type="date"
               value={startDateFilter}
+              max={endDateFilter || undefined}
               onChange={(e) => { setStartDateFilter(e.target.value); setPage(1); }}
-              className="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className={`w-full px-3 py-2 rounded-lg border bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 ${startDateFilter ? 'border-primary/50 bg-primary/5' : 'border-outline-variant'}`}
             />
           </div>
-          <div className="relative">
-            <label className="absolute -top-2 left-2 px-1 text-xs text-on-surface-variant bg-surface rounded">End Date</label>
+          <div>
+            <label className="block text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant mb-1">Start date to</label>
             <input
               type="date"
               value={endDateFilter}
+              min={startDateFilter || undefined}
               onChange={(e) => { setEndDateFilter(e.target.value); setPage(1); }}
-              className="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className={`w-full px-3 py-2 rounded-lg border bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 ${endDateFilter ? 'border-primary/50 bg-primary/5' : 'border-outline-variant'}`}
             />
           </div>
-          <select
-            value={weekFilter}
-            onChange={(e) => { setWeekFilter(e.target.value); setPage(1); }}
-            className="px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
-          >
-            <option value="">All Weeks</option>
-            {Array.from({ length: 52 }, (_, i) => i + 1).map((w) => (
-              <option key={w} value={String(w)}>W{w} — {getWeekDateRange(w)}</option>
-            ))}
-          </select>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setSearch(''); setStatusFilter(''); setDeptFilter(''); setCategoryFilter('');
-              setStartDateFilter(''); setEndDateFilter('');
-              setAssignedToFilter(''); setWeekFilter(''); setPage(1);
-            }}
-          >
-            Reset Filters
-          </Button>
+          <div className="sm:col-span-2 xl:col-span-3">
+            <label className="block text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant mb-1">Quick ranges</label>
+            <div className="flex flex-wrap gap-1.5">
+              {DATE_PRESETS.map((p) => (
+                <button
+                  key={p.label}
+                  type="button"
+                  onClick={p.apply}
+                  className="px-3 py-1.5 rounded-full text-xs font-semibold border border-outline-variant text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors"
+                >
+                  {p.label}
+                </button>
+              ))}
+              {(startDateFilter || endDateFilter) && (
+                <button
+                  type="button"
+                  onClick={() => { setStartDateFilter(''); setEndDateFilter(''); setPage(1); }}
+                  className="px-3 py-1.5 rounded-full text-xs font-semibold text-on-surface-variant hover:text-on-surface inline-flex items-center gap-1"
+                >
+                  <X className="w-3 h-3" /> Clear dates
+                </button>
+              )}
+            </div>
+          </div>
         </div>
+
+        {/* Active filter chips */}
+        {activeChips.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-outline-variant/20">
+            <span className="text-[11px] text-on-surface-variant mr-1">Showing {total} task{total === 1 ? '' : 's'} for:</span>
+            {activeChips.map((c) => (
+              <span key={c.key} className="inline-flex items-center gap-1 pl-2.5 pr-1 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-semibold">
+                {c.label}
+                <button type="button" onClick={() => { c.clear(); setPage(1); }} aria-label={`Remove ${c.label}`} className="p-0.5 rounded-full hover:bg-primary/15">
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Table */}

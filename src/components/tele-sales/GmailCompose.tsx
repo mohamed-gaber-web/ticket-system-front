@@ -13,7 +13,8 @@ import type { EmailAttachment, LeadEmail } from '@/types/teleSales.types';
 
 // Mirrors the server-side cap in emailService.js — Microsoft Graph's simple
 // sendMail rejects anything much beyond this once base64 inflates it.
-const MAX_TOTAL_ATTACHMENT_BYTES = 3 * 1024 * 1024;
+// Keep in sync with MAX_TOTAL_ATTACHMENT_BYTES in the backend emailService.
+const MAX_TOTAL_ATTACHMENT_BYTES = 10 * 1024 * 1024;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type WindowState = 'normal' | 'minimized' | 'maximized';

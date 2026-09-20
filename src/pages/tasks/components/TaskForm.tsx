@@ -1,22 +1,29 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { createTask, updateTask, fetchTaskById, clearCurrentTask } from '@/redux/slices/tasksSlice';
 import { fetchDepartments } from '@/redux/slices/departmentSlice';
 import { fetchConsultants } from '@/redux/slices/consultantSlice';
 import { fetchTaskCategories } from '@/redux/slices/taskCategorySlice';
-import type { TaskStatus, CreateTaskData } from '@/types/task.types';
+import type { TaskStatus, CreateTaskData, TaskParentRef } from '@/types/task.types';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { Save, ArrowLeft } from 'lucide-react';
+import { Save, ArrowLeft, GitBranch } from 'lucide-react';
 import { sendTaskAssignedEmail } from '@/api/emailApi';
-import { getWeekDateRange } from '@/utils/weekUtils';
+import { getWeekDateRange, getWeekNumber } from '@/utils/weekUtils';
 
 const STATUSES: { value: TaskStatus; label: string }[] = [
   { value: 'pending', label: 'Pending' },
   { value: 'in_progress', label: 'In Progress' },
   { value: 'done', label: 'Done' },
 ];
+
+const toDay = (d?: string) => (d ? d.split('T')[0] : '');
+const fmtDay = (d?: string) =>
+  d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+
+const INPUT_CLS =
+  'w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30';
 
 export default function TaskForm() {
   const { id } = useParams<{ id: string }>();
@@ -63,8 +70,8 @@ export default function TaskForm() {
         category: typeof currentTask.category === 'object' && currentTask.category
           ? (currentTask.category as { _id: string })._id
           : (currentTask.category as string) ?? '',
-        startDate: currentTask.startDate ? currentTask.startDate.split('T')[0] : '',
-        endDate: currentTask.endDate ? currentTask.endDate.split('T')[0] : '',
+        startDate: toDay(currentTask.startDate),
+        endDate: toDay(currentTask.endDate),
         assignedTo: typeof currentTask.assignedTo === 'object' && currentTask.assignedTo
           ? currentTask.assignedTo._id : (currentTask.assignedTo as string) ?? '',
         responsible: typeof currentTask.responsible === 'object' && currentTask.responsible
@@ -76,29 +83,59 @@ export default function TaskForm() {
     }
   }, [currentTask, isEdit]);
 
+  // When editing a subtask the API populates its parent; its dates bound ours.
+  const parent: TaskParentRef | null =
+    isEdit && currentTask && typeof currentTask.parentTask === 'object' && currentTask.parentTask
+      ? currentTask.parentTask
+      : null;
+  const parentStart = toDay(parent?.startDate);
+  const parentEnd = toDay(parent?.endDate);
+
   const set = (field: string, value: string) => setForm((f) => ({ ...f, [field]: value }));
+
+  // Week is derived from the start date (Saturday-start weeks, same as getWeekDateRange).
+  const setStartDate = (value: string) =>
+    setForm((f) => {
+      const week = getWeekNumber(value);
+      return { ...f, startDate: value, scheduledWeek: week != null ? String(week) : '' };
+    });
+
+  const validate = (): string | null => {
+    if (!form.name.trim()) return 'Task name is required';
+    if (!form.description.trim()) return 'Description is required';
+    if (!form.department) return 'Department is required';
+    if (!form.category) return 'Category is required';
+    if (!form.assignedTo) return 'Assigned to is required';
+    if (!form.responsible) return 'Responsible is required';
+    if (!form.status) return 'Status is required';
+    if (!form.scheduledWeek) return 'Week is required';
+    if (form.duration === '' || Number(form.duration) < 0) return 'Duration is required';
+    if (!form.startDate) return 'Start date is required';
+    if (!form.endDate) return 'End date is required';
+    if (form.endDate < form.startDate) return 'End date must be on or after start date';
+    if (parent && parentStart && parentEnd && (form.startDate < parentStart || form.endDate > parentEnd)) {
+      return `Subtask dates must stay within the main task range (${fmtDay(parent.startDate)} → ${fmtDay(parent.endDate)})`;
+    }
+    return null;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!form.name.trim()) { toast.error('Task name is required'); return; }
-    if (!form.department) { toast.error('Department is required'); return; }
-    if (!form.category) { toast.error('Category is required'); return; }
-    if (form.startDate && form.endDate && form.endDate < form.startDate) {
-      toast.error('End date must be on or after start date'); return;
-    }
+    const error = validate();
+    if (error) { toast.error(error); return; }
 
     const data: CreateTaskData = {
       name: form.name.trim(),
-      description: form.description.trim() || undefined,
+      description: form.description.trim(),
       department: form.department,
       category: form.category,
-      startDate: form.startDate || undefined,
-      endDate: form.endDate || undefined,
-      assignedTo: form.assignedTo || null,
-      responsible: form.responsible || null,
-      scheduledWeek: form.scheduledWeek ? Number(form.scheduledWeek) : null,
-      duration: form.duration ? Number(form.duration) : null,
+      startDate: form.startDate,
+      endDate: form.endDate,
+      assignedTo: form.assignedTo,
+      responsible: form.responsible,
+      scheduledWeek: Number(form.scheduledWeek),
+      duration: Number(form.duration),
       status: form.status,
     };
 
@@ -110,14 +147,10 @@ export default function TaskForm() {
         const created = await dispatch(createTask(data)).unwrap();
 
         const recipients: string[] = [];
-        if (form.assignedTo) {
-          const assignee = consultants.find((c) => c._id === form.assignedTo);
-          if (assignee?.email) recipients.push(assignee.email);
-        }
-        if (form.responsible) {
-          const resp = consultants.find((c) => c._id === form.responsible);
-          if (resp?.email && !recipients.includes(resp.email)) recipients.push(resp.email);
-        }
+        const assignee = consultants.find((c) => c._id === form.assignedTo);
+        if (assignee?.email) recipients.push(assignee.email);
+        const resp = consultants.find((c) => c._id === form.responsible);
+        if (resp?.email && !recipients.includes(resp.email)) recipients.push(resp.email);
 
         if (recipients.length > 0) {
           const createdDept = created.department;
@@ -155,44 +188,49 @@ export default function TaskForm() {
           <ArrowLeft className="w-4 h-4" />
         </Button>
         <div>
-          <h1 className="display-sm text-on-surface">{isEdit ? 'Edit Task' : 'New Task'}</h1>
-          <p className="text-on-surface-variant mt-1">{isEdit ? 'Update task details' : 'Create a new task'}</p>
+          <h1 className="display-sm text-on-surface">
+            {isEdit ? (parent ? 'Edit Subtask' : 'Edit Task') : 'New Task'}
+          </h1>
+          <p className="text-on-surface-variant mt-1">
+            {isEdit ? 'Update task details — all fields are required' : 'Create a new main task — all fields are required'}
+          </p>
         </div>
       </div>
 
+      {parent && (
+        <div className="flex items-center gap-3 rounded-[0.875rem] border border-primary/20 bg-primary/5 px-4 py-3 text-sm">
+          <GitBranch className="w-4 h-4 text-primary shrink-0" />
+          <div className="min-w-0">
+            <span className="text-on-surface-variant">Subtask of </span>
+            <Link to={`/tasks/${parent._id}`} className="font-semibold text-primary hover:underline">
+              {parent.taskNumber ? `${parent.taskNumber} · ` : ''}{parent.name}
+            </Link>
+            <span className="text-on-surface-variant"> — dates must stay between </span>
+            <span className="font-semibold text-on-surface">{fmtDay(parent.startDate)}</span>
+            <span className="text-on-surface-variant"> and </span>
+            <span className="font-semibold text-on-surface">{fmtDay(parent.endDate)}</span>
+          </div>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="bg-surface-container-lowest rounded-[1rem] p-8 space-y-8">
-        {/* Row 1: Name + Description */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="space-y-1.5">
-            <label className="text-sm font-semibold text-on-surface">Task Name *</label>
-            <input
-              value={form.name}
-              onChange={(e) => set('name', e.target.value)}
-              placeholder="Enter task name"
-              className="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-sm font-semibold text-on-surface">Description</label>
-            <textarea
-              value={form.description}
-              onChange={(e) => set('description', e.target.value)}
-              placeholder="Enter task description"
-              rows={5}
-              className="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 resize-y"
-            />
-          </div>
+        {/* Row 1: Name */}
+        <div className="space-y-1.5">
+          <label className="text-sm font-semibold text-on-surface">Task Name *</label>
+          <input
+            required
+            value={form.name}
+            onChange={(e) => set('name', e.target.value)}
+            placeholder="Enter task name"
+            className={INPUT_CLS}
+          />
         </div>
 
         {/* Row 2: Department + Category + Assigned To + Responsible + Status */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           <div className="space-y-1.5">
             <label className="text-sm font-semibold text-on-surface">Department *</label>
-            <select
-              value={form.department}
-              onChange={(e) => set('department', e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
-            >
+            <select required value={form.department} onChange={(e) => set('department', e.target.value)} className={INPUT_CLS}>
               <option value="">Select department…</option>
               {departments.map((d) => (
                 <option key={d._id} value={d._id}>{d.name}</option>
@@ -202,11 +240,7 @@ export default function TaskForm() {
 
           <div className="space-y-1.5">
             <label className="text-sm font-semibold text-on-surface">Category *</label>
-            <select
-              value={form.category}
-              onChange={(e) => set('category', e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
-            >
+            <select required value={form.category} onChange={(e) => set('category', e.target.value)} className={INPUT_CLS}>
               <option value="">Select category…</option>
               {taskCategories.map((c) => (
                 <option key={c._id} value={c._id}>{c.name}</option>
@@ -215,13 +249,9 @@ export default function TaskForm() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-semibold text-on-surface">Assigned To</label>
-            <select
-              value={form.assignedTo}
-              onChange={(e) => set('assignedTo', e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
-            >
-              <option value="">Unassigned</option>
+            <label className="text-sm font-semibold text-on-surface">Assigned To *</label>
+            <select required value={form.assignedTo} onChange={(e) => set('assignedTo', e.target.value)} className={INPUT_CLS}>
+              <option value="">Select assignee…</option>
               {consultants.map((c) => (
                 <option key={c._id} value={c._id}>{c.fullName || `${c.firstName} ${c.lastName}`}</option>
               ))}
@@ -229,13 +259,9 @@ export default function TaskForm() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-semibold text-on-surface">Responsible</label>
-            <select
-              value={form.responsible}
-              onChange={(e) => set('responsible', e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
-            >
-              <option value="">None</option>
+            <label className="text-sm font-semibold text-on-surface">Responsible *</label>
+            <select required value={form.responsible} onChange={(e) => set('responsible', e.target.value)} className={INPUT_CLS}>
+              <option value="">Select responsible…</option>
               {consultants.map((c) => (
                 <option key={c._id} value={c._id}>{c.fullName || `${c.firstName} ${c.lastName}`}</option>
               ))}
@@ -243,12 +269,8 @@ export default function TaskForm() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-semibold text-on-surface">Status</label>
-            <select
-              value={form.status}
-              onChange={(e) => set('status', e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
-            >
+            <label className="text-sm font-semibold text-on-surface">Status *</label>
+            <select required value={form.status} onChange={(e) => set('status', e.target.value)} className={INPUT_CLS}>
               {STATUSES.map((s) => (
                 <option key={s.value} value={s.value}>{s.label}</option>
               ))}
@@ -256,52 +278,74 @@ export default function TaskForm() {
           </div>
         </div>
 
-        {/* Row 3: Week + Duration + Start Date + End Date */}
+        {/* Row 3: Start Date + End Date + Week (auto from start date) + Duration */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           <div className="space-y-1.5">
-            <label className="text-sm font-semibold text-on-surface">Week</label>
+            <label className="text-sm font-semibold text-on-surface">Start Date *</label>
+            <input
+              required
+              type="date"
+              value={form.startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              min={parentStart || undefined}
+              max={parentEnd || undefined}
+              className={INPUT_CLS}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-semibold text-on-surface">End Date *</label>
+            <input
+              required
+              type="date"
+              value={form.endDate}
+              onChange={(e) => set('endDate', e.target.value)}
+              min={form.startDate || parentStart || undefined}
+              max={parentEnd || undefined}
+              className={INPUT_CLS}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-semibold text-on-surface">Week *</label>
             <select
+              required
+              disabled
               value={form.scheduledWeek}
               onChange={(e) => set('scheduledWeek', e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className={`${INPUT_CLS} disabled:opacity-80 disabled:cursor-not-allowed`}
             >
-              <option value="">Select week…</option>
+              <option value="">Select start date…</option>
               {Array.from({ length: 52 }, (_, i) => i + 1).map((w) => (
                 <option key={w} value={String(w)}>W{w} — {getWeekDateRange(w)}</option>
               ))}
             </select>
+            <p className="text-[11px] text-on-surface-variant">Set automatically from the start date</p>
           </div>
           <div className="space-y-1.5">
-            <label className="text-sm font-semibold text-on-surface">Duration (hours)</label>
+            <label className="text-sm font-semibold text-on-surface">Duration (hours) *</label>
             <input
+              required
               type="number"
               min={0}
               step={0.5}
               value={form.duration}
               onChange={(e) => set('duration', e.target.value)}
               placeholder="e.g. 2.5"
-              className="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className={INPUT_CLS}
             />
           </div>
-          <div className="space-y-1.5">
-            <label className="text-sm font-semibold text-on-surface">Start Date</label>
-            <input
-              type="date"
-              value={form.startDate}
-              onChange={(e) => set('startDate', e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-sm font-semibold text-on-surface">End Date</label>
-            <input
-              type="date"
-              value={form.endDate}
-              onChange={(e) => set('endDate', e.target.value)}
-              min={form.startDate || undefined}
-              className="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
-            />
-          </div>
+        </div>
+
+        {/* Row 4: Description (last) */}
+        <div className="space-y-1.5">
+          <label className="text-sm font-semibold text-on-surface">Description *</label>
+          <textarea
+            required
+            value={form.description}
+            onChange={(e) => set('description', e.target.value)}
+            placeholder="Enter task description"
+            rows={5}
+            className={`${INPUT_CLS} resize-y`}
+          />
         </div>
 
         {/* Submit */}

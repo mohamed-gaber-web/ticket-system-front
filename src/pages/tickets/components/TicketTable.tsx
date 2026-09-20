@@ -14,7 +14,8 @@ import withReactContent from 'sweetalert2-react-content';
 import type { Ticket, Consultant, Category, UpdateTicketData } from '@/types/ticket';
 import type { ServiceType } from '@/types/serviceType.types';
 import { useAppSelector, useAppDispatch } from '@/redux/hooks/hooks';
-import { acceptTicket, fetchSubTickets, updateTicket } from '@/redux/slices/ticketSlice';
+import { acceptTicket, fetchSubTickets, updateTicket, changeTicketStatus } from '@/redux/slices/ticketSlice';
+import { PendingOnDialog, PendingOnLine } from '@/components/tickets/PendingOnDialog';
 
 const MySwal = withReactContent(Swal);
 
@@ -323,8 +324,25 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
     }, 30);
   };
 
+  // Inline "Customer Pending" asks who we are waiting on before saving.
+  const [pendingFor, setPendingFor] = useState<Ticket | null>(null);
+  const [pendingSaving, setPendingSaving] = useState(false);
+  const confirmPending = async (pendingOn: string) => {
+    if (!pendingFor) return;
+    setPendingSaving(true);
+    try {
+      await dispatch(changeTicketStatus({ id: pendingFor._id, status: 'customer_pending', pendingOn })).unwrap();
+      setPendingFor(null);
+    } catch { /* toast handled by slice */ }
+    finally { setPendingSaving(false); }
+  };
+
   const selectSave = async (ticketId: string, field: InlineEditField, value: string) => {
     setActiveEdit(null);
+    if (field === 'status' && value === 'customer_pending' && !isCustomer) {
+      const t = tickets.find((x) => x._id === ticketId) ?? null;
+      if (t) { setPendingFor(t); return; }
+    }
     setEditSaving({ ticketId, field });
     const data: UpdateTicketData = {};
     if (field === 'status') data.status = value as any;
@@ -687,15 +705,23 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                         Saving
                       </span>
                     ) : (!isCustomer || ticket.status === 'customer_pending') ? (
-                      <button
-                        type="button"
-                        onClick={(e) => startEdit(ticket, 'status', e.currentTarget)}
-                        title="Click to change status"
-                        className="rounded-lg hover:ring-2 hover:ring-brand-400/30 transition-all cursor-pointer"
-                      >
+                      <div className="flex flex-col items-start gap-1">
+                        <button
+                          type="button"
+                          onClick={(e) => startEdit(ticket, 'status', e.currentTarget)}
+                          title="Click to change status"
+                          className="rounded-lg hover:ring-2 hover:ring-brand-400/30 transition-all cursor-pointer"
+                        >
+                          {getStatusBadge(ticket.status)}
+                        </button>
+                        <PendingOnLine ticket={ticket} compact />
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-start gap-1">
                         {getStatusBadge(ticket.status)}
-                      </button>
-                    ) : getStatusBadge(ticket.status)}
+                        <PendingOnLine ticket={ticket} compact />
+                      </div>
+                    )}
                   </TableCell>
                   {/* Subject + Description */}
                   <TableCell>
@@ -1244,6 +1270,18 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
             </button>
           </div>
         </div>
+      )}
+
+      {/* "Waiting on whom?" — asked when a row is set to Customer Pending inline */}
+      {pendingFor && (
+        <PendingOnDialog
+          open
+          onOpenChange={(o) => { if (!o) setPendingFor(null); }}
+          ticketId={pendingFor._id}
+          initialId={typeof pendingFor.pendingOn === 'object' && pendingFor.pendingOn ? pendingFor.pendingOn._id : (pendingFor.pendingOn as string | null | undefined)}
+          saving={pendingSaving}
+          onConfirm={confirmPending}
+        />
       )}
 
       {/* Generic inline field editor popover */}

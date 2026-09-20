@@ -74,8 +74,24 @@ export const updateTicket = async (id: string, payload: UpdateTicketData): Promi
 };
 
 // Update ticket status only (dedicated endpoint)
-export const updateTicketStatus = async (id: string, status: string): Promise<TicketResponse> => {
-  const response = await api.patch<TicketResponse>(`/tickets/${id}/status`, { status });
+export const updateTicketStatus = async (id: string, status: string, pendingOn?: string | null): Promise<TicketResponse> => {
+  const response = await api.patch<TicketResponse>(`/tickets/${id}/status`, { status, ...(pendingOn !== undefined && { pendingOn }) });
+  return response.data;
+};
+
+export interface PendingCandidate {
+  _id: string;
+  contactPerson: string;
+  companyName: string;
+  email: string;
+  phone?: string;
+  role?: string;
+  status?: string;
+}
+
+// Customer users (same company) a ticket can be marked "waiting on"
+export const getPendingCandidates = async (id: string): Promise<{ success: boolean; ticketCustomer: string; data: PendingCandidate[] }> => {
+  const response = await api.get(`/tickets/${id}/pending-candidates`);
   return response.data;
 };
 

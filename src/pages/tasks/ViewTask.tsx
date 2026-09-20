@@ -13,7 +13,7 @@ import {
 import TaskFileUpload from '@/components/tasks/TaskFileUpload';
 import TaskAttachmentList from '@/components/tasks/TaskAttachmentList';
 import TaskComments from '@/components/tasks/TaskComments';
-import { getWeekDateRange } from '@/utils/weekUtils';
+import { getWeekDateRange, getWeekNumber } from '@/utils/weekUtils';
 import {
   Edit, Trash2, CheckSquare, User, Calendar,
   Clock, Building2, CalendarDays, Timer, UserCheck,
@@ -21,7 +21,7 @@ import {
   Paperclip, MessageSquare, LayoutList, Plus, GitBranch,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import type { TaskStatus, CreateTaskData } from '@/types/task.types';
+import type { TaskStatus, CreateTaskData, TaskParentRef } from '@/types/task.types';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
 
@@ -62,6 +62,8 @@ const STATUSES: { value: TaskStatus; label: string }[] = [
 const fmtDate = (d?: string) =>
   d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null;
 
+const toDay = (d?: string) => (d ? d.split('T')[0] : '');
+
 const EMPTY_SUB_FORM = {
   name: '', description: '', department: '',
   startDate: '', endDate: '', assignedTo: '', responsible: '',
@@ -84,6 +86,8 @@ export default function ViewTask() {
   const [subSubmitting, setSubSubmitting] = useState(false);
 
   useEffect(() => {
+    // Navigating main task -> subtask reuses this component; the subtask has no Subtasks tab.
+    setActiveTab('details');
     if (id) {
       dispatch(fetchTaskById(id));
       dispatch(fetchTaskAttachments(id));
@@ -144,13 +148,35 @@ export default function ViewTask() {
   const setSubField = (field: string, value: string) =>
     setSubForm((f) => ({ ...f, [field]: value }));
 
+  // Week is derived from the start date (Saturday-start weeks, same as getWeekDateRange).
+  const setSubStartDate = (value: string) =>
+    setSubForm((f) => {
+      const week = getWeekNumber(value);
+      return { ...f, startDate: value, scheduledWeek: week != null ? String(week) : '' };
+    });
+
+  const validateSubForm = (): string | null => {
+    if (!subForm.name.trim()) return 'Subtask name is required';
+    if (!subForm.description.trim()) return 'Description is required';
+    if (!subForm.department) return 'Department is required';
+    if (!subForm.assignedTo) return 'Assigned to is required';
+    if (!subForm.responsible) return 'Responsible is required';
+    if (!subForm.scheduledWeek) return 'Week is required';
+    if (subForm.duration === '' || Number(subForm.duration) < 0) return 'Duration is required';
+    if (!subForm.startDate) return 'Start date is required';
+    if (!subForm.endDate) return 'End date is required';
+    if (subForm.endDate < subForm.startDate) return 'End date must be on or after start date';
+    if (!mainStart || !mainEnd) return 'Main task must have a start and end date before adding subtasks';
+    if (subForm.startDate < mainStart || subForm.endDate > mainEnd) {
+      return `Subtask dates must stay within the main task range (${fmtDate(currentTask!.startDate)} → ${fmtDate(currentTask!.endDate)})`;
+    }
+    return null;
+  };
+
   const handleSubSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!subForm.name.trim()) { toast.error('Subtask name is required'); return; }
-    if (!subForm.department) { toast.error('Department is required'); return; }
-    if (subForm.startDate && subForm.endDate && subForm.endDate < subForm.startDate) {
-      toast.error('End date must be on or after start date'); return;
-    }
+    const error = validateSubForm();
+    if (error) { toast.error(error); return; }
     // Subtasks inherit the parent task's category.
     const parentCategoryId = typeof currentTask!.category === 'object' && currentTask!.category
       ? (currentTask!.category as any)._id
@@ -159,15 +185,15 @@ export default function ViewTask() {
 
     const data: CreateTaskData = {
       name: subForm.name.trim(),
-      description: subForm.description.trim() || undefined,
+      description: subForm.description.trim(),
       department: subForm.department,
       category: parentCategoryId,
-      startDate: subForm.startDate || undefined,
-      endDate: subForm.endDate || undefined,
-      assignedTo: subForm.assignedTo || null,
-      responsible: subForm.responsible || null,
-      scheduledWeek: subForm.scheduledWeek ? Number(subForm.scheduledWeek) : null,
-      duration: subForm.duration ? Number(subForm.duration) : null,
+      startDate: subForm.startDate,
+      endDate: subForm.endDate,
+      assignedTo: subForm.assignedTo,
+      responsible: subForm.responsible,
+      scheduledWeek: Number(subForm.scheduledWeek),
+      duration: Number(subForm.duration),
       status: subForm.status,
       parentTask: currentTask!._id,
     };
@@ -181,6 +207,16 @@ export default function ViewTask() {
       setSubSubmitting(false);
     }
   };
+
+  // Only one level of nesting: a subtask has a parent and can never own subtasks.
+  const parentRef: TaskParentRef | null =
+    currentTask && typeof currentTask.parentTask === 'object' && currentTask.parentTask
+      ? currentTask.parentTask
+      : null;
+  const isSubTask = Boolean(currentTask?.parentTask);
+  // Subtask date window = the main task's own dates (yyyy-mm-dd for <input type="date">).
+  const mainStart = toDay(currentTask?.startDate);
+  const mainEnd = toDay(currentTask?.endDate);
 
   if (loading || !currentTask) {
     return (
@@ -217,7 +253,10 @@ export default function ViewTask() {
 
   const TABS: { key: Tab; label: string; icon: React.ReactNode; count?: number }[] = [
     { key: 'details', label: 'Details', icon: <LayoutList className="w-4 h-4" /> },
-    { key: 'subtasks', label: 'Subtasks', icon: <GitBranch className="w-4 h-4" />, count: subTasksTotal },
+    // Subtasks cannot have subtasks of their own, so the tab only exists on main tasks.
+    ...(!isSubTask
+      ? [{ key: 'subtasks' as Tab, label: 'Subtasks', icon: <GitBranch className="w-4 h-4" />, count: subTasksTotal }]
+      : []),
     { key: 'attachments', label: 'Attachments', icon: <Paperclip className="w-4 h-4" />, count: attachmentCount },
     { key: 'comments', label: 'Comments', icon: <MessageSquare className="w-4 h-4" />, count: commentCount },
   ];
@@ -229,6 +268,17 @@ export default function ViewTask() {
         <button onClick={() => navigate('/tasks')} className="hover:text-brand-500 transition-colors font-medium">
           Tasks
         </button>
+        {parentRef && (
+          <>
+            <span className="text-on-surface-variant/40">›</span>
+            <button
+              onClick={() => navigate(`/tasks/${parentRef._id}`)}
+              className="hover:text-brand-500 transition-colors font-medium truncate max-w-xs"
+            >
+              {parentRef.taskNumber ? `${parentRef.taskNumber} · ` : ''}{parentRef.name}
+            </button>
+          </>
+        )}
         <span className="text-on-surface-variant/40">›</span>
         <span className="text-on-surface font-semibold truncate max-w-xs">{currentTask.name}</span>
       </div>
@@ -268,6 +318,16 @@ export default function ViewTask() {
                     <Clock className="w-3.5 h-3.5" />
                     {delayDays}d late
                   </span>
+                )}
+                {parentRef && (
+                  <button
+                    onClick={() => navigate(`/tasks/${parentRef._id}`)}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[0.5rem] bg-primary/10 text-primary text-xs font-bold hover:bg-primary/15 transition-colors"
+                    title={`Main task: ${parentRef.name}`}
+                  >
+                    <GitBranch className="w-3.5 h-3.5" />
+                    Subtask of {parentRef.taskNumber ?? parentRef.name}
+                  </button>
                 )}
               </div>
 
@@ -442,7 +502,7 @@ export default function ViewTask() {
         </div>
       )}
 
-      {activeTab === 'subtasks' && (
+      {activeTab === 'subtasks' && !isSubTask && (
         <div className="bg-surface-container-lowest rounded-[1.25rem] p-6 shadow-sm ring-1 ring-outline-variant/20 space-y-5">
           <div className="flex items-center justify-between">
             <h2 className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">
@@ -502,6 +562,7 @@ export default function ViewTask() {
                         {sub.startDate && (
                           <span className="flex items-center gap-1">
                             <CalendarDays className="w-3 h-3" /> {fmtDate(sub.startDate)}
+                            {sub.endDate && <> → {fmtDate(sub.endDate)}</>}
                           </span>
                         )}
                         {sub.duration != null && (
@@ -566,30 +627,25 @@ export default function ViewTask() {
               <GitBranch className="w-5 h-5 text-primary" />
               Add Subtask
             </DialogTitle>
+            <p className="text-xs text-on-surface-variant mt-1">
+              All fields are required. Dates must stay between{' '}
+              <span className="font-semibold text-on-surface">{fmtDate(currentTask.startDate) ?? '—'}</span> and{' '}
+              <span className="font-semibold text-on-surface">{fmtDate(currentTask.endDate) ?? '—'}</span>{' '}
+              (the main task range).
+            </p>
           </DialogHeader>
 
           <form onSubmit={handleSubSubmit} className="space-y-6 py-2">
-            {/* Row 1: Name + Description */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-on-surface">Subtask Name *</label>
-                <input
-                  value={subForm.name}
-                  onChange={(e) => setSubField('name', e.target.value)}
-                  placeholder="Enter subtask name"
-                  className="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-on-surface">Description</label>
-                <textarea
-                  value={subForm.description}
-                  onChange={(e) => setSubField('description', e.target.value)}
-                  placeholder="Enter description"
-                  rows={3}
-                  className="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 resize-y"
-                />
-              </div>
+            {/* Row 1: Name */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-semibold text-on-surface">Subtask Name *</label>
+              <input
+                required
+                value={subForm.name}
+                onChange={(e) => setSubField('name', e.target.value)}
+                placeholder="Enter subtask name"
+                className="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
             </div>
 
             {/* Row 2: Department + Assigned To + Responsible + Status */}
@@ -597,6 +653,7 @@ export default function ViewTask() {
               <div className="space-y-1.5">
                 <label className="text-sm font-semibold text-on-surface">Department *</label>
                 <select
+                  required
                   value={subForm.department}
                   onChange={(e) => setSubField('department', e.target.value)}
                   className="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
@@ -608,34 +665,37 @@ export default function ViewTask() {
                 </select>
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-on-surface">Assigned To</label>
+                <label className="text-sm font-semibold text-on-surface">Assigned To *</label>
                 <select
+                  required
                   value={subForm.assignedTo}
                   onChange={(e) => setSubField('assignedTo', e.target.value)}
                   className="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
                 >
-                  <option value="">Unassigned</option>
+                  <option value="">Select assignee…</option>
                   {consultants.map((c) => (
                     <option key={c._id} value={c._id}>{c.fullName || `${c.firstName} ${c.lastName}`}</option>
                   ))}
                 </select>
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-on-surface">Responsible</label>
+                <label className="text-sm font-semibold text-on-surface">Responsible *</label>
                 <select
+                  required
                   value={subForm.responsible}
                   onChange={(e) => setSubField('responsible', e.target.value)}
                   className="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
                 >
-                  <option value="">None</option>
+                  <option value="">Select responsible…</option>
                   {consultants.map((c) => (
                     <option key={c._id} value={c._id}>{c.fullName || `${c.firstName} ${c.lastName}`}</option>
                   ))}
                 </select>
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-on-surface">Status</label>
+                <label className="text-sm font-semibold text-on-surface">Status *</label>
                 <select
+                  required
                   value={subForm.status}
                   onChange={(e) => setSubField('status', e.target.value)}
                   className="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
@@ -647,24 +707,52 @@ export default function ViewTask() {
               </div>
             </div>
 
-            {/* Row 3: Week + Duration + Start Date + End Date */}
+            {/* Row 3: Start Date + End Date + Week (auto from start date) + Duration */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-on-surface">Week</label>
+                <label className="text-sm font-semibold text-on-surface">Start Date *</label>
+                <input
+                  required
+                  type="date"
+                  value={subForm.startDate}
+                  onChange={(e) => setSubStartDate(e.target.value)}
+                  min={mainStart || undefined}
+                  max={mainEnd || undefined}
+                  className="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold text-on-surface">End Date *</label>
+                <input
+                  required
+                  type="date"
+                  value={subForm.endDate}
+                  onChange={(e) => setSubField('endDate', e.target.value)}
+                  min={subForm.startDate || mainStart || undefined}
+                  max={mainEnd || undefined}
+                  className="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold text-on-surface">Week *</label>
                 <select
+                  required
+                  disabled
                   value={subForm.scheduledWeek}
                   onChange={(e) => setSubField('scheduledWeek', e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  className="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-80 disabled:cursor-not-allowed"
                 >
-                  <option value="">Select week…</option>
+                  <option value="">Select start date…</option>
                   {Array.from({ length: 52 }, (_, i) => i + 1).map((w) => (
                     <option key={w} value={String(w)}>W{w} — {getWeekDateRange(w)}</option>
                   ))}
                 </select>
+                <p className="text-[11px] text-on-surface-variant">Auto from start date</p>
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-on-surface">Duration (h)</label>
+                <label className="text-sm font-semibold text-on-surface">Duration (h) *</label>
                 <input
+                  required
                   type="number"
                   min={0}
                   step={0.5}
@@ -674,25 +762,19 @@ export default function ViewTask() {
                   className="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
                 />
               </div>
-              <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-on-surface">Start Date</label>
-                <input
-                  type="date"
-                  value={subForm.startDate}
-                  onChange={(e) => setSubField('startDate', e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-on-surface">End Date</label>
-                <input
-                  type="date"
-                  value={subForm.endDate}
-                  onChange={(e) => setSubField('endDate', e.target.value)}
-                  min={subForm.startDate || undefined}
-                  className="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
-                />
-              </div>
+            </div>
+
+            {/* Row 4: Description (last) */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-semibold text-on-surface">Description *</label>
+              <textarea
+                required
+                value={subForm.description}
+                onChange={(e) => setSubField('description', e.target.value)}
+                placeholder="Enter description"
+                rows={3}
+                className="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 resize-y"
+              />
             </div>
 
             <DialogFooter>

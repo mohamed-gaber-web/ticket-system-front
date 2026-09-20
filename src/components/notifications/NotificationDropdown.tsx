@@ -28,6 +28,9 @@ import {
   RotateCcw,
   Plane,
   Clock,
+  CalendarPlus,
+  CalendarClock,
+  CalendarX2,
   type LucideIcon,
 } from 'lucide-react';
 import type { Notification, NotificationType } from '@/types/notification.types';
@@ -53,6 +56,10 @@ const TYPE_STYLES: Record<NotificationType, { icon: LucideIcon; className: strin
   ticket_reopened: { icon: RotateCcw, className: 'text-orange-600 bg-orange-500/10' },
   vacation_request: { icon: Plane, className: 'text-teal-600 bg-teal-500/10' },
   excuse_request: { icon: Clock, className: 'text-fuchsia-600 bg-fuchsia-500/10' },
+  meeting_invite: { icon: CalendarPlus, className: 'text-blue-600 bg-blue-500/10' },
+  meeting_updated: { icon: CalendarClock, className: 'text-sky-600 bg-sky-500/10' },
+  meeting_cancelled: { icon: CalendarX2, className: 'text-gray-600 bg-gray-500/10' },
+  meeting_reminder: { icon: BellRing, className: 'text-amber-600 bg-amber-500/10' },
 };
 
 const DEFAULT_STYLE = { icon: Bell, className: 'text-on-surface-variant bg-surface-container-high' };
@@ -136,6 +143,7 @@ export function NotificationDropdown({ isOpen, onClose, excludeTypes = [] }: Not
       return '/employee-requests/approvals';
     }
     if (item.ticket?._id) return `/tickets/view/${item.ticket._id}`;
+    if (item.meeting?._id) return `/calendar?meeting=${item.meeting._id}`;
     return null;
   };
 

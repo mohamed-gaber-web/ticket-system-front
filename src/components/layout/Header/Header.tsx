@@ -17,6 +17,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/redux/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { NotificationDropdown } from "@/components/notifications/NotificationDropdown";
+import { QuickBookButton } from "@/components/calendar/QuickBookButton";
 import { useAppSelector } from "@/redux/hooks/hooks";
 import type { NotificationType } from "@/types/notification.types";
 
@@ -114,6 +115,9 @@ export default function Header() {
         >
           {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
         </Button> */}
+
+        {/* Quick meeting booking (staff only) */}
+        <QuickBookButton />
 
         {/* Notifications */}
         <div className="relative">

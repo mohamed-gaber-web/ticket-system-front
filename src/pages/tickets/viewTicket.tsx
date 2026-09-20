@@ -20,6 +20,7 @@ import { saveAs } from 'file-saver';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { TicketIntelligencePanel } from '@/components/ai/TicketIntelligencePanel';
+import { PendingOnDialog, PendingOnLine } from '@/components/tickets/PendingOnDialog';
 import {
   ArrowLeft,
   Loader2,
@@ -188,17 +189,26 @@ export default function ViewTicket() {
     }
   };
 
-  const handleStatusChange = async (newStatus: 'new' | 'assigned' | 'in_progress' | 'customer_pending' | 'resolved' | 'tested' | 'delivered' | 'closed' | 'reopened' | 'not_related') => {
-    if (!currentTicket || newStatus === currentTicket.status) return;
+  const [showPendingDialog, setShowPendingDialog] = useState(false);
+
+  const handleStatusChange = async (newStatus: 'new' | 'assigned' | 'in_progress' | 'customer_pending' | 'resolved' | 'tested' | 'delivered' | 'closed' | 'reopened' | 'not_related', pendingOn?: string) => {
+    if (!currentTicket) return;
+    if (newStatus === currentTicket.status && newStatus !== 'customer_pending') return;
     if (newStatus === 'closed' && hasOpenSubTickets) {
       setShowStatusMenu(false);
       toast.error('Cannot close ticket — all sub-tickets must be closed first');
       return;
     }
     setShowStatusMenu(false);
+    // Customer Pending needs to know *who* we are waiting on — ask first.
+    if (newStatus === 'customer_pending' && !pendingOn && !isCustomer) {
+      setShowPendingDialog(true);
+      return;
+    }
     setUpdatingStatus(true);
     try {
-      await dispatch(changeTicketStatus({ id: currentTicket._id, status: newStatus })).unwrap();
+      await dispatch(changeTicketStatus({ id: currentTicket._id, status: newStatus, pendingOn })).unwrap();
+      setShowPendingDialog(false);
       toast.success(`Status updated to ${newStatus.replace(/_/g, ' ')}`);
     } catch {
       toast.error('Failed to update status');
@@ -390,6 +400,21 @@ export default function ViewTicket() {
               {currentTicket.subject}
             </h1>
 
+            {currentTicket.status === 'customer_pending' && (
+              <div className="mb-4 flex items-center gap-2 flex-wrap">
+                <PendingOnLine ticket={currentTicket} />
+                {!isCustomer && (
+                  <button
+                    type="button"
+                    onClick={() => setShowPendingDialog(true)}
+                    className="text-xs font-semibold text-primary hover:underline"
+                  >
+                    Change person
+                  </button>
+                )}
+              </div>
+            )}
+
             {/* Meta Row */}
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-on-surface-variant">
               {customer && (
@@ -464,6 +489,16 @@ export default function ViewTicket() {
                   </div>
                 )}
               </div>
+            )}
+            {!isCustomer && (
+              <PendingOnDialog
+                open={showPendingDialog}
+                onOpenChange={setShowPendingDialog}
+                ticketId={currentTicket._id}
+                initialId={typeof currentTicket.pendingOn === 'object' && currentTicket.pendingOn ? currentTicket.pendingOn._id : (currentTicket.pendingOn as string | null | undefined)}
+                saving={updatingStatus}
+                onConfirm={(id) => handleStatusChange('customer_pending', id)}
+              />
             )}
             {/* Customer: respond when waiting for customer input */}
             {isCustomer && currentTicket.status === 'customer_pending' && (

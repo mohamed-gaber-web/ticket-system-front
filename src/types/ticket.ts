@@ -111,6 +111,10 @@ export interface Ticket {
   deliveredAt?: string; // When the ticket was delivered
   // Actor tracking — who last updated / resolved / closed the ticket
   updatedBy?: string | Consultant;
+  /** While status is customer_pending: the customer user the ticket waits on. */
+  pendingOn?: string | Customer | null;
+  pendingSince?: string | null;
+  pendingBy?: string | Consultant | null;
   resolvedBy?: string | Consultant;
   closedBy?: string | Consultant;
   slaDueDate?: string;
@@ -208,6 +212,8 @@ export interface SubTicketsResponse {
 }
 
 export interface UpdateTicketData {
+  /** With status customer_pending: which customer user the ticket waits on. */
+  pendingOn?: string | null;
   subject?: string;
   description?: string;
   customer?: string;
