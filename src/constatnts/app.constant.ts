@@ -37,6 +37,8 @@ import {
   Plane,
   ClipboardCheck,
   Wallet,
+  FileText,
+  MessageSquareText,
 } from "lucide-react";
 
 const MODULES_GROUP = {
@@ -69,6 +71,20 @@ const TELE_SALES_MODULES_GROUP = {
     { name: "Industry Sectors", path: "/industry-sectors", icon: Factory },
     { name: "Countries", path: "/countries", icon: Globe },
     { name: "Business Classifications", path: "/business-classifications", icon: Briefcase },
+  ],
+};
+
+// Sales kit — the catalog, collateral and templates behind the lead page's
+// Sales Assistant. Every tele-sales role can browse; admins manage.
+const SALES_KIT_GROUP = {
+  name: "Sales Kit",
+  icon: Sparkles,
+  isGroup: true as const,
+  children: [
+    { name: "Products", path: "/tele-sales/products", icon: Package },
+    { name: "Sales Documents", path: "/tele-sales/documents", icon: FileText },
+    { name: "Templates", path: "/tele-sales/templates", icon: MessageSquareText },
+    { name: "Company Profile", path: "/tele-sales/company-profile", icon: Building },
   ],
 };
 
@@ -180,6 +196,7 @@ const TELE_SALES_CORE_LINKS = [
   { name: "Opportunities", path: "/tele-sales/opportunities", icon: Star },
   { name: "Recent Calls", path: "/tele-sales/calls/recent", icon: Clock },
   { name: "Email Management", path: "/tele-sales/emails", icon: Mail },
+  SALES_KIT_GROUP,
 ];
 
 // TeleSales super admin — the only role that manages the teams themselves.
@@ -261,6 +278,12 @@ const TELE_SALES_GROUP = {
     { name: "Email Management", path: "/tele-sales/emails", icon: Mail },
     { name: "Agents", path: "/tele-sales/agents", icon: UserPlus },
     { name: "Teams", path: "/tele-sales/teams", icon: Globe },
+    {
+      name: "Sales Kit",
+      icon: Sparkles,
+      isSubGroup: true as const,
+      children: SALES_KIT_GROUP.children,
+    },
     {
       name: "Modules",
       icon: Layers,
@@ -364,6 +387,7 @@ const buildConsultantLinks = (consultantRole?: string | null, department?: strin
       { name: "Opportunities", path: "/tele-sales/opportunities", icon: Star },
       { name: "Recent Calls", path: "/tele-sales/calls/recent", icon: Clock },
       { name: "Email Management", path: "/tele-sales/emails", icon: Mail },
+      SALES_KIT_GROUP,
       TELE_SALES_MODULES_GROUP,
       EMPLOYEE_REQUESTS_GROUP_LITE,
     ];

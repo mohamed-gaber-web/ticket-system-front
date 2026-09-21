@@ -12,7 +12,7 @@ import {
   ArrowLeft, Phone, Mail, Building2, User, Briefcase, Tag, Edit2, Pencil,
   PhoneCall, Calendar, Paperclip, Plus, CheckCircle2, Trash2, MapPin,
   Globe, FileText, Upload, Download, File as FileIcon, Image as ImageIcon,
-  Send,
+  Send, Sparkles,
 } from 'lucide-react';
 import GmailCompose from '@/components/tele-sales/GmailCompose';
 import { LeadEmailThread } from '@/components/tele-sales/LeadEmailThread';
@@ -20,6 +20,7 @@ import { StatusChangeModal } from '@/components/tele-sales/StatusChangeModal';
 import { LeadFormModal } from '@/components/tele-sales/LeadFormModal';
 import { PipelineStepper } from '@/components/tele-sales/PipelineStepper';
 import { StatusHistoryTab } from '@/components/tele-sales/StatusHistoryTab';
+import { SalesAssistantPanel } from '@/components/tele-sales/assistant/SalesAssistantPanel';
 import { mergeCallEntries, mergeFollowUpEntries } from '@/utils/leadActivityMerge';
 import { STATUS_COLORS, LEAD_STATUS_WORKFLOW } from '@/config/leadStatusWorkflow';
 import type { CallLog, FollowUp, CreateCallLogData, LeadAttachment, LeadEmail, LeadEmailThreadSummary, LeadStatusHistoryEntry } from '@/types/teleSales.types';
@@ -41,7 +42,8 @@ const PRIORITY_COLORS: Record<string, string> = {
   Low: 'bg-gray-100 text-gray-600',
 };
 
-type Tab = 'info' | 'calls' | 'followups' | 'emails' | 'attachments' | 'hist';
+type Tab = 'info' | 'assistant' | 'calls' | 'followups' | 'emails' | 'attachments' | 'hist';
+const TABS: Tab[] = ['info', 'assistant', 'calls', 'followups', 'emails', 'attachments', 'hist'];
 
 export default function LeadDetail() {
   const { id } = useParams<{ id: string }>();
@@ -53,7 +55,7 @@ export default function LeadDetail() {
   // Deep link: /tele-sales/leads/:id?tab=emails (used by reply notifications).
   const [searchParams] = useSearchParams();
   const initialTab = (searchParams.get('tab') as Tab | null) ?? 'info';
-  const [tab, setTab] = useState<Tab>(['info', 'calls', 'followups', 'emails', 'attachments', 'hist'].includes(initialTab) ? initialTab : 'info');
+  const [tab, setTab] = useState<Tab>(TABS.includes(initialTab) ? initialTab : 'info');
   const [callLogs, setCallLogs] = useState<CallLog[]>([]);
   const [followUps, setFollowUps] = useState<FollowUp[]>([]);
 
@@ -338,6 +340,9 @@ export default function LeadDetail() {
 
         {/* Quick actions */}
         <div className="flex items-center gap-2">
+          <Button size="sm" onClick={() => setTab('assistant')} className="gap-2" title="Send documents, product details and templates to this lead">
+            <Sparkles className="w-4 h-4" /> Sales Assistant
+          </Button>
           <Button variant="outline" size="sm" onClick={() => setEditOpen(true)} className="gap-2">
             <Pencil className="w-4 h-4" /> Edit Lead
           </Button>
@@ -380,10 +385,11 @@ export default function LeadDetail() {
       {/* Tabs */}
       <div className="border-b border-outline-variant/20">
         <div className="flex gap-1">
-          {(['info', 'calls', 'followups', 'emails', 'attachments', 'hist'] as Tab[]).map((t) => (
+          {TABS.map((t) => (
             <button key={t} onClick={() => setTab(t)}
               className={`px-5 py-3 text-sm font-medium transition-colors border-b-2 -mb-px ${tab === t ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant hover:text-on-surface'}`}>
               {t === 'info' ? 'Info'
+                : t === 'assistant' ? 'Assistant'
                 : t === 'calls' ? `Calls (${mergeCallEntries(callLogs, statusHistory).length})`
                 : t === 'followups' ? `Follow-ups (${mergeFollowUpEntries(followUps).length})`
                 : t === 'emails' ? `Emails (${emails.length})`
@@ -591,6 +597,15 @@ export default function LeadDetail() {
             </div>
           )}
         </div>
+      )}
+
+      {/* Tab: Sales Assistant — quick actions, catalog, templates, history */}
+      {tab === 'assistant' && (
+        <SalesAssistantPanel
+          lead={lead}
+          agentEmail={user?.email}
+          onEmailSent={() => loadEmails()}
+        />
       )}
 
       {/* Tab: Emails */}
