@@ -42,6 +42,9 @@ export interface GmailComposeProps {
   contextLabel?: string;
   /** Address shown in the "From" row. Purely informational. */
   fromLabel?: string;
+  /** Message being answered — sends through the reply endpoint so the lead
+   *  sees a normal threaded conversation. Recipients / subject are prefilled. */
+  replyTo?: LeadEmail | null;
   onSent?: (email: LeadEmail) => void;
 }
 
@@ -173,7 +176,7 @@ function ToolbarButton({
 // ─── Compose window ───────────────────────────────────────────────────────────
 
 export default function GmailCompose({
-  leadId, open, onClose, defaultTo = [], defaultSubject = '', contextLabel, fromLabel, onSent,
+  leadId, open, onClose, defaultTo = [], defaultSubject = '', contextLabel, fromLabel, replyTo = null, onSent,
 }: GmailComposeProps) {
   const [windowState, setWindowState] = useState<WindowState>('normal');
   const [to, setTo] = useState<string[]>([]);
@@ -202,12 +205,19 @@ export default function GmailCompose({
   useEffect(() => {
     if (!open) return;
     setWindowState('normal');
-    setTo(defaultTo.filter(Boolean).map((t) => t.toLowerCase()));
+    // Replying: answer the lead's sender (or the original recipients) and keep the thread subject.
+    const replyRecipients = replyTo
+      ? (replyTo.direction === 'inbound' && replyTo.from ? [replyTo.from] : replyTo.to)
+      : null;
+    const replySubject = replyTo
+      ? (/^re:/i.test(replyTo.subject) ? replyTo.subject : `Re: ${replyTo.subject}`)
+      : null;
+    setTo((replyRecipients ?? defaultTo).filter(Boolean).map((t) => t.toLowerCase()));
     setCc([]);
     setBcc([]);
     setShowCc(false);
     setShowBcc(false);
-    setSubject(defaultSubject);
+    setSubject(replySubject ?? defaultSubject);
     setAttachments([]);
     setShowLinkInput(false);
     setSending(false);
@@ -368,9 +378,11 @@ export default function GmailCompose({
         message: editorRef.current?.innerHTML ?? '',
         attachments: ready,
       };
-      const response = leadId
-        ? await teleSalesApi.sendLeadEmail(leadId, payload)
-        : await teleSalesApi.sendComposedEmail(payload);
+      const response = leadId && replyTo
+        ? await teleSalesApi.replyLeadEmail(leadId, replyTo._id, payload)
+        : leadId
+          ? await teleSalesApi.sendLeadEmail(leadId, payload)
+          : await teleSalesApi.sendComposedEmail(payload);
       toast.success('Message sent');
       onSent?.(response.data);
       onClose();
@@ -411,7 +423,7 @@ export default function GmailCompose({
 
   if (!open) return null;
 
-  const headerTitle = windowState === 'minimized' && subject.trim() ? subject.trim() : 'New Message';
+  const headerTitle = windowState === 'minimized' && subject.trim() ? subject.trim() : replyTo ? 'Reply' : 'New Message';
 
   // ── Window chrome ──────────────────────────────────────────────────────────
 

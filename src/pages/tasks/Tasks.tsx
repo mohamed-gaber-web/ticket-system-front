@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { endOfMonth, endOfWeek, format, startOfMonth, startOfWeek } from 'date-fns';
 import { SearchSelect } from '@/components/ui/search-select';
+import { weekRangeLabel } from '@/utils/weekUtils';
 import { useSearchParams } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchTasks, deleteTask } from '@/redux/slices/tasksSlice';
@@ -194,7 +195,7 @@ export default function Tasks() {
 
       const EXPORT_HEADERS = [
         'Task #', 'Name', 'Description', 'Category', 'Department', 'Assigned To',
-        'Responsible', 'Week', 'Duration (hrs)', 'Start Date', 'End Date', 'Status', 'Delay (days)', 'Created',
+        'Responsible', 'Start Week', 'End Week', 'Duration (hrs)', 'Start Date', 'End Date', 'Status', 'Delay (days)', 'Created',
       ];
 
       const consultantName = (c: any) =>
@@ -209,6 +210,7 @@ export default function Tasks() {
         consultantName(t.assignedTo),
         consultantName(t.responsible),
         t.scheduledWeek != null ? String(t.scheduledWeek) : '',
+        t.endWeek != null ? String(t.endWeek) : (t.scheduledWeek != null ? String(t.scheduledWeek) : ''),
         t.duration != null ? String(t.duration) : '',
         fmtDate(t.startDate) ?? '',
         fmtDate(t.endDate) ?? '',
@@ -402,7 +404,7 @@ export default function Tasks() {
 
           <td className="px-4 py-3">
             {task.scheduledWeek != null
-              ? <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-md bg-brand-50 text-brand-700 text-xs font-bold">W{task.scheduledWeek}</span>
+              ? <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-md bg-brand-50 text-brand-700 text-xs font-bold whitespace-nowrap">{weekRangeLabel(task.scheduledWeek, task.endWeek)}</span>
               : <span className="text-on-surface-variant/40">&mdash;</span>}
           </td>
 
@@ -674,7 +676,7 @@ export default function Tasks() {
                   <SortHeader field="category" label="Category" />
                   <SortHeader field="department" label="Department" />
                   <SortHeader field="assignedTo" label="Assigned To" />
-                  <SortHeader field="scheduledWeek" label="Week" />
+                  <SortHeader field="scheduledWeek" label="Weeks" />
                   <SortHeader field="duration" label="Duration" />
                   <SortHeader field="startDate" label="Start Date" />
                   <SortHeader field="endDate" label="End Date" />

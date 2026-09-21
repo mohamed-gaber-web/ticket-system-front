@@ -32,6 +32,7 @@ export interface SendTaskAssignedEmailPayload {
   startDate?: string;
   endDate?: string;
   scheduledWeek?: number;
+  endWeek?: number;
   weekRange?: string;
   duration?: number;
   status: string;

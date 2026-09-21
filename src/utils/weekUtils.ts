@@ -11,6 +11,12 @@ export function getWeekDateRange(weekNum: number, year = new Date().getFullYear(
   return `${fmt(start)} – ${fmt(end)}`;
 }
 
+/** "W22" or "W22 – W23" for a task's start/end weeks. */
+export function weekRangeLabel(startWeek?: number | null, endWeek?: number | null): string {
+  if (startWeek == null) return '';
+  return endWeek != null && endWeek !== startWeek ? `W${startWeek} – W${endWeek}` : `W${startWeek}`;
+}
+
 /**
  * Inverse of getWeekDateRange: the week number (1..maxWeek) that contains the
  * given date, using the same Saturday-start weeks. Days before the year's first

@@ -47,6 +47,7 @@ export default function TaskForm() {
     assignedTo: '',
     responsible: '',
     scheduledWeek: '',
+    endWeek: '',
     duration: '',
     status: 'pending' as TaskStatus,
   });
@@ -77,6 +78,7 @@ export default function TaskForm() {
         responsible: typeof currentTask.responsible === 'object' && currentTask.responsible
           ? (currentTask.responsible as { _id: string })._id : (currentTask.responsible as string) ?? '',
         scheduledWeek: currentTask.scheduledWeek != null ? String(currentTask.scheduledWeek) : '',
+        endWeek: currentTask.endWeek != null ? String(currentTask.endWeek) : (currentTask.endDate ? String(getWeekNumber(currentTask.endDate) ?? '') : ''),
         duration: currentTask.duration != null ? String(currentTask.duration) : '',
         status: currentTask.status,
       });
@@ -93,11 +95,16 @@ export default function TaskForm() {
 
   const set = (field: string, value: string) => setForm((f) => ({ ...f, [field]: value }));
 
-  // Week is derived from the start date (Saturday-start weeks, same as getWeekDateRange).
+  // Start / end week are derived from the dates (Saturday-start weeks, same as getWeekDateRange).
   const setStartDate = (value: string) =>
     setForm((f) => {
       const week = getWeekNumber(value);
       return { ...f, startDate: value, scheduledWeek: week != null ? String(week) : '' };
+    });
+  const setEndDate = (value: string) =>
+    setForm((f) => {
+      const week = getWeekNumber(value);
+      return { ...f, endDate: value, endWeek: week != null ? String(week) : '' };
     });
 
   const validate = (): string | null => {
@@ -108,7 +115,8 @@ export default function TaskForm() {
     if (!form.assignedTo) return 'Assigned to is required';
     if (!form.responsible) return 'Responsible is required';
     if (!form.status) return 'Status is required';
-    if (!form.scheduledWeek) return 'Week is required';
+    if (!form.scheduledWeek) return 'Start week is required';
+    if (!form.endWeek) return 'End week is required';
     if (form.duration === '' || Number(form.duration) < 0) return 'Duration is required';
     if (!form.startDate) return 'Start date is required';
     if (!form.endDate) return 'End date is required';
@@ -135,6 +143,7 @@ export default function TaskForm() {
       assignedTo: form.assignedTo,
       responsible: form.responsible,
       scheduledWeek: Number(form.scheduledWeek),
+      endWeek: Number(form.endWeek),
       duration: Number(form.duration),
       status: form.status,
     };
@@ -166,7 +175,12 @@ export default function TaskForm() {
             startDate: created.startDate,
             endDate: created.endDate,
             scheduledWeek: created.scheduledWeek ?? undefined,
-            weekRange: created.scheduledWeek != null ? getWeekDateRange(created.scheduledWeek) : undefined,
+            endWeek: created.endWeek ?? undefined,
+            weekRange: created.scheduledWeek != null
+              ? (created.endWeek != null && created.endWeek !== created.scheduledWeek
+                ? `${getWeekDateRange(created.scheduledWeek).split(' – ')[0]} – ${getWeekDateRange(created.endWeek).split(' – ')[1]}`
+                : getWeekDateRange(created.scheduledWeek))
+              : undefined,
             duration: created.duration ?? undefined,
             status: created.status,
             recipients,
@@ -278,8 +292,8 @@ export default function TaskForm() {
           </div>
         </div>
 
-        {/* Row 3: Start Date + End Date + Week (auto from start date) + Duration */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* Row 3: Start Date + End Date + Start Week + End Week (both auto) + Duration */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
           <div className="space-y-1.5">
             <label className="text-sm font-semibold text-on-surface">Start Date *</label>
             <input
@@ -298,14 +312,14 @@ export default function TaskForm() {
               required
               type="date"
               value={form.endDate}
-              onChange={(e) => set('endDate', e.target.value)}
+              onChange={(e) => setEndDate(e.target.value)}
               min={form.startDate || parentStart || undefined}
               max={parentEnd || undefined}
               className={INPUT_CLS}
             />
           </div>
           <div className="space-y-1.5">
-            <label className="text-sm font-semibold text-on-surface">Week *</label>
+            <label className="text-sm font-semibold text-on-surface">Start Week *</label>
             <select
               required
               disabled
@@ -318,7 +332,23 @@ export default function TaskForm() {
                 <option key={w} value={String(w)}>W{w} — {getWeekDateRange(w)}</option>
               ))}
             </select>
-            <p className="text-[11px] text-on-surface-variant">Set automatically from the start date</p>
+            <p className="text-[11px] text-on-surface-variant">Auto from start date</p>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-semibold text-on-surface">End Week *</label>
+            <select
+              required
+              disabled
+              value={form.endWeek}
+              onChange={(e) => set('endWeek', e.target.value)}
+              className={`${INPUT_CLS} disabled:opacity-80 disabled:cursor-not-allowed`}
+            >
+              <option value="">Select end date…</option>
+              {Array.from({ length: 52 }, (_, i) => i + 1).map((w) => (
+                <option key={w} value={String(w)}>W{w} — {getWeekDateRange(w)}</option>
+              ))}
+            </select>
+            <p className="text-[11px] text-on-surface-variant">Auto from end date</p>
           </div>
           <div className="space-y-1.5">
             <label className="text-sm font-semibold text-on-surface">Duration (hours) *</label>

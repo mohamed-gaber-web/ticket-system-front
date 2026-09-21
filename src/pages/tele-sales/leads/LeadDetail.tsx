@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchLeadById } from '@/redux/slices/teleSalesLeadsSlice';
 import * as teleSalesApi from '@/api/teleSalesApi';
@@ -12,16 +12,17 @@ import {
   ArrowLeft, Phone, Mail, Building2, User, Briefcase, Tag, Edit2, Pencil,
   PhoneCall, Calendar, Paperclip, Plus, CheckCircle2, Trash2, MapPin,
   Globe, FileText, Upload, Download, File as FileIcon, Image as ImageIcon,
-  Send, AlertCircle, ChevronDown, ChevronRight,
+  Send,
 } from 'lucide-react';
 import GmailCompose from '@/components/tele-sales/GmailCompose';
+import { LeadEmailThread } from '@/components/tele-sales/LeadEmailThread';
 import { StatusChangeModal } from '@/components/tele-sales/StatusChangeModal';
 import { LeadFormModal } from '@/components/tele-sales/LeadFormModal';
 import { PipelineStepper } from '@/components/tele-sales/PipelineStepper';
 import { StatusHistoryTab } from '@/components/tele-sales/StatusHistoryTab';
 import { mergeCallEntries, mergeFollowUpEntries } from '@/utils/leadActivityMerge';
 import { STATUS_COLORS, LEAD_STATUS_WORKFLOW } from '@/config/leadStatusWorkflow';
-import type { CallLog, FollowUp, CreateCallLogData, LeadAttachment, LeadEmail, LeadStatusHistoryEntry } from '@/types/teleSales.types';
+import type { CallLog, FollowUp, CreateCallLogData, LeadAttachment, LeadEmail, LeadEmailThreadSummary, LeadStatusHistoryEntry } from '@/types/teleSales.types';
 import { LEAD_SOURCE_DETAILS } from '@/types/teleSales.types';
 
 const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15MB
@@ -49,14 +50,19 @@ export default function LeadDetail() {
   const { currentLead, loading } = useAppSelector((s) => s.teleSalesLeads);
   const { user } = useAppSelector((s) => s.auth);
 
-  const [tab, setTab] = useState<Tab>('info');
+  // Deep link: /tele-sales/leads/:id?tab=emails (used by reply notifications).
+  const [searchParams] = useSearchParams();
+  const initialTab = (searchParams.get('tab') as Tab | null) ?? 'info';
+  const [tab, setTab] = useState<Tab>(['info', 'calls', 'followups', 'emails', 'attachments', 'hist'].includes(initialTab) ? initialTab : 'info');
   const [callLogs, setCallLogs] = useState<CallLog[]>([]);
   const [followUps, setFollowUps] = useState<FollowUp[]>([]);
 
   // Emails
   const [emails, setEmails] = useState<LeadEmail[]>([]);
+  const [emailSummary, setEmailSummary] = useState<LeadEmailThreadSummary | null>(null);
   const [composeOpen, setComposeOpen] = useState(false);
-  const [expandedEmail, setExpandedEmail] = useState<string | null>(null);
+  const [replyTo, setReplyTo] = useState<LeadEmail | null>(null);
+  const [syncing, setSyncing] = useState(false);
 
   // Attachments
   const [attachments, setAttachments] = useState<LeadAttachment[]>([]);
@@ -113,7 +119,30 @@ export default function LeadDetail() {
 
   const loadEmails = async () => {
     if (!id) return;
-    try { const r = await teleSalesApi.getLeadEmails(id); setEmails(r.data); } catch {}
+    try { const r = await teleSalesApi.getLeadEmails(id); setEmails(r.data); setEmailSummary(r.summary ?? null); } catch {}
+  };
+
+  // "Check for replies": pull the shared mailbox now, then reload the thread.
+  const handleSyncInbox = async () => {
+    setSyncing(true);
+    try {
+      const r = await teleSalesApi.syncLeadInbox();
+      await loadEmails();
+      if (r.data?.filed) toast.success(r.message); else toast.info(r.message);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Could not check the mailbox');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const handleMarkEmailRead = async (email: LeadEmail) => {
+    if (!id) return;
+    try {
+      const r = await teleSalesApi.markLeadEmailRead(id, email._id);
+      setEmails((prev) => prev.map((e) => (e._id === email._id ? { ...e, ...r.data } : e)));
+      setEmailSummary((sm) => (sm ? { ...sm, unread: Math.max(0, sm.unread - 1) } : sm));
+    } catch { /* not critical */ }
   };
 
   const handleDeleteEmail = async (emailId: string) => {
@@ -566,109 +595,18 @@ export default function LeadDetail() {
 
       {/* Tab: Emails */}
       {tab === 'emails' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-on-surface-variant">
-              Messages sent to this lead. Replies go to your own inbox.
-            </p>
-            <Button onClick={() => setComposeOpen(true)} className="gap-2">
-              <Send className="w-4 h-4" /> Compose
-            </Button>
-          </div>
-
-          {emails.length === 0 ? (
-            <div className="flex flex-col items-center py-16 text-on-surface-variant bg-surface-container-lowest rounded-2xl border border-outline-variant/20">
-              <Mail className="w-8 h-8 mb-2 opacity-30" />
-              <p className="text-sm font-medium">No emails sent yet</p>
-              <p className="text-xs mt-1">Click “Compose” to write the first message</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {emails.map((email) => {
-                const expanded = expandedEmail === email._id;
-                return (
-                  <div key={email._id} className="bg-surface-container-lowest rounded-2xl border border-outline-variant/20 overflow-hidden">
-                    <div className="flex items-start gap-3 p-4">
-                      <button
-                        onClick={() => setExpandedEmail(expanded ? null : email._id)}
-                        className="p-1 rounded-lg hover:bg-surface-container text-on-surface-variant mt-0.5 shrink-0"
-                        aria-label={expanded ? 'Collapse message' : 'Expand message'}
-                      >
-                        {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                      </button>
-
-                      <button
-                        onClick={() => setExpandedEmail(expanded ? null : email._id)}
-                        className="flex-1 min-w-0 text-left"
-                      >
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm font-semibold text-on-surface truncate">{email.subject}</span>
-                          {email.status === 'failed' && (
-                            <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-error/10 text-error">
-                              <AlertCircle className="w-3 h-3" /> Failed
-                            </span>
-                          )}
-                          {email.attachments.length > 0 && (
-                            <span className="inline-flex items-center gap-1 text-xs text-on-surface-variant">
-                              <Paperclip className="w-3 h-3" /> {email.attachments.length}
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-on-surface-variant mt-1 truncate">
-                          To {email.to.join(', ')}
-                          {email.cc.length > 0 && ` · Cc ${email.cc.join(', ')}`}
-                          {email.bcc.length > 0 && ` · Bcc ${email.bcc.join(', ')}`}
-                        </p>
-                        <p className="text-xs text-on-surface-variant mt-0.5">
-                          {email.sentByName || '—'} · {formatDateTime(email.sentAt || email.createdAt)}
-                        </p>
-                      </button>
-
-                      <button
-                        onClick={() => handleDeleteEmail(email._id)}
-                        className="p-1.5 rounded-lg hover:bg-error/10 text-on-surface-variant hover:text-error shrink-0"
-                        title="Remove from history"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-
-                    {expanded && (
-                      <div className="border-t border-outline-variant/20 px-4 py-4 space-y-3">
-                        {email.status === 'failed' && email.errorMessage && (
-                          <p className="text-xs text-error bg-error/5 rounded-xl px-3 py-2">{email.errorMessage}</p>
-                        )}
-                        {/* Body is sanitised server-side before it is stored. */}
-                        <div
-                          className="email-body-content text-sm text-on-surface"
-                          dangerouslySetInnerHTML={{ __html: email.body || '<p><em>(no message body)</em></p>' }}
-                        />
-                        {email.attachments.length > 0 && (
-                          <div className="flex flex-wrap gap-2 pt-2 border-t border-outline-variant/20">
-                            {email.attachments.map((att) => (
-                              <button
-                                key={att.fileId}
-                                onClick={() => handleDownloadEmailAttachment(att)}
-                                className="inline-flex items-center gap-2 rounded-xl border border-outline-variant/40 px-3 py-2 text-xs text-on-surface hover:bg-surface-container transition-colors"
-                              >
-                                {att.fileType?.startsWith('image/')
-                                  ? <ImageIcon className="w-3.5 h-3.5 text-brand-500" />
-                                  : <FileIcon className="w-3.5 h-3.5 text-on-surface-variant" />}
-                                <span className="truncate max-w-[200px]">{att.fileName}</span>
-                                <span className="text-on-surface-variant">{formatFileSize(att.fileSize)}</span>
-                                <Download className="w-3.5 h-3.5 text-on-surface-variant" />
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+        <LeadEmailThread
+          emails={emails}
+          summary={emailSummary}
+          syncing={syncing}
+          canWrite
+          onCompose={() => { setReplyTo(null); setComposeOpen(true); }}
+          onReply={(email) => { setReplyTo(email); setComposeOpen(true); }}
+          onRefresh={handleSyncInbox}
+          onDelete={handleDeleteEmail}
+          onMarkRead={handleMarkEmailRead}
+          onDownload={handleDownloadEmailAttachment}
+        />
       )}
 
       {/* Tab: Attachments */}
@@ -756,11 +694,12 @@ export default function LeadDetail() {
       <GmailCompose
         leadId={lead._id}
         open={composeOpen}
-        onClose={() => setComposeOpen(false)}
+        onClose={() => { setComposeOpen(false); setReplyTo(null); }}
         defaultTo={lead.email ? [lead.email] : []}
         contextLabel={lead.contactPersonName || lead.companyName}
         fromLabel={user?.email}
-        onSent={() => { loadEmails(); setTab('emails'); }}
+        replyTo={replyTo}
+        onSent={() => { setReplyTo(null); loadEmails(); setTab('emails'); }}
       />
     </div>
   );

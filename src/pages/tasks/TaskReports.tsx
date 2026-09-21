@@ -39,7 +39,7 @@ const BREAKDOWNS: { key: BreakdownKey; label: string }[] = [
   { key: 'byResponsible', label: 'By Responsible' },
   { key: 'byCategory', label: 'By Category' },
   { key: 'byDepartment', label: 'By Department' },
-  { key: 'byWeek', label: 'By Week' },
+  { key: 'byWeek', label: 'By Start Week' },
 ];
 
 const SCOPES: { value: TaskReportScope; label: string }[] = [
@@ -79,7 +79,7 @@ type Filters = typeof EMPTY_FILTERS;
 // Rows for the task detail table and every export share one shape.
 const TASK_HEADERS = [
   'Task #', 'Type', 'Main Task', 'Name', 'Description', 'Category', 'Department', 'Assigned To',
-  'Responsible', 'Week', 'Duration (hrs)', 'Start Date', 'End Date', 'Status', 'Delay (days)', 'Completed At',
+  'Responsible', 'Start Week', 'End Week', 'Duration (hrs)', 'Start Date', 'End Date', 'Status', 'Delay (days)', 'Completed At',
 ];
 const taskRow = (t: Task): (string | number)[] => [
   t.taskNumber ?? '',
@@ -92,6 +92,7 @@ const taskRow = (t: Task): (string | number)[] => [
   personName(t.assignedTo),
   personName(t.responsible),
   t.scheduledWeek ?? '',
+  t.endWeek ?? t.scheduledWeek ?? '',
   t.duration ?? '',
   fmtDate(t.startDate),
   fmtDate(t.endDate),
@@ -370,10 +371,11 @@ export default function TaskReports() {
       doc.text(`Tasks (${tasks.length})`, 14, 16);
       autoTable(doc, {
         startY: 20,
-        head: [['Task #', 'Type', 'Main Task', 'Name', 'Category', 'Assigned To', 'Responsible', 'Week', 'Hrs', 'Start', 'End', 'Status', 'Delay']],
+        head: [['Task #', 'Type', 'Main Task', 'Name', 'Category', 'Assigned To', 'Responsible', 'Weeks', 'Hrs', 'Start', 'End', 'Status', 'Delay']],
         body: tasks.map((t) => {
           const r = taskRow(t);
-          return [r[0], r[1], r[2], r[3], r[5], r[7], r[8], r[9], r[10], r[11], r[12], r[13], r[14]];
+          const weeks = r[10] !== '' && r[10] !== r[9] ? `W${r[9]} – W${r[10]}` : r[9] !== '' ? `W${r[9]}` : '';
+          return [r[0], r[1], r[2], r[3], r[5], r[7], r[8], weeks, r[11], r[12], r[13], r[14], r[15]];
         }),
         styles: { fontSize: 7 },
         headStyles: { fillColor: [47, 111, 237] },
@@ -464,7 +466,7 @@ export default function TaskReports() {
         <p className="text-[11px] text-on-surface-variant -mt-1">
           {draft.periodMode === 'dates'
             ? 'Includes every task whose start–end range overlaps the selected dates.'
-            : 'Includes every task scheduled in the selected week.'}
+            : 'Includes every task whose start–end weeks cover the selected week.'}
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
@@ -694,7 +696,7 @@ export default function TaskReports() {
                     <th className="px-3 py-2">Category</th>
                     <th className="px-3 py-2">Assigned To</th>
                     <th className="px-3 py-2">Responsible</th>
-                    <th className="px-3 py-2">Week</th>
+                    <th className="px-3 py-2">Weeks</th>
                     <th className="px-3 py-2 text-right">Hrs</th>
                     <th className="px-3 py-2">Start</th>
                     <th className="px-3 py-2">End</th>
@@ -721,7 +723,7 @@ export default function TaskReports() {
                       <td className="px-3 py-2 text-on-surface-variant whitespace-nowrap">{personName(t.responsible) || '—'}</td>
                       <td className="px-3 py-2">
                         {t.scheduledWeek != null
-                          ? <span className="inline-flex px-2 py-0.5 rounded-md bg-brand-50 text-brand-700 text-xs font-bold">W{t.scheduledWeek}</span>
+                          ? <span className="inline-flex px-2 py-0.5 rounded-md bg-brand-50 text-brand-700 text-xs font-bold whitespace-nowrap">{t.endWeek != null && t.endWeek !== t.scheduledWeek ? `W${t.scheduledWeek} – W${t.endWeek}` : `W${t.scheduledWeek}`}</span>
                           : '—'}
                       </td>
                       <td className="px-3 py-2 text-right text-on-surface whitespace-nowrap">{t.duration != null ? `${t.duration}h` : '—'}</td>

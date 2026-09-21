@@ -13,7 +13,7 @@ import {
 import TaskFileUpload from '@/components/tasks/TaskFileUpload';
 import TaskAttachmentList from '@/components/tasks/TaskAttachmentList';
 import TaskComments from '@/components/tasks/TaskComments';
-import { getWeekDateRange, getWeekNumber } from '@/utils/weekUtils';
+import { getWeekDateRange, getWeekNumber, weekRangeLabel } from '@/utils/weekUtils';
 import {
   Edit, Trash2, CheckSquare, User, Calendar,
   Clock, Building2, CalendarDays, Timer, UserCheck,
@@ -67,7 +67,7 @@ const toDay = (d?: string) => (d ? d.split('T')[0] : '');
 const EMPTY_SUB_FORM = {
   name: '', description: '', department: '',
   startDate: '', endDate: '', assignedTo: '', responsible: '',
-  scheduledWeek: '', duration: '', status: 'pending' as TaskStatus,
+  scheduledWeek: '', endWeek: '', duration: '', status: 'pending' as TaskStatus,
 };
 
 export default function ViewTask() {
@@ -148,11 +148,16 @@ export default function ViewTask() {
   const setSubField = (field: string, value: string) =>
     setSubForm((f) => ({ ...f, [field]: value }));
 
-  // Week is derived from the start date (Saturday-start weeks, same as getWeekDateRange).
+  // Start / end week are derived from the dates (Saturday-start weeks, same as getWeekDateRange).
   const setSubStartDate = (value: string) =>
     setSubForm((f) => {
       const week = getWeekNumber(value);
       return { ...f, startDate: value, scheduledWeek: week != null ? String(week) : '' };
+    });
+  const setSubEndDate = (value: string) =>
+    setSubForm((f) => {
+      const week = getWeekNumber(value);
+      return { ...f, endDate: value, endWeek: week != null ? String(week) : '' };
     });
 
   const validateSubForm = (): string | null => {
@@ -161,7 +166,8 @@ export default function ViewTask() {
     if (!subForm.department) return 'Department is required';
     if (!subForm.assignedTo) return 'Assigned to is required';
     if (!subForm.responsible) return 'Responsible is required';
-    if (!subForm.scheduledWeek) return 'Week is required';
+    if (!subForm.scheduledWeek) return 'Start week is required';
+    if (!subForm.endWeek) return 'End week is required';
     if (subForm.duration === '' || Number(subForm.duration) < 0) return 'Duration is required';
     if (!subForm.startDate) return 'Start date is required';
     if (!subForm.endDate) return 'End date is required';
@@ -193,6 +199,7 @@ export default function ViewTask() {
       assignedTo: subForm.assignedTo,
       responsible: subForm.responsible,
       scheduledWeek: Number(subForm.scheduledWeek),
+      endWeek: Number(subForm.endWeek),
       duration: Number(subForm.duration),
       status: subForm.status,
       parentTask: currentTask!._id,
@@ -435,8 +442,11 @@ export default function ViewTask() {
             <h2 className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Schedule</h2>
 
             {currentTask.scheduledWeek != null && (
-              <SchedRow icon={<Calendar className="w-4 h-4 text-brand-500" />} label="Week"
-                value={`W${currentTask.scheduledWeek}`} sub={getWeekDateRange(currentTask.scheduledWeek)} />
+              <SchedRow icon={<Calendar className="w-4 h-4 text-brand-500" />} label="Weeks"
+                value={weekRangeLabel(currentTask.scheduledWeek, currentTask.endWeek)}
+                sub={currentTask.endWeek != null && currentTask.endWeek !== currentTask.scheduledWeek
+                  ? `${getWeekDateRange(currentTask.scheduledWeek).split(' – ')[0]} – ${getWeekDateRange(currentTask.endWeek).split(' – ')[1]}`
+                  : getWeekDateRange(currentTask.scheduledWeek)} />
             )}
             {currentTask.duration != null && (
               <SchedRow icon={<Timer className="w-4 h-4 text-accent-orange-500" />} label="Duration" value={`${currentTask.duration}h`} />
@@ -556,7 +566,7 @@ export default function ViewTask() {
                         )}
                         {sub.scheduledWeek != null && (
                           <span className="flex items-center gap-1">
-                            <Calendar className="w-3 h-3" /> W{sub.scheduledWeek}
+                            <Calendar className="w-3 h-3" /> {weekRangeLabel(sub.scheduledWeek, sub.endWeek)}
                           </span>
                         )}
                         {sub.startDate && (
@@ -707,8 +717,8 @@ export default function ViewTask() {
               </div>
             </div>
 
-            {/* Row 3: Start Date + End Date + Week (auto from start date) + Duration */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {/* Row 3: Start Date + End Date + Start Week + End Week (both auto) + Duration */}
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               <div className="space-y-1.5">
                 <label className="text-sm font-semibold text-on-surface">Start Date *</label>
                 <input
@@ -727,14 +737,14 @@ export default function ViewTask() {
                   required
                   type="date"
                   value={subForm.endDate}
-                  onChange={(e) => setSubField('endDate', e.target.value)}
+                  onChange={(e) => setSubEndDate(e.target.value)}
                   min={subForm.startDate || mainStart || undefined}
                   max={mainEnd || undefined}
                   className="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-on-surface">Week *</label>
+                <label className="text-sm font-semibold text-on-surface">Start Week *</label>
                 <select
                   required
                   disabled
@@ -748,6 +758,22 @@ export default function ViewTask() {
                   ))}
                 </select>
                 <p className="text-[11px] text-on-surface-variant">Auto from start date</p>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold text-on-surface">End Week *</label>
+                <select
+                  required
+                  disabled
+                  value={subForm.endWeek}
+                  onChange={(e) => setSubField('endWeek', e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-80 disabled:cursor-not-allowed"
+                >
+                  <option value="">Select end date…</option>
+                  {Array.from({ length: 52 }, (_, i) => i + 1).map((w) => (
+                    <option key={w} value={String(w)}>W{w} — {getWeekDateRange(w)}</option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-on-surface-variant">Auto from end date</p>
               </div>
               <div className="space-y-1.5">
                 <label className="text-sm font-semibold text-on-surface">Duration (h) *</label>

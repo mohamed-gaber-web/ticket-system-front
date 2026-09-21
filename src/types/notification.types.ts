@@ -16,7 +16,8 @@ export type NotificationType =
   | 'meeting_invite'
   | 'meeting_updated'
   | 'meeting_cancelled'
-  | 'meeting_reminder';
+  | 'meeting_reminder'
+  | 'lead_email_reply';
 
 export interface Notification {
   _id: string;
@@ -26,6 +27,7 @@ export interface Notification {
     startAt?: string;
     status?: string;
   } | null;
+  lead?: { _id: string; companyName?: string; contactPersonName?: string } | null;
   ticket?: {
     _id: string;
     ticketNumber?: string;

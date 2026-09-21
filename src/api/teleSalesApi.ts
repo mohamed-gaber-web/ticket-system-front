@@ -29,6 +29,8 @@ import type {
   TeamResponse,
   CreateTeamData,
   UpdateTeamData,
+  EmailInboxResponse,
+  EmailInboxFilter,
 } from '@/types/teleSales.types';
 
 // ── Teams ─────────────────────────────────────────────────────────────────────
@@ -167,6 +169,20 @@ export const sendComposedEmail = (data: SendLeadEmailData): Promise<LeadEmailRes
 
 export const deleteLeadEmail = (leadId: string, emailId: string) =>
   api.delete(`/leads/${leadId}/emails/${emailId}`).then((r) => r.data);
+
+/** Reply in-thread to a message of the lead's conversation. */
+export const replyLeadEmail = (leadId: string, emailId: string, data: SendLeadEmailData): Promise<LeadEmailResponse> =>
+  api.post(`/leads/${leadId}/emails/${emailId}/reply`, data).then((r) => r.data);
+
+export const markLeadEmailRead = (leadId: string, emailId: string): Promise<LeadEmailResponse> =>
+  api.patch(`/leads/${leadId}/emails/${emailId}/read`).then((r) => r.data);
+
+/** Pull new replies from the shared mailbox right now. */
+export const syncLeadInbox = (): Promise<{ success: boolean; message: string; data: { processed: number; filed: number } }> =>
+  api.post('/leads/emails/sync').then((r) => r.data);
+
+export const getEmailInbox = (params: { filter?: EmailInboxFilter; search?: string; page?: number; limit?: number }): Promise<EmailInboxResponse> =>
+  api.get('/leads/emails/inbox', { params }).then((r) => r.data);
 
 // Step 1 of adding an attachment: push the raw file to GridFS and get back its fileId.
 export const uploadFile = (

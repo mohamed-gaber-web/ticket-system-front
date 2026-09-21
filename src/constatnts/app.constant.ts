@@ -1,5 +1,6 @@
 import {
   LayoutDashboard,
+  Mail,
   Users,
   Ticket,
   UserCog,
@@ -178,6 +179,7 @@ const TELE_SALES_CORE_LINKS = [
   { name: "Leads", path: "/tele-sales/leads", icon: PhoneCall },
   { name: "Opportunities", path: "/tele-sales/opportunities", icon: Star },
   { name: "Recent Calls", path: "/tele-sales/calls/recent", icon: Clock },
+  { name: "Email Management", path: "/tele-sales/emails", icon: Mail },
 ];
 
 // TeleSales super admin — the only role that manages the teams themselves.
@@ -256,6 +258,7 @@ const TELE_SALES_GROUP = {
     { name: "Leads", path: "/tele-sales/leads", icon: PhoneCall },
     { name: "Opportunities", path: "/tele-sales/opportunities", icon: Star },
     { name: "Recent Calls", path: "/tele-sales/calls/recent", icon: Clock },
+    { name: "Email Management", path: "/tele-sales/emails", icon: Mail },
     { name: "Agents", path: "/tele-sales/agents", icon: UserPlus },
     { name: "Teams", path: "/tele-sales/teams", icon: Globe },
     {
@@ -360,6 +363,7 @@ const buildConsultantLinks = (consultantRole?: string | null, department?: strin
       { name: "Leads", path: "/tele-sales/leads", icon: PhoneCall },
       { name: "Opportunities", path: "/tele-sales/opportunities", icon: Star },
       { name: "Recent Calls", path: "/tele-sales/calls/recent", icon: Clock },
+      { name: "Email Management", path: "/tele-sales/emails", icon: Mail },
       TELE_SALES_MODULES_GROUP,
       EMPLOYEE_REQUESTS_GROUP_LITE,
     ];

@@ -38,7 +38,9 @@ export interface Task {
   endDate?: string;
   assignedTo?: TaskConsultant | string | null;
   responsible?: TaskConsultant | string | null;
+  /** Start week (name kept for compatibility) and end week, both derived from the dates. */
   scheduledWeek?: number | null;
+  endWeek?: number | null;
   duration?: number | null;
   status: TaskStatus;
   completedAt?: string | null;
@@ -62,6 +64,7 @@ export interface CreateTaskData {
   assignedTo: string;
   responsible: string;
   scheduledWeek: number;
+  endWeek: number;
   duration: number;
   status: TaskStatus;
   parentTask?: string | null;
@@ -76,6 +79,7 @@ export type TaskSortField =
   | 'category'
   | 'assignedTo'
   | 'scheduledWeek'
+  | 'endWeek'
   | 'duration'
   | 'startDate'
   | 'endDate'

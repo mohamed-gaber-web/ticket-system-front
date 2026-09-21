@@ -534,25 +534,80 @@ export interface EmailAttachment {
   fileSize?: number;
 }
 
+export type LeadEmailDirection = 'outbound' | 'inbound';
+/** outbound: sent → replied | failed · inbound: received → read → replied */
+export type LeadEmailStatus = 'sent' | 'failed' | 'replied' | 'received' | 'read';
+
 export interface LeadEmail {
   _id: string;
   lead: string;
+  team?: string | null;
+  direction: LeadEmailDirection;
+  /** Inbound only: the lead's address / display name. */
+  from?: string;
+  fromName?: string;
   to: string[];
   cc: string[];
   bcc: string[];
   subject: string;
-  /** Sanitised HTML exactly as it was sent. */
+  /** Sanitised HTML exactly as it was sent / received. */
   body: string;
+  bodyPreview?: string;
   attachments: EmailAttachment[];
-  sentBy: Pick<TeleSalesAgent, '_id' | 'firstName' | 'lastName' | 'email'> | string;
-  sentByType: 'TeleSalesAgent' | 'Consultant';
+  sentBy?: Pick<TeleSalesAgent, '_id' | 'firstName' | 'lastName' | 'email'> | string | null;
+  sentByType?: 'TeleSalesAgent' | 'Consultant';
   sentByName?: string;
   sentByEmail?: string;
-  status: 'sent' | 'failed';
+  status: LeadEmailStatus;
   errorMessage?: string;
   messageId?: string;
+  graphMessageId?: string;
+  conversationId?: string;
+  inReplyTo?: string | null;
   sentAt: string;
+  receivedAt?: string | null;
+  readAt?: string | null;
+  repliedAt?: string | null;
   createdAt: string;
+}
+
+export interface LeadEmailThreadSummary {
+  sent: number;
+  failed: number;
+  received: number;
+  unread: number;
+  awaitingLead: boolean;
+  awaitingAgent: boolean;
+  lastInboundAt: string | null;
+  lastOutboundAt: string | null;
+  lastMessageAt: string | null;
+}
+
+/** One row of the Email Management page: a lead's whole conversation. */
+export interface EmailInboxRow {
+  lead: { _id: string; companyName: string; contactPersonName?: string; email?: string; status?: string; assignedTo?: string } | null;
+  messages: number;
+  sent: number;
+  received: number;
+  unread: number;
+  awaitingAgent: boolean;
+  awaitingLead: boolean;
+  lastAt: string;
+  lastInboundAt: string | null;
+  lastOutboundAt: string | null;
+  agents: string[];
+  last: Pick<LeadEmail, '_id' | 'direction' | 'status' | 'subject' | 'bodyPreview' | 'from' | 'fromName' | 'sentByName'>;
+}
+
+export type EmailInboxFilter = 'all' | 'unread' | 'awaiting_agent' | 'awaiting_lead' | 'mine';
+
+export interface EmailInboxResponse {
+  success: boolean;
+  total: number;
+  page: number;
+  pages: number;
+  totals: { conversations: number; unread: number; awaitingAgent: number; awaitingLead: number };
+  data: EmailInboxRow[];
 }
 
 export interface SendLeadEmailData {
@@ -569,6 +624,7 @@ export interface LeadEmailsResponse {
   success: boolean;
   total: number;
   data: LeadEmail[];
+  summary: LeadEmailThreadSummary;
 }
 
 export interface LeadEmailResponse {

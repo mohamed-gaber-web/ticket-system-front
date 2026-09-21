@@ -31,6 +31,7 @@ import {
   CalendarPlus,
   CalendarClock,
   CalendarX2,
+  MailOpen,
   type LucideIcon,
 } from 'lucide-react';
 import type { Notification, NotificationType } from '@/types/notification.types';
@@ -60,6 +61,7 @@ const TYPE_STYLES: Record<NotificationType, { icon: LucideIcon; className: strin
   meeting_updated: { icon: CalendarClock, className: 'text-sky-600 bg-sky-500/10' },
   meeting_cancelled: { icon: CalendarX2, className: 'text-gray-600 bg-gray-500/10' },
   meeting_reminder: { icon: BellRing, className: 'text-amber-600 bg-amber-500/10' },
+  lead_email_reply: { icon: MailOpen, className: 'text-orange-600 bg-orange-500/10' },
 };
 
 const DEFAULT_STYLE = { icon: Bell, className: 'text-on-surface-variant bg-surface-container-high' };
@@ -144,6 +146,7 @@ export function NotificationDropdown({ isOpen, onClose, excludeTypes = [] }: Not
     }
     if (item.ticket?._id) return `/tickets/view/${item.ticket._id}`;
     if (item.meeting?._id) return `/calendar?meeting=${item.meeting._id}`;
+    if (item.lead?._id) return `/tele-sales/leads/${item.lead._id}?tab=emails`;
     return null;
   };
 
