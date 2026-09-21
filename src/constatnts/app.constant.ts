@@ -74,10 +74,10 @@ const TELE_SALES_MODULES_GROUP = {
   ],
 };
 
-// Sales kit — the catalog, collateral and templates behind the lead page's
+// Product catalog — the products, collateral and templates behind the lead page's
 // Sales Assistant. Every tele-sales role can browse; admins manage.
-const SALES_KIT_GROUP = {
-  name: "Sales Kit",
+const PRODUCT_CATALOG_GROUP = {
+  name: "Product Catalog",
   icon: Sparkles,
   isGroup: true as const,
   children: [
@@ -196,7 +196,7 @@ const TELE_SALES_CORE_LINKS = [
   { name: "Opportunities", path: "/tele-sales/opportunities", icon: Star },
   { name: "Recent Calls", path: "/tele-sales/calls/recent", icon: Clock },
   { name: "Email Management", path: "/tele-sales/emails", icon: Mail },
-  SALES_KIT_GROUP,
+  PRODUCT_CATALOG_GROUP,
 ];
 
 // TeleSales super admin — the only role that manages the teams themselves.
@@ -279,10 +279,10 @@ const TELE_SALES_GROUP = {
     { name: "Agents", path: "/tele-sales/agents", icon: UserPlus },
     { name: "Teams", path: "/tele-sales/teams", icon: Globe },
     {
-      name: "Sales Kit",
+      name: "Product Catalog",
       icon: Sparkles,
       isSubGroup: true as const,
-      children: SALES_KIT_GROUP.children,
+      children: PRODUCT_CATALOG_GROUP.children,
     },
     {
       name: "Modules",
@@ -387,7 +387,7 @@ const buildConsultantLinks = (consultantRole?: string | null, department?: strin
       { name: "Opportunities", path: "/tele-sales/opportunities", icon: Star },
       { name: "Recent Calls", path: "/tele-sales/calls/recent", icon: Clock },
       { name: "Email Management", path: "/tele-sales/emails", icon: Mail },
-      SALES_KIT_GROUP,
+      PRODUCT_CATALOG_GROUP,
       TELE_SALES_MODULES_GROUP,
       EMPLOYEE_REQUESTS_GROUP_LITE,
     ];

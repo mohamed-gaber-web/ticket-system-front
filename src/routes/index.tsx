@@ -174,7 +174,7 @@ const RecentCalls = lazy(() => import("@/pages/tele-sales/leads/RecentCalls"));
 const EmailManagement = lazy(() => import("@/pages/tele-sales/emails/EmailManagement"));
 const TeleSalesAgents = lazy(() => import("@/pages/tele-sales/agents/Agents"));
 const TeleSalesTeams = lazy(() => import("@/pages/tele-sales/teams/Teams"));
-// Sales assistant (sales kit)
+// Sales assistant (product catalog group)
 const TeleSalesProducts = lazy(() => import("@/pages/tele-sales/products/Products"));
 const TeleSalesDocuments = lazy(() => import("@/pages/tele-sales/documents/SalesDocuments"));
 const TeleSalesTemplates = lazy(() => import("@/pages/tele-sales/templates/MessageTemplates"));
@@ -230,7 +230,7 @@ export const routes: RouteObject[] = [
       // Team management is super-admin only; the page itself says so to anyone
       // else who reaches it, and the API refuses every write regardless.
       { path: "teams", element: <Lazy><TeleSalesTeams /></Lazy> },
-      // Sales kit — readable by every tele-sales role; the pages hide the
+      // Product catalog group — readable by every tele-sales role; the pages hide the
       // management controls for non-admins and the API refuses their writes.
       { path: "products", element: <Lazy><TeleSalesProducts /></Lazy> },
       { path: "documents", element: <Lazy><TeleSalesDocuments /></Lazy> },
