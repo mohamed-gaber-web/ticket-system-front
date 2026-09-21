@@ -76,16 +76,53 @@ const EMPTY_FILTERS = {
 };
 type Filters = typeof EMPTY_FILTERS;
 
+const parentId = (p: any): string => (typeof p === 'object' && p ? p._id : p) ?? '';
+
+/**
+ * A line of the task list: a main task (level 0) followed by its subtasks
+ * (level 1). Subtasks whose main task didn't match the filters are still shown,
+ * grouped under a header naming the main task.
+ */
+type ReportLine =
+  | { kind: 'task'; task: Task; level: 0 | 1; subTotal: number; subDone: number }
+  | { kind: 'group'; label: string; count: number };
+
+const groupTasks = (tasks: Task[]): ReportLine[] => {
+  const subsByParent = new Map<string, Task[]>();
+  for (const t of tasks) {
+    if (!t.parentTask) continue;
+    const pid = parentId(t.parentTask);
+    subsByParent.set(pid, [...(subsByParent.get(pid) ?? []), t]);
+  }
+  const byStart = (a: Task, b: Task) => new Date(a.startDate ?? 0).getTime() - new Date(b.startDate ?? 0).getTime();
+  const lines: ReportLine[] = [];
+  const placed = new Set<string>();
+  for (const main of tasks.filter((t) => !t.parentTask)) {
+    const subs = (subsByParent.get(main._id) ?? []).sort(byStart);
+    lines.push({ kind: 'task', task: main, level: 0, subTotal: subs.length, subDone: subs.filter((x) => x.status === 'done').length });
+    for (const sub of subs) { lines.push({ kind: 'task', task: sub, level: 1, subTotal: 0, subDone: 0 }); placed.add(sub._id); }
+  }
+  // Orphans: subtasks whose main task is outside the current filters.
+  for (const [pid, subs] of subsByParent) {
+    const rest = subs.filter((x) => !placed.has(x._id)).sort(byStart);
+    if (!rest.length) continue;
+    lines.push({ kind: 'group', label: parentLabel(rest[0].parentTask) || `Main task ${pid}`, count: rest.length });
+    for (const sub of rest) lines.push({ kind: 'task', task: sub, level: 1, subTotal: 0, subDone: 0 });
+  }
+  return lines;
+};
+
 // Rows for the task detail table and every export share one shape.
 const TASK_HEADERS = [
-  'Task #', 'Type', 'Main Task', 'Name', 'Description', 'Category', 'Department', 'Assigned To',
+  'Task #', 'Type', 'Main Task', 'Name', 'Subtasks', 'Description', 'Category', 'Department', 'Assigned To',
   'Responsible', 'Start Week', 'End Week', 'Duration (hrs)', 'Start Date', 'End Date', 'Status', 'Delay (days)', 'Completed At',
 ];
-const taskRow = (t: Task): (string | number)[] => [
+const taskRow = (t: Task, opts: { level?: 0 | 1; subTotal?: number; subDone?: number } = {}): (string | number)[] => [
   t.taskNumber ?? '',
   t.parentTask ? 'Subtask' : 'Main',
   parentLabel(t.parentTask),
-  t.name,
+  opts.level === 1 ? `    ↳ ${t.name}` : t.name,
+  t.parentTask ? '' : opts.subTotal ? `${opts.subDone ?? 0}/${opts.subTotal} done` : '0',
   t.description ?? '',
   nameOf(t.category),
   nameOf(t.department),
@@ -253,7 +290,13 @@ export default function TaskReports() {
 
   const rows = report?.[breakdown] ?? [];
   const tasks = report?.tasks ?? [];
-  const visibleTasks = showAllTasks ? tasks : tasks.slice(0, 50);
+  const lines = useMemo(() => groupTasks(tasks), [tasks]);
+  const visibleLines = showAllTasks ? lines : lines.slice(0, 60);
+  // Export rows follow the same grouping: main task, then its subtasks indented.
+  const exportRows = useMemo(
+    () => lines.filter((l): l is Extract<ReportLine, { kind: 'task' }> => l.kind === 'task').map((l) => taskRow(l.task, l)),
+    [lines]
+  );
   const s = report?.summary;
 
   // ── Exports ───────────────────────────────────────────────────
@@ -306,7 +349,7 @@ export default function TaskReports() {
         XLSX.utils.book_append_sheet(wb, ws, label.slice(0, 31));
       });
 
-      const taskData = [TASK_HEADERS, ...tasks.map(taskRow)];
+      const taskData = [TASK_HEADERS, ...exportRows];
       const wsTasks = XLSX.utils.aoa_to_sheet(taskData);
       autoWidth(wsTasks, taskData);
       XLSX.utils.book_append_sheet(wb, wsTasks, 'Tasks');
@@ -322,7 +365,7 @@ export default function TaskReports() {
   const exportCsv = () => {
     if (!tasks.length) { toast.error('No data to export'); return; }
     try {
-      const ws = XLSX.utils.aoa_to_sheet([TASK_HEADERS, ...tasks.map(taskRow)]);
+      const ws = XLSX.utils.aoa_to_sheet([TASK_HEADERS, ...exportRows]);
       const csv = XLSX.utils.sheet_to_csv(ws);
       saveAs(new Blob([csv], { type: 'text/csv;charset=utf-8;' }), filename('csv'));
       toast.success('Task list exported as CSV');
@@ -369,17 +412,29 @@ export default function TaskReports() {
       doc.addPage();
       doc.setFontSize(12);
       doc.text(`Tasks (${tasks.length})`, 14, 16);
+      const subRowIdx = new Set<number>();
+      const pdfBody = exportRows.map((r, i) => {
+        if (r[1] === 'Subtask') subRowIdx.add(i);
+        const weeks = r[11] !== '' && r[11] !== r[10] ? `W${r[10]} – W${r[11]}` : r[10] !== '' ? `W${r[10]}` : '';
+        // Task #, Name (indented for subtasks), Subtasks, Category, Assigned, Responsible, Weeks, Hrs, Start, End, Status, Delay
+        return [r[0], r[3], r[4], r[6], r[8], r[9], weeks, r[12], r[13], r[14], r[15], r[16]];
+      });
       autoTable(doc, {
         startY: 20,
-        head: [['Task #', 'Type', 'Main Task', 'Name', 'Category', 'Assigned To', 'Responsible', 'Weeks', 'Hrs', 'Start', 'End', 'Status', 'Delay']],
-        body: tasks.map((t) => {
-          const r = taskRow(t);
-          const weeks = r[10] !== '' && r[10] !== r[9] ? `W${r[9]} – W${r[10]}` : r[9] !== '' ? `W${r[9]}` : '';
-          return [r[0], r[1], r[2], r[3], r[5], r[7], r[8], weeks, r[11], r[12], r[13], r[14], r[15]];
-        }),
+        head: [['Task #', 'Task / ↳ Subtask', 'Subtasks', 'Category', 'Assigned To', 'Responsible', 'Weeks', 'Hrs', 'Start', 'End', 'Status', 'Delay']],
+        body: pdfBody,
         styles: { fontSize: 7 },
         headStyles: { fillColor: [47, 111, 237] },
-        columnStyles: { 2: { cellWidth: 40 }, 3: { cellWidth: 45 } },
+        columnStyles: { 1: { cellWidth: 60 } },
+        // Subtask rows: lighter text on a grey tint so the hierarchy is visible on paper.
+        didParseCell: (data) => {
+          if (data.section === 'body' && subRowIdx.has(data.row.index)) {
+            data.cell.styles.fillColor = [245, 246, 250];
+            data.cell.styles.textColor = [90, 96, 110];
+          } else if (data.section === 'body' && data.column.index === 1) {
+            data.cell.styles.fontStyle = 'bold';
+          }
+        },
       });
 
       doc.save(filename('pdf'));
@@ -680,9 +735,9 @@ export default function TaskReports() {
           {/* Task detail */}
           <Panel
             title={`Tasks (${tasks.length}${report.truncated ? '+, showing first 5000' : ''})`}
-            action={tasks.length > 50 && (
+            action={lines.length > 60 && (
               <Button variant="ghost" size="sm" onClick={() => setShowAllTasks((v) => !v)}>
-                {showAllTasks ? 'Show first 50' : `Show all ${tasks.length}`}
+                {showAllTasks ? 'Show first 60 rows' : `Show all ${tasks.length} tasks`}
               </Button>
             )}
           >
@@ -691,8 +746,8 @@ export default function TaskReports() {
                 <thead>
                   <tr className="text-left text-xs font-semibold text-on-surface-variant border-b border-outline-variant/20">
                     <th className="px-3 py-2">Task #</th>
-                    <th className="px-3 py-2">Name</th>
-                    <th className="px-3 py-2">Main Task</th>
+                    <th className="px-3 py-2">Task / subtask</th>
+                    <th className="px-3 py-2">Subtasks</th>
                     <th className="px-3 py-2">Category</th>
                     <th className="px-3 py-2">Assigned To</th>
                     <th className="px-3 py-2">Responsible</th>
@@ -706,18 +761,36 @@ export default function TaskReports() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-outline-variant/10">
-                  {visibleTasks.length === 0 ? (
+                  {visibleLines.length === 0 ? (
                     <tr><td colSpan={13} className="px-3 py-8 text-center text-on-surface-variant/60 italic">No tasks match the filters</td></tr>
-                  ) : visibleTasks.map((t) => (
-                    <tr key={t._id} className="hover:bg-surface-container-low/50">
-                      <td className="px-3 py-2 font-mono text-xs font-semibold text-primary whitespace-nowrap">{t.taskNumber ?? '—'}</td>
+                  ) : visibleLines.map((line, i) => line.kind === 'group' ? (
+                    <tr key={`g-${i}`} className="bg-surface-container-low/60">
+                      <td colSpan={13} className="px-3 py-1.5 text-xs text-on-surface-variant">
+                        <GitBranch className="inline w-3 h-3 mr-1 -mt-0.5" />
+                        Subtasks of <span className="font-semibold text-on-surface">{line.label}</span>
+                        <span className="opacity-70"> · main task is outside the current filters · {line.count} subtask{line.count === 1 ? '' : 's'}</span>
+                      </td>
+                    </tr>
+                  ) : (() => { const t = line.task; const sub = line.level === 1; return (
+                    <tr key={t._id} className={`hover:bg-surface-container-low/50 ${sub ? 'bg-surface-container-low/30' : ''}`}>
+                      <td className={`px-3 py-2 font-mono text-xs font-semibold whitespace-nowrap ${sub ? 'text-on-surface-variant' : 'text-primary'}`}>{t.taskNumber ?? '—'}</td>
                       <td className="px-3 py-2">
-                        <div className="flex items-center gap-1.5 min-w-[12rem]">
-                          {t.parentTask && <GitBranch className="w-3 h-3 text-on-surface-variant/60 shrink-0" />}
-                          <span className="font-medium text-on-surface line-clamp-1">{t.name}</span>
+                        <div className={`flex items-center gap-1.5 min-w-[12rem] ${sub ? 'pl-6' : ''}`}>
+                          {sub && <span className="text-on-surface-variant/60 shrink-0">↳</span>}
+                          <span className={`line-clamp-1 ${sub ? 'text-on-surface' : 'font-semibold text-on-surface'}`}>{t.name}</span>
                         </div>
                       </td>
-                      <td className="px-3 py-2 text-xs text-on-surface-variant whitespace-nowrap">{parentLabel(t.parentTask) || '—'}</td>
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        {!sub && line.subTotal > 0 ? (
+                          <span className="inline-flex items-center gap-1.5 text-xs">
+                            <span className="w-16 h-1.5 rounded-full bg-surface-container overflow-hidden">
+                              <span className="block h-full rounded-full" style={{ width: `${pct(line.subDone, line.subTotal)}%`, background: STATUS_META.done.color }} />
+                            </span>
+                            <span className="font-semibold text-on-surface">{line.subDone}/{line.subTotal}</span>
+                            <span className="text-on-surface-variant">done</span>
+                          </span>
+                        ) : sub ? <span className="text-xs text-on-surface-variant">—</span> : <span className="text-xs text-on-surface-variant/60">none</span>}
+                      </td>
                       <td className="px-3 py-2 text-on-surface-variant whitespace-nowrap">{nameOf(t.category) || '—'}</td>
                       <td className="px-3 py-2 text-on-surface whitespace-nowrap">{personName(t.assignedTo) || '—'}</td>
                       <td className="px-3 py-2 text-on-surface-variant whitespace-nowrap">{personName(t.responsible) || '—'}</td>
@@ -745,7 +818,7 @@ export default function TaskReports() {
                         </Button>
                       </td>
                     </tr>
-                  ))}
+                  ); })())}
                 </tbody>
               </table>
             </div>
