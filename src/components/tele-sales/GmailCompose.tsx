@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import * as teleSalesApi from '@/api/teleSalesApi';
 import { cn } from '@/lib/utils';
-import type { EmailAttachment, LeadEmail } from '@/types/teleSales.types';
+import type { EmailAttachment, LeadEmail, LeadEmailResponse, SendLeadEmailData } from '@/types/teleSales.types';
 
 // Mirrors the server-side cap in emailService.js — Microsoft Graph's simple
 // sendMail rejects anything much beyond this once base64 inflates it.
@@ -38,6 +38,14 @@ export interface GmailComposeProps {
   onClose: () => void;
   defaultTo?: string[];
   defaultSubject?: string;
+  /** Prefilled HTML body (a rendered template). The agent can still edit it. */
+  defaultBody?: string;
+  /** Files already stored in GridFS to attach on open (a sales document). */
+  defaultAttachments?: EmailAttachment[];
+  /** Override the send call — the sales assistant routes through its own
+   *  endpoint so the audit trail knows which template / product / document
+   *  produced the message. Receives the exact payload the default send uses. */
+  submit?: (payload: SendLeadEmailData) => Promise<LeadEmailResponse>;
   /** Company / contact name shown in the window header for context. */
   contextLabel?: string;
   /** Address shown in the "From" row. Purely informational. */
@@ -176,7 +184,8 @@ function ToolbarButton({
 // ─── Compose window ───────────────────────────────────────────────────────────
 
 export default function GmailCompose({
-  leadId, open, onClose, defaultTo = [], defaultSubject = '', contextLabel, fromLabel, replyTo = null, onSent,
+  leadId, open, onClose, defaultTo = [], defaultSubject = '', defaultBody = '', defaultAttachments = [],
+  contextLabel, fromLabel, replyTo = null, onSent, submit,
 }: GmailComposeProps) {
   const [windowState, setWindowState] = useState<WindowState>('normal');
   const [to, setTo] = useState<string[]>([]);
@@ -218,16 +227,24 @@ export default function GmailCompose({
     setShowCc(false);
     setShowBcc(false);
     setSubject(replySubject ?? defaultSubject);
-    setAttachments([]);
+    // Pre-attached files are already in GridFS — they arrive ready to send.
+    setAttachments(defaultAttachments.map((a) => ({
+      localId: `pre-${a.fileId}`,
+      fileName: a.fileName,
+      fileSize: a.fileSize ?? 0,
+      fileType: a.fileType ?? 'application/octet-stream',
+      fileId: a.fileId,
+      uploading: false,
+    })));
     setShowLinkInput(false);
     setSending(false);
     if (editorRef.current) {
-      editorRef.current.innerHTML = '';
+      editorRef.current.innerHTML = defaultBody;
       // With recipients already filled in, the cursor belongs in the message.
       if (defaultTo.length) editorRef.current.focus();
     }
-    // defaultTo/defaultSubject are read once per open on purpose — retyping the
-    // subject must not be undone by a parent re-render.
+    // defaultTo/defaultSubject/defaultBody are read once per open on purpose —
+    // retyping the subject must not be undone by a parent re-render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -378,11 +395,13 @@ export default function GmailCompose({
         message: editorRef.current?.innerHTML ?? '',
         attachments: ready,
       };
-      const response = leadId && replyTo
-        ? await teleSalesApi.replyLeadEmail(leadId, replyTo._id, payload)
-        : leadId
-          ? await teleSalesApi.sendLeadEmail(leadId, payload)
-          : await teleSalesApi.sendComposedEmail(payload);
+      const response = submit
+        ? await submit(payload)
+        : leadId && replyTo
+          ? await teleSalesApi.replyLeadEmail(leadId, replyTo._id, payload)
+          : leadId
+            ? await teleSalesApi.sendLeadEmail(leadId, payload)
+            : await teleSalesApi.sendComposedEmail(payload);
       toast.success('Message sent');
       onSent?.(response.data);
       onClose();
