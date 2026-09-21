@@ -230,19 +230,17 @@ export default function ProductFormDialog({
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-              <label htmlFor="p-price" className="form-label">Price</label>
-              <Input id="p-price" type="number" min={0} step="0.01" value={form.priceAmount} onChange={(e) => set('priceAmount', e.target.value)} placeholder="0.00" className={errors.price ? 'ring-[2px] ring-error/30' : ''} />
-              {errors.price && <p className="form-error">{errors.price}</p>}
-            </div>
-            <div>
-              <CustomSelect label="Currency" value={form.priceCurrency} onChange={(v) => set('priceCurrency', v)} options={CURRENCIES.map((c) => ({ value: c, label: c }))} />
-            </div>
-            <div className="md:col-span-2">
-              <label htmlFor="p-note" className="form-label">Price note</label>
-              <Input id="p-note" value={form.priceNote} onChange={(e) => set('priceNote', e.target.value)} placeholder="per user / month · starting from · on request" />
-            </div>
+          <div>
+            <label htmlFor="p-price" className="form-label">Price</label>
+            <Input id="p-price" type="number" min={0} step="0.01" value={form.priceAmount} onChange={(e) => set('priceAmount', e.target.value)} placeholder="0.00" className={`md:max-w-xs ${errors.price ? 'ring-[2px] ring-error/30' : ''}`} />
+            {errors.price && <p className="form-error">{errors.price}</p>}
+          </div>
+          <div className="md:max-w-xs">
+            <CustomSelect label="Currency" value={form.priceCurrency} onChange={(v) => set('priceCurrency', v)} options={CURRENCIES.map((c) => ({ value: c, label: c }))} />
+          </div>
+          <div>
+            <label htmlFor="p-note" className="form-label">Price note</label>
+            <Input id="p-note" value={form.priceNote} onChange={(e) => set('priceNote', e.target.value)} placeholder="per user / month · starting from · on request" />
           </div>
 
           <div>
