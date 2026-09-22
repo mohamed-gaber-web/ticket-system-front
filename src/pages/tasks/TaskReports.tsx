@@ -19,7 +19,10 @@ import {
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import autoTable, { type CellHookData } from 'jspdf-autotable';
+import { shapeArabic, hasArabic, anyArabic } from '@/utils/arabicText';
+import { registerArabicFont, pdfSafeLatin, replaceUnsupportedSymbols } from '@/utils/pdfFont';
+import { saveCsv } from '@/utils/exportFile';
 import { toast } from 'sonner';
 
 // ── Design tokens ────────────────────────────────────────────────
@@ -366,23 +369,52 @@ export default function TaskReports() {
     if (!tasks.length) { toast.error('No data to export'); return; }
     try {
       const ws = XLSX.utils.aoa_to_sheet([TASK_HEADERS, ...exportRows]);
-      const csv = XLSX.utils.sheet_to_csv(ws);
-      saveAs(new Blob([csv], { type: 'text/csv;charset=utf-8;' }), filename('csv'));
+      // Written with a BOM so Excel reads the Arabic columns as UTF-8.
+      saveCsv(XLSX.utils.sheet_to_csv(ws), filename('csv'));
       toast.success('Task list exported as CSV');
     } catch {
       toast.error('Failed to export CSV');
     }
   };
 
-  const exportPdf = () => {
+  const exportPdf = async () => {
     if (!report || !s) { toast.error('No data to export'); return; }
     try {
       const doc = new jsPDF({ orientation: 'landscape' });
+
+      // jsPDF's built-in fonts hold no Arabic glyphs and it applies no shaping
+      // or bidi, so Arabic reports get an embedded font and every cell goes
+      // through shapeArabic(). The font is only fetched when it is needed.
+      const needsArabic = anyArabic([summaryRows(), exportRows, ...BREAKDOWNS.map(({ key }) => report[key].map(breakdownRow)), [scopeLabel, periodLabel]]);
+      const arabicFont = needsArabic ? await registerArabicFont(doc) : null;
+      if (needsArabic && !arabicFont) toast.error('Arabic font unavailable — the PDF may not show Arabic text');
+      // Latin keeps Helvetica; only Arabic cells switch font, so English
+      // reports look exactly as before.
+      // One place prepares every string: Arabic is shaped for the embedded
+      // font, Latin is limited to what the built-in WinAnsi fonts can encode
+      // (a stray "↳" garbles the whole run it sits in).
+      const forPdf = (value: unknown) => {
+        const text = replaceUnsupportedSymbols(String(value ?? ''));
+        return hasArabic(text) ? shapeArabic(text) : pdfSafeLatin(text);
+      };
+      const write = (text: string, x: number, y: number) => {
+        const out = forPdf(text);
+        doc.setFont(arabicFont && hasArabic(out) ? arabicFont : 'helvetica', 'normal');
+        doc.text(out, x, y);
+      };
+      const styleArabicCells = (data: CellHookData) => {
+        if (!arabicFont) return;
+        if (data.cell.text.some((line) => hasArabic(line))) {
+          data.cell.styles.font = arabicFont;
+          data.cell.styles.halign = 'right';
+        }
+      };
+
       doc.setFontSize(18);
-      doc.text('Task Report', 14, 18);
+      write('Task Report', 14, 18);
       doc.setFontSize(10);
-      doc.text(`${scopeLabel} · ${periodLabel} · ${SCOPES.find((x) => x.value === applied.scope)?.label}`, 14, 25);
-      doc.text(`Generated on ${new Date(report.generatedAt).toLocaleString()}`, 14, 30);
+      write(`${scopeLabel} · ${periodLabel} · ${SCOPES.find((x) => x.value === applied.scope)?.label}`, 14, 25);
+      write(`Generated on ${new Date(report.generatedAt).toLocaleString()}`, 14, 30);
 
       autoTable(doc, {
         startY: 36,
@@ -399,35 +431,37 @@ export default function TaskReports() {
         if (!report[key].length) return;
         const y = (doc as any).lastAutoTable.finalY + 8;
         doc.setFontSize(12);
-        doc.text(label, 14, y);
+        write(label, 14, y);
         autoTable(doc, {
           startY: y + 3,
-          head: [BREAKDOWN_HEADERS],
-          body: report[key].map(breakdownRow),
+          head: [BREAKDOWN_HEADERS.map(pdfSafeLatin)],
+          body: report[key].map((r) => breakdownRow(r).map(forPdf)),
           styles: { fontSize: 8 },
           headStyles: { fillColor: [47, 111, 237] },
+          didParseCell: styleArabicCells,
         });
       });
 
       doc.addPage();
       doc.setFontSize(12);
-      doc.text(`Tasks (${tasks.length})`, 14, 16);
+      write(`Tasks (${tasks.length})`, 14, 16);
       const subRowIdx = new Set<number>();
       const pdfBody = exportRows.map((r, i) => {
         if (r[1] === 'Subtask') subRowIdx.add(i);
         const weeks = r[11] !== '' && r[11] !== r[10] ? `W${r[10]} – W${r[11]}` : r[10] !== '' ? `W${r[10]}` : '';
         // Task #, Name (indented for subtasks), Subtasks, Category, Assigned, Responsible, Weeks, Hrs, Start, End, Status, Delay
-        return [r[0], r[3], r[4], r[6], r[8], r[9], weeks, r[12], r[13], r[14], r[15], r[16]];
+        return [r[0], r[3], r[4], r[6], r[8], r[9], weeks, r[12], r[13], r[14], r[15], r[16]].map(forPdf);
       });
       autoTable(doc, {
         startY: 20,
-        head: [['Task #', 'Task / ↳ Subtask', 'Subtasks', 'Category', 'Assigned To', 'Responsible', 'Weeks', 'Hrs', 'Start', 'End', 'Status', 'Delay']],
+        head: [['Task #', 'Task / ↳ Subtask', 'Subtasks', 'Category', 'Assigned To', 'Responsible', 'Weeks', 'Hrs', 'Start', 'End', 'Status', 'Delay'].map(pdfSafeLatin)],
         body: pdfBody,
         styles: { fontSize: 7 },
         headStyles: { fillColor: [47, 111, 237] },
         columnStyles: { 1: { cellWidth: 60 } },
         // Subtask rows: lighter text on a grey tint so the hierarchy is visible on paper.
         didParseCell: (data) => {
+          styleArabicCells(data);
           if (data.section === 'body' && subRowIdx.has(data.row.index)) {
             data.cell.styles.fillColor = [245, 246, 250];
             data.cell.styles.textColor = [90, 96, 110];
