@@ -4,15 +4,15 @@
 // `/api/avatars/:id`, so they can be used directly in an <img> tag without an
 // auth header. `profilePicture` on a user is the GridFS file id.
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+import { serverUrl } from './serverUrl';
 
 /**
- * Build the public URL for a profile picture.
+ * Build the URL for a profile picture.
  * @param fileId - The GridFS file id stored on `user.profilePicture`.
- * @returns The absolute image URL, or undefined when there is no picture.
+ * @returns The image URL, or undefined when there is no picture.
  */
 export const getAvatarUrl = (fileId?: string | null): string | undefined =>
-  fileId ? `${API_BASE_URL}/api/avatars/${fileId}` : undefined;
+  fileId ? serverUrl(`/api/avatars/${fileId}`) : undefined;
 
 /** Allowed image MIME types for profile pictures (mirrors the backend). */
 export const AVATAR_ACCEPT = 'image/jpeg,image/png,image/gif,image/webp';

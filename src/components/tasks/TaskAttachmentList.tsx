@@ -5,6 +5,7 @@ import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchTaskAttachments, removeTaskAttachment } from '@/redux/slices/taskAttachmentSlice';
 import { formatFileSize } from '@/api/attachmentApi';
 import { toast } from 'sonner';
+import { serverUrl } from '@/lib/serverUrl';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
 
@@ -22,10 +23,7 @@ const TaskAttachmentList: React.FC<Props> = ({ taskId }) => {
 
   useEffect(() => { if (taskId) dispatch(fetchTaskAttachments(taskId)); }, [taskId, dispatch]);
 
-  const getFileUrl = (fp: string) => {
-    const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
-    return `${base}${fp}`;
-  };
+  const getFileUrl = (fp: string) => serverUrl(fp);
 
   const isImage = (t: string) => t.startsWith('image/');
   const isPdf = (t: string) => t === 'application/pdf';
