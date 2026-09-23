@@ -21,6 +21,10 @@ export interface Access {
   isCrossTeam: boolean;
   /** Admins and the development manager: see and shape every development board. */
   seesAllBoards: boolean;
+  /** Has the HR module (admins always do): sees and edits the confidential HR file. */
+  isHr: boolean;
+  /** May open the employee create/edit screens: managers, admins and HR. */
+  canManageEmployees: boolean;
   modules: ModuleKey[];
   hasModule: (m: ModuleKey) => boolean;
   teleSalesTeam: TeleSalesTeamRef | null;
@@ -58,6 +62,8 @@ export const useAccess = (): Access => {
       isMarketing: family === 'marketing',
       isCrossTeam: isAdmin || role === 'sales_manager',
       seesAllBoards: isAdmin || role === 'developer_manager',
+      isHr: resolved.includes('hr'),
+      canManageEmployees: isAdmin || isManager || resolved.includes('hr'),
       modules: resolved,
       hasModule: (m: ModuleKey) => resolved.includes(m),
       teleSalesTeam,

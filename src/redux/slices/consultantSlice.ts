@@ -80,10 +80,10 @@ export const createConsultant = createAsyncThunk(
   async (data: CreateConsultantData, { rejectWithValue }) => {
     try {
       const response = await consultantApi.createConsultant(data);
-      toast.success('Consultant created successfully');
+      toast.success('Employee created successfully');
       return response;
     } catch (error: any) {
-      const message = error.response?.data?.message || 'Failed to create consultant';
+      const message = error.response?.data?.errors?.[0] || error.response?.data?.message || 'Failed to create employee';
       toast.error(message);
       return rejectWithValue(message);
     }
@@ -95,10 +95,10 @@ export const updateConsultant = createAsyncThunk(
   async ({ id, data }: { id: string; data: UpdateConsultantData }, { rejectWithValue }) => {
     try {
       const response = await consultantApi.updateConsultant(id, data);
-      toast.success('Consultant updated successfully');
+      toast.success('Employee updated successfully');
       return response;
     } catch (error: any) {
-      const message = error.response?.data?.message || 'Failed to update consultant';
+      const message = error.response?.data?.errors?.[0] || error.response?.data?.message || 'Failed to update employee';
       toast.error(message);
       return rejectWithValue(message);
     }
@@ -109,8 +109,8 @@ export const deleteConsultant = createAsyncThunk(
   'consultant/deleteConsultant',
   async (id: string, { rejectWithValue }) => {
     try {
-      const response = await consultantApi.deleteConsultant(id);
-      toast.success(response.message || 'Consultant deleted successfully');
+      await consultantApi.deleteConsultant(id);
+      toast.success('Employee deleted successfully');
       return id;
     } catch (error: any) {
       const message = error.response?.data?.message || 'Failed to delete consultant';

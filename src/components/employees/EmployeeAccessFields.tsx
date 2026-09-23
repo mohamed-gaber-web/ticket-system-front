@@ -44,8 +44,9 @@ const ROLE_HINTS: Record<EmployeeRole, string> = {
  * two screens cannot disagree about what a role means.
  *
  * What is offered follows the caller: an admin may assign any role and tick
- * modules; a manager may only create the plain role of their own family and
- * never sees the module override (the API strips it anyway).
+ * modules; HR may assign any role but admin; a manager may only create the
+ * plain role of their own family. Only admins see the module override (the API
+ * strips it for everyone else).
  */
 export function EmployeeAccessFields({ value, onChange, departments }: Props) {
   const dispatch = useAppDispatch();
@@ -61,14 +62,20 @@ export function EmployeeAccessFields({ value, onChange, departments }: Props) {
     if (isSalesFamily && teams.length === 0) dispatch(fetchTeams(undefined));
   }, [isSalesFamily, teams.length, dispatch]);
 
+  // Same rule as the API's assignableRoles: admin → any role, HR → any but
+  // admin, a manager → the plain role of their own family.
   const roleOptions = useMemo(() => {
     const allowed: EmployeeRole[] = access.isAdmin
-      ? ROLES
-      : access.family
-        ? [access.family as EmployeeRole]
-        : [];
+      ? [...ROLES]
+      : access.isHr
+        ? ROLES.filter((r) => r !== 'admin')
+        : access.family
+          ? [access.family as EmployeeRole]
+          : [];
+    // Keep the current role visible even when the caller may not hand it out
+    if (!allowed.includes(value.role)) allowed.unshift(value.role);
     return allowed.map((r) => ({ value: r, label: ROLE_LABELS[r] }));
-  }, [access.isAdmin, access.family]);
+  }, [access.isAdmin, access.isHr, access.family, value.role]);
 
   const defaults = ROLE_DEFAULT_MODULES[value.role] ?? [];
   const overridden = (value.modules ?? []).length > 0;
@@ -128,7 +135,7 @@ export function EmployeeAccessFields({ value, onChange, departments }: Props) {
           </div>
         )}
 
-        {!departmentIsDerived && access.isAdmin && (
+        {!departmentIsDerived && (access.isAdmin || access.isHr) && (
           <div>
             <label className="form-label">Department</label>
             <CustomSelect
@@ -158,7 +165,7 @@ export function EmployeeAccessFields({ value, onChange, departments }: Props) {
               </span>
             )}
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
             {MODULES.map((m) => (
               <label key={m} className="flex items-center gap-2 text-sm text-on-surface cursor-pointer select-none">
                 <input

@@ -1,6 +1,6 @@
 import { lazy, Suspense, type ReactNode } from "react";
 import { useAppSelector } from "@/redux/hooks/hooks";
-import { Navigate } from "react-router-dom";
+import { Navigate, useParams } from "react-router-dom";
 import type { RouteObject } from "react-router-dom";
 import Layout from "@/components/layout/layout";
 import ProtectedRoute, {
@@ -8,6 +8,7 @@ import ProtectedRoute, {
   ModuleRoute,
   ManagerRoute,
   AdminRoute,
+  EmployeeManagerRoute,
 } from "@/components/auth/ProtectedRoute";
 import { useAccess } from "@/redux/hooks/useAccess";
 import { homePathFor } from "@/lib/access";
@@ -26,6 +27,13 @@ function PageLoader() {
 
 function Lazy({ children }: { children: ReactNode }) {
   return <Suspense fallback={<PageLoader />}>{children}</Suspense>;
+}
+
+// The employee directory moved from /consultants to /hr/employees; old links
+// and bookmarks keep working.
+function LegacyEmployeeRedirect({ to }: { to: (id?: string) => string }) {
+  const { id } = useParams<{ id: string }>();
+  return <Navigate to={to(id)} replace />;
 }
 
 // Routes to the right dashboard: customers get the portal, employees the first
@@ -213,12 +221,17 @@ export const routes: RouteObject[] = [
       { path: "/projects", element: <Lazy><ProjectTickets /></Lazy> },
       { path: "/meetings", element: <Lazy><MeetingTickets /></Lazy> },
 
-      // Employee Routes — the roster is readable by any employee (pickers need
-      // it); creating and editing is for managers and admins
-      { path: "/consultants", element: <EmployeeRoute><Lazy><Consultants /></Lazy></EmployeeRoute> },
-      { path: "/consultants/create", element: <ManagerRoute><Lazy><CreateConsultant /></Lazy></ManagerRoute> },
-      { path: "/consultants/edit/:id", element: <ManagerRoute><Lazy><EditConsultant /></Lazy></ManagerRoute> },
-      { path: "/consultants/view/:id", element: <EmployeeRoute><Lazy><ViewConsultant /></Lazy></EmployeeRoute> },
+      // HR — the employee directory. The roster is readable by any employee
+      // (pickers need it); creating and editing is for managers, HR and admins,
+      // and the confidential HR file only ever reaches HR and admins.
+      { path: "/hr/employees", element: <EmployeeRoute><Lazy><Consultants /></Lazy></EmployeeRoute> },
+      { path: "/hr/employees/create", element: <EmployeeManagerRoute><Lazy><CreateConsultant /></Lazy></EmployeeManagerRoute> },
+      { path: "/hr/employees/edit/:id", element: <EmployeeManagerRoute><Lazy><EditConsultant /></Lazy></EmployeeManagerRoute> },
+      { path: "/hr/employees/view/:id", element: <EmployeeRoute><Lazy><ViewConsultant /></Lazy></EmployeeRoute> },
+      { path: "/consultants", element: <Navigate to="/hr/employees" replace /> },
+      { path: "/consultants/create", element: <Navigate to="/hr/employees/create" replace /> },
+      { path: "/consultants/edit/:id", element: <LegacyEmployeeRedirect to={(id) => `/hr/employees/edit/${id}`} /> },
+      { path: "/consultants/view/:id", element: <LegacyEmployeeRedirect to={(id) => `/hr/employees/view/${id}`} /> },
       { path: "/consultants/dashboard", element: <ModuleRoute module="tickets"><Lazy><ConsultantDashboard /></Lazy></ModuleRoute> },
       { path: "/consultants/weekly-hours", element: <ModuleRoute module="tickets"><Lazy><WeeklyHoursPage /></Lazy></ModuleRoute> },
       { path: "/consultants/evaluation/:id", element: <EmployeeRoute><Lazy><EmployeeEvaluationPage /></Lazy></EmployeeRoute> },

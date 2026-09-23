@@ -14,7 +14,7 @@ interface ProtectedRouteProps {
   /** The employee must be able to open this module (admins always can). */
   module?: ModuleKey;
   /** The employee must hold at least this rank. */
-  minRole?: 'manager' | 'admin';
+  minRole?: 'manager' | 'admin' | 'employee-manager';
 }
 
 /**
@@ -57,6 +57,9 @@ const ProtectedRoute = ({
   if (minRole === 'manager' && !access.isManagerOrAdmin) {
     return <Navigate to="/unauthorized" replace />;
   }
+  if (minRole === 'employee-manager' && !access.canManageEmployees) {
+    return <Navigate to="/unauthorized" replace />;
+  }
 
   return <>{children}</>;
 };
@@ -89,6 +92,13 @@ export const ModuleRoute = ({ children, module }: { children: ReactNode; module:
 
 export const ManagerRoute = ({ children }: { children: ReactNode }) => (
   <ProtectedRoute allowedUserTypes={['employee']} minRole="manager">
+    {children}
+  </ProtectedRoute>
+);
+
+/** Managers, admins and HR — whoever may create and edit employee records. */
+export const EmployeeManagerRoute = ({ children }: { children: ReactNode }) => (
+  <ProtectedRoute allowedUserTypes={['employee']} minRole="employee-manager">
     {children}
   </ProtectedRoute>
 );

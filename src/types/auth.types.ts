@@ -4,7 +4,7 @@ export type UserType = 'employee' | 'customer';
 
 export type { CustomerRole } from './customer.types';
 
-export type UserStatus = 'active' | 'inactive' | 'suspended' | 'pending' | 'on_leave';
+export type UserStatus = 'active' | 'inactive' | 'suspended' | 'pending' | 'on_leave' | 'resigned' | 'terminated';
 
 /**
  * Employee roles — one flat list. The role decides which modules open by
@@ -24,7 +24,7 @@ export type EmployeeRole =
 
 export type RoleFamily = 'admin' | 'consultant' | 'sales' | 'marketing' | 'developer';
 
-export type ModuleKey = 'tickets' | 'telesales' | 'tasks' | 'admin' | 'development';
+export type ModuleKey = 'tickets' | 'telesales' | 'tasks' | 'admin' | 'development' | 'hr';
 
 // Base User Interface
 export interface User {

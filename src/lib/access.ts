@@ -17,7 +17,7 @@ export const ROLES: EmployeeRole[] = [
   'developer_manager',
 ];
 
-export const MODULES: ModuleKey[] = ['tickets', 'telesales', 'tasks', 'admin', 'development'];
+export const MODULES: ModuleKey[] = ['tickets', 'telesales', 'tasks', 'admin', 'development', 'hr'];
 
 export const ROLE_DEFAULT_MODULES: Record<EmployeeRole, ModuleKey[]> = {
   admin: MODULES,
@@ -47,6 +47,7 @@ export const MODULE_LABELS: Record<ModuleKey, string> = {
   tasks: 'Tasks',
   admin: 'Administration',
   development: 'Development',
+  hr: 'HR',
 };
 
 export const isEmployeeRole = (role: unknown): role is EmployeeRole =>
@@ -77,11 +78,19 @@ export const effectiveModules = (
   return [...ROLE_DEFAULT_MODULES[role]];
 };
 
+/**
+ * Holds a module that opens other people's data (`hr`, `admin`). Only an admin
+ * may manage such an account — same rule as the API's holdsPrivilegedModule.
+ */
+export const holdsPrivilegedModule = (role: string | null | undefined, modules?: string[] | null): boolean =>
+  effectiveModules(role, modules).some((m) => m === 'hr' || m === 'admin');
+
 /** Where an employee lands after login, by module priority. */
 export const homePathFor = (modules: ModuleKey[]): string => {
   if (modules.includes('tickets')) return '/';
   if (modules.includes('telesales')) return '/tele-sales';
   if (modules.includes('tasks')) return '/tasks/dashboard';
   if (modules.includes('development')) return '/development';
+  if (modules.includes('hr')) return '/hr/employees';
   return '/employee-requests';
 };

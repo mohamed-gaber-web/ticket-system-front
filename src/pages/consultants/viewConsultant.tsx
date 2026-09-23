@@ -13,6 +13,11 @@ import * as ticketApi from '@/api/ticketApi';
 import * as consultantApi from '@/api/consultantApi';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { useAccess } from '@/redux/hooks/useAccess';
+import { EmployeeHrFilePanel } from '@/components/employees/EmployeeHrFilePanel';
+import { EmployeeDocuments } from '@/components/employees/EmployeeDocuments';
+import { holdsPrivilegedModule } from '@/lib/access';
+import { EMPLOYEES_PATH, EMPLOYEE_STATUS_OPTIONS, employeeEditPath } from '@/lib/hr';
 
 const TICKET_LIMIT = 10;
 
@@ -43,6 +48,8 @@ const STATUS_BADGE: Record<string, string> = {
   active: 'bg-green-100 text-green-800',
   inactive: 'bg-red-100 text-red-800',
   on_leave: 'bg-yellow-100 text-yellow-800',
+  resigned: 'bg-slate-100 text-slate-700',
+  terminated: 'bg-red-100 text-red-800',
 };
 
 const fmtDate = (d?: string) =>
@@ -54,12 +61,14 @@ const formatLabel = (s: string) =>
 const getInitials = (first: string, last: string) =>
   `${first?.[0] ?? ''}${last?.[0] ?? ''}`.toUpperCase();
 
-export default function ViewConsultant() {
+export default function ViewEmployee() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { currentConsultant, loading } = useAppSelector((state) => state.consultants);
   const isAdmin = useAppSelector((state) => state.auth.consultantRole) === 'admin';
+  const access = useAccess();
+  const selfId = useAppSelector((state) => (state.auth.user as { _id?: string } | null)?._id);
 
   const [formData, setFormData] = useState<UpdateConsultantData>({
     firstName: '',
@@ -195,7 +204,7 @@ export default function ViewConsultant() {
     if (!validateForm() || !id) return;
     const result = await dispatch(updateConsultant({ id, data: formData }));
     if (updateConsultant.fulfilled.match(result)) {
-      toast.success('Consultant updated successfully');
+      toast.success('Employee updated successfully');
     }
   };
 
@@ -222,8 +231,8 @@ export default function ViewConsultant() {
   if (!currentConsultant) {
     return (
       <div className="p-8 text-center py-12">
-        <p className="text-on-surface-variant">Consultant not found</p>
-        <Button onClick={() => navigate('/consultants')} className="mt-4">Back to Consultants</Button>
+        <p className="text-on-surface-variant">Employee not found</p>
+        <Button onClick={() => navigate(EMPLOYEES_PATH)} className="mt-4">Back to Employees</Button>
       </div>
     );
   }
@@ -232,14 +241,20 @@ export default function ViewConsultant() {
     <div className="p-8 space-y-6">
       {/* Page Header */}
       <div className="flex items-center gap-4">
-        <Button variant="outline" size="sm" onClick={() => navigate('/consultants')}>
+        <Button variant="outline" size="sm" onClick={() => navigate(EMPLOYEES_PATH)}>
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back
         </Button>
-        <div>
-          <h1 className="display-sm text-on-surface">Consultant Profile</h1>
-          <p className="text-on-surface-variant mt-1">View and manage consultant details</p>
+        <div className="flex-1">
+          <h1 className="display-sm text-on-surface">Employee Profile</h1>
+          <p className="text-on-surface-variant mt-1">View and manage employee details</p>
         </div>
+        {access.canManageEmployees && (
+          <Button size="sm" onClick={() => navigate(employeeEditPath(currentConsultant._id))}>
+            <Pencil className="w-4 h-4 mr-2" />
+            Edit Employee
+          </Button>
+        )}
       </div>
 
       {/* Profile Summary Card */}
@@ -255,7 +270,10 @@ export default function ViewConsultant() {
         <div className="flex-1 min-w-0">
           <h2 className="text-xl font-bold text-on-surface">{currentConsultant.fullName}</h2>
           <p className="text-sm text-on-surface-variant mt-0.5">
-            {currentConsultant.position || <span className="italic">No position set</span>}
+            {currentConsultant.position || <span className="italic">No job title set</span>}
+            {currentConsultant.employeeCode && (
+              <span className="ml-2 font-mono text-xs">· {currentConsultant.employeeCode}</span>
+            )}
           </p>
           <div className="flex flex-wrap items-center gap-2 mt-2">
             <span className={cn('px-2.5 py-0.5 rounded-md text-xs font-semibold', ROLE_BADGE[currentConsultant.role])}>
@@ -335,6 +353,25 @@ export default function ViewConsultant() {
           </div>
         </div>
       </div>
+
+      {/* Confidential HR file — only present in the response for admins and HR */}
+      <EmployeeHrFilePanel employee={currentConsultant} />
+
+      {/* HR documents — the API sends `hr` only to admins and HR, so it gates this too */}
+      {currentConsultant.hr && (
+        <section className="bg-surface-container-lowest rounded-[1rem] p-6 space-y-4">
+          <h2 className="text-base font-semibold text-on-surface">Documents</h2>
+          <EmployeeDocuments
+            employeeId={currentConsultant._id}
+            canEdit={
+              access.isAdmin ||
+              (currentConsultant.role !== 'admin' &&
+                currentConsultant._id !== selfId &&
+                !holdsPrivilegedModule(currentConsultant.role, currentConsultant.modules))
+            }
+          />
+        </section>
+      )}
 
       {/* Mini Dashboard */}
       <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-6 gap-4 auto-rows-fr">
@@ -620,11 +657,7 @@ export default function ViewConsultant() {
                 <CustomSelect
                   value={formData.status || 'active'}
                   onChange={(val) => handleChange('status', val as ConsultantStatus)}
-                  options={[
-                    { value: 'active', label: 'Active' },
-                    { value: 'inactive', label: 'Inactive' },
-                    { value: 'on_leave', label: 'On Leave' },
-                  ]}
+                  options={EMPLOYEE_STATUS_OPTIONS}
                 />
               </div>
             </div>

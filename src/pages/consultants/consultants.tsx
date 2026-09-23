@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { useAccess } from '@/redux/hooks/useAccess';
-import { ROLES, ROLE_LABELS, roleFamily, isManagerRole, roleLabel } from '@/lib/access';
+import { ROLES, ROLE_LABELS, roleFamily, isManagerRole, roleLabel, holdsPrivilegedModule } from '@/lib/access';
 import type { EmployeeRole } from '@/types/auth.types';
 import { fetchConsultants, deleteConsultant, adminResetConsultantPassword, updateConsultant } from '@/redux/slices/consultantSlice';
 import { fetchDepartments } from '@/redux/slices/departmentSlice';
@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import Swal from 'sweetalert2';
 import AdminChangePasswordDialog from '@/components/admin/AdminChangePasswordDialog';
 import { getTickets } from '@/api/ticketApi';
+import { EMPLOYEE_CREATE_PATH, EMPLOYEE_STATUS_OPTIONS, employeeEditPath, employeeViewPath } from '@/lib/hr';
 
 const PAGE_SIZE = 10;
 
@@ -24,10 +25,16 @@ export default function Consultants() {
   const { departments } = useAppSelector((state) => state.departments);
   const access = useAccess();
   const isAdmin = access.isAdmin;
-  // Managers manage the plain employees of their own family; the API answers
-  // 404 for anyone else, so the buttons follow the same rule.
-  const canManage = (c: { role: string }) =>
-    isAdmin || (access.isManager && roleFamily(c.role) === access.family && !isManagerRole(c.role) && c.role !== 'admin');
+  // Same rule as the API's canManageEmployee: admins anyone; nobody else an
+  // account holding HR/admin access; HR anyone else but themselves; managers
+  // the plain employees of their own family.
+  const selfId = useAppSelector((state) => (state.auth.user as { _id?: string } | null)?._id);
+  const canManage = (c: { _id: string; role: string; modules?: string[] }) =>
+    isAdmin ||
+    (!holdsPrivilegedModule(c.role, c.modules) &&
+      access.isHr && c.role !== 'admin' && c._id !== selfId) ||
+    (!holdsPrivilegedModule(c.role, c.modules) &&
+      access.isManager && roleFamily(c.role) === access.family && !isManagerRole(c.role) && c.role !== 'admin');
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -103,6 +110,8 @@ export default function Consultants() {
     active: 'bg-green-100 text-green-800 border-green-200',
     inactive: 'bg-red-100 text-red-800 border-red-200',
     on_leave: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+    resigned: 'bg-slate-100 text-slate-700 border-slate-200',
+    terminated: 'bg-red-100 text-red-800 border-red-200',
   };
 
   const ROLE_STYLES: Record<string, string> = {
@@ -143,8 +152,8 @@ export default function Consultants() {
           <h1 className="display-sm text-on-surface">Employees</h1>
           <p className="text-on-surface-variant mt-1">Manage employee accounts, roles and module access</p>
         </div>
-        {access.isManagerOrAdmin && (
-          <Button onClick={() => navigate('/consultants/create')}>
+        {access.canManageEmployees && (
+          <Button onClick={() => navigate(EMPLOYEE_CREATE_PATH)}>
             <Plus className="w-4 h-4 mr-2" />
             Add Employee
           </Button>
@@ -156,7 +165,7 @@ export default function Consultants() {
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <div className="md:col-span-2">
             <Input
-              placeholder="Search by name or email..."
+              placeholder="Search by name, email or employee code..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
@@ -167,12 +176,7 @@ export default function Consultants() {
             value={statusFilter}
             onChange={setStatusFilter}
             label="Status"
-            options={[
-              { value: '', label: 'All' },
-              { value: 'active', label: 'Active' },
-              { value: 'inactive', label: 'Inactive' },
-              { value: 'on_leave', label: 'On Leave' },
-            ]}
+            options={[{ value: '', label: 'All' }, ...EMPLOYEE_STATUS_OPTIONS]}
           />
           <CustomSelect
             variant="filter"
@@ -215,7 +219,7 @@ export default function Consultants() {
           </div>
         ) : consultants.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-on-surface-variant">No consultants found</p>
+            <p className="text-on-surface-variant">No employees found</p>
           </div>
         ) : (
           <>
@@ -224,16 +228,19 @@ export default function Consultants() {
                 <thead className="bg-surface-container-low">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase tracking-wider">
+                      Code
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase tracking-wider">
                       Full Name
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase tracking-wider">
                       Email
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase tracking-wider">
-                      Position
+                      Job Title
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase tracking-wider">
-                      Phone
+                      Mobile
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase tracking-wider">
                       Role
@@ -250,7 +257,7 @@ export default function Consultants() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase tracking-wider">
                       Target / Month
                     </th>
-                    {access.isManagerOrAdmin && (
+                    {access.canManageEmployees && (
                       <th className="px-6 py-3 text-center text-xs font-medium text-on-surface-variant uppercase tracking-wider">
                         Actions
                       </th>
@@ -261,9 +268,18 @@ export default function Consultants() {
                   {consultants.map((consultant) => (
                     <tr key={consultant._id} className="hover:bg-surface-container-low">
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-on-surface">
+                        <span className="text-xs font-mono text-on-surface-variant">
+                          {consultant.employeeCode || <span className="text-on-surface-variant/40">&mdash;</span>}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <button
+                          type="button"
+                          onClick={() => navigate(employeeViewPath(consultant._id))}
+                          className="text-sm font-medium text-on-surface hover:text-primary hover:underline"
+                        >
                           {consultant.fullName}
-                        </div>
+                        </button>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-on-surface-variant">{consultant.email}</div>
@@ -366,7 +382,7 @@ export default function Consultants() {
                           <span className="text-on-surface-variant/40 text-sm">&mdash;</span>
                         )}
                       </td>
-                      {access.isManagerOrAdmin && (
+                      {access.canManageEmployees && (
                         <td className="px-6 py-4 whitespace-nowrap text-center">
                           {canManage(consultant) && (
                           <div className="flex items-center justify-center gap-1">
@@ -374,7 +390,7 @@ export default function Consultants() {
                               size="icon"
                               variant="ghost"
                               title="Edit"
-                              onClick={() => navigate(`/consultants/edit/${consultant._id}`)}
+                              onClick={() => navigate(employeeEditPath(consultant._id))}
                             >
                               <Edit className="w-4 h-4" />
                             </Button>
@@ -387,15 +403,18 @@ export default function Consultants() {
                             >
                               <KeyRound className="w-4 h-4" />
                             </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              title="Delete"
-                              className="text-error hover:text-error/80"
-                              onClick={() => handleDelete(consultant._id, consultant.fullName)}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+                            {/* Deleting is admin-only on the API */}
+                            {isAdmin && (
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                title="Delete"
+                                className="text-error hover:text-error/80"
+                                onClick={() => handleDelete(consultant._id, consultant.fullName)}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            )}
                           </div>
                           )}
                         </td>
@@ -407,7 +426,7 @@ export default function Consultants() {
             </div>
             <div className="bg-surface-container-low px-6 py-3 flex items-center justify-between">
               <p className="text-sm text-on-surface-variant">
-                Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, total)} of {total} consultants
+                Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, total)} of {total} employees
               </p>
               {pages > 1 && (
                 <div className="flex items-center gap-1">

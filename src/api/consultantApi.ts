@@ -7,7 +7,9 @@ import type {
   CreateConsultantData,
   UpdateConsultantData,
   DeleteResponse,
+  EmployeeDocument,
 } from '../types/consultant.types';
+import type { EmployeeDocumentType } from '@/lib/hr';
 
 // Get all consultants
 export const getConsultants = async (params?: ConsultantQueryParams): Promise<ConsultantListResponse> => {
@@ -69,5 +71,42 @@ export const getConsultantMonthlyHours = async (
   const response = await api.get(`/consultants/${id}/monthly-hours`, {
     params: { year, month },
   });
+  return response.data;
+};
+
+// ── HR documents (admins and HR only; everyone else gets 404) ────────────────
+
+export const getEmployeeDocuments = async (
+  id: string,
+): Promise<{ success: boolean; total: number; data: EmployeeDocument[] }> => {
+  const response = await api.get(`/consultants/${id}/documents`);
+  return response.data;
+};
+
+/** Upload one or more files as documents of one type. */
+export const uploadEmployeeDocuments = async (
+  id: string,
+  input: { type: EmployeeDocumentType; files: File[]; expiryDate?: string; notes?: string },
+  onProgress?: (percent: number) => void,
+): Promise<{ success: boolean; message: string; data: EmployeeDocument[] }> => {
+  const form = new FormData();
+  form.append('type', input.type);
+  if (input.expiryDate) form.append('expiryDate', input.expiryDate);
+  if (input.notes) form.append('notes', input.notes);
+  input.files.forEach((f) => form.append('files', f));
+  const response = await api.post(`/consultants/${id}/documents`, form, {
+    onUploadProgress: (e) => onProgress?.(e.total ? Math.round((e.loaded / e.total) * 100) : 0),
+  });
+  return response.data;
+};
+
+/** The file as a Blob (the request needs the auth header, so no plain link). */
+export const getEmployeeDocumentFile = async (id: string, docId: string): Promise<Blob> => {
+  const response = await api.get(`/consultants/${id}/documents/${docId}/file`, { responseType: 'blob' });
+  return response.data;
+};
+
+export const deleteEmployeeDocument = async (id: string, docId: string): Promise<{ success: boolean }> => {
+  const response = await api.delete(`/consultants/${id}/documents/${docId}`);
   return response.data;
 };

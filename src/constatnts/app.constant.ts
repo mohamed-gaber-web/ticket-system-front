@@ -36,6 +36,7 @@ import {
   Plane,
   ClipboardCheck,
   Wallet,
+  Contact,
 } from "lucide-react";
 import type { Access } from "@/redux/hooks/useAccess";
 import type { ModuleKey } from "@/types/auth.types";
@@ -136,6 +137,8 @@ interface NavEntry {
   /** The module that unlocks this entry; "any" = every employee. */
   module: ModuleKey | "any";
   minRole?: NavRank;
+  /** Also shown, without the module, to anyone of at least this rank. */
+  orMinRole?: NavRank;
   link: NavLink;
 }
 
@@ -156,14 +159,13 @@ const TICKETING_GROUP: NavLink = {
     },
     { ...SERVICES_GROUP, isGroup: undefined, isSubGroup: true },
     {
-      name: "Consultants",
+      name: "Employees",
       icon: UserCog,
       isSubGroup: true,
       children: [
         { name: "My Tasks", path: "/profile?view=tasks", icon: ListChecks },
         { name: "My Evaluation", path: "/consultants/evaluation/me", icon: GaugeCircle },
         { name: "Evaluations", path: "/consultants/evaluations", icon: BarChart2, minRole: "admin" },
-        { name: "Consultants", path: "/consultants", icon: UserCog },
         { name: "Weekly Report", path: "/consultant-reports/weekly", icon: CalendarDays, minRole: "admin" },
         { name: "Weekly Hours", path: "/consultants/weekly-hours", icon: CalendarClock },
       ],
@@ -222,13 +224,16 @@ const DEVELOPMENT_GROUP: NavLink = {
   ],
 };
 
-const EMPLOYEES_GROUP: NavLink = {
-  name: "Employees",
-  icon: UserCog,
+// HR module — the employee directory (with the confidential HR file for HR and
+// admins) plus leave approvals and balances. Managers keep seeing it for the
+// people they run, whether or not they hold the HR module.
+const HR_GROUP: NavLink = {
+  name: "HR",
+  icon: Contact,
   isGroup: true,
   children: [
-    { name: "Employees", path: "/consultants", icon: UserCog },
-    { name: "Approvals", path: "/employee-requests/approvals", icon: ClipboardCheck },
+    { name: "Employees", path: "/hr/employees", icon: UserCog },
+    { name: "Approvals", path: "/employee-requests/approvals", icon: ClipboardCheck, minRole: "manager" },
     { name: "Balances", path: "/employee-requests/balances", icon: Wallet },
   ],
 };
@@ -248,7 +253,7 @@ const EMPLOYEE_NAV: NavEntry[] = [
   { module: "telesales", link: TELE_SALES_GROUP },
   { module: "tasks", link: TASKS_GROUP },
   { module: "development", link: DEVELOPMENT_GROUP },
-  { module: "any", minRole: "manager", link: EMPLOYEES_GROUP },
+  { module: "hr", orMinRole: "manager", link: HR_GROUP },
   { module: "admin", link: TICKETING_CONFIG_GROUP },
   { module: "any", link: MY_REQUESTS_GROUP },
 ];
@@ -274,7 +279,8 @@ export const buildEmployeeLinks = (access: Access): NavLink[] => {
   const seen = new Set<string>();
   const out: NavLink[] = [];
   for (const entry of EMPLOYEE_NAV) {
-    if (entry.module !== "any" && !access.hasModule(entry.module)) continue;
+    const byRank = entry.orMinRole !== undefined && rankOk(entry.orMinRole, access);
+    if (entry.module !== "any" && !access.hasModule(entry.module) && !byRank) continue;
     if (!rankOk(entry.minRole, access)) continue;
     const link = pruneLink(entry.link, access);
     if (!link) continue;
