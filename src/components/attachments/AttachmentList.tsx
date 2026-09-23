@@ -5,6 +5,7 @@ import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchTicketAttachments, removeAttachment } from '@/redux/slices/attachmentSlice';
 import { formatFileSize } from '@/api/attachmentApi';
 import { toast } from 'sonner';
+import { serverUrl } from '@/lib/serverUrl';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
 
@@ -29,10 +30,7 @@ const AttachmentList: React.FC<AttachmentListProps> = ({ ticketId }) => {
     }
   }, [ticketId, dispatch]);
 
-  const getFileUrl = (filePath: string) => {
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
-    return `${baseUrl}${filePath}`;
-  };
+  const getFileUrl = (filePath: string) => serverUrl(filePath);
 
   const isTemporaryFile = (filePath: string) => filePath.includes('/uploads/temp/');
 
