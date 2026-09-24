@@ -91,6 +91,11 @@ export const registerArabicFont = async (doc: jsPDF): Promise<string | null> => 
     const base64 = await loadFontData();
     doc.addFileToVFS(FONT_FILE, base64);
     doc.addFont(FONT_FILE, ARABIC_FONT, 'normal');
+    // Bold cells (e.g. main-task names) must resolve too: without a 'bold'
+    // entry jsPDF silently falls back to Helvetica, which has no Arabic glyphs,
+    // and the cell prints as garbage. Amiri Regular stands in for bold rather
+    // than shipping a second ~420KB font.
+    doc.addFont(FONT_FILE, ARABIC_FONT, 'bold');
     return ARABIC_FONT;
   } catch (error) {
     console.error('Arabic PDF font could not be loaded:', error);
