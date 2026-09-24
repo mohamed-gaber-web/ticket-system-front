@@ -18,6 +18,9 @@ import { TicketComments } from '@/components/comments';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import jsPDF from 'jspdf';
+import { preparePdfText } from '@/utils/pdfText';
+import { saveCsv } from '@/utils/exportFile';
+import { PENDING_EXPORT_HEADERS, pendingExportValues } from '@/utils/ticketPending';
 import autoTable from 'jspdf-autotable';
 import { TicketIntelligencePanel } from '@/components/ai/TicketIntelligencePanel';
 import { PendingOnDialog, PendingOnLine } from '@/components/tickets/PendingOnDialog';
@@ -295,18 +298,21 @@ export default function ViewTicket() {
   // Columns in exact order — aoa_to_sheet guarantees this order in the file
   const exportHeaders = [
     'Ticket Number', 'Subject', 'Customer', 'Assignee', 'Company',
-    'Priority', 'Status', 'Created Date', 'End Date',
+    'Priority', 'Status', ...PENDING_EXPORT_HEADERS, 'Created Date', 'Delivery Date',
     'Category', 'Source', 'Customer Email',
   ];
+  // One value per header, in the same order
   const exportValues = [
     currentTicket.ticketNumber,
     currentTicket.subject,
-    customer?.companyName ?? '',
+    customer?.contactPerson ?? '',
     firstConsultant ? `${firstConsultant.firstName} ${firstConsultant.lastName}` : '',
     customer?.companyName ?? '',
     currentTicket.priority,
     displayStatus,
+    ...pendingExportValues(currentTicket),
     fmtDate(currentTicket.createdAt),
+    fmtDate(currentTicket.deliveryEstimationDate),
     category?.name ?? '',
     source?.name ?? '',
     customer?.email ?? '',
@@ -329,21 +335,29 @@ export default function ViewTicket() {
       exportHeaders.map(escape).join(','),
       exportValues.map((v) => escape(String(v ?? ''))).join(','),
     ].join('\n');
-    saveAs(new Blob([csv], { type: 'text/csv;charset=utf-8;' }), `ticket-${currentTicket.ticketNumber}.csv`);
+    // With a BOM, so Excel reads Arabic names as UTF-8
+    saveCsv(csv, `ticket-${currentTicket.ticketNumber}.csv`);
   };
 
-  const handleExportPDF = () => {
-    const doc = new jsPDF({ orientation: 'landscape' });
-    doc.setFontSize(13);
-    doc.text(`Ticket ${currentTicket.ticketNumber}`, 14, 15);
-    autoTable(doc, {
-      head: [exportHeaders],
-      body: [exportValues.map((v) => String(v ?? ''))],
-      startY: 22,
-      styles: { fontSize: 8, cellPadding: 3 },
-      headStyles: { fillColor: [0, 58, 143] },
-    });
-    doc.save(`ticket-${currentTicket.ticketNumber}.pdf`);
+  const handleExportPDF = async () => {
+    try {
+      const doc = new jsPDF({ orientation: 'landscape' });
+      const pdf = await preparePdfText(doc, exportValues);
+      if (pdf.fontMissing) toast.error('Arabic font unavailable — the PDF may not show Arabic text');
+      doc.setFontSize(13);
+      pdf.write(`Ticket ${currentTicket.ticketNumber}`, 14, 15);
+      autoTable(doc, {
+        head: pdf.rows([exportHeaders]),
+        body: pdf.rows([exportValues]),
+        startY: 22,
+        styles: { fontSize: 8, cellPadding: 3 },
+        headStyles: { fillColor: [0, 58, 143] },
+        didParseCell: pdf.styleArabicCells,
+      });
+      doc.save(`ticket-${currentTicket.ticketNumber}.pdf`);
+    } catch {
+      toast.error('Failed to export PDF');
+    }
   };
 
   return (

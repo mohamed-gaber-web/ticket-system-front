@@ -20,6 +20,9 @@ import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import jsPDF from 'jspdf';
+import { preparePdfText } from '@/utils/pdfText';
+import { saveCsv } from '@/utils/exportFile';
+import { PENDING_EXPORT_HEADERS, pendingExportValues } from '@/utils/ticketPending';
 import autoTable from 'jspdf-autotable';
 import type { Ticket, Category, Consultant as TicketConsultant } from '@/types/ticket';
 import { getTickets } from '@/api/ticketApi';
@@ -340,7 +343,7 @@ export default function Tickets() {
   ].filter(Boolean).length;
 
   const EXPORT_HEADERS = [
-    'Sub Tickets', 'Ticket #', 'Parent Ticket #', 'Status', 'Subject',
+    'Sub Tickets', 'Ticket #', 'Parent Ticket #', 'Status', ...PENDING_EXPORT_HEADERS, 'Subject',
     'Company', 'Created By', 'Assignee', 'Assigned By', 'Category',
     'Service Type', 'Priority', 'Priority #', 'Duration (hrs)', 'Week', 'Module',
     'Created Date', 'Assigned Date', 'Delivery Date',
@@ -368,6 +371,7 @@ export default function Tickets() {
       ticket.ticketNumber,
       parentObj?.ticketNumber ?? '',
       ticket.status.replace(/_/g, ' '),
+      ...pendingExportValues(ticket),
       ticket.subject,
       customerObj?.companyName ?? '',
       createdByObj ? `${createdByObj.firstName} ${createdByObj.lastName}` : '',
@@ -454,7 +458,8 @@ export default function Tickets() {
         EXPORT_HEADERS.map(escape).join(','),
         ...data.map((t) => getExportValues(t).map(escape).join(',')),
       ];
-      saveAs(new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8;' }), `tickets-export-${new Date().toISOString().split('T')[0]}.csv`);
+      // With a BOM, so Excel reads Arabic company / customer names as UTF-8
+      saveCsv(rows.join('\n'), `tickets-export-${new Date().toISOString().split('T')[0]}.csv`);
     } catch {
       toast.error('Failed to export CSV');
     }
@@ -484,18 +489,22 @@ export default function Tickets() {
       toast.info('Preparing PDF export…');
       const res = await getTickets(buildExportParams());
       const data = orderTicketsForExport(res.data);
+      const body = data.map((t) => getExportValues(t));
       const doc = new jsPDF('landscape');
+      const pdf = await preparePdfText(doc, body);
+      if (pdf.fontMissing) toast.error('Arabic font unavailable — the PDF may not show Arabic text');
       doc.setFontSize(16);
-      doc.text('Tickets Report', 14, 18);
+      pdf.write('Tickets Report', 14, 18);
       doc.setFontSize(9);
-      doc.text(`Generated: ${new Date().toLocaleString()}  |  Total: ${data.length}`, 14, 25);
+      pdf.write(`Generated: ${new Date().toLocaleString()}  |  Total: ${data.length}`, 14, 25);
       autoTable(doc, {
-        head: [EXPORT_HEADERS],
-        body: data.map((t) => getExportValues(t)),
+        head: pdf.rows([EXPORT_HEADERS]),
+        body: pdf.rows(body),
         startY: 30,
         styles: { fontSize: 7, cellPadding: 2 },
         headStyles: { fillColor: [0, 58, 143], fontSize: 7 },
         alternateRowStyles: { fillColor: [245, 247, 250] },
+        didParseCell: pdf.styleArabicCells,
       });
       doc.save(`tickets-report-${new Date().toISOString().split('T')[0]}.pdf`);
     } catch {
