@@ -25,6 +25,8 @@ interface Props {
   value: EmployeeAccessValue;
   onChange: (next: EmployeeAccessValue) => void;
   departments: { _id: string; name: string }[];
+  /** Validation message for the tele-sales team (a sales employee needs one). */
+  teamError?: string;
 }
 
 const ROLE_HINTS: Record<EmployeeRole, string> = {
@@ -48,19 +50,21 @@ const ROLE_HINTS: Record<EmployeeRole, string> = {
  * plain role of their own family. Only admins see the module override (the API
  * strips it for everyone else).
  */
-export function EmployeeAccessFields({ value, onChange, departments }: Props) {
+export function EmployeeAccessFields({ value, onChange, departments, teamError }: Props) {
   const dispatch = useAppDispatch();
   const access = useAccess();
-  const { teams } = useAppSelector((s) => s.teleSalesTeams);
+  const { teams, loading: teamsLoading } = useAppSelector((s) => s.teleSalesTeams);
 
   const family = roleFamily(value.role);
   const isSalesFamily = family === 'sales';
   const departmentIsDerived = family === 'sales' || family === 'marketing';
 
-  // Only the sales family needs the team list
+  // Only the sales family needs the team list. Fetched every time a sales role
+  // is picked (not only while empty), so a team created meanwhile shows up.
   useEffect(() => {
-    if (isSalesFamily && teams.length === 0) dispatch(fetchTeams(undefined));
-  }, [isSalesFamily, teams.length, dispatch]);
+    if (isSalesFamily) dispatch(fetchTeams(undefined));
+  }, [isSalesFamily, dispatch]);
+  const activeTeams = teams.filter((t) => t.isActive !== false);
 
   // Same rule as the API's assignableRoles: admin → any role, HR → any but
   // admin, a manager → the plain role of their own family.
@@ -117,21 +121,30 @@ export function EmployeeAccessFields({ value, onChange, departments }: Props) {
         {isSalesFamily && (
           <div>
             <label className="form-label">
-              Tele-sales Team{value.role === 'sales' ? ' *' : ''}
+              Tele-sales Team{value.role === 'sales' && <span className="required">*</span>}
             </label>
             <CustomSelect
               value={value.teleSalesTeam ?? ''}
               onChange={(val) => onChange({ ...value, teleSalesTeam: val || null })}
               options={[
-                { value: '', label: value.role === 'sales' ? 'Select a team' : 'None (works across every team)' },
-                ...teams.filter((t) => t.isActive !== false).map((t) => ({ value: t._id, label: t.name })),
+                { value: '', label: teamsLoading ? 'Loading teams…' : value.role === 'sales' ? 'Select a team' : 'None (works across every team)' },
+                ...activeTeams.map((t) => ({ value: t._id, label: t.name })),
               ]}
             />
-            <p className="text-xs text-on-surface-variant mt-1">
-              {value.role === 'sales'
-                ? 'An agent only ever sees the leads of this team.'
-                : 'Optional home team — the default owner of leads this manager creates.'}
-            </p>
+            {!teamsLoading && activeTeams.length === 0 && (
+              <p className="text-xs text-amber-700 mt-1">
+                No active tele-sales teams yet — an administrator creates them under TeleSales → Teams.
+              </p>
+            )}
+            {teamError ? (
+              <p className="form-error">{teamError}</p>
+            ) : (
+              <p className="text-xs text-on-surface-variant mt-1">
+                {value.role === 'sales'
+                  ? 'An agent only ever sees the leads of this team.'
+                  : 'Optional home team — the default owner of leads this manager creates.'}
+              </p>
+            )}
           </div>
         )}
 

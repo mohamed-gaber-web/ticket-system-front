@@ -79,6 +79,15 @@ export function EmployeeHrFilePanel({ employee }: { employee: Consultant }) {
             {employee.department && typeof employee.department === 'object' ? employee.department.name : null}
           </Item>
           <Item label="Section">{hr.section}</Item>
+          {(employee.role === 'sales' || employee.role === 'sales_manager') && (
+            <Item label="Tele-sales Team">
+              {employee.teleSalesTeam && typeof employee.teleSalesTeam === 'object'
+                ? employee.teleSalesTeam.name
+                : employee.role === 'sales'
+                  ? <span className="text-amber-700 font-medium">No team — sees no leads</span>
+                  : 'All teams'}
+            </Item>
+          )}
           <Item label="Direct Manager">
             {manager ? (
               <Link to={employeeViewPath(manager._id)} className="text-primary hover:underline">
@@ -86,7 +95,6 @@ export function EmployeeHrFilePanel({ employee }: { employee: Consultant }) {
               </Link>
             ) : null}
           </Item>
-          <Item label="Work Location">{hr.workLocation}</Item>
           <Item label="Hire Date">{hr.hireDate ? formatDate(hr.hireDate) : null}</Item>
         </Card>
 

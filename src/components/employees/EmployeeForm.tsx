@@ -246,6 +246,8 @@ export function EmployeeForm({ mode, initialValues, departments, submitting, emp
       else if (values.password.length < 8) e.password = 'Password must be at least 8 characters';
     }
     if (values.phone && !/^\+?\d{10,15}$/.test(values.phone.replace(/[\s-]/g, ''))) e.phone = 'Mobile must be 10-15 digits';
+    // Without a team a sales employee would see no leads at all
+    if (values.role === 'sales' && !values.teleSalesTeam) e.teleSalesTeam = 'Choose the tele-sales team this employee works in';
     if (withHr) {
       const hr = values.hr;
       if (hr.nationalId && !/^[A-Za-z0-9]{5,20}$/.test(hr.nationalId)) e['hr.nationalId'] = 'Letters and digits only (14 digits for an Egyptian ID)';
@@ -261,7 +263,7 @@ export function EmployeeForm({ mode, initialValues, departments, submitting, emp
 
   // Which section a field error lives in, to scroll to the first one
   const SECTION_OF: Record<string, string> = {
-    firstName: 'basic', lastName: 'basic', email: 'basic', phone: 'basic', password: 'access',
+    firstName: 'basic', lastName: 'basic', email: 'basic', phone: 'basic', password: 'access', teleSalesTeam: 'access',
     'hr.nationalId': 'personal', 'hr.interviewDate': 'recruitment', 'hr.contractEndDate': 'contract',
     'hr.contractDurationMonths': 'contract', 'hr.probationPeriodMonths': 'contract',
     'hr.basicSalary': 'payroll', 'hr.grossSalary': 'payroll', 'hr.netSalary': 'payroll',
@@ -429,7 +431,6 @@ export function EmployeeForm({ mode, initialValues, departments, submitting, emp
                 />
               </Field>
             )}
-            {withHr && <Field label="Work Location">{text('workLocation', 'e.g. Cairo office / Remote')}</Field>}
             {withHr && <Field label="Hire Date">{text('hireDate', undefined, 'date')}</Field>}
             <Field label="Employee Status" hint={values.status !== 'active' ? 'Only active employees can log in.' : undefined}>
               <CustomSelect
@@ -569,8 +570,12 @@ export function EmployeeForm({ mode, initialValues, departments, submitting, emp
                 teleSalesTeam: values.teleSalesTeam,
                 modules: values.modules,
               }}
-              onChange={(next) => setValues((prev) => ({ ...prev, ...next, modules: next.modules ?? [] }))}
+              onChange={(next) => {
+                setValues((prev) => ({ ...prev, ...next, modules: next.modules ?? [] }));
+                if (errors.teleSalesTeam) setErrors((prev) => ({ ...prev, teleSalesTeam: '' }));
+              }}
               departments={departments}
+              teamError={errors.teleSalesTeam}
             />
             {mode === 'create' && (
               <Grid>

@@ -43,7 +43,6 @@ export interface EmployeeHrFile {
   // Job placement
   section?: string | null;
   directManager?: EmployeeRef | string | null;
-  workLocation?: string | null;
   hireDate?: string | null;
   // Contract
   contractType?: string | null;

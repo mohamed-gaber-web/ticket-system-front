@@ -6,6 +6,7 @@ import { ROLES, ROLE_LABELS, roleFamily, isManagerRole, roleLabel, holdsPrivileg
 import type { EmployeeRole } from '@/types/auth.types';
 import { fetchConsultants, deleteConsultant, adminResetConsultantPassword, updateConsultant } from '@/redux/slices/consultantSlice';
 import { fetchDepartments } from '@/redux/slices/departmentSlice';
+import { fetchTeams } from '@/redux/slices/teleSalesTeamsSlice';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Search, RefreshCw, Edit, Trash2, ChevronLeft, ChevronRight, KeyRound, Timer } from 'lucide-react';
@@ -23,7 +24,10 @@ export default function Consultants() {
   const dispatch = useAppDispatch();
   const { consultants, loading, total, pages } = useAppSelector((state) => state.consultants);
   const { departments } = useAppSelector((state) => state.departments);
+  const { teams } = useAppSelector((state) => state.teleSalesTeams);
   const access = useAccess();
+  // The team list is readable by HR, admins and tele-sales staff only
+  const canSeeTeams = access.isHr || access.hasModule('telesales');
   const isAdmin = access.isAdmin;
   // Same rule as the API's canManageEmployee: admins anyone; nobody else an
   // account holding HR/admin access; HR anyone else but themselves; managers
@@ -40,12 +44,14 @@ export default function Consultants() {
   const [statusFilter, setStatusFilter] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [deptFilter, setDeptFilter] = useState('');
+  const [teamFilter, setTeamFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [passwordTarget, setPasswordTarget] = useState<{ id: string; name: string } | null>(null);
   const [actualHoursMap, setActualHoursMap] = useState<Record<string, number>>({});
 
   useEffect(() => {
     dispatch(fetchDepartments({ isActive: true, limit: 999 } as any));
+    if (canSeeTeams) dispatch(fetchTeams(undefined));
     loadConsultants(1);
   }, []);
 
@@ -72,6 +78,7 @@ export default function Consultants() {
     if (statusFilter) params.status = statusFilter;
     if (roleFilter) params.role = roleFilter;
     if (deptFilter) params.department = deptFilter;
+    if (teamFilter) params.teleSalesTeam = teamFilter;
     setCurrentPage(page);
     dispatch(fetchConsultants(params));
   };
@@ -102,6 +109,7 @@ export default function Consultants() {
     setStatusFilter('');
     setRoleFilter('');
     setDeptFilter('');
+    setTeamFilter('');
     setCurrentPage(1);
     dispatch(fetchConsultants({ page: 1, limit: PAGE_SIZE }));
   };
@@ -162,7 +170,7 @@ export default function Consultants() {
 
       {/* Filters */}
       <div className="bg-surface-container-lowest rounded-[1rem] p-4">
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div className={cn('grid grid-cols-1 gap-4', canSeeTeams ? 'md:grid-cols-6' : 'md:grid-cols-5')}>
           <div className="md:col-span-2">
             <Input
               placeholder="Search by name, email or employee code..."
@@ -198,6 +206,18 @@ export default function Consultants() {
               ...departments.map((d) => ({ value: d._id, label: d.name })),
             ]}
           />
+          {canSeeTeams && (
+            <CustomSelect
+              variant="filter"
+              value={teamFilter}
+              onChange={setTeamFilter}
+              label="Team"
+              options={[
+                { value: '', label: 'All' },
+                ...teams.map((t) => ({ value: t._id, label: t.name })),
+              ]}
+            />
+          )}
         </div>
         <div className="flex gap-2 mt-4">
           <Button onClick={handleSearch} size="sm">
@@ -247,6 +267,9 @@ export default function Consultants() {
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase tracking-wider">
                       Department
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase tracking-wider">
+                      Team
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase tracking-wider">
                       Status
@@ -347,6 +370,19 @@ export default function Consultants() {
                               {getDeptName(consultant.department)}
                             </span>
                           )
+                        ) : (
+                          <span className="text-on-surface-variant/40 text-sm">&mdash;</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {consultant.teleSalesTeam && typeof consultant.teleSalesTeam === 'object' ? (
+                          <span className="px-2 py-1 text-xs font-medium rounded-md border bg-blue-50 text-blue-800 border-blue-200">
+                            {consultant.teleSalesTeam.name}
+                          </span>
+                        ) : consultant.role === 'sales' ? (
+                          <span className="text-xs font-medium text-amber-700" title="A sales employee without a team sees no leads">
+                            No team
+                          </span>
                         ) : (
                           <span className="text-on-surface-variant/40 text-sm">&mdash;</span>
                         )}

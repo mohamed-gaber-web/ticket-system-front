@@ -7,23 +7,24 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import Swal from 'sweetalert2';
 import { Plus, Search, Pencil, Trash2, ToggleLeft, ToggleRight, X, Globe, ShieldAlert } from 'lucide-react';
-import { isSystemAdmin } from '@/lib/teleSalesRole';
+import { useAccess } from '@/redux/hooks/useAccess';
 import type { TeleSalesTeam, CreateTeamData } from '@/types/teleSales.types';
 
 const emptyForm: CreateTeamData = { name: '', code: '', description: '', isActive: true };
 
 /**
- * Tele-sales team management — the tenant boundaries of the module.
+ * Tele-sales team management — the tenant boundaries of the tele-sales module.
  *
- * Super admins only: a team manager can run their own team but must not be able
- * to invent, rename or delete the boundaries themselves. The API enforces the
- * same rule, so this screen is a convenience, not the control.
+ * Lives in the HR module: HR (and admins, who always hold it) create, rename,
+ * deactivate and delete teams, then place sales employees in them from the
+ * employee form. A sales manager runs the people inside a team but never the
+ * boundaries themselves. The API enforces the same rule, so this screen is a
+ * convenience, not the control.
  */
 export default function Teams() {
   const dispatch = useAppDispatch();
   const { teams, loading, total } = useAppSelector((s) => s.teleSalesTeams);
-  const { user } = useAppSelector((s) => s.auth);
-  const superAdmin = isSystemAdmin(user);
+  const canManageTeams = useAccess().isHr;
 
   const [search, setSearch] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -86,12 +87,12 @@ export default function Teams() {
     setIsDialogOpen(false);
   };
 
-  if (!superAdmin) {
+  if (!canManageTeams) {
     return (
       <div className="p-6">
         <div className="max-w-md mx-auto mt-16 flex flex-col items-center text-center gap-3 text-on-surface-variant">
           <ShieldAlert className="w-10 h-10 opacity-40" />
-          <p className="font-medium text-on-surface">Teams are managed by a super admin</p>
+          <p className="font-medium text-on-surface">Teams are managed by HR</p>
           <p className="text-sm">
             You can manage the agents and leads inside your own team from the Agents and Leads screens.
           </p>

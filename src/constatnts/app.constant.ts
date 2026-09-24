@@ -131,6 +131,8 @@ export interface NavLink {
   children?: NavLink[];
   /** Minimum rank to see this link (undefined = anyone with the module). */
   minRole?: NavRank;
+  /** Extra module this one link needs, inside a group others can open too. */
+  module?: ModuleKey;
 }
 
 interface NavEntry {
@@ -193,7 +195,6 @@ const TELE_SALES_GROUP: NavLink = {
     { name: "Opportunities", path: "/tele-sales/opportunities", icon: Star },
     { name: "Recent Calls", path: "/tele-sales/calls/recent", icon: Clock },
     { name: "Agents", path: "/tele-sales/agents", icon: UserPlus, minRole: "manager" },
-    { name: "Teams", path: "/tele-sales/teams", icon: Globe, minRole: "admin" },
     {
       name: "Modules",
       icon: Layers,
@@ -233,6 +234,7 @@ const HR_GROUP: NavLink = {
   isGroup: true,
   children: [
     { name: "Employees", path: "/hr/employees", icon: UserCog },
+    { name: "Teams", path: "/hr/teams", icon: Globe, module: "hr" },
     { name: "Approvals", path: "/employee-requests/approvals", icon: ClipboardCheck, minRole: "manager" },
     { name: "Balances", path: "/employee-requests/balances", icon: Wallet },
   ],
@@ -267,6 +269,7 @@ const rankOk = (minRole: NavRank | undefined, access: Access) => {
 /** Drop links the caller may not see, recursing into groups; drop empty groups. */
 const pruneLink = (link: NavLink, access: Access): NavLink | null => {
   if (!rankOk(link.minRole, access)) return null;
+  if (link.module && !access.hasModule(link.module)) return null;
   if (!link.children) return link;
   const children = link.children
     .map((c) => pruneLink(c, access))

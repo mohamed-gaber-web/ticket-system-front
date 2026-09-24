@@ -9,7 +9,7 @@ import type { Consultant, ConsultantStatus, EmployeeHrFile, UpdateConsultantData
 export const HR_TEXT_KEYS = [
   'fullLegalName', 'nationalId', 'dateOfBirth', 'gender', 'maritalStatus', 'address',
   'hiringSource', 'recruiterName', 'applicationDate', 'interviewDate', 'interviewResult',
-  'section', 'directManager', 'workLocation', 'hireDate',
+  'section', 'directManager', 'hireDate',
   'contractType', 'contractEndDate',
   'salaryPaymentMethod', 'bankName', 'bankAccount', 'notes',
 ] as const;

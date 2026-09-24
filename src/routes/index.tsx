@@ -182,8 +182,8 @@ export const routes: RouteObject[] = [
       { path: "leads/:id", element: <Lazy><LeadDetail /></Lazy> },
       { path: "calls/recent", element: <Lazy><RecentCalls /></Lazy> },
       { path: "agents", element: <ManagerRoute><Lazy><TeleSalesAgents /></Lazy></ManagerRoute> },
-      // Team management is admin-only; the API refuses every write regardless.
-      { path: "teams", element: <AdminRoute><Lazy><TeleSalesTeams /></Lazy></AdminRoute> },
+      // Team management moved to HR (/hr/teams); keep old links working.
+      { path: "teams", element: <Navigate to="/hr/teams" replace /> },
     ],
   },
 
@@ -228,6 +228,8 @@ export const routes: RouteObject[] = [
       { path: "/hr/employees/create", element: <EmployeeManagerRoute><Lazy><CreateConsultant /></Lazy></EmployeeManagerRoute> },
       { path: "/hr/employees/edit/:id", element: <EmployeeManagerRoute><Lazy><EditConsultant /></Lazy></EmployeeManagerRoute> },
       { path: "/hr/employees/view/:id", element: <EmployeeRoute><Lazy><ViewConsultant /></Lazy></EmployeeRoute> },
+      // Tele-sales teams are managed by HR (admins always hold the hr module)
+      { path: "/hr/teams", element: <ModuleRoute module="hr"><Lazy><TeleSalesTeams /></Lazy></ModuleRoute> },
       { path: "/consultants", element: <Navigate to="/hr/employees" replace /> },
       { path: "/consultants/create", element: <Navigate to="/hr/employees/create" replace /> },
       { path: "/consultants/edit/:id", element: <LegacyEmployeeRedirect to={(id) => `/hr/employees/edit/${id}`} /> },
