@@ -1,4 +1,5 @@
-export type NotificationUserType = 'customer' | 'consultant' | 'team_member' | 'tele_sales';
+// 'employee' is current; the rest survive on rows written before the employee/customer split
+export type NotificationUserType = 'customer' | 'employee' | 'consultant' | 'team_member' | 'tele_sales';
 
 export type NotificationType =
   | 'new_ticket'

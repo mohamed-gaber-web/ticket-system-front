@@ -30,7 +30,7 @@ export default function ViewCustomer() {
 
   const { currentCustomer, loading } = useAppSelector((state) => state.customers);
   const { userType } = useAppSelector((state) => state.auth);
-  const isSystemAdmin = userType === 'consultant';
+  const isSystemAdmin = userType === 'employee';
   const isAdmin = useAppSelector((state) => state.auth.consultantRole) === 'admin';
 
   if (!isAdmin) {

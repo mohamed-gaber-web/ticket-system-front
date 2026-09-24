@@ -16,7 +16,8 @@ export function QuickBookButton() {
   const [open, setOpen] = useState(false);
   const [slot, setSlot] = useState(defaultSlot);
 
-  if (userType !== 'consultant' && userType !== 'tele_sales') return null;
+  // Staff book meetings; customers only see theirs
+  if (userType !== 'employee') return null;
 
   return (
     <>

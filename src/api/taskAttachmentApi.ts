@@ -10,7 +10,7 @@ export interface TaskAttachment {
   fileSize: number;
   fileType: string;
   uploadedByUserId: string;
-  uploadedByUserType: 'consultant' | 'team_member';
+  uploadedByUserType: 'employee' | 'consultant';
   uploadedAt: string;
   uploadedBy?: { firstName: string; lastName: string };
 }

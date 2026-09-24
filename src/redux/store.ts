@@ -5,8 +5,6 @@ import ticketReducer from './slices/ticketSlice';
 import categoryReducer from './slices/categorySlice';
 import consultantReducer from './slices/consultantSlice';
 import assignmentReducer from './slices/assignmentSlice';
-import teamReducer from './slices/teamSlice';
-import teamMemberReducer from './slices/teamMemberSlice';
 import notificationReducer from './slices/notificationSlice';
 import attachmentReducer from './slices/attachmentSlice';
 import commentReducer from './slices/commentSlice';
@@ -33,6 +31,7 @@ import taskCategoriesReducer from './slices/taskCategorySlice';
 import taskAttachmentsReducer from './slices/taskAttachmentSlice';
 import taskCommentsReducer from './slices/taskCommentSlice';
 import meetingsReducer from './slices/meetingSlice';
+import developmentReducer from './slices/developmentSlice';
 import employeeRequestsReducer from './slices/employeeRequestSlice';
 import employeeBalancesReducer from './slices/employeeBalanceSlice';
 import aiReducer from './slices/aiSlice';
@@ -47,8 +46,6 @@ export const store = configureStore({
     categories: categoryReducer,
     consultants: consultantReducer,
     assignments: assignmentReducer,
-    teams: teamReducer,
-    teamMembers: teamMemberReducer,
     notifications: notificationReducer,
     attachments: attachmentReducer,
     comments: commentReducer,
@@ -75,6 +72,7 @@ export const store = configureStore({
     taskAttachments: taskAttachmentsReducer,
     taskComments: taskCommentsReducer,
     meetings: meetingsReducer,
+    development: developmentReducer,
     employeeRequests: employeeRequestsReducer,
     employeeBalances: employeeBalancesReducer,
     ai: aiReducer,

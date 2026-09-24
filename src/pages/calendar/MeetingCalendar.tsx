@@ -67,7 +67,7 @@ export default function MeetingCalendar() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { meetings, loading, people, currentMeeting, currentPermissions } = useAppSelector((s) => s.meetings);
   const { userType, user, consultantRole } = useAppSelector((s) => s.auth);
-  const isStaff = userType === 'consultant' || userType === 'tele_sales';
+  const isStaff = userType === 'employee';
   const canCreate = isStaff;
   const myId = (user as any)?._id as string | undefined;
   const isAdmin = (user as any)?.role === 'admin' || consultantRole === 'admin';

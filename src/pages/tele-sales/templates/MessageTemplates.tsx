@@ -10,7 +10,7 @@ import {
   toggleMessageTemplateStatus,
   deleteMessageTemplate,
 } from '@/redux/slices/salesAssistantSlice';
-import { isSuperAdmin } from '@/lib/teleSalesRole';
+import { isSystemAdmin } from '@/lib/teleSalesRole';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -31,7 +31,8 @@ export default function MessageTemplates() {
   const dispatch = useAppDispatch();
   const { templates, templatesLoading, templateVariables } = useAppSelector((s) => s.salesAssistant);
   const user = useAppSelector((s) => s.auth.user);
-  const isAdmin = isSuperAdmin(user);
+  // Catalog writes are admin-only on the API
+  const isAdmin = isSystemAdmin(user);
 
   const [channel, setChannel] = useState<TemplateChannel>('email');
   const [search, setSearch] = useState('');

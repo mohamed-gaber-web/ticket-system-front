@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
+import { isReadOnly } from '@/lib/teleSalesRole';
 import { fetchLeadById } from '@/redux/slices/teleSalesLeadsSlice';
 import * as teleSalesApi from '@/api/teleSalesApi';
 import { Button } from '@/components/ui/button';
@@ -51,6 +52,8 @@ export default function LeadDetail() {
   const navigate = useNavigate();
   const { currentLead, loading } = useAppSelector((s) => s.teleSalesLeads);
   const { user } = useAppSelector((s) => s.auth);
+  // Marketing may look at everything here but change nothing.
+  const readOnly = isReadOnly(user);
 
   // Deep link: /tele-sales/leads/:id?tab=emails (used by reply notifications).
   const [searchParams] = useSearchParams();
@@ -338,7 +341,8 @@ export default function LeadDetail() {
           </p>
         </div>
 
-        {/* Quick actions */}
+        {/* Quick actions — hidden for read-only roles */}
+        {!readOnly && (
         <div className="flex items-center gap-2">
           <Button size="sm" onClick={() => setTab('assistant')} className="gap-2" title="Send documents, product details and templates to this lead">
             <Sparkles className="w-4 h-4" /> Sales Assistant
@@ -362,6 +366,7 @@ export default function LeadDetail() {
             <Edit2 className="w-4 h-4" /> Change Status
           </Button>
         </div>
+        )}
       </div>
 
       {/* Stats bar */}
@@ -480,11 +485,13 @@ export default function LeadDetail() {
       {/* Tab: Calls */}
       {tab === 'calls' && (
         <div className="space-y-4">
-          <div className="flex justify-end">
-            <Button onClick={() => setShowCallForm(!showCallForm)} variant="outline" className="gap-2">
-              <Plus className="w-4 h-4" /> Log Call
-            </Button>
-          </div>
+          {!readOnly && (
+            <div className="flex justify-end">
+              <Button onClick={() => setShowCallForm(!showCallForm)} variant="outline" className="gap-2">
+                <Plus className="w-4 h-4" /> Log Call
+              </Button>
+            </div>
+          )}
 
           {showCallForm && (
             <form onSubmit={handleAddCall} className="bg-surface-container-lowest rounded-2xl border border-outline-variant/20 p-5 space-y-4">
@@ -529,9 +536,11 @@ export default function LeadDetail() {
                         {row.manual.duration ? ` · ${row.manual.duration} min` : ''}
                       </p>
                     </div>
-                    <button onClick={() => handleDeleteCall(row.manual!._id)} className="p-1.5 rounded-lg hover:bg-error/10 text-on-surface-variant hover:text-error">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {!readOnly && (
+                      <button onClick={() => handleDeleteCall(row.manual!._id)} className="p-1.5 rounded-lg hover:bg-error/10 text-on-surface-variant hover:text-error">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
                   {row.manual.notes && <p className="mt-3 text-sm text-on-surface bg-surface-container rounded-xl p-3">{row.manual.notes}</p>}
                 </div>
@@ -581,6 +590,7 @@ export default function LeadDetail() {
                       </div>
                       {row.manual.notes && <p className="text-sm text-on-surface-variant mt-2">{row.manual.notes}</p>}
                     </div>
+                    {!readOnly && (
                     <div className="flex items-center gap-1">
                       {row.manual.status === 'Pending' && (
                         <button onClick={() => handleMarkFollowUpDone(row.manual._id)} className="p-1.5 rounded-lg hover:bg-emerald-50 text-on-surface-variant hover:text-emerald-600" title="Mark Done">
@@ -591,6 +601,7 @@ export default function LeadDetail() {
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -614,7 +625,8 @@ export default function LeadDetail() {
           emails={emails}
           summary={emailSummary}
           syncing={syncing}
-          canWrite
+          // Marketing reads tele-sales but never writes it (the API refuses too)
+          canWrite={!readOnly}
           onCompose={() => { setReplyTo(null); setComposeOpen(true); }}
           onReply={(email) => { setReplyTo(email); setComposeOpen(true); }}
           onRefresh={handleSyncInbox}
@@ -637,6 +649,7 @@ export default function LeadDetail() {
               disabled={uploading}
               className="hidden"
             />
+            {!readOnly && (
             <Button onClick={() => fileInputRef.current?.click()} disabled={uploading} className="gap-2">
               {uploading ? (
                 <>
@@ -649,6 +662,7 @@ export default function LeadDetail() {
                 </>
               )}
             </Button>
+            )}
           </div>
 
           {attachments.length === 0 ? (
@@ -678,9 +692,11 @@ export default function LeadDetail() {
                     <button onClick={() => handleDownloadAttachment(att)} className="p-1.5 rounded-lg hover:bg-brand-50 text-on-surface-variant hover:text-brand-600" title="Download">
                       <Download className="w-4 h-4" />
                     </button>
-                    <button onClick={() => handleDeleteAttachment(att._id)} className="p-1.5 rounded-lg hover:bg-error/10 text-on-surface-variant hover:text-error" title="Delete">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {!readOnly && (
+                      <button onClick={() => handleDeleteAttachment(att._id)} className="p-1.5 rounded-lg hover:bg-error/10 text-on-surface-variant hover:text-error" title="Delete">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}

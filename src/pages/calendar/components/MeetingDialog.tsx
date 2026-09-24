@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { SearchSelect } from '@/components/ui/search-select';
 import { toast } from 'sonner';
+import { useAccess } from '@/redux/hooks/useAccess';
 import {
   AlertTriangle, CalendarPlus, Loader2, MapPin, Phone, Plus, Save, Video, X,
 } from 'lucide-react';
@@ -108,7 +109,9 @@ export interface MeetingDialogProps {
 export default function MeetingDialog({ open, onOpenChange, meeting, slot, onSaved }: MeetingDialogProps) {
   const dispatch = useAppDispatch();
   const { people, contacts, lookupsLoaded, saving } = useAppSelector((s) => s.meetings);
-  const { user, userType } = useAppSelector((s) => s.auth);
+  const { user } = useAppSelector((s) => s.auth);
+  // The API offers customers to the people who work tickets
+  const worksTickets = useAccess().hasModule('tickets');
   const isEdit = Boolean(meeting);
 
   const [form, setForm] = useState<FormState>(() => blankForm(new Date(), addHours(new Date(), 1), false));
@@ -197,7 +200,7 @@ export default function MeetingDialog({ open, onOpenChange, meeting, slot, onSav
   );
   const withKinds: { value: WithKind; label: string }[] = [
     { value: 'none', label: 'Internal' },
-    ...(customerOptions.length || userType === 'consultant' ? [{ value: 'customer' as WithKind, label: 'Customer' }] : []),
+    ...(customerOptions.length || worksTickets ? [{ value: 'customer' as WithKind, label: 'Customer' }] : []),
     ...(leadOptions.length ? [{ value: 'lead' as WithKind, label: 'Lead' }] : []),
   ];
 

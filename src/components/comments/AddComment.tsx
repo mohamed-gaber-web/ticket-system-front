@@ -71,7 +71,7 @@ const AddComment: React.FC<AddCommentProps> = ({
     if (!currentTicket) return;
     const previousComments = (comments ?? []).slice(-10).map((c) => ({
       content: c.commentText ?? '',
-      userType: c.commentByUserType ?? 'consultant',
+      userType: c.commentByUserType ?? 'employee',
       createdAt: c.createdAt ?? '',
     }));
     dispatch(fetchAiReplyDraft({
@@ -92,7 +92,7 @@ const AddComment: React.FC<AddCommentProps> = ({
   const [imagePreviews, setImagePreviews] = useState<Map<string, string>>(new Map());
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const isStaff = userType === 'consultant' || userType === 'team_member';
+  const isStaff = userType === 'employee';
 
   const addFiles = (incoming: FileList | null) => {
     if (!incoming) return;

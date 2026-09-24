@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
+import { useAccess } from '@/redux/hooks/useAccess';
 import { createTask, updateTask, fetchTaskById, clearCurrentTask } from '@/redux/slices/tasksSlice';
 import { fetchDepartments } from '@/redux/slices/departmentSlice';
 import { fetchConsultants } from '@/redux/slices/consultantSlice';
@@ -35,12 +36,19 @@ export default function TaskForm() {
   const { departments } = useAppSelector((state) => state.departments);
   const { consultants } = useAppSelector((state) => state.consultants);
   const { taskCategories } = useAppSelector((state) => state.taskCategories);
-  const { consultantDepartment, user } = useAppSelector((state) => state.auth);
+  const { user } = useAppSelector((state) => state.auth);
+  const { isAdmin } = useAccess();
+  // Non-admins always file under their own department (the API enforces it);
+  // the auth slice carries it populated as { _id, name }.
+  const ownDepartmentId = (() => {
+    const d = (user as any)?.department;
+    return d ? (typeof d === 'object' ? d._id : d) : '';
+  })();
 
   const [form, setForm] = useState({
     name: '',
     description: '',
-    department: consultantDepartment ?? '',
+    department: ownDepartmentId,
     category: '',
     startDate: '',
     endDate: '',
@@ -244,7 +252,14 @@ export default function TaskForm() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           <div className="space-y-1.5">
             <label className="text-sm font-semibold text-on-surface">Department *</label>
-            <select required value={form.department} onChange={(e) => set('department', e.target.value)} className={INPUT_CLS}>
+            <select
+              required
+              value={form.department}
+              onChange={(e) => set('department', e.target.value)}
+              // Only an admin files a task under another department
+              disabled={!isAdmin}
+              className={`${INPUT_CLS} disabled:opacity-60 disabled:cursor-not-allowed`}
+            >
               <option value="">Select department…</option>
               {departments.map((d) => (
                 <option key={d._id} value={d._id}>{d.name}</option>

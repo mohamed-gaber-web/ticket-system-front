@@ -13,7 +13,6 @@ import {
   // BarChart3,    // Hidden - Reports not in use
   // FileBarChart, // Hidden - Consultant Reports not in use
   FolderKanban,
-  ClipboardList,
   ListChecks,
   Server,
   Sparkles,
@@ -33,13 +32,17 @@ import {
   PhoneCall,
   UserPlus,
   CheckSquare,
+  SquareKanban,
   CalendarHeart,
   Plane,
   ClipboardCheck,
   Wallet,
   FileText,
   MessageSquareText,
+  Contact,
 } from "lucide-react";
+import type { Access } from "@/redux/hooks/useAccess";
+import type { ModuleKey } from "@/types/auth.types";
 
 const MODULES_GROUP = {
   name: "Modules",
@@ -116,33 +119,6 @@ const SERVICES_GROUP_CUSTOMER = {
 // customers and leads. Staff can book; customers see their own meetings.
 const MEETING_BOOK_LINK = { name: "Meeting Book", path: "/calendar", icon: CalendarDays };
 
-export const ROUTERLINKS = [
-  { name: "Dashboard", path: "/", icon: LayoutDashboard },
-  MEETING_BOOK_LINK,
-  {
-    name: "Customers",
-    icon: Users,
-    isGroup: true as const,
-    children: [
-      { name: "Customers", path: "/customers", icon: Users },
-      { name: "Customer Summary", path: "/customers/summary", icon: BarChart2 },
-    ],
-  },
-  SERVICES_GROUP,
-  {
-    name: "Consultants",
-    icon: UserCog,
-    isGroup: true as const,
-    children: [
-      { name: "Consultants", path: "/consultants", icon: UserCog },
-      { name: "Weekly Report", path: "/consultant-reports/weekly", icon: CalendarDays },
-      { name: "Weekly Hours", path: "/consultants/weekly-hours", icon: CalendarClock },
-    ],
-  },
-  MODULES_GROUP,
-  { name: "Working Hours", path: "/working-hours", icon: CalendarClock },
-];
-
 // Customer links — built dynamically based on role
 const buildCustomerLinks = (customerRole?: string | null) => {
   const links: any[] = [
@@ -156,280 +132,208 @@ const buildCustomerLinks = (customerRole?: string | null) => {
   return links;
 };
 
-// Consultant (regular & senior) can see specific modules
-const CONSULTANT_LINKS = [
-  { name: "Dashboard", path: "/", icon: LayoutDashboard },
-  MEETING_BOOK_LINK,
-  {
-    name: "Customers",
-    icon: Users,
-    isGroup: true as const,
-    children: [
-      { name: "Customers", path: "/customers", icon: Users },
-      { name: "Customer Summary", path: "/customers/summary", icon: BarChart2 },
-    ],
-  },
-  SERVICES_GROUP,
-  {
-    name: "Consultants",
-    icon: UserCog,
-    isGroup: true as const,
-    children: [
-      { name: "My Tasks", path: "/profile?view=tasks", icon: ListChecks },
-      { name: "My Evaluation", path: "/consultants/evaluation/me", icon: GaugeCircle },
-      { name: "Consultants", path: "/consultants", icon: UserCog },
-    ],
-  },
-  MODULES_GROUP,
-];
 
-// Team Member can only see My Assignments
-const TEAM_MEMBER_LINKS = [
-  { name: "My Assignments", path: "/my-assignments", icon: ClipboardList },
-];
+// ── Employee navigation ───────────────────────────────────────────────────────
+//
+// Every entry is tagged with the MODULE that opens it and, optionally, the
+// minimum ROLE that may see it. The sidebar is then just a filter over this
+// list against useAccess() — there is no per-role link set to keep in sync,
+// and granting someone a module in their profile shows the matching group
+// without touching this file. Children are filtered the same way, so a group
+// can hold manager-only items.
 
-// Shared by every tele-sales role — the day-to-day pipeline screens.
-const TELE_SALES_CORE_LINKS = [
-  { name: "Dashboard", path: "/tele-sales", icon: LayoutDashboard },
-  MEETING_BOOK_LINK,
-  { name: "Leads", path: "/tele-sales/leads", icon: PhoneCall },
-  { name: "Opportunities", path: "/tele-sales/opportunities", icon: Star },
-  { name: "Recent Calls", path: "/tele-sales/calls/recent", icon: Clock },
-  { name: "Email Management", path: "/tele-sales/emails", icon: Mail },
-  PRODUCT_CATALOG_GROUP,
-];
+type NavRank = "manager" | "admin";
 
-// TeleSales super admin — the only role that manages the teams themselves.
-const TELE_SALES_ADMIN_LINKS = [
-  ...TELE_SALES_CORE_LINKS,
-  { name: "Agents", path: "/tele-sales/agents", icon: UserPlus },
-  { name: "Teams", path: "/tele-sales/teams", icon: Globe },
-  TELE_SALES_MODULES_GROUP,
-];
+export interface NavLink {
+  name: string;
+  path?: string;
+  icon: any;
+  isGroup?: true;
+  isSubGroup?: true;
+  children?: NavLink[];
+  /** Minimum rank to see this link (undefined = anyone with the module). */
+  minRole?: NavRank;
+  /** Extra module this one link needs, inside a group others can open too. */
+  module?: ModuleKey;
+}
 
-// TeleSales team manager — runs one team's roster, but cannot create or rename
-// the teams themselves, so no Teams entry.
-const TELE_SALES_MANAGER_LINKS = [
-  ...TELE_SALES_CORE_LINKS,
-  { name: "Agents", path: "/tele-sales/agents", icon: UserPlus },
-  TELE_SALES_MODULES_GROUP,
-];
+interface NavEntry {
+  /** The module that unlocks this entry; "any" = every employee. */
+  module: ModuleKey | "any";
+  minRole?: NavRank;
+  /** Also shown, without the module, to anyone of at least this rank. */
+  orMinRole?: NavRank;
+  link: NavLink;
+}
 
-// TeleSales agent — pipeline screens only.
-const TELE_SALES_USER_LINKS = [
-  ...TELE_SALES_CORE_LINKS,
-  TELE_SALES_MODULES_GROUP,
-];
-
-// Employee Requests — full group for admins (only admins can approve requests)
-const EMPLOYEE_REQUESTS_GROUP = {
-  name: "Employee Requests",
-  icon: CalendarHeart,
-  isGroup: true as const,
+const TICKETING_GROUP: NavLink = {
+  name: "Ticketing",
+  icon: Ticket,
+  isGroup: true,
   children: [
-    { name: "My Requests", path: "/employee-requests", icon: Plane },
-    { name: "Approvals", path: "/employee-requests/approvals", icon: ClipboardCheck },
-    { name: "Balances", path: "/employee-requests/balances", icon: Wallet },
+    { name: "Dashboard", path: "/", icon: LayoutDashboard },
+    {
+      name: "Customers",
+      icon: Users,
+      isSubGroup: true,
+      children: [
+        { name: "Customers", path: "/customers", icon: Users },
+        { name: "Customer Summary", path: "/customers/summary", icon: BarChart2 },
+      ],
+    },
+    { ...SERVICES_GROUP, isGroup: undefined, isSubGroup: true },
+    {
+      name: "Employees",
+      icon: UserCog,
+      isSubGroup: true,
+      children: [
+        { name: "My Tasks", path: "/profile?view=tasks", icon: ListChecks },
+        { name: "My Evaluation", path: "/consultants/evaluation/me", icon: GaugeCircle },
+        { name: "Evaluations", path: "/consultants/evaluations", icon: BarChart2, minRole: "admin" },
+        { name: "Weekly Report", path: "/consultant-reports/weekly", icon: CalendarDays, minRole: "admin" },
+        { name: "Weekly Hours", path: "/consultants/weekly-hours", icon: CalendarClock },
+      ],
+    },
   ],
 };
 
-// Employee Requests — lite group for non-admin staff who cannot approve
-const EMPLOYEE_REQUESTS_GROUP_LITE = {
-  name: "Employee Requests",
-  icon: CalendarHeart,
-  isGroup: true as const,
+const TICKETING_CONFIG_GROUP: NavLink = {
+  name: "Ticketing Setup",
+  icon: Layers,
+  isGroup: true,
   children: [
-    { name: "My Requests", path: "/employee-requests", icon: Plane },
-    { name: "My Balance", path: "/employee-requests/balances", icon: Wallet },
+    ...MODULES_GROUP.children,
+    { name: "Working Hours", path: "/working-hours", icon: CalendarClock },
   ],
 };
 
-// Append the Employee Requests module to every internal-staff link set.
-// Only admins get the full group (with Approvals); everyone else gets the lite group.
-CONSULTANT_LINKS.push(EMPLOYEE_REQUESTS_GROUP_LITE);
-TEAM_MEMBER_LINKS.push(EMPLOYEE_REQUESTS_GROUP_LITE as any);
-TELE_SALES_ADMIN_LINKS.push(EMPLOYEE_REQUESTS_GROUP_LITE as any);
-TELE_SALES_USER_LINKS.push(EMPLOYEE_REQUESTS_GROUP_LITE as any);
-
-// Single Tasks group (page handles dept filtering internally)
-const TASKS_GROUP = {
-  name: "Tasks",
-  icon: CheckSquare,
-  isGroup: true as const,
-  children: [
-    { name: "Dashboard", path: "/tasks/dashboard", icon: LayoutDashboard },
-    { name: "All Tasks", path: "/tasks", icon: ListChecks },
-    { name: "Create Task", path: "/tasks/create", icon: CheckSquare },
-    { name: "Task Categories", path: "/task-categories", icon: FolderKanban },
-    { name: "Reports", path: "/tasks/reports", icon: BarChart2 },
-  ],
-};
-
-// TeleSales group for admin sidebar
-const TELE_SALES_GROUP = {
+const TELE_SALES_GROUP: NavLink = {
   name: "TeleSales",
   icon: PhoneCall,
-  isGroup: true as const,
+  isGroup: true,
   children: [
     { name: "Dashboard", path: "/tele-sales", icon: LayoutDashboard },
     { name: "Leads", path: "/tele-sales/leads", icon: PhoneCall },
     { name: "Opportunities", path: "/tele-sales/opportunities", icon: Star },
     { name: "Recent Calls", path: "/tele-sales/calls/recent", icon: Clock },
     { name: "Email Management", path: "/tele-sales/emails", icon: Mail },
-    { name: "Agents", path: "/tele-sales/agents", icon: UserPlus },
-    { name: "Teams", path: "/tele-sales/teams", icon: Globe },
-    {
-      name: "Product Catalog",
-      icon: Sparkles,
-      isSubGroup: true as const,
-      children: PRODUCT_CATALOG_GROUP.children,
-    },
+    { name: "Agents", path: "/tele-sales/agents", icon: UserPlus, minRole: "manager" },
+    { ...PRODUCT_CATALOG_GROUP, isGroup: undefined, isSubGroup: true },
     {
       name: "Modules",
       icon: Layers,
-      isSubGroup: true as const,
-      children: [
-        { name: "Industry Sectors", path: "/industry-sectors", icon: Factory },
-        { name: "Countries", path: "/countries", icon: Globe },
-        { name: "Business Classifications", path: "/business-classifications", icon: Briefcase },
-      ],
+      isSubGroup: true,
+      children: TELE_SALES_MODULES_GROUP.children,
     },
   ],
 };
 
-// Ticketing group for admin sidebar — sub-groups for Customers, Services, Consultants, Modules
-const TICKETING_ADMIN_GROUP = {
-  name: "Ticketing",
-  icon: Ticket,
-  isGroup: true as const,
+const TASKS_GROUP: NavLink = {
+  name: "Tasks",
+  icon: CheckSquare,
+  isGroup: true,
   children: [
-    { name: "Dashboard", path: "/", icon: LayoutDashboard },
-    {
-      name: "Customers",
-      icon: Users,
-      isSubGroup: true as const,
-      children: [
-        { name: "Customers", path: "/customers", icon: Users },
-        { name: "Customer Summary", path: "/customers/summary", icon: BarChart2 },
-      ],
-    },
-    {
-      name: "Services",
-      icon: Ticket,
-      isSubGroup: true as const,
-      children: [
-        { name: "Tickets", path: "/tickets", icon: Ticket },
-        { name: "Projects", path: "/projects", icon: FolderKanban },
-        { name: "Meetings / Visit Report", path: "/meetings", icon: CalendarDays },
-      ],
-    },
-    {
-      name: "Consultants",
-      icon: UserCog,
-      isSubGroup: true as const,
-      children: [
-        { name: "My Tasks", path: "/profile?view=tasks", icon: ListChecks },
-        { name: "My Evaluation", path: "/consultants/evaluation/me", icon: GaugeCircle },
-        { name: "Evaluations", path: "/consultants/evaluations", icon: BarChart2 },
-        { name: "Consultants", path: "/consultants", icon: UserCog },
-        { name: "Weekly Report", path: "/consultant-reports/weekly", icon: CalendarDays },
-        { name: "Weekly Hours", path: "/consultants/weekly-hours", icon: CalendarClock },
-      ],
-    },
-    {
-      name: "Modules",
-      icon: Layers,
-      isSubGroup: true as const,
-      children: [
-        { name: "Categories", path: "/categories", icon: FolderKanban },
-        { name: "Environments", path: "/environments", icon: Server },
-        { name: "Customized Solutions", path: "/customized-solutions", icon: Sparkles },
-        { name: "Departments", path: "/departments", icon: Building2 },
-        { name: "Product Types", path: "/product-types", icon: Package },
-        { name: "Service Types", path: "/service-types", icon: Wrench },
-        { name: "Modules", path: "/modules", icon: Target },
-        { name: "ERP Types", path: "/erp-types", icon: Database },
-        { name: "Version Numbers", path: "/version-numbers", icon: Hash },
-        { name: "Sources", path: "/sources", icon: Globe },
-        { name: "Companies", path: "/companies", icon: Building },
-      ],
-    },
-    { name: "Working Hours", path: "/working-hours", icon: CalendarClock },
+    { name: "Dashboard", path: "/tasks/dashboard", icon: LayoutDashboard },
+    { name: "All Tasks", path: "/tasks", icon: ListChecks },
+    { name: "Create Task", path: "/tasks/create", icon: CheckSquare },
+    { name: "Task Categories", path: "/task-categories", icon: FolderKanban, minRole: "manager" },
+    { name: "Reports", path: "/tasks/reports", icon: BarChart2 },
   ],
 };
 
-const TASKS_ONLY_LINKS = [
-  { name: "Dashboard", path: "/", icon: LayoutDashboard },
-  MEETING_BOOK_LINK,
-  TASKS_GROUP,
+const DEVELOPMENT_GROUP: NavLink = {
+  name: "Development",
+  icon: SquareKanban,
+  isGroup: true,
+  children: [
+    { name: "Boards", path: "/development", icon: SquareKanban },
+  ],
+};
+
+// HR module — the employee directory (with the confidential HR file for HR and
+// admins) plus leave approvals and balances. Managers keep seeing it for the
+// people they run, whether or not they hold the HR module.
+const HR_GROUP: NavLink = {
+  name: "HR",
+  icon: Contact,
+  isGroup: true,
+  children: [
+    { name: "Employees", path: "/hr/employees", icon: UserCog },
+    { name: "Teams", path: "/hr/teams", icon: Globe, module: "hr" },
+    { name: "Approvals", path: "/employee-requests/approvals", icon: ClipboardCheck, minRole: "manager" },
+    { name: "Balances", path: "/employee-requests/balances", icon: Wallet },
+  ],
+};
+
+const MY_REQUESTS_GROUP: NavLink = {
+  name: "My Requests",
+  icon: CalendarHeart,
+  isGroup: true,
+  children: [
+    { name: "My Requests", path: "/employee-requests", icon: Plane },
+    { name: "My Balance", path: "/employee-requests/balances", icon: Wallet },
+  ],
+};
+
+const EMPLOYEE_NAV: NavEntry[] = [
+  { module: "any", link: MEETING_BOOK_LINK },
+  { module: "tickets", link: TICKETING_GROUP },
+  { module: "telesales", link: TELE_SALES_GROUP },
+  { module: "tasks", link: TASKS_GROUP },
+  { module: "development", link: DEVELOPMENT_GROUP },
+  { module: "hr", orMinRole: "manager", link: HR_GROUP },
+  { module: "admin", link: TICKETING_CONFIG_GROUP },
+  { module: "any", link: MY_REQUESTS_GROUP },
 ];
 
-// Build consultant links based on role and department
-const buildConsultantLinks = (consultantRole?: string | null, department?: string | null) => {
-  // Admin → three collapsible module groups
-  if (consultantRole === 'admin') {
-    return [
-      MEETING_BOOK_LINK,
-      TICKETING_ADMIN_GROUP,
-      TASKS_GROUP,
-      EMPLOYEE_REQUESTS_GROUP,
-      TELE_SALES_GROUP,
-    ];
-  }
-
-  // Sales → TeleSales only (no Tasks)
-  // Non-admin: no Agents (backend requires admin); admin already handled above
-  if (department === 'sales') {
-    return [
-      { name: "Dashboard", path: "/tele-sales", icon: LayoutDashboard },
-      MEETING_BOOK_LINK,
-      { name: "Leads", path: "/tele-sales/leads", icon: PhoneCall },
-      { name: "Opportunities", path: "/tele-sales/opportunities", icon: Star },
-      { name: "Recent Calls", path: "/tele-sales/calls/recent", icon: Clock },
-      { name: "Email Management", path: "/tele-sales/emails", icon: Mail },
-      PRODUCT_CATALOG_GROUP,
-      TELE_SALES_MODULES_GROUP,
-      EMPLOYEE_REQUESTS_GROUP_LITE,
-    ];
-  }
-
-  // Marketing → Tasks only (no TeleSales)
-  if (department === 'marketing') {
-    return TASKS_ONLY_LINKS;
-  }
-
-  // Administration → Tasks only (no TeleSales)
-  if (department === 'administration') {
-    return [...TASKS_ONLY_LINKS, EMPLOYEE_REQUESTS_GROUP_LITE];
-  }
-
-  // Consultant / Senior Consultant → Ticketing module only
-  return CONSULTANT_LINKS;
+const rankOk = (minRole: NavRank | undefined, access: Access) => {
+  if (!minRole) return true;
+  if (minRole === "admin") return access.isAdmin;
+  return access.isManagerOrAdmin;
 };
 
-// Filter links based on user type
-export const getRouterLinksByUserType = (
-  userType: string | null,
-  customerRole?: string | null,
-  userRole?: string | null,
-  department?: string | null,
-) => {
-  if (userType === 'customer') {
-    return buildCustomerLinks(customerRole);
-  }
-  if (userType === 'consultant') {
-    return buildConsultantLinks(userRole, department);
-  }
-  if (userType === 'team_member') {
-    return TEAM_MEMBER_LINKS;
-  }
-  if (userType === 'tele_sales') {
-    if (userRole === 'admin') return TELE_SALES_ADMIN_LINKS;
-    // A team manager gets the roster screen, scoped by the API to their own team.
-    if (userRole === 'manager') return TELE_SALES_MANAGER_LINKS;
-    return TELE_SALES_USER_LINKS;
-  }
-  // For admins, show all links
-  return ROUTERLINKS;
+/** Drop links the caller may not see, recursing into groups; drop empty groups. */
+const pruneLink = (link: NavLink, access: Access): NavLink | null => {
+  if (!rankOk(link.minRole, access)) return null;
+  if (link.module && !access.hasModule(link.module)) return null;
+  if (!link.children) return link;
+  const children = link.children
+    .map((c) => pruneLink(c, access))
+    .filter((c): c is NavLink => c !== null);
+  if (!children.length) return null;
+  return { ...link, children };
 };
 
+export const buildEmployeeLinks = (access: Access): NavLink[] => {
+  const seen = new Set<string>();
+  const out: NavLink[] = [];
+  for (const entry of EMPLOYEE_NAV) {
+    const byRank = entry.orMinRole !== undefined && rankOk(entry.orMinRole, access);
+    if (entry.module !== "any" && !access.hasModule(entry.module) && !byRank) continue;
+    if (!rankOk(entry.minRole, access)) continue;
+    const link = pruneLink(entry.link, access);
+    if (!link) continue;
+    // Two groups may legitimately offer the same page (Balances for a manager
+    // under both Employees and My Requests); the first one wins.
+    if (link.children) {
+      link.children = link.children.filter((c) => {
+        if (!c.path) return true;
+        if (seen.has(c.path)) return false;
+        seen.add(c.path);
+        return true;
+      });
+      if (!link.children.length) continue;
+    }
+    out.push(link);
+  }
+  return out;
+};
+
+/** The sidebar for the current user: customers get theirs, employees are filtered by module and rank. */
+// Typed loosely on purpose: the sidebar components model links as a
+// discriminated union that NavLink (a single shape) satisfies at runtime.
+export const getRouterLinks = (access: Access, customerRole?: string | null): any[] => {
+  if (access.isCustomer) return buildCustomerLinks(customerRole);
+  if (access.isEmployee) return buildEmployeeLinks(access);
+  return [];
+};

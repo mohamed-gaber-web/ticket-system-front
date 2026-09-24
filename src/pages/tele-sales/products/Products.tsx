@@ -11,7 +11,7 @@ import {
   toggleProductStatus,
   deleteProduct,
 } from '@/redux/slices/salesAssistantSlice';
-import { isSuperAdmin } from '@/lib/teleSalesRole';
+import { isSystemAdmin } from '@/lib/teleSalesRole';
 import * as salesAssistantApi from '@/api/salesAssistantApi';
 import { apiErrorMessage } from '@/lib/salesAssistant';
 import { toast } from 'sonner';
@@ -34,7 +34,8 @@ export default function Products() {
   const dispatch = useAppDispatch();
   const { products, productsTotal, productsPages, productCategories, productsLoading, documents } = useAppSelector((s) => s.salesAssistant);
   const user = useAppSelector((s) => s.auth.user);
-  const isAdmin = isSuperAdmin(user);
+  // Catalog writes are admin-only on the API
+  const isAdmin = isSystemAdmin(user);
 
   const [search, setSearch] = useState('');
   // Search as you type, debounced — agents type a word mid-call and expect the list to follow.

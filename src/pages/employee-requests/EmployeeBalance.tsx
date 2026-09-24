@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
+import { useAccess } from '@/redux/hooks/useAccess';
 import {
   fetchEmployeeBalances,
   fetchMyBalance,
@@ -15,12 +16,13 @@ const CURRENT_YEAR = new Date().getFullYear();
 const YEARS = [CURRENT_YEAR - 1, CURRENT_YEAR, CURRENT_YEAR + 1];
 
 export default function EmployeeBalance() {
-  const { consultantRole } = useAppSelector((state) => state.auth);
-  const isAdmin = consultantRole === 'admin';
+  // Managers see the balances of their own family, admins everyone's — the
+  // API scopes the list, the page only picks the view.
+  const { isManagerOrAdmin } = useAccess();
 
   const [year, setYear] = useState(CURRENT_YEAR);
 
-  if (isAdmin) return <AdminBalances year={year} setYear={setYear} />;
+  if (isManagerOrAdmin) return <AdminBalances year={year} setYear={setYear} />;
   return <MyBalanceView year={year} setYear={setYear} />;
 }
 

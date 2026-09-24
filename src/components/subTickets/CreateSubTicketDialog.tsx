@@ -210,7 +210,7 @@ export function CreateSubTicketDialog({
               ticketId: subTicket._id,
               file,
               uploadedByUserId: user._id,
-              uploadedByUserType: (userType as 'customer' | 'consultant' | 'team_member') ?? 'consultant',
+              uploadedByUserType: (userType as 'customer' | 'employee') ?? 'employee',
             }))
           )
         );

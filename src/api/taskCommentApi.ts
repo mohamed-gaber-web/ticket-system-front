@@ -13,7 +13,7 @@ export interface TaskComment {
   task: string;
   commentText: string;
   commentByUserId: string;
-  commentByUserType: 'consultant' | 'team_member';
+  commentByUserType: 'employee' | 'consultant';
   images?: TaskCommentImage[];
   commentBy?: { firstName: string; lastName: string; email?: string };
   createdAt: string;

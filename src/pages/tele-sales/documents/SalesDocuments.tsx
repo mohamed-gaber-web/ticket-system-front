@@ -11,7 +11,7 @@ import {
   toggleSalesDocumentStatus,
   deleteSalesDocument,
 } from '@/redux/slices/salesAssistantSlice';
-import { isSuperAdmin } from '@/lib/teleSalesRole';
+import { isSystemAdmin } from '@/lib/teleSalesRole';
 import * as teleSalesApi from '@/api/teleSalesApi';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,7 +34,8 @@ export default function SalesDocuments() {
   const dispatch = useAppDispatch();
   const { documents, documentsLoading, products } = useAppSelector((s) => s.salesAssistant);
   const user = useAppSelector((s) => s.auth.user);
-  const isAdmin = isSuperAdmin(user);
+  // Catalog writes are admin-only on the API
+  const isAdmin = isSystemAdmin(user);
 
   const [search, setSearch] = useState('');
   const [type, setType] = useState('');

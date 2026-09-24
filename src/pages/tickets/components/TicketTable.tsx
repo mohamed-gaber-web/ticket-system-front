@@ -57,7 +57,7 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
   const { loading: ticketLoading } = useAppSelector((state) => state.tickets);
   const { consultants } = useAppSelector((state) => state.consultants);
   const { customers } = useAppSelector((state) => state.customers);
-  const isConsultant = userType === 'consultant';
+  const isConsultant = userType === 'employee';
   const isCustomer = userType === 'customer';
   const { serviceTypes } = useAppSelector((state) => state.serviceTypes);
   const { categories } = useAppSelector((state) => state.categories);

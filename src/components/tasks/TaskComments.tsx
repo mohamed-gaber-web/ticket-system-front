@@ -21,7 +21,7 @@ export default function TaskComments({ taskId }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
 
-  const isConsultant = userType === 'consultant' || userType === 'team_member';
+  const isConsultant = userType === 'employee';
 
   useEffect(() => {
     dispatch(fetchTaskComments(taskId));

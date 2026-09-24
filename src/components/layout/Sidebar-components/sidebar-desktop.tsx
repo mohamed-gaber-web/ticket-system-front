@@ -4,6 +4,7 @@ import logo from "@/assets/logo_extracted.png";
 import { NavLink, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
+import { useAccess } from "@/redux/hooks/useAccess";
 
 interface NavLinkItem {
   name: string;
@@ -51,6 +52,8 @@ function isSection(item: NavigationItem): item is NavSection {
 }
 
 export function SidebarDesktop({ links, isOpen, setIsOpen }: SidebarDesktopProps) {
+  // Customers get a visibly different shell — the portal is branded as such.
+  const { isCustomer } = useAccess();
   const [expandedGroups, setExpandedGroups] = useState<string[]>([]);
   const location = useLocation();
 
@@ -100,6 +103,11 @@ export function SidebarDesktop({ links, isOpen, setIsOpen }: SidebarDesktopProps
                 className="flex items-center gap-2 overflow-hidden"
               >
                 <img src={logo} alt="Logo" className="h-8 w-auto object-contain shrink-0" />
+                {isCustomer && (
+                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary whitespace-nowrap">
+                    Customer Portal
+                  </span>
+                )}
               </motion.div>
             )}
           </AnimatePresence>

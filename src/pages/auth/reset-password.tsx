@@ -76,7 +76,7 @@ const ResetPasswordPage = () => {
       ).unwrap();
 
       toast.success('Password reset successfully! Please sign in with your new password.');
-      navigate('/signin');
+      navigate('/login');
     } catch (error: any) {
       toast.error(error || 'Failed to reset password. The link may have expired.');
     }
@@ -191,7 +191,7 @@ const ResetPasswordPage = () => {
 
             <div className="text-center">
               <Link
-                to="/signin"
+                to="/login"
                 className="inline-flex items-center gap-2 text-sm font-medium text-on-surface-variant hover:text-brand-500 transition-colors"
               >
                 Sign In

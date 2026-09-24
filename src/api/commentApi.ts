@@ -75,7 +75,7 @@ export const getCommentById = async (commentId: string): Promise<CommentResponse
 };
 
 export const getCommentsByUserType = async (
-  userType: 'customer' | 'consultant' | 'team_member',
+  userType: 'customer' | 'employee',
   params?: { page?: number; limit?: number }
 ): Promise<CommentsResponse> => {
   const response = await api.get<CommentsResponse>(

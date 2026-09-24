@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppSelector } from '@/redux/hooks/hooks';
+import { useAccess } from '@/redux/hooks/useAccess';
 import { getTaskStats } from '@/api/tasksApi';
 import { fetchDepartments } from '@/redux/slices/departmentSlice';
 import { useAppDispatch } from '@/redux/hooks/hooks';
@@ -156,8 +157,8 @@ export default function TasksDashboard() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { departments } = useAppSelector((s) => s.departments);
-  const { consultantDepartment, consultantRole } = useAppSelector((s) => s.auth);
-  const isAdmin = consultantRole === 'admin';
+  const { consultantDepartment, user } = useAppSelector((s) => s.auth);
+  const { isAdmin } = useAccess();
 
   const [stats, setStats] = useState<TaskStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -186,7 +187,7 @@ export default function TasksDashboard() {
     [stats],
   );
 
-  const deptName = departments.find((d) => d._id === consultantDepartment)?.name ?? consultantDepartment;
+  const deptName = (user as any)?.department?.name ?? consultantDepartment;
 
   if (loading && !stats) {
     return (

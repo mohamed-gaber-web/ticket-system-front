@@ -4,6 +4,7 @@ import { SearchSelect } from '@/components/ui/search-select';
 import { weekRangeLabel } from '@/utils/weekUtils';
 import { useSearchParams } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
+import { useAccess } from '@/redux/hooks/useAccess';
 import { fetchTasks, deleteTask } from '@/redux/slices/tasksSlice';
 import { fetchDepartments } from '@/redux/slices/departmentSlice';
 import { fetchConsultants } from '@/redux/slices/consultantSlice';
@@ -65,10 +66,13 @@ export default function Tasks() {
   const navigate = useNavigate();
   const { tasks, loading, total } = useAppSelector((state) => state.tasks);
   const { departments } = useAppSelector((state) => state.departments);
-  const { consultantDepartment, consultantRole } = useAppSelector((state) => state.auth);
+  const { consultantDepartment, user } = useAppSelector((state) => state.auth);
   const { consultants } = useAppSelector((state) => state.consultants);
   const { taskCategories } = useAppSelector((state) => state.taskCategories);
-  const isAdmin = consultantRole === 'admin';
+  const { isAdmin, isManagerOrAdmin } = useAccess();
+  // Plain employees open on "my tasks"; managers and admins on the whole
+  // department. The API pins non-admins to their department either way.
+  const [mineOnly, setMineOnly] = useState(!isManagerOrAdmin);
 
   const [searchParams] = useSearchParams();
   const [search, setSearch] = useState('');
@@ -100,8 +104,8 @@ export default function Tasks() {
     const params: any = { ...extra };
     if (search) params.search = search;
     if (statusFilter) params.status = statusFilter;
-    if (deptFilter) params.department = deptFilter;
-    else if (!isAdmin && consultantDepartment) params.department = consultantDepartment;
+    if (isAdmin && deptFilter) params.department = deptFilter;
+    if (mineOnly) params.mine = 'true';
     if (categoryFilter) params.category = categoryFilter;
     if (startDateFilter) params.startDate = startDateFilter;
     if (endDateFilter) params.endDate = endDateFilter;
@@ -110,7 +114,7 @@ export default function Tasks() {
     params.sort = sortField;
     params.order = sortOrder;
     return params;
-  }, [search, statusFilter, deptFilter, categoryFilter, startDateFilter, endDateFilter, assignedToFilter, weekFilter, sortField, sortOrder, isAdmin, consultantDepartment]);
+  }, [search, statusFilter, deptFilter, categoryFilter, startDateFilter, endDateFilter, assignedToFilter, weekFilter, sortField, sortOrder, isAdmin, mineOnly]);
 
   const load = useCallback(() => {
     dispatch(fetchTasks(buildParams({ page, limit })));
@@ -486,11 +490,22 @@ export default function Tasks() {
         <div>
           <h1 className="text-2xl font-bold text-on-surface">Tasks</h1>
           <p className="text-sm text-on-surface-variant mt-0.5">
-            {consultantDepartment && !isAdmin
-              ? `${departments.find((d) => d._id === consultantDepartment)?.name ?? consultantDepartment} department tasks`
-              : 'All department tasks'}
+            {mineOnly
+              ? 'My tasks'
+              : consultantDepartment && !isAdmin
+                ? `${(user as any)?.department?.name ?? consultantDepartment} department tasks`
+                : 'All department tasks'}
           </p>
         </div>
+        <label className="flex items-center gap-2 text-sm text-on-surface-variant cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={mineOnly}
+            onChange={(e) => setMineOnly(e.target.checked)}
+            className="h-4 w-4 rounded border-outline-variant accent-primary"
+          />
+          Only my tasks
+        </label>
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={handleExportExcel} disabled={exporting || tasks.length === 0}>
             {exporting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}

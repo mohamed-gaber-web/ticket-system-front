@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
-import { Mail, Lock, Eye, EyeOff, LogIn, Users } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, LogIn } from 'lucide-react';
 import logoSvg from '@/assets/logo.svg';
 
 const SigninPage = () => {
@@ -14,10 +14,10 @@ const SigninPage = () => {
   const navigate = useNavigate();
   const { isLoading, error, isAuthenticated, userType } = useAppSelector((state) => state.auth);
 
+  // One form for everyone — the e-mail alone tells the API which account it is
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    userType: 'customer' as 'customer' | 'consultant' | 'team_member',
   });
 
   const [showPassword, setShowPassword] = useState(false);
@@ -84,7 +84,6 @@ const SigninPage = () => {
         signin({
           email: formData.email,
           password: formData.password,
-          userType: formData.userType,
         })
       ).unwrap();
 
@@ -156,38 +155,6 @@ const SigninPage = () => {
           className="glass rounded-[1.5rem] shadow-ambient p-8"
         >
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* User Type Selection */}
-            <div className="space-y-2">
-              <label className="label-technical flex items-center gap-2">
-                <Users className="w-4 h-4 text-brand-500" />
-                Sign in as
-              </label>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setFormData(prev => ({ ...prev, userType: 'customer' }))}
-                  className={`h-12 rounded-[1rem] font-semibold text-sm transition-all duration-200 ${
-                    formData.userType === 'customer'
-                      ? 'bg-primary-fixed text-on-primary-fixed'
-                      : 'bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest'
-                  }`}
-                >
-                  Customer
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFormData(prev => ({ ...prev, userType: 'consultant' }))}
-                  className={`h-12 rounded-[1rem] font-semibold text-sm transition-all duration-200 ${
-                    formData.userType === 'consultant'
-                      ? 'bg-primary-fixed text-on-primary-fixed'
-                      : 'bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest'
-                  }`}
-                >
-                  Consultant
-                </button>
-              </div>
-            </div>
-
             {/* Email Field */}
             <div className="space-y-2">
               <label htmlFor="email" className="label-technical flex items-center gap-2">
@@ -306,6 +273,17 @@ const SigninPage = () => {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
           className="text-center text-sm text-on-surface-variant mt-6"
+        >
+          New customer?{' '}
+          <Link to="/signup" className="font-medium text-brand-500 hover:text-brand-600 transition-colors">
+            Create a customer account
+          </Link>
+        </motion.p>
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.55 }}
+          className="text-center text-xs text-on-surface-variant mt-3"
         >
           By signing in, you agree to our Terms of Service and Privacy Policy
         </motion.p>

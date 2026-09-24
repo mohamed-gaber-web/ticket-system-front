@@ -49,7 +49,7 @@ export default function ProjectTickets() {
   const { categories }   = useAppSelector((s) => s.categories);
   const { customizedSolutions } = useAppSelector((s) => s.customizedSolutions);
 
-  const isConsultant = userType === 'consultant';
+  const isConsultant = userType === 'employee';
   const isCustomer   = userType === 'customer';
 
   const projectId = serviceTypes?.find((s) => s.name.toLowerCase() === 'project')?._id;

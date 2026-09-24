@@ -3,17 +3,19 @@ import { SidebarDesktop } from "../Sidebar-components/sidebar-desktop";
 import { useState } from "react";
 import { SidebarMobile } from "../Sidebar-components/sidebar-mobile";
 import { Button } from "@/components/ui/button";
-import { getRouterLinksByUserType } from "@/constatnts/app.constant";
+import { getRouterLinks } from "@/constatnts/app.constant";
 import { useAppSelector } from "@/redux/hooks/hooks";
+import { useAccess } from "@/redux/hooks/useAccess";
 
 export default function Sidebar() {
     const [isOpen, setIsOpen] = useState(true);
     const [isMobileOpen, setIsMobileOpen] = useState(false);
-    const { userType, customerRole, user, consultantDepartment } = useAppSelector((state) => state.auth);
+    const { customerRole } = useAppSelector((state) => state.auth);
+    const access = useAccess();
 
-    // Filter links based on user type (and customer role for company_admin, and role for tele_sales)
-    const userRole = (user as any)?.role ?? null;
-    const links = getRouterLinksByUserType(userType, customerRole, userRole, consultantDepartment);
+    // Customers get the portal links; employees get every group their modules
+    // and rank unlock (see EMPLOYEE_NAV in app.constant.ts).
+    const links = getRouterLinks(access, customerRole);
 
     return (
         <>

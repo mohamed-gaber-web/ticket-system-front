@@ -27,7 +27,7 @@ import {
   Target,
   Globe,
 } from 'lucide-react';
-import { isSuperAdmin, ownTeamName } from '@/lib/teleSalesRole';
+import { isCrossTeamReader, ownTeamName } from '@/lib/teleSalesRole';
 
 /* ─────────────────────────────────────────────────────────────
    Spring presets — matches the main Tickets dashboard's motion language.
@@ -211,11 +211,11 @@ export default function TeleSalesDashboard() {
               reading these totals as company-wide. */}
           <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-primary/10 text-primary">
             <Globe className="w-3 h-3" />
-            {isSuperAdmin(user) ? 'All teams' : ownTeamName(user)}
+            {isCrossTeamReader(user) ? 'All teams' : ownTeamName(user)}
           </span>
         </div>
         <p className="text-on-surface-variant text-sm mt-1">
-          {isSuperAdmin(user)
+          {isCrossTeamReader(user)
             ? "Here's the TeleSales overview across every team"
             : "Here's your team's TeleSales overview"}
         </p>

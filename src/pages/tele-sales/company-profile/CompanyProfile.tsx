@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Building2, Globe, Mail, Phone, MapPin, MessageCircle, Save, Info } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchCompanySettings, updateCompanySettings } from '@/redux/slices/salesAssistantSlice';
-import { isSuperAdmin } from '@/lib/teleSalesRole';
+import { isSystemAdmin } from '@/lib/teleSalesRole';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -30,7 +30,8 @@ export default function CompanyProfile() {
   const dispatch = useAppDispatch();
   const { companySettings, companySettingsLoading } = useAppSelector((s) => s.salesAssistant);
   const user = useAppSelector((s) => s.auth.user);
-  const isAdmin = isSuperAdmin(user);
+  // Catalog writes are admin-only on the API
+  const isAdmin = isSystemAdmin(user);
   const [form, setForm] = useState<CompanySettingsInput>(emptyForm());
   const [dirty, setDirty] = useState(false);
 

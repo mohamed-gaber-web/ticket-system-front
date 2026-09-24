@@ -1,8 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
+import { useAccess } from '@/redux/hooks/useAccess';
+import { ROLES, ROLE_LABELS, roleFamily, isManagerRole, roleLabel, holdsPrivilegedModule } from '@/lib/access';
+import type { EmployeeRole } from '@/types/auth.types';
 import { fetchConsultants, deleteConsultant, adminResetConsultantPassword, updateConsultant } from '@/redux/slices/consultantSlice';
 import { fetchDepartments } from '@/redux/slices/departmentSlice';
+import { fetchTeams } from '@/redux/slices/teleSalesTeamsSlice';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Search, RefreshCw, Edit, Trash2, ChevronLeft, ChevronRight, KeyRound, Timer } from 'lucide-react';
@@ -11,6 +15,7 @@ import { cn } from '@/lib/utils';
 import Swal from 'sweetalert2';
 import AdminChangePasswordDialog from '@/components/admin/AdminChangePasswordDialog';
 import { getTickets } from '@/api/ticketApi';
+import { EMPLOYEE_CREATE_PATH, EMPLOYEE_STATUS_OPTIONS, employeeEditPath, employeeViewPath } from '@/lib/hr';
 
 const PAGE_SIZE = 10;
 
@@ -19,19 +24,34 @@ export default function Consultants() {
   const dispatch = useAppDispatch();
   const { consultants, loading, total, pages } = useAppSelector((state) => state.consultants);
   const { departments } = useAppSelector((state) => state.departments);
-  const { consultantRole } = useAppSelector((state) => state.auth);
-  const isAdmin = consultantRole === 'admin';
+  const { teams } = useAppSelector((state) => state.teleSalesTeams);
+  const access = useAccess();
+  // The team list is readable by HR, admins and tele-sales staff only
+  const canSeeTeams = access.isHr || access.hasModule('telesales');
+  const isAdmin = access.isAdmin;
+  // Same rule as the API's canManageEmployee: admins anyone; nobody else an
+  // account holding HR/admin access; HR anyone else but themselves; managers
+  // the plain employees of their own family.
+  const selfId = useAppSelector((state) => (state.auth.user as { _id?: string } | null)?._id);
+  const canManage = (c: { _id: string; role: string; modules?: string[] }) =>
+    isAdmin ||
+    (!holdsPrivilegedModule(c.role, c.modules) &&
+      access.isHr && c.role !== 'admin' && c._id !== selfId) ||
+    (!holdsPrivilegedModule(c.role, c.modules) &&
+      access.isManager && roleFamily(c.role) === access.family && !isManagerRole(c.role) && c.role !== 'admin');
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [deptFilter, setDeptFilter] = useState('');
+  const [teamFilter, setTeamFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [passwordTarget, setPasswordTarget] = useState<{ id: string; name: string } | null>(null);
   const [actualHoursMap, setActualHoursMap] = useState<Record<string, number>>({});
 
   useEffect(() => {
     dispatch(fetchDepartments({ isActive: true, limit: 999 } as any));
+    if (canSeeTeams) dispatch(fetchTeams(undefined));
     loadConsultants(1);
   }, []);
 
@@ -58,6 +78,7 @@ export default function Consultants() {
     if (statusFilter) params.status = statusFilter;
     if (roleFilter) params.role = roleFilter;
     if (deptFilter) params.department = deptFilter;
+    if (teamFilter) params.teleSalesTeam = teamFilter;
     setCurrentPage(page);
     dispatch(fetchConsultants(params));
   };
@@ -88,6 +109,7 @@ export default function Consultants() {
     setStatusFilter('');
     setRoleFilter('');
     setDeptFilter('');
+    setTeamFilter('');
     setCurrentPage(1);
     dispatch(fetchConsultants({ page: 1, limit: PAGE_SIZE }));
   };
@@ -96,11 +118,19 @@ export default function Consultants() {
     active: 'bg-green-100 text-green-800 border-green-200',
     inactive: 'bg-red-100 text-red-800 border-red-200',
     on_leave: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+    resigned: 'bg-slate-100 text-slate-700 border-slate-200',
+    terminated: 'bg-red-100 text-red-800 border-red-200',
   };
 
-  const ROLE_STYLES = {
+  const ROLE_STYLES: Record<string, string> = {
     admin: 'bg-accent-orange-100 text-purple-800 border-accent-orange-200',
     consultant: 'bg-surface-container-high text-on-surface border-surface-container-high',
+    sales: 'bg-blue-100 text-blue-800 border-blue-200',
+    sales_manager: 'bg-amber-100 text-amber-800 border-amber-200',
+    marketing: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+    marketing_manager: 'bg-amber-100 text-amber-800 border-amber-200',
+    developer: 'bg-cyan-100 text-cyan-800 border-cyan-200',
+    developer_manager: 'bg-amber-100 text-amber-800 border-amber-200',
   };
 
   const DEPT_STYLES: Record<string, string> = {
@@ -116,9 +146,7 @@ export default function Consultants() {
   const getDeptStyle = (dept: any): string =>
     DEPT_STYLES[(getDeptName(dept) || '').toLowerCase()] ?? 'bg-surface-container text-on-surface-variant border-outline-variant';
 
-  const formatRole = (role: string) => {
-    return role.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-  };
+  const formatRole = (role: string) => roleLabel(role) || role;
 
   const formatStatus = (status: string) => {
     return status.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase());
@@ -129,23 +157,23 @@ export default function Consultants() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="display-sm text-on-surface">Consultants</h1>
-          <p className="text-on-surface-variant mt-1">Manage consultant accounts and permissions</p>
+          <h1 className="display-sm text-on-surface">Employees</h1>
+          <p className="text-on-surface-variant mt-1">Manage employee accounts, roles and module access</p>
         </div>
-        {isAdmin && (
-          <Button onClick={() => navigate('/consultants/create')}>
+        {access.canManageEmployees && (
+          <Button onClick={() => navigate(EMPLOYEE_CREATE_PATH)}>
             <Plus className="w-4 h-4 mr-2" />
-            Add Consultant
+            Add Employee
           </Button>
         )}
       </div>
 
       {/* Filters */}
       <div className="bg-surface-container-lowest rounded-[1rem] p-4">
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div className={cn('grid grid-cols-1 gap-4', canSeeTeams ? 'md:grid-cols-6' : 'md:grid-cols-5')}>
           <div className="md:col-span-2">
             <Input
-              placeholder="Search by name or email..."
+              placeholder="Search by name, email or employee code..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
@@ -156,12 +184,7 @@ export default function Consultants() {
             value={statusFilter}
             onChange={setStatusFilter}
             label="Status"
-            options={[
-              { value: '', label: 'All' },
-              { value: 'active', label: 'Active' },
-              { value: 'inactive', label: 'Inactive' },
-              { value: 'on_leave', label: 'On Leave' },
-            ]}
+            options={[{ value: '', label: 'All' }, ...EMPLOYEE_STATUS_OPTIONS]}
           />
           <CustomSelect
             variant="filter"
@@ -170,8 +193,7 @@ export default function Consultants() {
             label="Role"
             options={[
               { value: '', label: 'All' },
-              { value: 'consultant', label: 'Consultant' },
-              { value: 'admin', label: 'Admin' },
+              ...ROLES.map((r) => ({ value: r, label: ROLE_LABELS[r] })),
             ]}
           />
           <CustomSelect
@@ -184,6 +206,18 @@ export default function Consultants() {
               ...departments.map((d) => ({ value: d._id, label: d.name })),
             ]}
           />
+          {canSeeTeams && (
+            <CustomSelect
+              variant="filter"
+              value={teamFilter}
+              onChange={setTeamFilter}
+              label="Team"
+              options={[
+                { value: '', label: 'All' },
+                ...teams.map((t) => ({ value: t._id, label: t.name })),
+              ]}
+            />
+          )}
         </div>
         <div className="flex gap-2 mt-4">
           <Button onClick={handleSearch} size="sm">
@@ -205,7 +239,7 @@ export default function Consultants() {
           </div>
         ) : consultants.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-on-surface-variant">No consultants found</p>
+            <p className="text-on-surface-variant">No employees found</p>
           </div>
         ) : (
           <>
@@ -214,22 +248,28 @@ export default function Consultants() {
                 <thead className="bg-surface-container-low">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase tracking-wider">
+                      Code
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase tracking-wider">
                       Full Name
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase tracking-wider">
                       Email
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase tracking-wider">
-                      Position
+                      Job Title
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase tracking-wider">
-                      Phone
+                      Mobile
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase tracking-wider">
                       Role
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase tracking-wider">
                       Department
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase tracking-wider">
+                      Team
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase tracking-wider">
                       Status
@@ -240,7 +280,7 @@ export default function Consultants() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase tracking-wider">
                       Target / Month
                     </th>
-                    {isAdmin && (
+                    {access.canManageEmployees && (
                       <th className="px-6 py-3 text-center text-xs font-medium text-on-surface-variant uppercase tracking-wider">
                         Actions
                       </th>
@@ -251,9 +291,18 @@ export default function Consultants() {
                   {consultants.map((consultant) => (
                     <tr key={consultant._id} className="hover:bg-surface-container-low">
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-on-surface">
+                        <span className="text-xs font-mono text-on-surface-variant">
+                          {consultant.employeeCode || <span className="text-on-surface-variant/40">&mdash;</span>}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <button
+                          type="button"
+                          onClick={() => navigate(employeeViewPath(consultant._id))}
+                          className="text-sm font-medium text-on-surface hover:text-primary hover:underline"
+                        >
                           {consultant.fullName}
-                        </div>
+                        </button>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-on-surface-variant">{consultant.email}</div>
@@ -273,23 +322,24 @@ export default function Consultants() {
                           <select
                             value={consultant.role}
                             onChange={async (e) => {
-                              const newRole = e.target.value as 'consultant' | 'admin';
+                              const newRole = e.target.value as EmployeeRole;
                               await dispatch(updateConsultant({ id: consultant._id, data: { role: newRole } }));
                               loadConsultants(currentPage);
                             }}
                             className={cn(
                               'px-2 py-1 text-xs font-medium rounded-md border cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-500/30 transition-colors',
-                              ROLE_STYLES[consultant.role as keyof typeof ROLE_STYLES]
+                              ROLE_STYLES[consultant.role] ?? ROLE_STYLES.consultant
                             )}
                           >
-                            <option value="consultant">Consultant</option>
-                            <option value="admin">Admin</option>
+                            {ROLES.map((r) => (
+                              <option key={r} value={r}>{ROLE_LABELS[r]}</option>
+                            ))}
                           </select>
                         ) : (
                           <span
                             className={cn(
                               'px-2 py-1 text-xs font-medium rounded-md border',
-                              ROLE_STYLES[consultant.role as keyof typeof ROLE_STYLES]
+                              ROLE_STYLES[consultant.role] ?? ROLE_STYLES.consultant
                             )}
                           >
                             {formatRole(consultant.role)}
@@ -325,6 +375,19 @@ export default function Consultants() {
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
+                        {consultant.teleSalesTeam && typeof consultant.teleSalesTeam === 'object' ? (
+                          <span className="px-2 py-1 text-xs font-medium rounded-md border bg-blue-50 text-blue-800 border-blue-200">
+                            {consultant.teleSalesTeam.name}
+                          </span>
+                        ) : consultant.role === 'sales' ? (
+                          <span className="text-xs font-medium text-amber-700" title="A sales employee without a team sees no leads">
+                            No team
+                          </span>
+                        ) : (
+                          <span className="text-on-surface-variant/40 text-sm">&mdash;</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
                         <span
                           className={cn(
                             'px-2 py-1 text-xs font-medium rounded-md border',
@@ -355,14 +418,15 @@ export default function Consultants() {
                           <span className="text-on-surface-variant/40 text-sm">&mdash;</span>
                         )}
                       </td>
-                      {isAdmin && (
+                      {access.canManageEmployees && (
                         <td className="px-6 py-4 whitespace-nowrap text-center">
+                          {canManage(consultant) && (
                           <div className="flex items-center justify-center gap-1">
                             <Button
                               size="icon"
                               variant="ghost"
                               title="Edit"
-                              onClick={() => navigate(`/consultants/edit/${consultant._id}`)}
+                              onClick={() => navigate(employeeEditPath(consultant._id))}
                             >
                               <Edit className="w-4 h-4" />
                             </Button>
@@ -375,16 +439,20 @@ export default function Consultants() {
                             >
                               <KeyRound className="w-4 h-4" />
                             </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              title="Delete"
-                              className="text-error hover:text-error/80"
-                              onClick={() => handleDelete(consultant._id, consultant.fullName)}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+                            {/* Deleting is admin-only on the API */}
+                            {isAdmin && (
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                title="Delete"
+                                className="text-error hover:text-error/80"
+                                onClick={() => handleDelete(consultant._id, consultant.fullName)}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            )}
                           </div>
+                          )}
                         </td>
                       )}
                     </tr>
@@ -394,7 +462,7 @@ export default function Consultants() {
             </div>
             <div className="bg-surface-container-low px-6 py-3 flex items-center justify-between">
               <p className="text-sm text-on-surface-variant">
-                Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, total)} of {total} consultants
+                Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, total)} of {total} employees
               </p>
               {pages > 1 && (
                 <div className="flex items-center gap-1">

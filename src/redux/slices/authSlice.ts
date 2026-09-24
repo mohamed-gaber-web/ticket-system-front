@@ -24,34 +24,49 @@ const getUserFromLocalStorage = () => {
   return null;
 };
 
-const getConsultantRoleFromStorage = (): AuthState['consultantRole'] => {
-  const userType = localStorage.getItem('userType');
-  if (userType !== 'consultant') return null;
-  const role = getUserFromLocalStorage()?.role;
-  return (role as AuthState['consultantRole']) ?? null;
-};
-
 const extractDeptName = (dept: any): AuthState['consultantDepartment'] => {
   if (!dept) return null;
   const name = typeof dept === 'object' ? dept.name : dept;
-  return name ? (String(name).toLowerCase() as AuthState['consultantDepartment']) : null;
+  return name ? String(name).toLowerCase() : null;
 };
 
-const getConsultantDepartmentFromStorage = (): AuthState['consultantDepartment'] => {
-  const userType = localStorage.getItem('userType');
-  if (userType !== 'consultant') return null;
-  return extractDeptName(getUserFromLocalStorage()?.department);
+/**
+ * The per-type fields derived from a user document. One place, used by every
+ * fulfilled case below and by the boot-from-storage path, so they can never
+ * disagree.
+ */
+const deriveRoleFields = (userType: string | null, data: any) => ({
+  customerRole: userType === 'customer' ? ((data?.role as AuthState['customerRole']) ?? null) : null,
+  consultantRole: userType === 'employee' ? ((data?.role as AuthState['consultantRole']) ?? null) : null,
+  consultantDepartment: userType === 'employee' ? extractDeptName(data?.department) : null,
+  modules: (userType === 'employee' && Array.isArray(data?.modules) ? data.modules : []) as AuthState['modules'],
+});
+
+const clearStoredSession = () => {
+  localStorage.removeItem('token');
+  localStorage.removeItem('refreshToken');
+  localStorage.removeItem('userType');
+  localStorage.removeItem('user');
+  localStorage.removeItem('lastActivity');
 };
+
+// A session stored by an older build says "consultant" / "tele_sales"; it has
+// to be dropped so the user signs in again and gets the new shape.
+const storedUserType = localStorage.getItem('userType');
+if (storedUserType && storedUserType !== 'employee' && storedUserType !== 'customer') {
+  clearStoredSession();
+}
+
+const bootUserType = (localStorage.getItem('userType') as AuthState['userType']) || null;
+const bootUser = getUserFromLocalStorage();
 
 // Initial state
 const initialState: AuthState = {
-  user: getUserFromLocalStorage(),
+  user: bootUser,
   token: localStorage.getItem('token'),
   refreshToken: localStorage.getItem('refreshToken'),
-  userType: (localStorage.getItem('userType') as AuthState['userType']) || null,
-  customerRole: (getUserFromLocalStorage()?.role as AuthState['customerRole']) ?? null,
-  consultantRole: getConsultantRoleFromStorage(),
-  consultantDepartment: getConsultantDepartmentFromStorage(),
+  userType: bootUserType,
+  ...deriveRoleFields(bootUserType, bootUser),
   isAuthenticated: !!localStorage.getItem('token'),
   isLoading: false,
   error: null,
@@ -119,22 +134,11 @@ export const signout = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       await authApi.signout();
-
-      // Clear localStorage
-      localStorage.removeItem('token');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('userType');
-      localStorage.removeItem('user');
-      localStorage.removeItem('lastActivity');
-
+      clearStoredSession();
       return null;
     } catch (error: any) {
       // Even if API call fails, clear local storage
-      localStorage.removeItem('token');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('userType');
-      localStorage.removeItem('user');
-      localStorage.removeItem('lastActivity');
+      clearStoredSession();
 
       return rejectWithValue(
         error.response?.data?.message || 'Failed to signout.'
@@ -254,13 +258,10 @@ const authSlice = createSlice({
       state.customerRole = null;
       state.consultantRole = null;
       state.consultantDepartment = null;
+      state.modules = [];
       state.isAuthenticated = false;
       state.error = null;
-      localStorage.removeItem('token');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('userType');
-      localStorage.removeItem('user');
-      localStorage.removeItem('lastActivity');
+      clearStoredSession();
     },
   },
   extraReducers: (builder) => {
@@ -276,9 +277,7 @@ const authSlice = createSlice({
         state.token = action.payload.token;
         state.refreshToken = action.payload.refreshToken || null;
         state.userType = action.payload.userType;
-        state.customerRole = action.payload.userType === 'customer' ? ((action.payload.data as any)?.role ?? null) : null;
-        state.consultantRole = action.payload.userType === 'consultant' ? ((action.payload.data as any)?.role ?? null) : null;
-        state.consultantDepartment = action.payload.userType === 'consultant' ? extractDeptName((action.payload.data as any)?.department) : null;
+        Object.assign(state, deriveRoleFields(action.payload.userType, action.payload.data));
         state.isAuthenticated = true;
         state.error = null;
       })
@@ -299,9 +298,7 @@ const authSlice = createSlice({
         state.token = action.payload.token;
         state.refreshToken = action.payload.refreshToken || null;
         state.userType = action.payload.userType;
-        state.customerRole = action.payload.userType === 'customer' ? ((action.payload.data as any)?.role ?? null) : null;
-        state.consultantRole = action.payload.userType === 'consultant' ? ((action.payload.data as any)?.role ?? null) : null;
-        state.consultantDepartment = action.payload.userType === 'consultant' ? extractDeptName((action.payload.data as any)?.department) : null;
+        Object.assign(state, deriveRoleFields(action.payload.userType, action.payload.data));
         state.isAuthenticated = true;
         state.error = null;
       })
@@ -324,6 +321,7 @@ const authSlice = createSlice({
         state.customerRole = null;
         state.consultantRole = null;
         state.consultantDepartment = null;
+        state.modules = [];
         state.isAuthenticated = false;
         state.error = null;
       })
@@ -336,6 +334,7 @@ const authSlice = createSlice({
         state.customerRole = null;
         state.consultantRole = null;
         state.consultantDepartment = null;
+        state.modules = [];
         state.isAuthenticated = false;
         state.error = action.payload as string;
       });
@@ -350,9 +349,7 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.user = action.payload.data;
         state.userType = action.payload.userType;
-        state.customerRole = action.payload.userType === 'customer' ? ((action.payload.data as any)?.role ?? null) : null;
-        state.consultantRole = action.payload.userType === 'consultant' ? ((action.payload.data as any)?.role ?? null) : null;
-        state.consultantDepartment = action.payload.userType === 'consultant' ? extractDeptName((action.payload.data as any)?.department) : null;
+        Object.assign(state, deriveRoleFields(action.payload.userType, action.payload.data));
         state.error = null;
 
         // Update user data in localStorage when profile is fetched
@@ -373,9 +370,7 @@ const authSlice = createSlice({
       .addCase(updateProfile.fulfilled, (state, action) => {
         state.isLoading = false;
         state.user = action.payload.data;
-        state.customerRole = state.userType === 'customer' ? ((action.payload.data as any)?.role ?? null) : null;
-        state.consultantRole = state.userType === 'consultant' ? ((action.payload.data as any)?.role ?? null) : null;
-        state.consultantDepartment = state.userType === 'consultant' ? extractDeptName((action.payload.data as any)?.department) : null;
+        Object.assign(state, deriveRoleFields(state.userType, action.payload.data));
         state.error = null;
 
         // Update user data in localStorage when profile is updated

@@ -20,6 +20,11 @@ export default defineConfig(({ mode }) => {
 
   return {
   plugins: [react(), tailwindcss()],
+  // Pre-bundle deps that only lazy-loaded routes import, so Vite never has to
+  // re-optimize (and reload with mismatched chunks) the first time a route opens.
+  optimizeDeps: {
+    include: ['@dnd-kit/core', '@dnd-kit/sortable', '@dnd-kit/utilities', '@radix-ui/react-dialog'],
+  },
   server: {
     proxy: {
       '/api': {
@@ -52,6 +57,7 @@ export default defineConfig(({ mode }) => {
           'vendor-redux': ['@reduxjs/toolkit', 'react-redux'],
           'vendor-charts': ['recharts'],
           'vendor-motion': ['framer-motion'],
+          'vendor-dnd': ['@dnd-kit/core', '@dnd-kit/sortable', '@dnd-kit/utilities'],
           'vendor-pdf': ['jspdf', 'jspdf-autotable', 'html2canvas'],
           'vendor-xlsx': ['xlsx'],
           'vendor-alerts': ['sweetalert2', 'sweetalert2-react-content'],

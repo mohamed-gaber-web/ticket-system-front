@@ -2,34 +2,32 @@ import { useAppSelector, useAppDispatch } from './hooks';
 import { signout } from '@/redux/slices/authSlice';
 import { useNavigate } from 'react-router-dom';
 import { disconnectSocket } from '@/lib/socket';
+import { useAccess } from './useAccess';
 
 /**
  * Custom hook for authentication
- * Provides auth state and helper functions
+ * Provides auth state and helper functions. Role/module questions live in
+ * useAccess(); the common ones are re-exposed here for convenience.
  */
 export const useAuth = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const auth = useAppSelector((state) => state.auth);
+  const access = useAccess();
 
   const logout = async () => {
-    const isTeleSales = auth.userType === 'tele_sales';
     disconnectSocket();
     await dispatch(signout());
-    navigate(isTeleSales ? '/tele-sales/login' : '/signin');
+    navigate('/login');
   };
-
-  const isCustomer = auth.userType === 'customer';
-  const isConsultant = auth.userType === 'consultant';
-  const isTeamMember = auth.userType === 'team_member';
-  const isAdmin = auth.consultantRole === 'admin';
 
   return {
     ...auth,
     logout,
-    isCustomer,
-    isConsultant,
-    isTeamMember,
-    isAdmin,
+    isCustomer: access.isCustomer,
+    isEmployee: access.isEmployee,
+    isAdmin: access.isAdmin,
+    isManager: access.isManager,
+    hasModule: access.hasModule,
   };
 };
