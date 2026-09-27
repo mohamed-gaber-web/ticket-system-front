@@ -109,6 +109,7 @@ export type EmployeeDocumentType =
   | 'insurance_record'
   | 'cv'
   | 'personal_photo'
+  | 'laptop_photo'
   | 'other';
 
 export interface DocumentTypeDef {
@@ -120,6 +121,10 @@ export interface DocumentTypeDef {
   required?: boolean;
   /** Offer an expiry date (ID cards, certificates that lapse). */
   expires?: boolean;
+  /** Accept images only (photos of company assets). */
+  imagesOnly?: boolean;
+  /** Uploaded from another form section instead of the Documents grid. */
+  asset?: boolean;
 }
 
 export const DOCUMENT_TYPES: DocumentTypeDef[] = [
@@ -131,8 +136,12 @@ export const DOCUMENT_TYPES: DocumentTypeDef[] = [
   { value: 'insurance_record', label: 'Social Insurance Record', labelAr: 'برنت التأمينات' },
   { value: 'cv', label: 'CV', labelAr: 'السيرة الذاتية' },
   { value: 'personal_photo', label: 'Personal Photos', labelAr: 'صور شخصية' },
+  { value: 'laptop_photo', label: 'Laptop Photo', labelAr: 'صورة اللابتوب', imagesOnly: true, asset: true },
   { value: 'other', label: 'Other Documents', labelAr: 'مستندات أخرى' },
 ];
+
+/** The scanned papers shown in the form's Documents section (asset photos live with their asset). */
+export const PAPER_DOCUMENT_TYPES = DOCUMENT_TYPES.filter((t) => !t.asset).map((t) => t.value);
 
 /** Upload limits — keep in step with employeeDocumentController.js. */
 export const DOCUMENT_MAX_BYTES = 10 * 1024 * 1024;
@@ -149,7 +158,8 @@ const DOCUMENT_MIME = new Set([
 ]);
 
 /** Why a file cannot be uploaded, or null when it can. */
-export const documentFileProblem = (file: File): string | null => {
+export const documentFileProblem = (file: File, def?: Pick<DocumentTypeDef, 'imagesOnly'>): string | null => {
+  if (def?.imagesOnly && !file.type.startsWith('image/')) return `${file.name}: only images are allowed here`;
   if (!DOCUMENT_MIME.has(file.type)) return `${file.name}: only PDF, images and Word files are allowed`;
   if (file.size > DOCUMENT_MAX_BYTES) return `${file.name}: larger than 10 MB`;
   return null;

@@ -11,16 +11,21 @@ export const HR_TEXT_KEYS = [
   'hiringSource', 'recruiterName', 'applicationDate', 'interviewDate', 'interviewResult',
   'section', 'directManager', 'hireDate',
   'contractType', 'contractEndDate',
-  'salaryPaymentMethod', 'bankName', 'bankAccount', 'notes',
+  'salaryPaymentMethod', 'bankName', 'bankAccount',
+  'medicalStartDate', 'medicalEndDate', 'notes',
 ] as const;
 export const HR_NUMBER_KEYS = [
   'contractDurationMonths', 'probationPeriodMonths',
   'basicSalary', 'grossSalary', 'netSalary',
   'insuranceWage', 'employeeInsuranceShare', 'employerInsuranceShare',
 ] as const;
-const HR_DATE_KEYS = new Set(['dateOfBirth', 'applicationDate', 'interviewDate', 'hireDate', 'contractEndDate']);
+/** Yes/no answers, kept as 'yes' | 'no' | '' ('' = not answered yet). */
+export const HR_BOOL_KEYS = ['hasSocialInsurance', 'hasMedicalInsurance', 'hasCompanyLine', 'hasLaptop', 'uberSubscriber'] as const;
+/** Shown as checkboxes: unchecked means "no", never "not answered". */
+const CHECKBOX_KEYS = new Set<string>(['hasCompanyLine', 'hasLaptop', 'uberSubscriber']);
+const HR_DATE_KEYS = new Set(['dateOfBirth', 'applicationDate', 'interviewDate', 'hireDate', 'contractEndDate', 'medicalStartDate', 'medicalEndDate']);
 
-export type HrKey = (typeof HR_TEXT_KEYS)[number] | (typeof HR_NUMBER_KEYS)[number];
+export type HrKey = (typeof HR_TEXT_KEYS)[number] | (typeof HR_NUMBER_KEYS)[number] | (typeof HR_BOOL_KEYS)[number];
 export type HrValues = Record<HrKey, string>;
 
 export interface EmployeeFormValues {
@@ -42,7 +47,7 @@ export interface EmployeeFormValues {
 }
 
 const emptyHr = (): HrValues =>
-  Object.fromEntries([...HR_TEXT_KEYS, ...HR_NUMBER_KEYS].map((k) => [k, ''])) as HrValues;
+  Object.fromEntries([...HR_TEXT_KEYS, ...HR_NUMBER_KEYS, ...HR_BOOL_KEYS].map((k) => [k, ''])) as HrValues;
 
 export const emptyEmployeeForm = (role: EmployeeRole): EmployeeFormValues => ({
   employeeCode: '',
@@ -76,6 +81,14 @@ export const employeeToForm = (c: Consultant): EmployeeFormValues => {
   for (const k of HR_NUMBER_KEYS) {
     const v = file[k];
     hr[k] = v == null ? '' : String(v);
+  }
+  for (const k of HR_BOOL_KEYS) {
+    const v = file[k];
+    hr[k] = v === true ? 'yes' : v === false ? 'no' : '';
+  }
+  // Files saved before the insurance switch existed: insured if amounts were recorded
+  if (!hr.hasSocialInsurance && (Number(hr.insuranceWage) > 0 || hr.employeeInsuranceShare || hr.employerInsuranceShare)) {
+    hr.hasSocialInsurance = 'yes';
   }
   return {
     employeeCode: c.employeeCode ?? '',
@@ -118,9 +131,20 @@ export const formToPayload = (v: EmployeeFormValues, withHr: boolean): UpdateCon
     profilePicture: v.profilePicture,
   };
   if (withHr) {
-    const hr: Record<string, string | number | null> = {};
+    const hr: Record<string, string | number | boolean | null> = {};
     for (const k of HR_TEXT_KEYS) hr[k] = v.hr[k].trim() === '' ? null : v.hr[k].trim();
     for (const k of HR_NUMBER_KEYS) hr[k] = num(v.hr[k]);
+    const bools: Record<string, boolean | null> = {};
+    for (const k of HR_BOOL_KEYS) {
+      const a = v.hr[k];
+      bools[k] = a === 'yes' ? true : a === 'no' || CHECKBOX_KEYS.has(k) ? false : null;
+    }
+    // Dates only mean something while covered (the API clears them on "no" too)
+    if (!bools.hasMedicalInsurance) {
+      hr.medicalStartDate = null;
+      hr.medicalEndDate = null;
+    }
+    Object.assign(hr, bools);
     payload.employeeCode = v.employeeCode.trim();
     payload.hr = hr as EmployeeHrFile;
   }

@@ -63,8 +63,11 @@ mirrors it so the sidebar, guards and buttons agree.
 
 The employee directory lives at `/hr/employees` (old `/consultants`, `/consultants/create|edit|view` redirect).
 Create and edit share `src/components/employees/EmployeeForm.tsx` — sections that follow the HR employee sheet,
-with the confidential ones (personal, recruitment, contract, payroll, insurance, notes) shown only when
-`useAccess().isHr` (admin or the `hr` module). Form ⇄ API mapping is in `employeeFormModel.ts`; option lists,
+with the confidential ones (personal, recruitment, contract, payroll, insurance, medical, subscriptions, notes) shown only when
+`useAccess().isHr` (admin or the `hr` module). Yes/no answers (`hasSocialInsurance`, `hasMedicalInsurance`,
+`hasCompanyLine`, `hasLaptop`, `uberSubscriber`) are held in the form as `'yes' | 'no' | ''`; a "no" hides and
+clears the fields it gates (the API clears them too). The laptop photo is the HR document type `laptop_photo`
+(`asset: true` in `DOCUMENT_TYPES`), uploaded from the Subscriptions section rather than the Documents grid. Form ⇄ API mapping is in `employeeFormModel.ts`; option lists,
 paths and insurance rates in `src/lib/hr.ts` (keep the enums in step with `HR_ENUMS` in the backend model).
 `EmployeeHrFilePanel` renders the file read-only on the profile page — only when the API sent `hr`.
 `EmployeeDocuments` is the per-type document upload grid (profile + edit upload immediately; the create form

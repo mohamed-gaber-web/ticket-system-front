@@ -56,10 +56,19 @@ export interface EmployeeHrFile {
   salaryPaymentMethod?: string | null;
   bankName?: string | null;
   bankAccount?: string | null;
-  // Social insurance
+  // Social insurance (null = not recorded yet)
+  hasSocialInsurance?: boolean | null;
   insuranceWage?: number | null;
   employeeInsuranceShare?: number | null;
   employerInsuranceShare?: number | null;
+  // Medical insurance
+  hasMedicalInsurance?: boolean | null;
+  medicalStartDate?: string | null;
+  medicalEndDate?: string | null;
+  // Subscriptions & company assets (laptop photo = document type "laptop_photo")
+  hasCompanyLine?: boolean | null;
+  hasLaptop?: boolean | null;
+  uberSubscriber?: boolean | null;
   notes?: string | null;
 }
 

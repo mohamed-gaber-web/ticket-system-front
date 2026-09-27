@@ -5,7 +5,9 @@ import {
   Calculator,
   FileSignature,
   FolderOpen,
+  HeartPulse,
   IdCard,
+  Laptop,
   KeyRound,
   Lock,
   Save,
@@ -17,6 +19,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import { CustomSelect } from '@/components/ui/custom-select';
 import { ConsultantSelect } from '@/components/ui/consultant-select';
 import { ProfilePictureUpload } from '@/components/ui/profile-picture-upload';
@@ -34,6 +37,7 @@ import {
   INSURANCE_RATES,
   INTERVIEW_RESULT_OPTIONS,
   MARITAL_STATUS_OPTIONS,
+  PAPER_DOCUMENT_TYPES,
   SALARY_PAYMENT_OPTIONS,
   addMonths,
   formatDate,
@@ -64,11 +68,15 @@ const SECTIONS: SectionDef[] = [
   { id: 'recruitment', title: 'Recruitment', description: 'How and when this person was hired', icon: UserSearch, confidential: true },
   { id: 'contract', title: 'Contract', description: 'Contract type, duration and probation', icon: FileSignature, confidential: true },
   { id: 'payroll', title: 'Payroll', description: 'Salary and how it is paid', icon: Banknote, confidential: true },
-  { id: 'insurance', title: 'Social Insurance', description: 'Insurance wage and contribution shares', icon: ShieldCheck, confidential: true },
+  { id: 'insurance', title: 'Social Insurance', description: 'Insured or not, wage and contribution shares', icon: ShieldCheck, confidential: true },
+  { id: 'medical', title: 'Medical Insurance', description: 'Medical cover and its period', icon: HeartPulse, confidential: true },
+  { id: 'subscriptions', title: 'Subscriptions', description: 'Company line, laptop and Uber', icon: Laptop, confidential: true },
   { id: 'documents', title: 'Documents', description: 'National ID, certificates and other scanned papers', icon: FolderOpen, confidential: true },
   { id: 'access', title: 'System Access', description: 'Role, modules and login', icon: KeyRound },
   { id: 'notes', title: 'Notes', description: 'Anything else HR should know', icon: StickyNote, confidential: true },
 ];
+
+const sectionDef = (id: string): SectionDef => SECTIONS.find((s) => s.id === id)!;
 
 function Section({ def, children }: { def: SectionDef; children: ReactNode }) {
   const Icon = def.icon;
@@ -120,6 +128,42 @@ function Field({
       {children}
       {error ? <p className="form-error">{error}</p> : hint ? <p className="text-xs text-on-surface-variant mt-1">{hint}</p> : null}
     </div>
+  );
+}
+
+/** A two-button Yes / No switch. '' = not answered yet (neither is pressed). */
+function YesNo({ value, onChange, label }: { value: string; onChange: (v: 'yes' | 'no') => void; label: string }) {
+  return (
+    <div role="radiogroup" aria-label={label} className="inline-flex rounded-lg bg-surface-container-high p-1 gap-1">
+      {(['yes', 'no'] as const).map((opt) => (
+        <button
+          key={opt}
+          type="button"
+          role="radio"
+          aria-checked={value === opt}
+          onClick={() => onChange(opt)}
+          className={cn(
+            'px-4 py-1.5 rounded-md text-sm font-medium transition-colors',
+            value === opt ? 'bg-primary text-primary-foreground shadow-sm' : 'text-on-surface-variant hover:text-on-surface',
+          )}
+        >
+          {opt === 'yes' ? 'Yes' : 'No'}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** A labelled checkbox row for the Subscriptions section. */
+function CheckRow({ id, label, hint, checked, onChange }: { id: string; label: string; hint?: string; checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <label htmlFor={id} className="flex items-start gap-3 cursor-pointer rounded-lg px-3 py-2.5 hover:bg-surface-container-low transition-colors">
+      <Checkbox id={id} checked={checked} onCheckedChange={(v) => onChange(v === true)} className="mt-0.5" />
+      <span>
+        <span className="block text-sm font-medium text-on-surface">{label}</span>
+        {hint && <span className="block text-xs text-on-surface-variant mt-0.5">{hint}</span>}
+      </span>
+    </label>
   );
 }
 
@@ -253,10 +297,18 @@ export function EmployeeForm({ mode, initialValues, departments, submitting, emp
       if (hr.nationalId && !/^[A-Za-z0-9]{5,20}$/.test(hr.nationalId)) e['hr.nationalId'] = 'Letters and digits only (14 digits for an Egyptian ID)';
       if (hr.hireDate && hr.contractEndDate && hr.contractEndDate < hr.hireDate) e['hr.contractEndDate'] = 'Contract end date is before the hire date';
       if (hr.applicationDate && hr.interviewDate && hr.interviewDate < hr.applicationDate) e['hr.interviewDate'] = 'Interview date is before the application date';
+      // Amounts hidden behind "Not insured" are cleared on save, so don't block on them
+      const hidden = new Set<string>(hr.hasSocialInsurance === 'no' ? ['insuranceWage', 'employeeInsuranceShare', 'employerInsuranceShare'] : []);
       for (const k of HR_NUMBER_KEYS) {
-        if (hr[k] !== '' && (Number.isNaN(Number(hr[k])) || Number(hr[k]) < 0)) e[`hr.${k}`] = 'Must be a positive number';
+        if (hidden.has(k)) continue;
+        if (hr[k] !== '' &&(Number.isNaN(Number(hr[k])) || Number(hr[k]) < 0)) e[`hr.${k}`] = 'Must be a positive number';
       }
       if (hr.grossSalary && hr.netSalary && Number(hr.netSalary) > Number(hr.grossSalary)) e['hr.netSalary'] = 'Net salary cannot exceed gross salary';
+      if (hr.hasMedicalInsurance === 'yes') {
+        if (!hr.medicalStartDate) e['hr.medicalStartDate'] = 'Choose the start date';
+        if (!hr.medicalEndDate) e['hr.medicalEndDate'] = 'Choose the end date';
+        else if (hr.medicalStartDate && hr.medicalEndDate < hr.medicalStartDate) e['hr.medicalEndDate'] = 'End date is before the start date';
+      }
     }
     return e;
   };
@@ -268,6 +320,7 @@ export function EmployeeForm({ mode, initialValues, departments, submitting, emp
     'hr.contractDurationMonths': 'contract', 'hr.probationPeriodMonths': 'contract',
     'hr.basicSalary': 'payroll', 'hr.grossSalary': 'payroll', 'hr.netSalary': 'payroll',
     'hr.insuranceWage': 'insurance', 'hr.employeeInsuranceShare': 'insurance', 'hr.employerInsuranceShare': 'insurance',
+    'hr.medicalStartDate': 'medical', 'hr.medicalEndDate': 'medical',
   };
 
   const scrollTo = (id: string) => document.getElementById(`section-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -282,7 +335,9 @@ export function EmployeeForm({ mode, initialValues, departments, submitting, emp
       return;
     }
     const payload = formToPayload(values, withHr);
-    onSubmit(mode === 'create' ? ({ ...payload, password: values.password } as CreateConsultantData) : payload, stagedDocuments);
+    // A laptop photo chosen and then the laptop unticked is not uploaded
+    const documents = values.hr.hasLaptop === 'yes' ? stagedDocuments : stagedDocuments.filter((d) => d.type !== 'laptop_photo');
+    onSubmit(mode === 'create' ? ({ ...payload, password: values.password } as CreateConsultantData) : payload, documents);
   };
 
   const errorCount = (sectionId: string) =>
@@ -358,7 +413,7 @@ export function EmployeeForm({ mode, initialValues, departments, submitting, emp
 
       <div className="space-y-6 min-w-0">
         {/* Basic information */}
-        <Section def={SECTIONS[0]}>
+        <Section def={sectionDef('basic')}>
           <div className="flex flex-col md:flex-row gap-6">
             <div className="flex flex-col items-center gap-2 md:w-40 shrink-0">
               <ProfilePictureUpload
@@ -395,7 +450,7 @@ export function EmployeeForm({ mode, initialValues, departments, submitting, emp
 
         {/* Personal details */}
         {withHr && (
-          <Section def={SECTIONS[1]}>
+          <Section def={sectionDef('personal')}>
             <Grid>
               <Field label="Full Name (4 parts)" className="md:col-span-2" hint="As written on the national ID">
                 {text('fullLegalName', 'First, father, grandfather and family name')}
@@ -414,7 +469,7 @@ export function EmployeeForm({ mode, initialValues, departments, submitting, emp
         )}
 
         {/* Job & placement */}
-        <Section def={SECTIONS[2]}>
+        <Section def={sectionDef('job')}>
           <Grid>
             <Field label="Job Title">
               <Input value={values.position} onChange={(e) => set('position', e.target.value)} placeholder="e.g. Senior ERP Consultant" />
@@ -457,7 +512,7 @@ export function EmployeeForm({ mode, initialValues, departments, submitting, emp
 
         {/* Recruitment */}
         {withHr && (
-          <Section def={SECTIONS[3]}>
+          <Section def={sectionDef('recruitment')}>
             <Grid>
               <Field label="Hiring Source">{select('hiringSource', HIRING_SOURCE_OPTIONS)}</Field>
               <Field label="Recruiter Name">{text('recruiterName', 'Who handled the hiring')}</Field>
@@ -470,7 +525,7 @@ export function EmployeeForm({ mode, initialValues, departments, submitting, emp
 
         {/* Contract */}
         {withHr && (
-          <Section def={SECTIONS[4]}>
+          <Section def={sectionDef('contract')}>
             <Grid>
               <Field label="Contract Type">{select('contractType', CONTRACT_TYPE_OPTIONS)}</Field>
               <Field label="Contract Duration (months)" error={errors['hr.contractDurationMonths']}>
@@ -506,7 +561,7 @@ export function EmployeeForm({ mode, initialValues, departments, submitting, emp
 
         {/* Payroll */}
         {withHr && (
-          <Section def={SECTIONS[5]}>
+          <Section def={sectionDef('payroll')}>
             <Grid>
               <Field label="Basic Salary" error={errors['hr.basicSalary']}>{numberInput('basicSalary', '0.00')}</Field>
               <Field label="Gross Salary" error={errors['hr.grossSalary']}>{numberInput('grossSalary', '0.00')}</Field>
@@ -520,7 +575,12 @@ export function EmployeeForm({ mode, initialValues, departments, submitting, emp
 
         {/* Social insurance */}
         {withHr && (
-          <Section def={SECTIONS[6]}>
+          <Section def={sectionDef('insurance')}>
+            <Field label="Is this employee socially insured?" className="mb-5">
+              <YesNo label="Socially insured" value={hr.hasSocialInsurance} onChange={(v) => setHr('hasSocialInsurance', v)} />
+            </Field>
+            {hr.hasSocialInsurance === 'yes' && (
+            <>
             <Grid>
               <Field label="Insurance Wage" error={errors['hr.insuranceWage']}>{numberInput('insuranceWage', '0.00')}</Field>
               <Field
@@ -542,12 +602,72 @@ export function EmployeeForm({ mode, initialValues, departments, submitting, emp
               <Calculator className="w-4 h-4 mr-2" />
               Recalculate shares
             </Button>
+            </>
+            )}
+            {hr.hasSocialInsurance === 'no' && (
+              <p className="text-xs text-on-surface-variant">Not insured — the wage and shares are cleared when you save.</p>
+            )}
+          </Section>
+        )}
+
+        {/* Medical insurance */}
+        {withHr && (
+          <Section def={sectionDef('medical')}>
+            <Field label="Does this employee have medical insurance?" className="mb-5">
+              <YesNo label="Medical insurance" value={hr.hasMedicalInsurance} onChange={(v) => setHr('hasMedicalInsurance', v)} />
+            </Field>
+            {hr.hasMedicalInsurance === 'yes' && (
+              <Grid>
+                <Field label="Start Date" required error={errors['hr.medicalStartDate']}>{text('medicalStartDate', undefined, 'date')}</Field>
+                <Field label="End Date" required error={errors['hr.medicalEndDate']}>{text('medicalEndDate', undefined, 'date')}</Field>
+              </Grid>
+            )}
+          </Section>
+        )}
+
+        {/* Subscriptions */}
+        {withHr && (
+          <Section def={sectionDef('subscriptions')}>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              <CheckRow
+                id="hr-company-line"
+                label="Line Number"
+                hint="Has a company mobile line"
+                checked={hr.hasCompanyLine === 'yes'}
+                onChange={(v) => setHr('hasCompanyLine', v ? 'yes' : 'no')}
+              />
+              <CheckRow
+                id="hr-laptop"
+                label="Laptop"
+                hint="Was handed a company laptop"
+                checked={hr.hasLaptop === 'yes'}
+                onChange={(v) => setHr('hasLaptop', v ? 'yes' : 'no')}
+              />
+              <CheckRow
+                id="hr-uber"
+                label="Uber Subscriber"
+                hint="Subscribed to the company Uber account"
+                checked={hr.uberSubscriber === 'yes'}
+                onChange={(v) => setHr('uberSubscriber', v ? 'yes' : 'no')}
+              />
+            </div>
+            {hr.hasLaptop === 'yes' && (
+              <div className="mt-5">
+                <EmployeeDocuments
+                  employeeId={mode === 'edit' ? employeeId : undefined}
+                  canEdit={canEditDocuments}
+                  staged={stagedDocuments}
+                  onStagedChange={setStagedDocuments}
+                  types={['laptop_photo']}
+                />
+              </div>
+            )}
           </Section>
         )}
 
         {/* Documents */}
         {withHr && (
-          <Section def={SECTIONS[7]}>
+          <Section def={sectionDef('documents')}>
             {mode === 'edit' && (
               <p className="text-xs text-on-surface-variant mb-4">Documents are saved as soon as they are uploaded — no need to press Save.</p>
             )}
@@ -556,12 +676,13 @@ export function EmployeeForm({ mode, initialValues, departments, submitting, emp
               canEdit={canEditDocuments}
               staged={stagedDocuments}
               onStagedChange={setStagedDocuments}
+              types={PAPER_DOCUMENT_TYPES}
             />
           </Section>
         )}
 
         {/* System access */}
-        <Section def={SECTIONS[8]}>
+        <Section def={sectionDef('access')}>
           <div className="space-y-6">
             <EmployeeAccessFields
               value={{
@@ -595,7 +716,7 @@ export function EmployeeForm({ mode, initialValues, departments, submitting, emp
 
         {/* Notes */}
         {withHr && (
-          <Section def={SECTIONS[9]}>
+          <Section def={sectionDef('notes')}>
             <Textarea
               rows={4}
               value={hr.notes}

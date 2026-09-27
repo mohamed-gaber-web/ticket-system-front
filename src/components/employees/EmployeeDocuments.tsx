@@ -51,6 +51,8 @@ interface Props {
   canEdit: boolean;
   staged?: StagedDocumentUpload[];
   onStagedChange?: (next: StagedDocumentUpload[]) => void;
+  /** Show only these document types (default: all). */
+  types?: EmployeeDocumentType[];
 }
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -72,7 +74,7 @@ const FileIcon = ({ type }: { type?: string }) =>
  * each holding any number of files. Required documents that are still missing
  * are flagged, and documents with an expiry date warn before they lapse.
  */
-export function EmployeeDocuments({ employeeId, canEdit, staged = [], onStagedChange }: Props) {
+export function EmployeeDocuments({ employeeId, canEdit, staged = [], onStagedChange, types }: Props) {
   const live = Boolean(employeeId);
   const [documents, setDocuments] = useState<EmployeeDocument[]>([]);
   const [loading, setLoading] = useState(live);
@@ -100,13 +102,15 @@ export function EmployeeDocuments({ employeeId, canEdit, staged = [], onStagedCh
     return map;
   }, [staged]);
 
-  const required = DOCUMENT_TYPES.filter((t) => t.required);
+  const shown = types ? DOCUMENT_TYPES.filter((t) => types.includes(t.value)) : DOCUMENT_TYPES;
+  const required = shown.filter((t) => t.required);
   const has = (t: EmployeeDocumentType) => (byType.get(t)?.length ?? 0) + (stagedByType.get(t)?.length ?? 0) > 0;
   const completed = required.filter((t) => has(t.value)).length;
 
   return (
     <div className="space-y-4">
       {/* Required-documents checklist */}
+      {required.length > 0 && (
       <div className="flex flex-wrap items-center gap-2">
         <span
           className={cn(
@@ -129,6 +133,7 @@ export function EmployeeDocuments({ employeeId, canEdit, staged = [], onStagedCh
           </span>
         ))}
       </div>
+      )}
 
       {!live && (
         <p className="text-xs text-on-surface-variant">
@@ -142,7 +147,7 @@ export function EmployeeDocuments({ employeeId, canEdit, staged = [], onStagedCh
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4">
-          {DOCUMENT_TYPES.map((def) => (
+          {shown.map((def) => (
             <DocumentCard
               key={def.value}
               def={def}
@@ -187,9 +192,9 @@ function DocumentCard({ def, employeeId, canEdit, documents, staged, onUploaded,
 
   const addFiles = (list: FileList | File[]) => {
     const files = Array.from(list);
-    const problems = files.map(documentFileProblem).filter((p): p is string => p !== null);
+    const problems = files.map((f) => documentFileProblem(f, def)).filter((p): p is string => p !== null);
     problems.forEach((p) => toast.error(p));
-    const good = files.filter((f) => !documentFileProblem(f));
+    const good = files.filter((f) => !documentFileProblem(f, def));
     setPending((prev) => {
       const next = [...prev, ...good];
       if (next.length > DOCUMENT_MAX_FILES) toast.error(`Upload at most ${DOCUMENT_MAX_FILES} files at a time`);
@@ -443,7 +448,7 @@ function DocumentCard({ def, employeeId, canEdit, documents, staged, onUploaded,
         ref={inputRef}
         type="file"
         multiple
-        accept={DOCUMENT_ACCEPT}
+        accept={def.imagesOnly ? 'image/*' : DOCUMENT_ACCEPT}
         className="hidden"
         onChange={(e) => e.target.files && addFiles(e.target.files)}
       />

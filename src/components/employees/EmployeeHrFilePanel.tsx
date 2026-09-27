@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Banknote, FileSignature, Lock, ShieldCheck, StickyNote, User, UserSearch, Briefcase } from 'lucide-react';
+import { Banknote, FileSignature, HeartPulse, Laptop, Lock, ShieldCheck, StickyNote, User, UserSearch, Briefcase } from 'lucide-react';
 import type { Consultant, EmployeeRef } from '@/types/consultant.types';
 import {
   CONTRACT_TYPE_OPTIONS,
@@ -34,6 +34,9 @@ const Card = ({ title, icon: Icon, children }: { title: string; icon: typeof Use
   </div>
 );
 
+/** Yes / No for a recorded answer, nothing (shown as a dash) when not recorded. */
+const yesNo = (v?: boolean | null) => (v === true ? 'Yes' : v === false ? 'No' : null);
+
 const months = (n?: number | null) => (n == null ? '—' : `${n} month${n === 1 ? '' : 's'}`);
 
 /**
@@ -47,6 +50,10 @@ export function EmployeeHrFilePanel({ employee }: { employee: Consultant }) {
   const manager = hr.directManager && typeof hr.directManager === 'object' ? (hr.directManager as EmployeeRef) : null;
   const hire = toDateInput(hr.hireDate);
   const probationEnds = hire && hr.probationPeriodMonths ? addMonths(hire, hr.probationPeriodMonths) : '';
+  // Older files have no answer recorded: insured if amounts were entered
+  const insured =
+    hr.hasSocialInsurance ??
+    ((hr.insuranceWage ?? 0) > 0 || hr.employeeInsuranceShare != null || hr.employerInsuranceShare != null ? true : null);
 
   return (
     <section className="space-y-4">
@@ -127,9 +134,30 @@ export function EmployeeHrFilePanel({ employee }: { employee: Consultant }) {
         </Card>
 
         <Card title="Social Insurance" icon={ShieldCheck}>
-          <Item label="Insurance Wage">{formatMoney(hr.insuranceWage ?? 0)}</Item>
-          <Item label="Employee Share">{hr.employeeInsuranceShare != null ? formatMoney(hr.employeeInsuranceShare) : null}</Item>
-          <Item label="Employer Share">{hr.employerInsuranceShare != null ? formatMoney(hr.employerInsuranceShare) : null}</Item>
+          <Item label="Insured">{yesNo(insured)}</Item>
+          {insured !== false && (
+            <>
+              <Item label="Insurance Wage">{formatMoney(hr.insuranceWage ?? 0)}</Item>
+              <Item label="Employee Share">{hr.employeeInsuranceShare != null ? formatMoney(hr.employeeInsuranceShare) : null}</Item>
+              <Item label="Employer Share">{hr.employerInsuranceShare != null ? formatMoney(hr.employerInsuranceShare) : null}</Item>
+            </>
+          )}
+        </Card>
+
+        <Card title="Medical Insurance" icon={HeartPulse}>
+          <Item label="Covered">{yesNo(hr.hasMedicalInsurance)}</Item>
+          {hr.hasMedicalInsurance && (
+            <>
+              <Item label="Start Date">{hr.medicalStartDate ? formatDate(hr.medicalStartDate) : null}</Item>
+              <Item label="End Date">{hr.medicalEndDate ? formatDate(hr.medicalEndDate) : null}</Item>
+            </>
+          )}
+        </Card>
+
+        <Card title="Subscriptions" icon={Laptop}>
+          <Item label="Line Number">{yesNo(hr.hasCompanyLine)}</Item>
+          <Item label="Laptop">{yesNo(hr.hasLaptop)}</Item>
+          <Item label="Uber Subscriber">{yesNo(hr.uberSubscriber)}</Item>
         </Card>
       </div>
 
