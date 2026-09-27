@@ -91,7 +91,8 @@ function AdminBalances({ year, setYear }: { year: number; setYear: (y: number) =
 
   const saveRow = (b: typeof balances[number]) => {
     const e = edits[b._id];
-    const employeeId = typeof b.employee === 'object' ? b.employee._id : b.employee;
+    const employeeId = typeof b.employee === 'object' ? b.employee?._id : b.employee;
+    if (!employeeId) return;
     dispatch(upsertEmployeeBalance({
       employee: employeeId,
       employeeModel: b.employeeModel,
@@ -178,10 +179,18 @@ function AdminBalances({ year, setYear }: { year: number; setYear: (y: number) =
               <tbody className="divide-y divide-outline-variant/20">
                 {balances.map((b) => {
                   const e = edits[b._id];
-                  const name = typeof b.employee === 'object' ? `${b.employee.firstName} ${b.employee.lastName}` : '—';
+                  // `employee` is null when the person was deleted or the record
+                  // still points at a pre-migration model — show it, don't crash.
+                  const person = b.employee;
+                  const orphan = person == null;
+                  const name = person == null
+                    ? 'Unknown employee'
+                    : typeof person === 'object'
+                    ? `${person.firstName ?? ''} ${person.lastName ?? ''}`.trim() || '—'
+                    : '—';
                   return (
                     <tr key={b._id} className="hover:bg-surface-container-low/50 transition-colors">
-                      <td className="px-4 py-3 font-medium text-on-surface">{name}</td>
+                      <td className={`px-4 py-3 font-medium ${orphan ? 'italic text-on-surface-variant' : 'text-on-surface'}`}>{name}</td>
                       <td className="px-4 py-3 text-on-surface-variant">{b.employeeModel}</td>
                       <td className="px-4 py-3">
                         <Input
@@ -205,7 +214,7 @@ function AdminBalances({ year, setYear }: { year: number; setYear: (y: number) =
                       <td className="px-4 py-3 font-semibold text-primary">{b.remainingDays} d</td>
                       <td className="px-4 py-3 text-on-surface">{b.usedExcuseHours} h</td>
                       <td className="px-4 py-3 text-right">
-                        <Button size="icon-sm" variant="ghost" onClick={() => saveRow(b)} aria-label="Save balance">
+                        <Button size="icon-sm" variant="ghost" onClick={() => saveRow(b)} disabled={orphan} aria-label="Save balance">
                           <Save className="w-4 h-4" />
                         </Button>
                       </td>

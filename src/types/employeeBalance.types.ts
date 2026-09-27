@@ -2,7 +2,8 @@ import type { EmployeeModel, EmployeePerson } from './employeeRequest.types';
 
 export interface EmployeeBalance {
   _id: string;
-  employee: EmployeePerson | string;
+  // null when the employee was deleted (or the record predates the employee migration)
+  employee: EmployeePerson | string | null;
   employeeModel: EmployeeModel;
   year: number;
   annualAllotment: number;
