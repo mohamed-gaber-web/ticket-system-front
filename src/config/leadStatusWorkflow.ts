@@ -12,6 +12,7 @@ export type LeadStatus =
   | 'Interested'
   | 'Follow-up'
   | 'Meeting Scheduled'
+  | 'Under Preparation'
   | 'Proposal Sent'
   | 'Negotiation'
   | 'Closed Won'
@@ -62,8 +63,18 @@ const hoursFromNow = (h: number) => isoLocal(new Date(Date.now() + h * 3600e3));
 
 export const LEAD_STATUSES: LeadStatus[] = [
   'New Lead', 'No Answer', 'Call Back Later', 'Wrong Number', 'Interested',
-  'Follow-up', 'Meeting Scheduled', 'Proposal Sent', 'Negotiation', 'Closed Won', 'Closed Lost',
+  'Follow-up', 'Meeting Scheduled', 'Under Preparation', 'Proposal Sent', 'Negotiation', 'Closed Won', 'Closed Lost',
 ];
+
+/** The status every lead starts in. Set automatically — never offered as a choice. */
+export const INITIAL_LEAD_STATUS: LeadStatus = 'New Lead';
+
+/**
+ * Statuses a user may pick when creating or importing leads. "New Lead" is left
+ * out: leaving the choice blank gives it anyway, so offering it only confused
+ * agents. List filters still use LEAD_STATUSES so those leads stay findable.
+ */
+export const PICKABLE_LEAD_STATUSES: LeadStatus[] = LEAD_STATUSES.filter((s) => s !== INITIAL_LEAD_STATUS);
 
 export const STEPS = ['New Lead', 'Contact Attempts', 'Qualified', 'Meeting', 'Proposal', 'Negotiation', 'Closed'];
 
@@ -75,6 +86,7 @@ export const STATUS_COLORS: Record<LeadStatus, string> = {
   'Interested': 'bg-green-100 text-green-700',
   'Follow-up': 'bg-yellow-100 text-yellow-700',
   'Meeting Scheduled': 'bg-purple-100 text-purple-700',
+  'Under Preparation': 'bg-violet-100 text-violet-700',
   'Proposal Sent': 'bg-indigo-100 text-indigo-700',
   'Negotiation': 'bg-orange-100 text-orange-700',
   'Closed Won': 'bg-emerald-100 text-emerald-700',
@@ -209,6 +221,16 @@ export const LEAD_STATUS_WORKFLOW: Record<LeadStatus, StatusWorkflowEntry> = {
     fu: true,
   },
 
+  'Under Preparation': {
+    ar: 'قيد التحضير', color: '#6d28d9', bg: '#ede9fe', step: 4,
+    desc: 'The proposal is being prepared for the customer.',
+    fields: [
+      { k: 'readyBy', label: 'Expected Ready Date', ar: 'الموعد المتوقع لتجهيز العرض', type: 'datetime', req: true, def: () => hoursFromNow(72) },
+      { k: 'scope', label: 'Proposal Scope / Notes', ar: 'نطاق العرض وملاحظات', type: 'textarea' },
+    ],
+    task: (v) => ({ title: 'Finish proposal', due: v.readyBy, kind: 'follow' }),
+  },
+
   'Proposal Sent': {
     ar: 'تم إرسال العرض', color: '#0891b2', bg: '#cffafe', step: 4,
     desc: 'Technical and commercial proposal delivered, awaiting the customer decision.',
@@ -280,9 +302,10 @@ export const NEXT: Record<LeadStatus, LeadStatus[]> = {
   'No Answer': ['No Answer', 'Call Back Later', 'Wrong Number', 'Interested', 'Follow-up', 'Meeting Scheduled', 'Closed Lost'],
   'Call Back Later': ['No Answer', 'Call Back Later', 'Interested', 'Follow-up', 'Meeting Scheduled', 'Closed Lost'],
   'Wrong Number': ['New Lead', 'Follow-up', 'Closed Lost'],
-  'Interested': ['Follow-up', 'Meeting Scheduled', 'Proposal Sent', 'No Answer', 'Call Back Later', 'Closed Lost'],
-  'Follow-up': ['Follow-up', 'Meeting Scheduled', 'Proposal Sent', 'No Answer', 'Call Back Later', 'Closed Lost'],
-  'Meeting Scheduled': ['Meeting Scheduled', 'Follow-up', 'Proposal Sent', 'No Answer', 'Closed Lost'],
+  'Interested': ['Follow-up', 'Meeting Scheduled', 'Under Preparation', 'Proposal Sent', 'No Answer', 'Call Back Later', 'Closed Lost'],
+  'Follow-up': ['Follow-up', 'Meeting Scheduled', 'Under Preparation', 'Proposal Sent', 'No Answer', 'Call Back Later', 'Closed Lost'],
+  'Meeting Scheduled': ['Meeting Scheduled', 'Follow-up', 'Under Preparation', 'Proposal Sent', 'No Answer', 'Closed Lost'],
+  'Under Preparation': ['Proposal Sent', 'Meeting Scheduled', 'Follow-up', 'Closed Lost'],
   'Proposal Sent': ['Negotiation', 'Meeting Scheduled', 'Follow-up', 'Closed Won', 'Closed Lost'],
   'Negotiation': ['Meeting Scheduled', 'Proposal Sent', 'Follow-up', 'Closed Won', 'Closed Lost'],
   'Closed Won': [],

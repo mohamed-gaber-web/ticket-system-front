@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { Building2, MapPin, Phone, ClipboardList, StickyNote, Tags, ChevronDown, X } from 'lucide-react';
-import { LEAD_STATUSES, type LeadStatus } from '@/config/leadStatusWorkflow';
+import { INITIAL_LEAD_STATUS, PICKABLE_LEAD_STATUSES, type LeadStatus } from '@/config/leadStatusWorkflow';
 import type {
   Lead, LeadPriority, LeadSource, CreateLeadData, EntityType, IndustrySector, SalesType,
 } from '@/types/teleSales.types';
@@ -446,8 +446,13 @@ export function LeadFormModal({ open, lead, defaultSalesType, onClose, onSaved }
               </Field>
               {!lead && (
                 <Field label="Status">
-                  <SelectField value={form.status || 'New Lead'} onChange={(e) => setForm(p => ({ ...p, status: e.target.value as LeadStatus }))}>
-                    {LEAD_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                  {/* Blank = the initial status, which is applied automatically and not offered as a choice. */}
+                  <SelectField
+                    value={!form.status || form.status === INITIAL_LEAD_STATUS ? '' : form.status}
+                    onChange={(e) => setForm(p => ({ ...p, status: (e.target.value || INITIAL_LEAD_STATUS) as LeadStatus }))}
+                  >
+                    <option value="">Not contacted yet</option>
+                    {PICKABLE_LEAD_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
                   </SelectField>
                 </Field>
               )}

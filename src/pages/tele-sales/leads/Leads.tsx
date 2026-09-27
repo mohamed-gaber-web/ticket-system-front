@@ -18,7 +18,7 @@ import {
 import GmailCompose from '@/components/tele-sales/GmailCompose';
 import { StatusRulesModal } from '@/components/tele-sales/StatusRulesModal';
 import { LeadFormModal } from '@/components/tele-sales/LeadFormModal';
-import { LEAD_STATUSES, STATUS_COLORS, type LeadStatus } from '@/config/leadStatusWorkflow';
+import { LEAD_STATUSES, PICKABLE_LEAD_STATUSES, INITIAL_LEAD_STATUS, STATUS_COLORS, type LeadStatus } from '@/config/leadStatusWorkflow';
 import type {
   Lead, LeadPriority, LeadSource, ImportLeadsResponse,
   EntityType, IndustrySector, SalesType,
@@ -715,9 +715,10 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
                       <div className="grid grid-cols-2 gap-3">
                         <div>
                           <label className="text-sm font-medium text-on-surface mb-1 block">Default Status</label>
-                          <select value={importStatus} onChange={(e) => setImportStatus(e.target.value as LeadStatus)}
+                          <select value={importStatus === INITIAL_LEAD_STATUS ? '' : importStatus} onChange={(e) => setImportStatus((e.target.value || INITIAL_LEAD_STATUS) as LeadStatus)}
                             className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
-                            {LEAD_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                            <option value="">Not contacted yet</option>
+                            {PICKABLE_LEAD_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
                           </select>
                         </div>
                         <div>
