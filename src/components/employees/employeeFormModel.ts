@@ -12,7 +12,7 @@ export const HR_TEXT_KEYS = [
   'section', 'directManager', 'hireDate',
   'contractType', 'contractEndDate',
   'salaryPaymentMethod', 'bankName', 'bankAccount',
-  'medicalStartDate', 'medicalEndDate', 'notes',
+  'medicalStartDate', 'medicalEndDate', 'companyLineNumber', 'notes',
 ] as const;
 export const HR_NUMBER_KEYS = [
   'contractDurationMonths', 'probationPeriodMonths',
@@ -139,6 +139,8 @@ export const formToPayload = (v: EmployeeFormValues, withHr: boolean): UpdateCon
       const a = v.hr[k];
       bools[k] = a === 'yes' ? true : a === 'no' || CHECKBOX_KEYS.has(k) ? false : null;
     }
+    // The number only means something while the line is ticked (the API clears it too)
+    if (!bools.hasCompanyLine) hr.companyLineNumber = null;
     // Dates only mean something while covered (the API clears them on "no" too)
     if (!bools.hasMedicalInsurance) {
       hr.medicalStartDate = null;

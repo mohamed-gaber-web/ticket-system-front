@@ -304,6 +304,11 @@ export function EmployeeForm({ mode, initialValues, departments, submitting, emp
         if (hr[k] !== '' &&(Number.isNaN(Number(hr[k])) || Number(hr[k]) < 0)) e[`hr.${k}`] = 'Must be a positive number';
       }
       if (hr.grossSalary && hr.netSalary && Number(hr.netSalary) > Number(hr.grossSalary)) e['hr.netSalary'] = 'Net salary cannot exceed gross salary';
+      if (hr.hasCompanyLine === 'yes') {
+        const line = hr.companyLineNumber.replace(/[\s-]/g, '');
+        if (!line) e['hr.companyLineNumber'] = 'Enter the line number';
+        else if (!/^\+?\d{8,15}$/.test(line)) e['hr.companyLineNumber'] = 'Line number must be 8-15 digits';
+      }
       if (hr.hasMedicalInsurance === 'yes') {
         if (!hr.medicalStartDate) e['hr.medicalStartDate'] = 'Choose the start date';
         if (!hr.medicalEndDate) e['hr.medicalEndDate'] = 'Choose the end date';
@@ -321,6 +326,7 @@ export function EmployeeForm({ mode, initialValues, departments, submitting, emp
     'hr.basicSalary': 'payroll', 'hr.grossSalary': 'payroll', 'hr.netSalary': 'payroll',
     'hr.insuranceWage': 'insurance', 'hr.employeeInsuranceShare': 'insurance', 'hr.employerInsuranceShare': 'insurance',
     'hr.medicalStartDate': 'medical', 'hr.medicalEndDate': 'medical',
+    'hr.companyLineNumber': 'subscriptions',
   };
 
   const scrollTo = (id: string) => document.getElementById(`section-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -651,6 +657,15 @@ export function EmployeeForm({ mode, initialValues, departments, submitting, emp
                 onChange={(v) => setHr('uberSubscriber', v ? 'yes' : 'no')}
               />
             </div>
+            {hr.hasCompanyLine === 'yes' && (
+              <div className="mt-5">
+                <Grid>
+                  <Field label="Line Number" required error={errors['hr.companyLineNumber']}>
+                    {text('companyLineNumber', 'e.g. 01001234567', 'tel')}
+                  </Field>
+                </Grid>
+              </div>
+            )}
             {hr.hasLaptop === 'yes' && (
               <div className="mt-5">
                 <EmployeeDocuments

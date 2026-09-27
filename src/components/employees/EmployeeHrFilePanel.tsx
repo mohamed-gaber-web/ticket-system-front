@@ -155,7 +155,9 @@ export function EmployeeHrFilePanel({ employee }: { employee: Consultant }) {
         </Card>
 
         <Card title="Subscriptions" icon={Laptop}>
-          <Item label="Line Number">{yesNo(hr.hasCompanyLine)}</Item>
+          <Item label="Line Number">
+            {hr.hasCompanyLine ? hr.companyLineNumber || 'Yes' : yesNo(hr.hasCompanyLine)}
+          </Item>
           <Item label="Laptop">{yesNo(hr.hasLaptop)}</Item>
           <Item label="Uber Subscriber">{yesNo(hr.uberSubscriber)}</Item>
         </Card>

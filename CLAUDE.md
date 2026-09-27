@@ -66,7 +66,7 @@ Create and edit share `src/components/employees/EmployeeForm.tsx` — sections t
 with the confidential ones (personal, recruitment, contract, payroll, insurance, medical, subscriptions, notes) shown only when
 `useAccess().isHr` (admin or the `hr` module). Yes/no answers (`hasSocialInsurance`, `hasMedicalInsurance`,
 `hasCompanyLine`, `hasLaptop`, `uberSubscriber`) are held in the form as `'yes' | 'no' | ''`; a "no" hides and
-clears the fields it gates (the API clears them too). The laptop photo is the HR document type `laptop_photo`
+clears the fields it gates (the API clears them too). Ticking "Line Number" asks for `companyLineNumber` (8-15 digits). The laptop photo or PDF is the HR document type `laptop_photo`
 (`asset: true` in `DOCUMENT_TYPES`), uploaded from the Subscriptions section rather than the Documents grid. Form ⇄ API mapping is in `employeeFormModel.ts`; option lists,
 paths and insurance rates in `src/lib/hr.ts` (keep the enums in step with `HR_ENUMS` in the backend model).
 `EmployeeHrFilePanel` renders the file read-only on the profile page — only when the API sent `hr`.

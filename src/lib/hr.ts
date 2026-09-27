@@ -121,8 +121,8 @@ export interface DocumentTypeDef {
   required?: boolean;
   /** Offer an expiry date (ID cards, certificates that lapse). */
   expires?: boolean;
-  /** Accept images only (photos of company assets). */
-  imagesOnly?: boolean;
+  /** Accept images and PDF only (photos or a scanned receipt of a company asset). */
+  imagesOrPdf?: boolean;
   /** Uploaded from another form section instead of the Documents grid. */
   asset?: boolean;
 }
@@ -136,7 +136,7 @@ export const DOCUMENT_TYPES: DocumentTypeDef[] = [
   { value: 'insurance_record', label: 'Social Insurance Record', labelAr: 'برنت التأمينات' },
   { value: 'cv', label: 'CV', labelAr: 'السيرة الذاتية' },
   { value: 'personal_photo', label: 'Personal Photos', labelAr: 'صور شخصية' },
-  { value: 'laptop_photo', label: 'Laptop Photo', labelAr: 'صورة اللابتوب', imagesOnly: true, asset: true },
+  { value: 'laptop_photo', label: 'Laptop Photo / PDF', labelAr: 'صورة أو ملف اللابتوب', imagesOrPdf: true, asset: true },
   { value: 'other', label: 'Other Documents', labelAr: 'مستندات أخرى' },
 ];
 
@@ -158,8 +158,10 @@ const DOCUMENT_MIME = new Set([
 ]);
 
 /** Why a file cannot be uploaded, or null when it can. */
-export const documentFileProblem = (file: File, def?: Pick<DocumentTypeDef, 'imagesOnly'>): string | null => {
-  if (def?.imagesOnly && !file.type.startsWith('image/')) return `${file.name}: only images are allowed here`;
+export const documentFileProblem = (file: File, def?: Pick<DocumentTypeDef, 'imagesOrPdf'>): string | null => {
+  if (def?.imagesOrPdf && !file.type.startsWith('image/') && file.type !== 'application/pdf') {
+    return `${file.name}: only images or PDF are allowed here`;
+  }
   if (!DOCUMENT_MIME.has(file.type)) return `${file.name}: only PDF, images and Word files are allowed`;
   if (file.size > DOCUMENT_MAX_BYTES) return `${file.name}: larger than 10 MB`;
   return null;

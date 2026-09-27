@@ -448,7 +448,7 @@ function DocumentCard({ def, employeeId, canEdit, documents, staged, onUploaded,
         ref={inputRef}
         type="file"
         multiple
-        accept={def.imagesOnly ? 'image/*' : DOCUMENT_ACCEPT}
+        accept={def.imagesOrPdf ? 'image/*,.pdf,application/pdf' : DOCUMENT_ACCEPT}
         className="hidden"
         onChange={(e) => e.target.files && addFiles(e.target.files)}
       />

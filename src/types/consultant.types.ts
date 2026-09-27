@@ -67,6 +67,7 @@ export interface EmployeeHrFile {
   medicalEndDate?: string | null;
   // Subscriptions & company assets (laptop photo = document type "laptop_photo")
   hasCompanyLine?: boolean | null;
+  companyLineNumber?: string | null;
   hasLaptop?: boolean | null;
   uberSubscriber?: boolean | null;
   notes?: string | null;
