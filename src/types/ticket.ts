@@ -1,3 +1,15 @@
+/** What a person last did to a ticket. Keep in step with TICKET_ACTIVITY_TYPES in the backend's Ticket model. */
+export type TicketActivityType =
+  | 'created'
+  | 'edited'
+  | 'status_change'
+  | 'assignment'
+  | 'accepted'
+  | 'feedback'
+  | 'sub_ticket'
+  | 'comment'
+  | 'attachment';
+
 // Import reference types for new properties
 import type { Environment } from './environment.types';
 import type { CustomizedSolution } from './customizedSolution.types';
@@ -109,6 +121,9 @@ export interface Ticket {
   resolvedAt?: string;
   closedAt?: string;
   deliveredAt?: string; // When the ticket was delivered
+  /** When a person last acted on the ticket, and how (older tickets: absent — see lastActivityOf). */
+  lastActivityAt?: string;
+  lastActivityType?: TicketActivityType;
   // Actor tracking — who last updated / resolved / closed the ticket
   updatedBy?: string | Consultant;
   /** While status is customer_pending: the customer user the ticket waits on. */

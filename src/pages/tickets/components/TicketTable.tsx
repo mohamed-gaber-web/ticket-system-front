@@ -16,6 +16,7 @@ import type { ServiceType } from '@/types/serviceType.types';
 import { useAppSelector, useAppDispatch } from '@/redux/hooks/hooks';
 import { acceptTicket, fetchSubTickets, updateTicket, changeTicketStatus } from '@/redux/slices/ticketSlice';
 import { PendingOnDialog, PendingOnLine } from '@/components/tickets/PendingOnDialog';
+import { TICKET_ACTIVITY_LABELS, formatIdle, idleMs, idleTone, lastActivityOf } from '@/lib/ticketActivity';
 
 const MySwal = withReactContent(Swal);
 
@@ -28,7 +29,7 @@ interface TicketTableProps {
 
 
 const PRIORITY_ORDER: Record<string, number> = { low: 1, medium: 2, high: 3, critical: 4 };
-type SortKey = 'ticketNumber' | 'status' | 'priority' | 'priorityNumber' | 'createdAt' | 'acceptedAt' | 'deliveryEstimationDate' | 'updatedAt' | 'resolvedAt' | 'closedAt' | 'scheduledWeek';
+type SortKey = 'ticketNumber' | 'status' | 'priority' | 'priorityNumber' | 'createdAt' | 'acceptedAt' | 'deliveryEstimationDate' | 'updatedAt' | 'idle' | 'resolvedAt' | 'closedAt' | 'scheduledWeek';
 type SortDir = 'asc' | 'desc';
 type InlineEditField = 'subject' | 'description' | 'status' | 'priority' | 'priorityNumber' | 'durationHours' | 'deliveryEstimationDate' | 'category' | 'serviceType' | 'scope';
 
@@ -64,6 +65,12 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
   const { modules } = useAppSelector((state) => state.modules);
 
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  // Idle times count up while the page is open
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
   const [sortDir, setSortDir] = useState<SortDir>('asc');
 
   const handleSort = (key: SortKey) => {
@@ -74,8 +81,10 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
   const sortedTickets = useMemo(() => {
     if (!sortKey) return tickets;
     return [...tickets].sort((a, b) => {
-      let valA: any = sortKey === 'priority' ? PRIORITY_ORDER[a.priority] ?? 0 : (a as any)[sortKey];
-      let valB: any = sortKey === 'priority' ? PRIORITY_ORDER[b.priority] ?? 0 : (b as any)[sortKey];
+      const value = (t: Ticket): any =>
+        sortKey === 'priority' ? PRIORITY_ORDER[t.priority] ?? 0 : sortKey === 'idle' ? idleMs(t) : (t as any)[sortKey];
+      let valA: any = value(a);
+      let valB: any = value(b);
       if (valA == null && valB == null) return 0;
       if (valA == null) return 1;
       if (valB == null) return -1;
@@ -613,6 +622,8 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                     <SH col="acceptedAt" label="Assigned Date" className="min-w-[120px]" />
                     <SH col="deliveryEstimationDate" label="Delivery Date" className="min-w-[120px]" />
                     <SH col="updatedAt" label="Last Updated" className="min-w-[120px]" />
+                    <SH col="idle" label="Idle For" className="min-w-[100px]" />
+                    <TableHead className="min-w-[140px]">Last Activity</TableHead>
                     <SH col="resolvedAt" label="Resolved Date" className="min-w-[120px]" />
                     <SH col="closedAt" label="Closed Date" className="min-w-[120px]" />
                     <TableHead className="min-w-[140px]">Customer Name</TableHead>
@@ -1092,6 +1103,35 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                     ) : (
                       <span className="text-on-surface-variant/40">&mdash;</span>
                     )}
+                  </TableCell>
+                  {/* Idle for — time since anyone last acted on the ticket */}
+                  <TableCell>
+                    {(() => {
+                      const ms = idleMs(ticket, now);
+                      if (ms == null) return <span className="text-on-surface-variant/40">&mdash;</span>;
+                      const tone = idleTone(ms);
+                      return (
+                        <span
+                          title={`No activity since ${new Date(lastActivityOf(ticket).at).toLocaleString()}`}
+                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums ${
+                            tone === 'late' ? 'bg-red-100 text-red-700' : tone === 'warn' ? 'bg-amber-100 text-amber-800' : 'text-on-surface'
+                          }`}
+                        >
+                          {formatIdle(ms)}
+                        </span>
+                      );
+                    })()}
+                  </TableCell>
+                  {/* Last activity — what was done last */}
+                  <TableCell>
+                    {(() => {
+                      const { type } = lastActivityOf(ticket);
+                      return type ? (
+                        <span className="text-sm text-on-surface">{TICKET_ACTIVITY_LABELS[type]}</span>
+                      ) : (
+                        <span className="text-on-surface-variant/40" title="Recorded before activity tracking started">&mdash;</span>
+                      );
+                    })()}
                   </TableCell>
                   {/* Resolved Date */}
                   <TableCell>

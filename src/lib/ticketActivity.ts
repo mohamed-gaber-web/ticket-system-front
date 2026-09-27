@@ -1,3 +1,5 @@
+import type { TicketActivityType } from '@/types/ticket';
+
 /**
  * Date-range filtering for the dashboards.
  *
@@ -84,4 +86,64 @@ export function ytdRange(year: number, monthIndex: number): DateRange {
     fromMs: new Date(year, 0, 1, 0, 0, 0, 0).getTime(),
     toMs: new Date(year, monthIndex + 1, 0, 23, 59, 59, 999).getTime(),
   };
+}
+
+// ── Idle time (time since the last activity) ─────────────────────────────────
+
+export const TICKET_ACTIVITY_LABELS: Record<TicketActivityType, string> = {
+  created: 'Created',
+  edited: 'Details edited',
+  status_change: 'Status changed',
+  assignment: 'Assignment',
+  accepted: 'Accepted',
+  feedback: 'Customer feedback',
+  sub_ticket: 'Sub-ticket added',
+  comment: 'Comment',
+  attachment: 'Attachment',
+};
+
+/** Statuses where the work is over — nobody is expected to act, so idle time is not shown. */
+const IDLE_EXEMPT = new Set(['closed', 'not_related']);
+
+interface ActivityTicket {
+  status: string;
+  createdAt: string;
+  updatedAt?: string;
+  lastActivityAt?: string;
+  lastActivityType?: TicketActivityType;
+}
+
+/**
+ * When the ticket was last acted on, and how. Tickets saved before activity was
+ * tracked have no stamp: their last save (`updatedAt`) stands in, type unknown.
+ */
+export function lastActivityOf(t: ActivityTicket): { at: string; type: TicketActivityType | null } {
+  if (t.lastActivityAt) return { at: t.lastActivityAt, type: t.lastActivityType ?? null };
+  return { at: t.updatedAt || t.createdAt, type: null };
+}
+
+/** How long the ticket has gone without activity, or null when it is finished. */
+export function idleMs(t: ActivityTicket, now = Date.now()): number | null {
+  if (IDLE_EXEMPT.has(t.status)) return null;
+  return Math.max(0, now - new Date(lastActivityOf(t).at).getTime());
+}
+
+const HOUR = 3_600_000;
+const DAY = 24 * HOUR;
+
+/** "45m", "5h 20m", "3d 4h". */
+export function formatIdle(ms: number): string {
+  const d = Math.floor(ms / DAY);
+  const h = Math.floor((ms % DAY) / HOUR);
+  const m = Math.floor((ms % HOUR) / 60_000);
+  if (d > 0) return `${d}d ${h}h`;
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
+}
+
+/** Idle at least a day → warning; three days or more → overdue. */
+export function idleTone(ms: number): 'ok' | 'warn' | 'late' {
+  if (ms >= 3 * DAY) return 'late';
+  if (ms >= DAY) return 'warn';
+  return 'ok';
 }
