@@ -237,7 +237,9 @@ export const routes: RouteObject[] = [
       { path: "/customers/summary", element: <ModuleRoute module="tickets"><Lazy><CustomerSummary /></Lazy></ModuleRoute> },
 
       // Ticket Routes
-      { path: "/tickets", element: <Lazy><Tickets /></Lazy> },
+      { path: "/tickets", element: <Lazy><Tickets key="all" /></Lazy> },
+      { path: "/tickets/internal", element: <EmployeeRoute><Lazy><Tickets key="internal" internal /></Lazy></EmployeeRoute> },
+      { path: "/dashboard/internal", element: <ModuleRoute module="tickets"><Dashboard key="internal" internal /></ModuleRoute> },
       { path: "/tickets/create", element: <Lazy><CreateTicket /></Lazy> },
       { path: "/tickets/edit/:id", element: <Lazy><EditTicket /></Lazy> },
       { path: "/tickets/view/:id", element: <Lazy><ViewTicket /></Lazy> },

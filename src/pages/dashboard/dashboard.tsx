@@ -27,6 +27,7 @@ import { Input } from "@/components/ui/input";
 import { CustomSelect } from "@/components/ui/custom-select";
 import { ConsultantSelect } from "@/components/ui/consultant-select";
 import { YtdComparison } from "@/components/dashboard/YtdComparison";
+import { INTERNAL_COMPANY_NAME } from '@/lib/internalTickets';
 import type { Ticket as TicketRecord } from "@/types/ticket";
 import {
   motion,
@@ -375,7 +376,12 @@ function BreakdownList({
 /* ─────────────────────────────────────────────────────────────
    Main Dashboard
 ───────────────────────────────────────────────────────────── */
-export default function Dashboard() {
+/**
+ * The ticketing dashboard. Customers' tickets and our own company's are kept
+ * apart: the main dashboard covers customers only, and `internal` shows the
+ * same dashboard for Grow Path's own tickets (Services → Internal Dashboard).
+ */
+export default function Dashboard({ internal = false }: { internal?: boolean }) {
   const dispatch = useAppDispatch();
   const {
     tickets,
@@ -398,10 +404,11 @@ export default function Dashboard() {
   const [dateTo, setDateTo] = useState("");
 
   useEffect(() => {
-    dispatch(fetchTickets({ limit: 10000, includeSubTickets: true }));
-    dispatch(fetchCustomers());
+    const split = internal ? { companyName: INTERNAL_COMPANY_NAME } : { excludeCompanyName: INTERNAL_COMPANY_NAME };
+    dispatch(fetchTickets({ limit: 10000, includeSubTickets: true, ...split }));
+    dispatch(fetchCustomers(split));
     dispatch(fetchConsultants({ limit: 1000 }));
-  }, [dispatch]);
+  }, [dispatch, internal]);
 
   // Company options derived from the loaded tickets (their customer's companyName),
   // so the dropdown only lists companies that actually have tickets.
@@ -583,9 +590,9 @@ export default function Dashboard() {
         transition={{ ...SP, delay: 0 }}
       >
         <div>
-          <h1 className="display-sm text-on-surface">Dashboard</h1>
+          <h1 className="display-sm text-on-surface">{internal ? 'Internal Dashboard' : 'Dashboard'}</h1>
           <p className="text-sm text-on-surface-variant mt-1">
-            Monitor your ticketing system at a glance
+            {internal ? `${INTERNAL_COMPANY_NAME}'s own tickets at a glance` : 'Customer tickets at a glance'}
           </p>
         </div>
         <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-surface-container-lowest border border-outline-variant/20 shadow-sm text-xs font-medium text-on-surface-variant">
@@ -602,19 +609,21 @@ export default function Dashboard() {
         transition={{ ...SP, delay: 0.05 }}
       >
         <div className="flex flex-wrap items-end gap-x-4 gap-y-3">
-          {/* Company */}
-          <div className="flex items-center gap-2 h-10">
-            <Building2 className="h-4 w-4 shrink-0 text-on-surface-variant" />
-            <div className="w-52">
-              <CustomSelect
-                variant="filter"
-                value={company}
-                onChange={setCompany}
-                options={companyOptions}
-                placeholder="All companies"
-              />
+          {/* Company (the internal dashboard covers one company) */}
+          {!internal && (
+            <div className="flex items-center gap-2 h-10">
+              <Building2 className="h-4 w-4 shrink-0 text-on-surface-variant" />
+              <div className="w-52">
+                <CustomSelect
+                  variant="filter"
+                  value={company}
+                  onChange={setCompany}
+                  options={companyOptions}
+                  placeholder="All companies"
+                />
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Consultant */}
           <div className="flex items-center gap-2 h-10">

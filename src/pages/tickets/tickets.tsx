@@ -27,10 +27,12 @@ import autoTable from 'jspdf-autotable';
 import type { Ticket, Category, Consultant as TicketConsultant } from '@/types/ticket';
 import { getTickets } from '@/api/ticketApi';
 import { fetchNlSearch, clearNlSearch } from '@/redux/slices/aiSlice';
+import { INTERNAL_COMPANY_NAME } from '@/lib/internalTickets';
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 200];
 
-export default function Tickets() {
+/** `internal` = the Internal page: only our own company's tickets, which the main list leaves out. */
+export default function Tickets({ internal = false }: { internal?: boolean }) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const dispatch = useAppDispatch();
@@ -52,6 +54,15 @@ export default function Tickets() {
     if (userType !== 'customer') return {};
     const companyName = (user as any)?.companyName;
     return companyName ? { companyName } : {};
+  };
+
+  // Staff see our own company's tickets only on the Internal page; the main
+  // list leaves them out. Customers are already fenced to their own company.
+  const getInternalSplitParams = () => {
+    if (userType === 'customer') return {};
+    return internal
+      ? { companyName: INTERNAL_COMPANY_NAME }
+      : { excludeCompanyName: INTERNAL_COMPANY_NAME };
   };
 
   // --- URL param helpers ---
@@ -243,7 +254,7 @@ export default function Tickets() {
     if (acceptedDateTo)          params.acceptedDateTo     = acceptedDateTo;
     if (updatedDateFrom)         params.updatedDateFrom    = updatedDateFrom;
     if (updatedDateTo)           params.updatedDateTo      = updatedDateTo;
-    Object.assign(params, getCustomerScopeParams());
+    Object.assign(params, getInternalSplitParams(), getCustomerScopeParams());
     return params;
   };
 
@@ -444,7 +455,7 @@ export default function Tickets() {
     if (acceptedDateTo)          params.acceptedDateTo     = acceptedDateTo;
     if (updatedDateFrom)         params.updatedDateFrom    = updatedDateFrom;
     if (updatedDateTo)           params.updatedDateTo      = updatedDateTo;
-    Object.assign(params, getCustomerScopeParams());
+    Object.assign(params, getInternalSplitParams(), getCustomerScopeParams());
     return params;
   };
 
@@ -547,13 +558,17 @@ export default function Tickets() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="display-sm text-on-surface">
-            {serviceTypeNameFilter
+            {internal
+              ? 'Internal Tickets'
+              : serviceTypeNameFilter
               ? `${serviceTypeNameFilter} Tickets`
               : categoryNamesFilter.length
               ? 'Meeting Tickets'
               : 'Tickets'}
           </h1>
-          <p className="text-on-surface-variant mt-1">Manage your support tickets</p>
+          <p className="text-on-surface-variant mt-1">
+            {internal ? `Tickets raised for ${INTERNAL_COMPANY_NAME}` : 'Manage your support tickets'}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           {/* Actions Menu */}
@@ -794,12 +809,14 @@ export default function Tickets() {
                     label="Customer"
                     options={customers?.map((c) => ({ value: c._id, label: c.contactPerson })) || []}
                   />
-                  <MultiSelect
-                    values={companyFilter}
-                    onChange={(v) => updateFilters({ company: v })}
-                    label="Company"
-                    options={companies?.map((c) => ({ value: c.name, label: c.name })) ?? []}
-                  />
+                  {!internal && (
+                    <MultiSelect
+                      values={companyFilter}
+                      onChange={(v) => updateFilters({ company: v })}
+                      label="Company"
+                      options={companies?.filter((c) => c.name.toLowerCase() !== INTERNAL_COMPANY_NAME.toLowerCase()).map((c) => ({ value: c.name, label: c.name })) ?? []}
+                    />
+                  )}
                   <MultiSelect
                     values={moduleFilter}
                     onChange={(v) => updateFilters({ module: v })}

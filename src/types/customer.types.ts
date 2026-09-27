@@ -133,5 +133,7 @@ export interface CustomerQueryParams {
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
   companyName?: string;
+  /** Leave these companies out (comma-separated). */
+  excludeCompanyName?: string;
   role?: CustomerRole;
 }

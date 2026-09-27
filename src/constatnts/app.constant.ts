@@ -40,6 +40,7 @@ import {
   FileText,
   MessageSquareText,
   Contact,
+  Home,
 } from "lucide-react";
 import type { Access } from "@/redux/hooks/useAccess";
 import type { ModuleKey } from "@/types/auth.types";
@@ -91,13 +92,16 @@ const PRODUCT_CATALOG_GROUP = {
   ],
 };
 
-// Consultant/Admin: plain /tickets — all tickets visible, no exclusions
+// Consultant/Admin: /tickets is every customer's tickets except our own
+// company's, which have their own "Internal" page.
 const SERVICES_GROUP = {
   name: "Services",
   icon: Ticket,
   isGroup: true as const,
   children: [
     { name: "Tickets", path: "/tickets", icon: Ticket },
+    { name: "Internal", path: "/tickets/internal", icon: Home },
+    { name: "Internal Dashboard", path: "/dashboard/internal", icon: LayoutDashboard },
     { name: "Projects", path: "/projects", icon: FolderKanban },
     { name: "Meetings/Visit report", path: "/meetings", icon: CalendarDays },
   ],
