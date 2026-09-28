@@ -159,6 +159,8 @@ export interface NavLink {
   minRole?: NavRank;
   /** Extra module this one link needs, inside a group others can open too. */
   module?: ModuleKey;
+  /** Also shown, without `module`, to anyone of at least this rank. */
+  orMinRole?: NavRank;
 }
 
 interface NavEntry {
@@ -186,18 +188,22 @@ const TICKETING_GROUP: NavLink = {
       ],
     },
     { ...SERVICES_GROUP, isGroup: undefined, isSubGroup: true },
-    {
-      name: "Employees",
-      icon: UserCog,
-      isSubGroup: true,
-      children: [
-        { name: "My Tasks", path: "/profile?view=tasks", icon: ListChecks },
-        { name: "My Evaluation", path: "/consultants/evaluation/me", icon: GaugeCircle },
-        { name: "Evaluations", path: "/consultants/evaluations", icon: BarChart2, minRole: "admin" },
-        { name: "Weekly Report", path: "/consultant-reports/weekly", icon: CalendarDays, minRole: "admin" },
-        { name: "Weekly Hours", path: "/consultants/weekly-hours", icon: CalendarClock },
-      ],
-    },
+  ],
+};
+
+// Work performance of the ticketing staff — tasks, evaluations and hours. Lives
+// in the HR menu but stays a ticketing feature: only the tickets module sees it.
+const PERFORMANCE_GROUP: NavLink = {
+  name: "Performance",
+  icon: GaugeCircle,
+  isSubGroup: true,
+  module: "tickets",
+  children: [
+    { name: "My Tasks", path: "/profile?view=tasks", icon: ListChecks },
+    { name: "My Evaluation", path: "/consultants/evaluation/me", icon: GaugeCircle },
+    { name: "Evaluations", path: "/consultants/evaluations", icon: BarChart2, minRole: "admin" },
+    { name: "Weekly Report", path: "/consultant-reports/weekly", icon: CalendarDays, minRole: "admin" },
+    { name: "Weekly Hours", path: "/consultants/weekly-hours", icon: CalendarClock },
   ],
 };
 
@@ -254,18 +260,21 @@ const DEVELOPMENT_GROUP: NavLink = {
   ],
 };
 
-// HR module — the employee directory (with the confidential HR file for HR and
-// admins) plus leave approvals and balances. Managers keep seeing it for the
-// people they run, whether or not they hold the HR module.
+// HR menu — the employee directory (with the confidential HR file for HR and
+// admins), teams, leave approvals and balances, plus ticketing Performance.
+// Every link says who sees it; the group shows when any link survives, so a
+// consultant without the HR module still finds Performance here. Managers keep
+// the directory and balances for the people they run.
 const HR_GROUP: NavLink = {
   name: "HR",
   icon: Contact,
   isGroup: true,
   children: [
-    { name: "Employees", path: "/hr/employees", icon: UserCog },
+    { name: "Employees", path: "/hr/employees", icon: UserCog, module: "hr", orMinRole: "manager" },
     { name: "Teams", path: "/hr/teams", icon: Globe, module: "hr" },
     { name: "Approvals", path: "/employee-requests/approvals", icon: ClipboardCheck, minRole: "manager" },
-    { name: "Balances", path: "/employee-requests/balances", icon: Wallet },
+    { name: "Balances", path: "/employee-requests/balances", icon: Wallet, module: "hr", orMinRole: "manager" },
+    PERFORMANCE_GROUP,
   ],
 };
 
@@ -285,7 +294,7 @@ const EMPLOYEE_NAV: NavEntry[] = [
   { module: "telesales", link: TELE_SALES_GROUP },
   { module: "tasks", link: TASKS_GROUP },
   { module: "development", link: DEVELOPMENT_GROUP },
-  { module: "hr", orMinRole: "manager", link: HR_GROUP },
+  { module: "any", link: HR_GROUP },
   { module: "admin", link: TICKETING_CONFIG_GROUP },
   { module: "any", link: MY_REQUESTS_GROUP },
 ];
@@ -299,7 +308,7 @@ const rankOk = (minRole: NavRank | undefined, access: Access) => {
 /** Drop links the caller may not see, recursing into groups; drop empty groups. */
 const pruneLink = (link: NavLink, access: Access): NavLink | null => {
   if (!rankOk(link.minRole, access)) return null;
-  if (link.module && !access.hasModule(link.module)) return null;
+  if (link.module && !access.hasModule(link.module) && !(link.orMinRole && rankOk(link.orMinRole, access))) return null;
   if (!link.children) return link;
   const children = link.children
     .map((c) => pruneLink(c, access))
