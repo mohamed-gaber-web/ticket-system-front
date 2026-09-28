@@ -11,7 +11,7 @@ import {
   // UserCheck, // Hidden - not in use
   Clock,
   // BarChart3,    // Hidden - Reports not in use
-  // FileBarChart, // Hidden - Consultant Reports not in use
+  FileBarChart,
   FolderKanban,
   ListChecks,
   Server,
@@ -187,11 +187,20 @@ const TICKETING_GROUP: NavLink = {
         { name: "Customer Summary", path: "/customers/summary", icon: BarChart2 },
       ],
     },
+    {
+      name: "Reports",
+      icon: FileBarChart,
+      isSubGroup: true,
+      children: [
+        { name: "Weekly Report", path: "/consultant-reports/weekly", icon: CalendarDays, minRole: "admin" },
+        { name: "Weekly Hours", path: "/consultants/weekly-hours", icon: CalendarClock },
+      ],
+    },
     { ...SERVICES_GROUP, isGroup: undefined, isSubGroup: true },
   ],
 };
 
-// Work performance of the ticketing staff — tasks, evaluations and hours. Lives
+// Work performance of the ticketing staff — tasks and evaluations. Lives
 // in the HR menu but stays a ticketing feature: only the tickets module sees it.
 const PERFORMANCE_GROUP: NavLink = {
   name: "Performance",
@@ -202,8 +211,6 @@ const PERFORMANCE_GROUP: NavLink = {
     { name: "My Tasks", path: "/profile?view=tasks", icon: ListChecks },
     { name: "My Evaluation", path: "/consultants/evaluation/me", icon: GaugeCircle },
     { name: "Evaluations", path: "/consultants/evaluations", icon: BarChart2, minRole: "admin" },
-    { name: "Weekly Report", path: "/consultant-reports/weekly", icon: CalendarDays, minRole: "admin" },
-    { name: "Weekly Hours", path: "/consultants/weekly-hours", icon: CalendarClock },
   ],
 };
 
