@@ -16,6 +16,7 @@ import { fetchModules } from '@/redux/slices/moduleSlice';
 import { fetchSources } from '@/redux/slices/sourceSlice';
 import { UserPlus, Upload, X, File, Image as ImageIcon, Mail, Plus, Sparkles, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { DURATION_REQUIRED_MESSAGE, needsDuration } from '@/lib/ticketDuration';
 import { validateFile, formatFileSize } from '@/api/attachmentApi';
 import { fetchAutoFillSuggestions, clearAutoFillSuggestions, acceptAutoFillField } from '@/redux/slices/aiSlice';
 import { suggestDescription as suggestDescriptionApi } from '@/api/aiApi';
@@ -431,6 +432,11 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
       }
       if (fd.durationHours === undefined || fd.durationHours === null || String(fd.durationHours) === '') {
         toast.error('Actual Duration is required.');
+        return;
+      }
+      // Past Assigned, zero hours is not a duration
+      if (isEdit && initialData && needsDuration(initialData.status, fd.durationHours)) {
+        toast.error(DURATION_REQUIRED_MESSAGE);
         return;
       }
     }

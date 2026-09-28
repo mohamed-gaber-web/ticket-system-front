@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchTicketById, clearCurrentTicket, updateTicket, deleteTicket, changeTicketStatus } from '@/redux/slices/ticketSlice';
 import { toast } from 'sonner';
+import { DURATION_REQUIRED_MESSAGE, needsDuration } from '@/lib/ticketDuration';
 import { submitFeedback } from '@/api/ticketApi';
 import { fetchCurrentAssignment } from '@/redux/slices/assignmentSlice';
 import { fetchConsultants } from '@/redux/slices/consultantSlice';
@@ -203,6 +204,10 @@ export default function ViewTicket() {
       return;
     }
     setShowStatusMenu(false);
+    if (needsDuration(newStatus, currentTicket.durationHours)) {
+      toast.error(DURATION_REQUIRED_MESSAGE);
+      return;
+    }
     // Customer Pending needs to know *who* we are waiting on — ask first.
     if (newStatus === 'customer_pending' && !pendingOn && !isCustomer) {
       setShowPendingDialog(true);

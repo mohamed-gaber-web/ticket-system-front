@@ -17,6 +17,8 @@ import { useAppSelector, useAppDispatch } from '@/redux/hooks/hooks';
 import { acceptTicket, fetchSubTickets, updateTicket, changeTicketStatus } from '@/redux/slices/ticketSlice';
 import { PendingOnDialog, PendingOnLine } from '@/components/tickets/PendingOnDialog';
 import { TICKET_ACTIVITY_LABELS, formatIdle, idleMs, idleTone, lastActivityOf } from '@/lib/ticketActivity';
+import { DURATION_REQUIRED_MESSAGE, needsDuration } from '@/lib/ticketDuration';
+import { toast } from 'sonner';
 
 const MySwal = withReactContent(Swal);
 
@@ -348,6 +350,13 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
 
   const selectSave = async (ticketId: string, field: InlineEditField, value: string) => {
     setActiveEdit(null);
+    if (field === 'status') {
+      const t = tickets.find((x) => x._id === ticketId);
+      if (t && value !== t.status && needsDuration(value, t.durationHours)) {
+        toast.error(DURATION_REQUIRED_MESSAGE);
+        return;
+      }
+    }
     if (field === 'status' && value === 'customer_pending' && !isCustomer) {
       const t = tickets.find((x) => x._id === ticketId) ?? null;
       if (t) { setPendingFor(t); return; }
