@@ -185,15 +185,15 @@ const TICKETING_GROUP: NavLink = {
       children: [
         { name: "Customers", path: "/customers", icon: Users },
         { name: "Customer Summary", path: "/customers/summary", icon: BarChart2 },
-      ],
-    },
-    {
-      name: "Reports",
-      icon: FileBarChart,
-      isSubGroup: true,
-      children: [
-        { name: "Weekly Report", path: "/consultant-reports/weekly", icon: CalendarDays, minRole: "admin" },
-        { name: "Weekly Hours", path: "/consultants/weekly-hours", icon: CalendarClock },
+        {
+          name: "Reports",
+          icon: FileBarChart,
+          isSubGroup: true,
+          children: [
+            { name: "Weekly Report", path: "/consultant-reports/weekly", icon: CalendarDays, minRole: "admin" },
+            { name: "Weekly Hours", path: "/consultants/weekly-hours", icon: CalendarClock },
+          ],
+        },
       ],
     },
     { ...SERVICES_GROUP, isGroup: undefined, isSubGroup: true },

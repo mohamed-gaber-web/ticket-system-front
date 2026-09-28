@@ -16,7 +16,8 @@ interface NavSubGroup {
   name: string;
   icon: React.ElementType;
   isSubGroup: true;
-  children: NavLinkItem[];
+  /** Links, or one more level of folders (Ticketing > Customers > Reports). */
+  children: (NavLinkItem | NavSubGroup)[];
 }
 
 interface NavGroup {
@@ -277,6 +278,45 @@ export function SidebarDesktop({ links, isOpen, setIsOpen }: SidebarDesktopProps
                                       >
                                         <div className="ml-3 pl-3 border-l border-outline-variant/20 mt-0.5 space-y-0.5 pb-1">
                                           {child.children.map((leaf) => {
+                                            if (isSubGroup(leaf)) {
+                                              const nestedKey = `${item.name}__${child.name}__${leaf.name}`;
+                                              const nestedOpen = expandedGroups.includes(nestedKey);
+                                              const links = leaf.children.filter((l): l is NavLinkItem => !isSubGroup(l));
+                                              return (
+                                                <div key={leaf.name}>
+                                                  <button
+                                                    onClick={() => toggleGroup(nestedKey)}
+                                                    aria-expanded={nestedOpen}
+                                                    className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-colors duration-150 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
+                                                  >
+                                                    <leaf.icon className="h-4 w-4 shrink-0" />
+                                                    <span className="flex-1 text-left whitespace-nowrap">{leaf.name}</span>
+                                                    <motion.div animate={{ rotate: nestedOpen ? 0 : -90 }} transition={{ duration: 0.2 }} className="shrink-0">
+                                                      <ChevronDown className="h-3 w-3" />
+                                                    </motion.div>
+                                                  </button>
+                                                  {nestedOpen && (
+                                                    <div className="ml-3 pl-3 border-l border-outline-variant/15 mt-0.5 space-y-0.5 pb-1">
+                                                      {links.map((l3) => {
+                                                        const active = isChildActive(l3.path);
+                                                        return (
+                                                          <NavLink
+                                                            key={l3.path}
+                                                            to={l3.path}
+                                                            className={`relative flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-colors duration-150 overflow-hidden ${active ? "text-brand-500 font-semibold" : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"}`}
+                                                          >
+                                                            {active && <motion.div layoutId={`activeNestedLeaf-${l3.path}`} className="absolute inset-0 bg-brand-500/[0.08] rounded-xl" transition={{ type: "spring", stiffness: 320, damping: 30 }} />}
+                                                            {active && <div className="absolute left-0 inset-y-1.5 w-[3px] bg-brand-500 rounded-r-full z-20" />}
+                                                            <l3.icon className="relative z-10 h-4 w-4 shrink-0" />
+                                                            <span className="relative z-10 whitespace-nowrap">{l3.name}</span>
+                                                          </NavLink>
+                                                        );
+                                                      })}
+                                                    </div>
+                                                  )}
+                                                </div>
+                                              );
+                                            }
                                             const active = isChildActive(leaf.path);
                                             return (
                                               <NavLink
