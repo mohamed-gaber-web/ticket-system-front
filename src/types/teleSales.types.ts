@@ -609,6 +609,12 @@ export interface LeadEmail {
   createdAt: string;
 }
 
+/**
+ * One message of any email conversation — a lead's or a ticket's — without
+ * what it hangs off. The shared thread and compose components take this.
+ */
+export type ThreadEmail = Omit<LeadEmail, 'lead' | 'team'>;
+
 export interface LeadEmailThreadSummary {
   sent: number;
   failed: number;

@@ -102,6 +102,7 @@ const SERVICES_GROUP = {
     { name: "Tickets", path: "/tickets", icon: Ticket },
     { name: "Internal", path: "/tickets/internal", icon: Home },
     { name: "Internal Dashboard", path: "/dashboard/internal", icon: LayoutDashboard },
+    { name: "Emails", path: "/tickets/emails", icon: Mail },
     { name: "Projects", path: "/projects", icon: FolderKanban },
     { name: "Meetings/Visit report", path: "/meetings", icon: CalendarDays },
   ],
@@ -172,6 +173,19 @@ interface NavEntry {
   link: NavLink;
 }
 
+// Lookups and configuration of the ticketing module (categories, SLA, working
+// hours…). A sub-menu of Ticketing, shown only to holders of the admin module.
+const TICKETING_CONFIG_GROUP: NavLink = {
+  name: "Ticketing Setup",
+  icon: Layers,
+  isSubGroup: true,
+  module: "admin",
+  children: [
+    ...MODULES_GROUP.children,
+    { name: "Working Hours", path: "/working-hours", icon: CalendarClock },
+  ],
+};
+
 const TICKETING_GROUP: NavLink = {
   name: "Ticketing",
   icon: Ticket,
@@ -197,6 +211,7 @@ const TICKETING_GROUP: NavLink = {
       ],
     },
     { ...SERVICES_GROUP, isGroup: undefined, isSubGroup: true },
+    TICKETING_CONFIG_GROUP,
   ],
 };
 
@@ -211,16 +226,6 @@ const PERFORMANCE_GROUP: NavLink = {
     { name: "My Tasks", path: "/profile?view=tasks", icon: ListChecks },
     { name: "My Evaluation", path: "/consultants/evaluation/me", icon: GaugeCircle },
     { name: "Evaluations", path: "/consultants/evaluations", icon: BarChart2, minRole: "admin" },
-  ],
-};
-
-const TICKETING_CONFIG_GROUP: NavLink = {
-  name: "Ticketing Setup",
-  icon: Layers,
-  isGroup: true,
-  children: [
-    ...MODULES_GROUP.children,
-    { name: "Working Hours", path: "/working-hours", icon: CalendarClock },
   ],
 };
 
@@ -302,7 +307,6 @@ const EMPLOYEE_NAV: NavEntry[] = [
   { module: "tasks", link: TASKS_GROUP },
   { module: "development", link: DEVELOPMENT_GROUP },
   { module: "any", link: HR_GROUP },
-  { module: "admin", link: TICKETING_CONFIG_GROUP },
   { module: "any", link: MY_REQUESTS_GROUP },
 ];
 

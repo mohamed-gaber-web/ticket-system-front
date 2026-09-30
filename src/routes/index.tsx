@@ -141,6 +141,7 @@ const Leads = lazy(() => import("@/pages/tele-sales/leads/Leads"));
 const LeadDetail = lazy(() => import("@/pages/tele-sales/leads/LeadDetail"));
 const RecentCalls = lazy(() => import("@/pages/tele-sales/leads/RecentCalls"));
 const EmailManagement = lazy(() => import("@/pages/tele-sales/emails/EmailManagement"));
+const TicketEmails = lazy(() => import("@/pages/tickets/TicketEmails"));
 const TeleSalesAgents = lazy(() => import("@/pages/tele-sales/agents/Agents"));
 const TeleSalesTeams = lazy(() => import("@/pages/tele-sales/teams/Teams"));
 // Sales assistant (product catalog group)
@@ -242,6 +243,7 @@ export const routes: RouteObject[] = [
       { path: "/dashboard/internal", element: <ModuleRoute module="tickets"><Dashboard key="internal" internal /></ModuleRoute> },
       { path: "/tickets/create", element: <Lazy><CreateTicket /></Lazy> },
       { path: "/tickets/edit/:id", element: <Lazy><EditTicket /></Lazy> },
+      { path: "/tickets/emails", element: <ModuleRoute module="tickets"><Lazy><TicketEmails /></Lazy></ModuleRoute> },
       { path: "/tickets/view/:id", element: <Lazy><ViewTicket /></Lazy> },
 
       // Services — dedicated pages

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import type { LeadEmail, LeadEmailThreadSummary, EmailAttachment } from '@/types/teleSales.types';
+import type { ThreadEmail, LeadEmailThreadSummary, EmailAttachment } from '@/types/teleSales.types';
 import {
   Mail, Send, Reply, RefreshCw, Trash2, Paperclip, Download, File as FileIcon, Image as ImageIcon,
   AlertCircle, Check, CheckCheck, Inbox, Clock, ArrowDownLeft, ArrowUpRight, Hourglass, MailOpen,
@@ -25,10 +25,15 @@ const relative = (d?: string | null) => {
 };
 
 /** Status badge for one message, phrased from the agent's point of view. */
-export function EmailStatusBadge({ email, compact = false }: { email: Pick<LeadEmail, 'direction' | 'status'>; compact?: boolean }) {
+export function EmailStatusBadge({ email, compact = false, contactNoun = 'lead' }: {
+  email: Pick<ThreadEmail, 'direction' | 'status'>;
+  compact?: boolean;
+  /** Who is on the other end — 'lead' in tele-sales, 'customer' on tickets. */
+  contactNoun?: string;
+}) {
   const map: Record<string, { label: string; cls: string; icon: React.ReactNode }> = {
     'outbound:sent': { label: 'Sent · awaiting reply', cls: 'bg-blue-100 text-blue-800', icon: <Check className="w-3 h-3" /> },
-    'outbound:replied': { label: 'Replied by lead', cls: 'bg-green-100 text-green-800', icon: <CheckCheck className="w-3 h-3" /> },
+    'outbound:replied': { label: `Replied by ${contactNoun}`, cls: 'bg-green-100 text-green-800', icon: <CheckCheck className="w-3 h-3" /> },
     'outbound:failed': { label: 'Failed', cls: 'bg-error/10 text-error', icon: <AlertCircle className="w-3 h-3" /> },
     'inbound:received': { label: 'New reply', cls: 'bg-orange-100 text-orange-800', icon: <Inbox className="w-3 h-3" /> },
     'inbound:read': { label: 'Read · needs answer', cls: 'bg-yellow-100 text-yellow-800', icon: <MailOpen className="w-3 h-3" /> },
@@ -44,29 +49,32 @@ export function EmailStatusBadge({ email, compact = false }: { email: Pick<LeadE
   );
 }
 
-interface LeadEmailThreadProps {
-  emails: LeadEmail[];
+interface LeadEmailThreadProps<E extends ThreadEmail> {
+  emails: E[];
   summary: LeadEmailThreadSummary | null;
   syncing: boolean;
   onCompose: () => void;
-  onReply: (email: LeadEmail) => void;
+  onReply: (email: E) => void;
   onRefresh: () => void;
   onDelete: (emailId: string) => void;
-  onMarkRead: (email: LeadEmail) => void;
+  onMarkRead: (email: E) => void;
   onDownload: (att: EmailAttachment) => void;
   canWrite: boolean;
+  /** Who is on the other end — 'lead' in tele-sales, 'customer' on tickets. */
+  contactNoun?: string;
 }
 
 /**
- * The lead's email conversation, oldest first, with the exchange status at
+ * An email conversation (a lead's or a ticket's), oldest first, with the exchange status at
  * the top: what we sent, what came back, and who owes the next reply.
  */
-export function LeadEmailThread({
-  emails, summary, syncing, onCompose, onReply, onRefresh, onDelete, onMarkRead, onDownload, canWrite,
-}: LeadEmailThreadProps) {
+export function LeadEmailThread<E extends ThreadEmail>({
+  emails, summary, syncing, onCompose, onReply, onRefresh, onDelete, onMarkRead, onDownload, canWrite, contactNoun = 'lead',
+}: LeadEmailThreadProps<E>) {
+  const Contact = contactNoun.charAt(0).toUpperCase() + contactNoun.slice(1);
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set(emails.length ? [emails[emails.length - 1]._id] : []));
 
-  const toggle = (email: LeadEmail) => {
+  const toggle = (email: E) => {
     setExpanded((prev) => {
       const next = new Set(prev);
       if (next.has(email._id)) next.delete(email._id);
@@ -86,7 +94,7 @@ export function LeadEmailThread({
             <div>
               <p className="text-sm font-bold text-on-surface">Email management</p>
               <p className="text-xs text-on-surface-variant">
-                Replies from the lead land here automatically (mailbox is checked every 2 minutes).
+                Replies from the {contactNoun} land here automatically (mailbox is checked every 2 minutes).
               </p>
             </div>
           </div>
@@ -110,9 +118,9 @@ export function LeadEmailThread({
             {summary.failed > 0 && <Stat icon={<AlertCircle className="w-3.5 h-3.5" />} label="Failed" value={summary.failed} tone="error" />}
             <span className="ml-auto inline-flex items-center gap-1.5 text-xs font-semibold">
               {summary.awaitingAgent ? (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-orange-100 text-orange-800"><Hourglass className="w-3.5 h-3.5" /> Lead is waiting for your reply · {relative(summary.lastInboundAt)}</span>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-orange-100 text-orange-800"><Hourglass className="w-3.5 h-3.5" /> {Contact} is waiting for your reply · {relative(summary.lastInboundAt)}</span>
               ) : summary.awaitingLead ? (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-100 text-blue-800"><Clock className="w-3.5 h-3.5" /> Waiting for the lead · sent {relative(summary.lastOutboundAt)}</span>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-100 text-blue-800"><Clock className="w-3.5 h-3.5" /> Waiting for the {contactNoun} · sent {relative(summary.lastOutboundAt)}</span>
               ) : summary.sent + summary.received > 0 ? (
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-100 text-green-800"><CheckCheck className="w-3.5 h-3.5" /> Up to date</span>
               ) : null}
@@ -125,7 +133,7 @@ export function LeadEmailThread({
         <div className="flex flex-col items-center py-16 text-on-surface-variant bg-surface-container-lowest rounded-2xl border border-outline-variant/20">
           <Mail className="w-8 h-8 mb-2 opacity-30" />
           <p className="text-sm font-medium">No emails yet</p>
-          <p className="text-xs mt-1">Click "Compose" to write the first message — the lead's replies will show up here.</p>
+          <p className="text-xs mt-1">Click "Compose" to write the first message — the {contactNoun}'s replies will show up here.</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -133,7 +141,7 @@ export function LeadEmailThread({
             const inbound = email.direction === 'inbound';
             const isOpen = expanded.has(email._id);
             const unread = inbound && email.status === 'received';
-            const who = inbound ? (email.fromName || email.from || 'Lead') : (email.sentByName || 'Agent');
+            const who = inbound ? (email.fromName || email.from || Contact) : (email.sentByName || 'Agent');
             const when = inbound ? email.receivedAt ?? email.createdAt : email.sentAt ?? email.createdAt;
             return (
               <div key={email._id} className={`flex ${inbound ? 'justify-start' : 'justify-end'}`}>
@@ -152,7 +160,7 @@ export function LeadEmailThread({
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className={`text-sm text-on-surface truncate ${unread ? 'font-bold' : 'font-semibold'}`}>{email.subject}</span>
-                          <EmailStatusBadge email={email} />
+                          <EmailStatusBadge email={email} contactNoun={contactNoun} />
                           {email.attachments.length > 0 && (
                             <span className="inline-flex items-center gap-1 text-xs text-on-surface-variant"><Paperclip className="w-3 h-3" /> {email.attachments.length}</span>
                           )}

@@ -1,5 +1,5 @@
-import { useEffect, useState, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useState, useRef } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchTicketById, clearCurrentTicket, updateTicket, deleteTicket, changeTicketStatus } from '@/redux/slices/ticketSlice';
 import { toast } from 'sonner';
@@ -25,6 +25,8 @@ import { PENDING_EXPORT_HEADERS, pendingExportValues } from '@/utils/ticketPendi
 import autoTable from 'jspdf-autotable';
 import { TicketIntelligencePanel } from '@/components/ai/TicketIntelligencePanel';
 import { PendingOnDialog, PendingOnLine } from '@/components/tickets/PendingOnDialog';
+import { TicketEmailsTab } from '@/components/tickets/TicketEmailsTab';
+import { useAccess } from '@/redux/hooks/useAccess';
 import {
   ArrowLeft,
   Loader2,
@@ -85,6 +87,8 @@ const ALL_STATUSES: { value: 'new' | 'assigned' | 'in_progress' | 'customer_pend
   { value: 'not_related', label: 'Not Related' },
 ];
 
+type TicketTab = 'details' | 'comments' | 'attachments' | 'emails';
+
 export default function ViewTicket() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -97,7 +101,14 @@ export default function ViewTicket() {
   const { consultants } = useAppSelector((state) => state.consultants);
 
   const isCustomer = userType === 'customer';
-  const [activeTab, setActiveTab] = useState<'details' | 'comments' | 'attachments'>('details');
+  // The customer email conversation is for ticketing staff only.
+  const canEmail = useAccess().hasModule('tickets') && !isCustomer;
+  const tabs: TicketTab[] = canEmail ? ['details', 'comments', 'attachments', 'emails'] : ['details', 'comments', 'attachments'];
+  // Deep link: /tickets/view/:id?tab=emails (used by customer-reply notifications).
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState<TicketTab>(() => (searchParams.get('tab') === 'emails' ? 'emails' : 'details'));
+  const [emailCount, setEmailCount] = useState<{ total: number; unread: number } | null>(null);
+  const setEmailCountFromTab = useCallback((total: number, unread: number) => setEmailCount({ total, unread }), []);
   const [closing, setClosing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [feedbackRating, setFeedbackRating] = useState(0);
@@ -626,7 +637,7 @@ export default function ViewTicket() {
         role="tablist"
         aria-label="Ticket sections"
       >
-        {(['details', 'comments', 'attachments'] as const).map((tab) => (
+        {tabs.map((tab) => (
           <button
             key={tab}
             role="tab"
@@ -635,7 +646,6 @@ export default function ViewTicket() {
             id={`tab-${tab}`}
             onClick={() => setActiveTab(tab)}
             onKeyDown={(e) => {
-              const tabs = ['details', 'comments', 'attachments'] as const;
               const currentIndex = tabs.indexOf(tab);
               if (e.key === 'ArrowRight') {
                 e.preventDefault();
@@ -673,6 +683,19 @@ export default function ViewTicket() {
                 }`}>
                   {attachmentTotal}
                 </span>
+              </span>
+            ) : tab === 'emails' ? (
+              <span className="flex items-center gap-1.5">
+                Emails
+                {emailCount && (
+                  <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full ${
+                    emailCount.unread > 0
+                      ? 'bg-orange-500 text-white'
+                      : activeTab === 'emails' ? 'bg-brand-500 text-white' : 'bg-surface-container-high text-on-surface-variant'
+                  }`}>
+                    {emailCount.unread > 0 ? `${emailCount.unread} new` : emailCount.total}
+                  </span>
+                )}
               </span>
             ) : tab}
           </button>
@@ -979,6 +1002,20 @@ export default function ViewTicket() {
       {activeTab === 'comments' && (
         <div id="tabpanel-comments" role="tabpanel" aria-labelledby="tab-comments" className="max-w-4xl">
           <TicketComments ticketId={currentTicket._id} />
+        </div>
+      )}
+
+      {activeTab === 'emails' && canEmail && (
+        <div id="tabpanel-emails" role="tabpanel" aria-labelledby="tab-emails" className="max-w-4xl">
+          <TicketEmailsTab
+            ticketId={currentTicket._id}
+            ticketNumber={currentTicket.ticketNumber}
+            ticketSubject={currentTicket.subject}
+            customerEmail={customer?.email}
+            customerName={customer?.contactPerson ?? customer?.companyName}
+            notifyEmails={currentTicket.notifyEmails}
+            onCountChange={setEmailCountFromTab}
+          />
         </div>
       )}
 

@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import * as teleSalesApi from '@/api/teleSalesApi';
 import { cn } from '@/lib/utils';
-import type { EmailAttachment, LeadEmail, LeadEmailResponse, SendLeadEmailData } from '@/types/teleSales.types';
+import type { EmailAttachment, LeadEmail, LeadEmailResponse, SendLeadEmailData, ThreadEmail } from '@/types/teleSales.types';
 
 // Mirrors the server-side cap in emailService.js — Microsoft Graph's simple
 // sendMail rejects anything much beyond this once base64 inflates it.
@@ -52,7 +52,7 @@ export interface GmailComposeProps {
   fromLabel?: string;
   /** Message being answered — sends through the reply endpoint so the lead
    *  sees a normal threaded conversation. Recipients / subject are prefilled. */
-  replyTo?: LeadEmail | null;
+  replyTo?: ThreadEmail | null;
   onSent?: (email: LeadEmail) => void;
 }
 

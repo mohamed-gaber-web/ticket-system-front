@@ -18,7 +18,8 @@ export type NotificationType =
   | 'meeting_updated'
   | 'meeting_cancelled'
   | 'meeting_reminder'
-  | 'lead_email_reply';
+  | 'lead_email_reply'
+  | 'ticket_email_reply';
 
 export interface Notification {
   _id: string;
