@@ -25,15 +25,15 @@ interface Props {
   value: EmployeeAccessValue;
   onChange: (next: EmployeeAccessValue) => void;
   departments: { _id: string; name: string }[];
-  /** Validation message for the tele-sales team (a sales employee needs one). */
+  /** Validation message for the tele-sales team (sales and sales managers need one). */
   teamError?: string;
 }
 
 const ROLE_HINTS: Record<EmployeeRole, string> = {
   admin: 'Every module, every team; manages everyone.',
   consultant: 'Ticketing only.',
-  sales: 'Tele-sales, inside one team.',
-  sales_manager: 'Tele-sales across every team; runs the sales people.',
+  sales: 'Tele-sales: only the leads assigned to them, inside one team.',
+  sales_manager: 'Tele-sales: runs one team — all its leads, imports, assigns, its sales people.',
   marketing: 'Tele-sales (read-only, every team) and Tasks.',
   marketing_manager: 'The same as marketing, and runs the marketing people.',
   developer: 'Development boards they create or are added to.',
@@ -121,13 +121,13 @@ export function EmployeeAccessFields({ value, onChange, departments, teamError }
         {isSalesFamily && (
           <div>
             <label className="form-label">
-              Tele-sales Team{value.role === 'sales' && <span className="required">*</span>}
+              Tele-sales Team<span className="required">*</span>
             </label>
             <CustomSelect
               value={value.teleSalesTeam ?? ''}
               onChange={(val) => onChange({ ...value, teleSalesTeam: val || null })}
               options={[
-                { value: '', label: teamsLoading ? 'Loading teams…' : value.role === 'sales' ? 'Select a team' : 'None (works across every team)' },
+                { value: '', label: teamsLoading ? 'Loading teams…' : 'Select a team' },
                 ...activeTeams.map((t) => ({ value: t._id, label: t.name })),
               ]}
             />
@@ -141,8 +141,8 @@ export function EmployeeAccessFields({ value, onChange, departments, teamError }
             ) : (
               <p className="text-xs text-on-surface-variant mt-1">
                 {value.role === 'sales'
-                  ? 'An agent only ever sees the leads of this team.'
-                  : 'Optional home team — the default owner of leads this manager creates.'}
+                  ? 'The agent sees only the leads of this team that are assigned to them.'
+                  : 'The manager sees and runs this team only — other teams stay hidden.'}
               </p>
             )}
           </div>

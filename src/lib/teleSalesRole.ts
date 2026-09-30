@@ -10,8 +10,8 @@ import { roleFamily } from '@/lib/access';
  * branch on role from drifting apart.
  *
  * Role model (Employee.role):
- *   sales          → agent: their own team, writes own + unassigned leads
- *   sales_manager  → every team, writes everything, manages the sales roster
+ *   sales          → agent: only the leads assigned to them, inside their team
+ *   sales_manager  → their own team: every lead in it, imports, assigns, runs its roster
  *   marketing(_manager) → every team, READ-ONLY
  *   admin          → every team, writes everything, manages teams
  *
@@ -25,27 +25,27 @@ const roleOf = (user: MaybeUser): string | undefined => (user as any)?.role;
 /** The system administrator — the only role that manages the teams themselves. */
 export const isSystemAdmin = (user: MaybeUser): boolean => roleOf(user) === 'admin';
 
-/** Runs the whole sales department. */
+/** Runs one team. */
 export const isSalesManager = (user: MaybeUser): boolean => roleOf(user) === 'sales_manager';
 
 /** Marketing reads every team's pipeline but may not change it. */
 export const isReadOnly = (user: MaybeUser): boolean => roleFamily(roleOf(user)) === 'marketing';
 
 /**
- * Works across every team with full write access: admins and the sales
- * manager. Kept under its historical name — every tele-sales screen already
- * uses it to mean "may choose the team and sees all of them".
+ * Works across every team with full write access: admins only. Kept under its
+ * historical name — every tele-sales screen uses it to mean "may choose the
+ * team and sees all of them".
  */
-export const isSuperAdmin = (user: MaybeUser): boolean => isSystemAdmin(user) || isSalesManager(user);
+export const isSuperAdmin = (user: MaybeUser): boolean => isSystemAdmin(user);
 
-/** Sees every team (read or write): admins, sales manager, marketing. */
+/** Sees every team (read or write): admins and marketing. */
 export const isCrossTeamReader = (user: MaybeUser): boolean => isSuperAdmin(user) || isReadOnly(user);
 
 /**
- * May act on the pipeline as a whole — reassign leads between agents, delete
- * them, manage the roster. Admins and the sales manager.
+ * May act on the pipeline as a whole — import leads, assign and reassign them,
+ * delete them, manage the roster. Admins, and the sales manager inside their team.
  */
-export const canManageTeam = (user: MaybeUser): boolean => isSuperAdmin(user);
+export const canManageTeam = (user: MaybeUser): boolean => isSystemAdmin(user) || isSalesManager(user);
 
 /** The caller's own team reference (employees carry `teleSalesTeam`; `team` is the compat alias). */
 const ownTeamRef = (user: MaybeUser) => (user as any)?.teleSalesTeam ?? (user as any)?.team;

@@ -14,7 +14,10 @@ import { INITIAL_LEAD_STATUS, PICKABLE_LEAD_STATUSES, type LeadStatus } from '@/
 import type {
   Lead, LeadPriority, LeadSource, CreateLeadData, EntityType, IndustrySector, SalesType,
 } from '@/types/teleSales.types';
-import { ENTITY_TYPES, INDUSTRY_SECTORS, SALES_TYPES, LEAD_SOURCE_DETAILS, isValidUrl, teamId } from '@/types/teleSales.types';
+import {
+  ENTITY_TYPES, INDUSTRY_SECTORS, SALES_TYPES, LEAD_SOURCE_DETAILS, isValidUrl, teamId,
+  VALUE_CURRENCIES, DEFAULT_VALUE_CURRENCY, type ValueCurrency,
+} from '@/types/teleSales.types';
 import { dialCodeForCountry, isValidPhoneForCountry } from '@/utils/countryPhone';
 import { isSuperAdmin, canManageTeam } from '@/lib/teleSalesRole';
 
@@ -76,11 +79,11 @@ function Field({
 
 /** A native select wrapped with a chevron, styled to match the Input component. */
 function SelectField({
-  value, onChange, children,
-}: { value: string; onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void; children: React.ReactNode }) {
+  value, onChange, children, 'aria-label': ariaLabel,
+}: { value: string; onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void; children: React.ReactNode; 'aria-label'?: string }) {
   return (
     <div className="relative">
-      <select value={value} onChange={onChange} className={selectCls}>{children}</select>
+      <select value={value} onChange={onChange} className={selectCls} aria-label={ariaLabel}>{children}</select>
       <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
     </div>
   );
@@ -140,6 +143,9 @@ const buildFormFromLead = (lead: Lead): CreateLeadData => ({
   assignedTo: (lead.assignedTo as any)?._id || '',
   priority: lead.priority,
   potentialValue: lead.potentialValue,
+  // Left unset when the lead has none, so saving the form does not stamp a
+  // currency (and a "manual" source) on a value the user never touched.
+  valueCurrency: lead.valueCurrency,
   status: lead.status,
   painPoints: lead.painPoints || '',
   customerNeeds: lead.customerNeeds || '',
@@ -279,6 +285,7 @@ export function LeadFormModal({ open, lead, defaultSalesType, onClose, onSaved }
     const payload = { ...form, phonePrimary: primary, leadSourceDetail: detailSpec ? detail : '' };
     if (!payload.assignedTo) delete payload.assignedTo;
     if (!payload.potentialValue) delete payload.potentialValue;
+    if (!payload.valueCurrency) delete payload.valueCurrency;
     // Everyone else works inside their own team; the server ignores the field for
     // them, so sending it would only be misleading.
     if (!superAdmin) delete payload.team;
@@ -456,8 +463,17 @@ export function LeadFormModal({ open, lead, defaultSalesType, onClose, onSaved }
                   </SelectField>
                 </Field>
               )}
-              <Field label="Potential Value">
-                <Input type="number" value={form.potentialValue || ''} onChange={(e) => setForm(p => ({ ...p, potentialValue: e.target.value ? Number(e.target.value) : undefined }))} placeholder="0" />
+              <Field label="Potential Value" hint="Your estimate. Replaced by the Quoted, Revised and Final Deal Value as the lead moves through the pipeline.">
+                <div className="flex gap-2">
+                  <Input type="number" min={0} value={form.potentialValue || ''} onChange={(e) => setForm(p => ({ ...p, potentialValue: e.target.value ? Number(e.target.value) : undefined }))} placeholder="0" className="flex-1" />
+                  <SelectField
+                    value={form.valueCurrency || DEFAULT_VALUE_CURRENCY}
+                    onChange={(e) => setForm(p => ({ ...p, valueCurrency: e.target.value as ValueCurrency }))}
+                    aria-label="Currency"
+                  >
+                    {VALUE_CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                  </SelectField>
+                </div>
               </Field>
               {canAssign && (
                 <Field label="Assign To" required hint="Only agents on the owning team can be assigned.">

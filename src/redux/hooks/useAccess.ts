@@ -17,7 +17,7 @@ export interface Access {
   isSalesManager: boolean;
   /** Marketing family — reads tele-sales but may not change it. */
   isMarketing: boolean;
-  /** Admins and sales managers: see and write every tele-sales team. */
+  /** Admins only: see and write every tele-sales team (a sales manager runs one). */
   isCrossTeam: boolean;
   /** Admins and the development manager: see and shape every development board. */
   seesAllBoards: boolean;
@@ -60,7 +60,7 @@ export const useAccess = (): Access => {
       isManagerOrAdmin: isAdmin || isManager,
       isSalesManager: role === 'sales_manager',
       isMarketing: family === 'marketing',
-      isCrossTeam: isAdmin || role === 'sales_manager',
+      isCrossTeam: isAdmin,
       seesAllBoards: isAdmin || role === 'developer_manager',
       isHr: resolved.includes('hr'),
       canManageEmployees: isAdmin || isManager || resolved.includes('hr'),

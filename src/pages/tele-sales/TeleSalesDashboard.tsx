@@ -27,8 +27,10 @@ import {
   Wallet,
   Target,
   Globe,
+  Info,
 } from 'lucide-react';
-import { isCrossTeamReader, ownTeamName } from '@/lib/teleSalesRole';
+import { isCrossTeamReader, isSalesManager, ownTeamName } from '@/lib/teleSalesRole';
+import { formatMoney, type CurrencyTotal } from '@/types/teleSales.types';
 
 /* ─────────────────────────────────────────────────────────────
    Spring presets — matches the main Tickets dashboard's motion language.
@@ -163,7 +165,6 @@ const PIPELINE_STAGES = STEPS.map((label, step) => ({
   statuses: LEAD_STATUSES.filter((status) => LEAD_STATUS_WORKFLOW[status].step === step),
 }));
 
-const money = (v: number) => `$${Math.round(v).toLocaleString()}`;
 const percent = (v: number) => `${Math.round(v)}%`;
 
 export default function TeleSalesDashboard() {
@@ -189,10 +190,15 @@ export default function TeleSalesDashboard() {
   const maxStageTotal = Math.max(1, ...PIPELINE_STAGES.map((s) => stageTotal(s.statuses)));
 
   // Pipeline value & win rate — the "money view": how much is still in play,
-  // and how often an open deal ends up won once it closes.
-  const openPipelineValue = (stats?.byStatus ?? [])
-    .filter((s) => s._id !== 'Closed Won' && s._id !== 'Closed Lost')
-    .reduce((sum, s) => sum + (s.value || 0), 0);
+  // and how often an open deal ends up won once it closes. Totals come per
+  // currency (money never adds across currencies); the card shows the biggest
+  // and names the rest.
+  const openValues = stats?.values?.open ?? [];
+  const wonValues = stats?.values?.won ?? [];
+  const mainOpen = openValues[0];
+  const moneyIn = (currency?: string) => (v: number) => formatMoney(v, currency);
+  const otherTotals = (rows: CurrencyTotal[]) => rows.slice(1).map((r) => formatMoney(r.total, r.currency)).join(' + ');
+  const openLeadsWithValue = openValues.reduce((n, r) => n + r.count, 0);
   const wonCount = getStatCount('Closed Won');
   const lostCount = getStatCount('Closed Lost');
   const closedCount = wonCount + lostCount;
@@ -219,7 +225,9 @@ export default function TeleSalesDashboard() {
         <p className="text-on-surface-variant text-sm mt-1">
           {isCrossTeamReader(user)
             ? "Here's the TeleSales overview across every team"
-            : "Here's your team's TeleSales overview"}
+            : isSalesManager(user)
+              ? "Here's your team's TeleSales overview"
+              : "Here's the overview of the leads assigned to you"}
         </p>
       </motion.div>
 
@@ -238,9 +246,9 @@ export default function TeleSalesDashboard() {
           numberColor="text-on-surface" iconBg="bg-emerald-50" iconColor="text-emerald-600" bar="bg-emerald-500" loading={statsLoading} />
         <StatCard idx={3} label="Closed Lost" value={lostCount} icon={XCircle}
           numberColor="text-on-surface" iconBg="bg-red-50" iconColor="text-red-600" bar="bg-red-500" loading={statsLoading} />
-        <StatCard idx={4} label="Pipeline Value" value={openPipelineValue} format={money} icon={Wallet}
+        <StatCard idx={4} label="Pipeline Value" value={mainOpen?.total ?? 0} format={moneyIn(mainOpen?.currency)} icon={Wallet}
           numberColor="text-brand-600" iconBg="bg-brand-50" iconColor="text-brand-600" bar="bg-brand-500" loading={statsLoading}
-          hint="Open deals, potential value" />
+          hint={openValues.length > 1 ? `+ ${otherTotals(openValues)}` : `${openLeadsWithValue} open lead${openLeadsWithValue === 1 ? '' : 's'} with a value`} />
         <StatCard idx={5} label="Win Rate" value={winRate} format={percent} icon={Target}
           numberColor="text-amber-600" iconBg="bg-amber-50" iconColor="text-amber-600" bar="bg-amber-500" loading={statsLoading}
           hint={closedCount > 0 ? `${wonCount} won / ${closedCount} closed` : 'No closed deals yet'} />
@@ -260,6 +268,45 @@ export default function TeleSalesDashboard() {
           </p>
         </div>
         <Users className="w-12 h-12 text-white/30" />
+      </motion.div>
+
+      {/* How the money on this page is calculated — every total above is a sum of
+          each lead's value, so agents and managers can check it against their leads. */}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ ...SP, delay: 0.2 }}
+        className="bg-surface-container-lowest rounded-2xl border border-outline-variant/20 shadow-sm p-5 grid gap-5 lg:grid-cols-[1fr_1fr_1.4fr]"
+      >
+        <div>
+          <p className="label-technical">Pipeline Value (open deals)</p>
+          <p className="text-xl font-bold text-on-surface tabular-nums mt-1">
+            {openValues.length ? openValues.map((r) => formatMoney(r.total, r.currency)).join(' + ') : '—'}
+          </p>
+          <p className="text-xs text-on-surface-variant mt-1">
+            {openLeadsWithValue} lead{openLeadsWithValue === 1 ? '' : 's'} not yet Closed Won / Closed Lost
+          </p>
+        </div>
+        <div>
+          <p className="label-technical">Won Value</p>
+          <p className="text-xl font-bold text-emerald-600 tabular-nums mt-1">
+            {wonValues.length ? wonValues.map((r) => formatMoney(r.total, r.currency)).join(' + ') : '—'}
+          </p>
+          <p className="text-xs text-on-surface-variant mt-1">
+            Final Deal Value of the {wonValues.reduce((n, r) => n + r.count, 0)} Closed Won lead{wonValues.reduce((n, r) => n + r.count, 0) === 1 ? '' : 's'}
+          </p>
+        </div>
+        <div className="text-xs text-on-surface-variant space-y-1.5 lg:border-l lg:border-outline-variant/15 lg:pl-5">
+          <p className="font-semibold text-on-surface text-sm flex items-center gap-1.5"><Info className="w-4 h-4" /> How the amount is calculated</p>
+          <p>Each lead has one value (shown on the lead page under <span className="font-medium text-on-surface">Lead Value</span>). It is the latest of:</p>
+          <ol className="list-decimal pl-4 space-y-0.5">
+            <li><span className="font-medium text-on-surface">Potential Value</span> typed on Edit Lead (an estimate)</li>
+            <li><span className="font-medium text-on-surface">Quoted Value</span> entered when the status moves to Proposal Sent</li>
+            <li><span className="font-medium text-on-surface">Revised Value</span> entered at Negotiation</li>
+            <li><span className="font-medium text-on-surface">Final Deal Value</span> entered at Closed Won</li>
+          </ol>
+          <p>The totals add those values per currency, only for the leads you can see{isCrossTeamReader(user) ? '' : isSalesManager(user) ? ' (your team)' : ' (your leads)'}.</p>
+        </div>
       </motion.div>
 
       {/* Sales Pipeline — the full 11-status workflow, grouped into its 7 stages.

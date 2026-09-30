@@ -12,6 +12,7 @@ import {
   type LeadStatus, type StatusFieldDef,
 } from '@/config/leadStatusWorkflow';
 import type { Lead, ChangeLeadStatusError } from '@/types/teleSales.types';
+import { VALUE_CURRENCIES } from '@/types/teleSales.types';
 
 interface StatusChangeModalProps {
   lead: Lead;
@@ -20,7 +21,7 @@ interface StatusChangeModalProps {
   onChanged?: (lead: Lead) => void;
 }
 
-const MONEY_CURRENCIES = ['EGP', 'SAR', 'USD'];
+const MONEY_CURRENCIES = VALUE_CURRENCIES;
 
 const pickerLabel = (status: LeadStatus, lead: Lead) => {
   if (status === 'Meeting Scheduled' && lead.meetingsCount > 0) return `Meeting Scheduled — Round #${lead.meetingsCount + 1}`;

@@ -13,7 +13,7 @@ import {
   ArrowLeft, Phone, Mail, Building2, User, Briefcase, Tag, Edit2, Pencil,
   PhoneCall, Calendar, Paperclip, Plus, CheckCircle2, Trash2, MapPin,
   Globe, FileText, Upload, Download, File as FileIcon, Image as ImageIcon,
-  Send, Sparkles,
+  Send, Sparkles, Wallet, CircleDot,
 } from 'lucide-react';
 import GmailCompose from '@/components/tele-sales/GmailCompose';
 import { LeadEmailThread } from '@/components/tele-sales/LeadEmailThread';
@@ -23,9 +23,10 @@ import { PipelineStepper } from '@/components/tele-sales/PipelineStepper';
 import { StatusHistoryTab } from '@/components/tele-sales/StatusHistoryTab';
 import { SalesAssistantPanel } from '@/components/tele-sales/assistant/SalesAssistantPanel';
 import { mergeCallEntries, mergeFollowUpEntries } from '@/utils/leadActivityMerge';
-import { STATUS_COLORS, LEAD_STATUS_WORKFLOW } from '@/config/leadStatusWorkflow';
-import type { CallLog, FollowUp, CreateCallLogData, LeadAttachment, LeadEmail, LeadEmailThreadSummary, LeadStatusHistoryEntry } from '@/types/teleSales.types';
-import { LEAD_SOURCE_DETAILS } from '@/types/teleSales.types';
+import { LEAD_STATUS_WORKFLOW } from '@/config/leadStatusWorkflow';
+import { LeadStatusBadge } from '@/components/tele-sales/LeadStatusBadge';
+import type { CallLog, FollowUp, CreateCallLogData, LeadAttachment, LeadEmail, LeadEmailThreadSummary, LeadStatusHistoryEntry, LeadValueSource } from '@/types/teleSales.types';
+import { LEAD_SOURCE_DETAILS, LEAD_VALUE_SOURCES, formatMoney } from '@/types/teleSales.types';
 
 const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15MB
 
@@ -309,6 +310,12 @@ export default function LeadDetail() {
   const sourceDetailSpec = lead.leadSource ? LEAD_SOURCE_DETAILS[lead.leadSource] : undefined;
   const assignedName = (lead.assignedTo as any)?.firstName
     ? `${(lead.assignedTo as any).firstName} ${(lead.assignedTo as any).lastName}` : '—';
+  // The lead's value: typed on the form, then replaced by the Quoted / Revised /
+  // Final Deal Value as the workflow captures them. A value from before sources
+  // were recorded reads as the form's.
+  const hasValue = (lead.potentialValue ?? 0) > 0;
+  const valueSource: LeadValueSource | undefined = hasValue ? lead.valueSource ?? 'manual' : undefined;
+  const countsAs = lead.status === 'Closed Won' ? 'won' : lead.status === 'Closed Lost' ? 'lost' : 'open';
 
   return (
     <div className="p-6 space-y-5">
@@ -323,9 +330,7 @@ export default function LeadDetail() {
             {lead.customerId && (
               <span className="font-mono text-xs px-2 py-1 rounded-md bg-surface-container-high text-on-surface-variant">{lead.customerId}</span>
             )}
-            <span className={`text-sm font-medium px-3 py-1 rounded-full ${STATUS_COLORS[lead.status] ?? 'bg-gray-100 text-gray-600'}`}>
-              {lead.status}
-            </span>
+            <LeadStatusBadge status={lead.status} />
             <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${PRIORITY_COLORS[lead.priority]}`}>
               {lead.priority}
             </span>
@@ -370,7 +375,16 @@ export default function LeadDetail() {
       </div>
 
       {/* Stats bar */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant/20 text-center"
+          title={valueSource ? LEAD_VALUE_SOURCES[valueSource].explain : 'No value yet — see "Lead Value" on the Info tab'}>
+          <p className="text-lg font-bold text-on-surface tabular-nums">
+            {hasValue ? formatMoney(lead.potentialValue!, lead.valueCurrency) : '—'}
+          </p>
+          <p className="text-xs text-on-surface-variant mt-1">
+            Lead Value{valueSource && <> · {LEAD_VALUE_SOURCES[valueSource].label}</>}
+          </p>
+        </div>
         <div className="bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant/20 text-center">
           <p className="text-2xl font-bold text-on-surface">{lead.callAttempts}</p>
           <p className="text-xs text-on-surface-variant mt-1">Call Attempts</p>
@@ -431,6 +445,7 @@ export default function LeadDetail() {
           <div className="space-y-5">
             <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/20 p-5 space-y-4">
               <h3 className="font-semibold text-on-surface text-sm uppercase tracking-wide text-on-surface-variant">Lead Details</h3>
+              <InfoRow icon={<CircleDot className="w-4 h-4" />} label="Status" value={<LeadStatusBadge status={lead.status} size="sm" />} />
               <InfoRow icon={<Tag className="w-4 h-4" />} label="Sales Type" value={lead.salesType || 'Lead'} />
               {lead.leadSource && <InfoRow icon={<Tag className="w-4 h-4" />} label="Source" value={lead.leadSource} />}
               {lead.leadSource && lead.leadSourceDetail && sourceDetailSpec && (
@@ -445,9 +460,38 @@ export default function LeadDetail() {
                 />
               )}
               <InfoRow icon={<User className="w-4 h-4" />} label="Assigned To" value={assignedName} />
-              {lead.potentialValue != null && <InfoRow icon={<Tag className="w-4 h-4" />} label="Potential Value" value={`$${lead.potentialValue.toLocaleString()}`} />}
               {lead.isDecisionMaker != null && <InfoRow icon={<CheckCircle2 className="w-4 h-4" />} label="Decision Maker" value={lead.isDecisionMaker ? 'Yes' : 'No'} />}
               {lead.dataSource && <InfoRow icon={<FileText className="w-4 h-4" />} label="Data Source" value={lead.dataSource} />}
+            </div>
+            {/* Lead Value — the amount, where it came from, and how the dashboard counts it. */}
+            <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/20 p-5 space-y-3">
+              <h3 className="font-semibold text-on-surface text-sm uppercase tracking-wide text-on-surface-variant flex items-center gap-2">
+                <Wallet className="w-4 h-4" /> Lead Value
+              </h3>
+              {hasValue && valueSource ? (
+                <>
+                  <div className="flex items-baseline gap-3 flex-wrap">
+                    <p className="text-2xl font-bold text-on-surface tabular-nums">{formatMoney(lead.potentialValue!, lead.valueCurrency)}</p>
+                    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-brand-50 text-brand-700">
+                      {LEAD_VALUE_SOURCES[valueSource].label}
+                    </span>
+                  </div>
+                  <p className="text-sm text-on-surface-variant">
+                    {LEAD_VALUE_SOURCES[valueSource].explain}
+                    {lead.valueUpdatedAt && <> Updated {formatDate(lead.valueUpdatedAt)}.</>}
+                  </p>
+                  <p className="text-xs text-on-surface-variant border-t border-outline-variant/15 pt-3">
+                    {countsAs === 'open' && <>On the dashboard this amount is part of the <span className="font-medium text-on-surface">Pipeline Value</span> (open deals) until the lead is closed.</>}
+                    {countsAs === 'won' && <>On the dashboard this amount counts in <span className="font-medium text-on-surface">Won Value</span>.</>}
+                    {countsAs === 'lost' && <>This lead is Closed Lost, so its amount no longer counts in the Pipeline Value.</>}
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-on-surface-variant">
+                  No value yet. It is set by <span className="font-medium text-on-surface">Potential Value</span> on Edit Lead, then replaced by the
+                  Quoted Value (Proposal Sent), Revised Value (Negotiation) and Final Deal Value (Closed Won).
+                </p>
+              )}
             </div>
             {(lead.entityType || lead.industrySector || lead.businessClassification ||
               lead.country || lead.fullAddress) && (

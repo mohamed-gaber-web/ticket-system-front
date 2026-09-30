@@ -300,7 +300,12 @@ export interface Lead {
   team?: TeamRef;
   assignedTo?: TeleSalesAgent | null;
   priority: LeadPriority;
+  /** The lead's value — see LEAD_VALUE_SOURCES for where it comes from. */
   potentialValue?: number;
+  /** Unset on leads valued before currencies were recorded — read as EGP. */
+  valueCurrency?: ValueCurrency;
+  valueSource?: LeadValueSource;
+  valueUpdatedAt?: string;
   status: LeadStatus;
   lastCallDate?: string;
   nextFollowUpDate?: string;
@@ -346,6 +351,7 @@ export interface CreateLeadData {
   assignedTo?: string;
   priority?: LeadPriority;
   potentialValue?: number;
+  valueCurrency?: ValueCurrency;
   status?: LeadStatus;
   painPoints?: string;
   customerNeeds?: string;
@@ -389,13 +395,44 @@ export interface LeadResponse {
   data: Lead;
 }
 
+/** Money totals for one currency — money never adds across currencies. */
+export interface CurrencyTotal {
+  currency: ValueCurrency;
+  total: number;
+  /** Leads that carry a value in this currency. */
+  count: number;
+}
+
 export interface LeadStatsResponse {
   success: boolean;
   data: {
     total: number;
     byStatus: { _id: LeadStatus; count: number; value: number }[];
+    /** Sum of lead values: open = not Closed Won/Lost. Biggest total first. */
+    values?: { open: CurrencyTotal[]; won: CurrencyTotal[]; lost: CurrencyTotal[] };
   };
 }
+
+// ── Lead value ────────────────────────────────────────────────────────────────
+// Mirrors VALUE_CURRENCIES / VALUE_SOURCES in the backend's leadStatusWorkflow.js.
+
+export const VALUE_CURRENCIES = ['EGP', 'SAR', 'AED', 'USD', 'EUR'] as const;
+export type ValueCurrency = (typeof VALUE_CURRENCIES)[number];
+export const DEFAULT_VALUE_CURRENCY: ValueCurrency = 'EGP';
+
+export type LeadValueSource = 'manual' | 'quoted' | 'revised' | 'final';
+
+/** Where a lead's value came from, in words — shown on the lead page. */
+export const LEAD_VALUE_SOURCES: Record<LeadValueSource, { label: string; explain: string }> = {
+  manual: { label: 'Potential Value', explain: 'Estimate typed on the lead form (Edit Lead).' },
+  quoted: { label: 'Quoted Value', explain: 'Amount of the proposal, entered when the status moved to Proposal Sent.' },
+  revised: { label: 'Revised Value', explain: 'Amount agreed in negotiation, entered when the status moved to Negotiation.' },
+  final: { label: 'Final Deal Value', explain: 'Signed contract amount, entered when the lead was Closed Won.' },
+};
+
+/** "50,000 EGP" */
+export const formatMoney = (amount: number, currency?: string): string =>
+  `${Math.round(amount).toLocaleString('en-US')} ${currency || DEFAULT_VALUE_CURRENCY}`;
 
 // ── Status History ────────────────────────────────────────────────────────────
 
@@ -693,7 +730,4 @@ export interface ImportLeadsResponse {
 
 // ── Stats ─────────────────────────────────────────────────────────────────────
 
-export interface LeadStats {
-  total: number;
-  byStatus: { _id: LeadStatus; count: number; value: number }[];
-}
+export type LeadStats = LeadStatsResponse['data'];

@@ -57,7 +57,7 @@ mirrors it so the sidebar, guards and buttons agree.
 - `ProtectedRoute` + `EmployeeRoute` / `ModuleRoute` / `ManagerRoute` / `AdminRoute` — route guards in `src/components/auth/ProtectedRoute.tsx`.
 - Sidebar: `EMPLOYEE_NAV` in `src/constatnts/app.constant.ts` — every entry is tagged with its module and optional `minRole`; add a link there, never a per-role array.
 - One login page (`/login`) for everyone; the e-mail decides. Customers land on the "Customer Portal" shell (same `Layout`, customer link set).
-- Tele-sales role helpers live in `src/lib/teleSalesRole.ts` (`isSuperAdmin` = admin or sales manager, `isReadOnly` = marketing).
+- Tele-sales role helpers live in `src/lib/teleSalesRole.ts` (`isSuperAdmin` = admin only — the one role that spans teams with write access; `canManageTeam` = admin or sales manager — import, assign, roster; `isReadOnly` = marketing). A sales manager runs one team; a plain agent sees only the leads assigned to them. Lead status labels use `LeadStatusBadge`; lead money uses `formatMoney` / `LEAD_VALUE_SOURCES` from `teleSales.types.ts`.
 
 ## HR module (employee directory)
 

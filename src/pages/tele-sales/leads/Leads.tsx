@@ -52,12 +52,13 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
   const { industrySectors } = useAppSelector((s) => s.industrySectors);
   const { user } = useAppSelector((s) => s.auth);
 
-  // Admins and the sales manager span every team with write access; marketing
-  // spans every team read-only; agents work inside one.
+  // Admins span every team with write access; marketing spans every team
+  // read-only; a sales manager runs one team; an agent sees only their own leads.
   const superAdmin = isSuperAdmin(user);
   const crossTeam = isCrossTeamReader(user);
   const readOnly = isReadOnly(user);
   const canManage = canManageTeam(user);
+  const ownLeadsOnly = !crossTeam && !canManage;
 
   // Admin-managed Industry Sector lookup drives the sector filter. Only active
   // sectors are offered; INDUSTRY_SECTORS is the fallback while the list is
@@ -250,6 +251,7 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
               : lockedStatus ? `${lockedStatus.toLowerCase()} leads` : 'total leads'}
             {/* Makes it obvious whose pipeline is on screen — the whole point of
                 the separation is that this is never "everyone's". */}
+            {ownLeadsOnly && <> assigned to you</>}
             {!crossTeam && <> in <span className="font-medium text-on-surface">{ownTeamName(user)}</span></>}
             {readOnly && <> · <span className="font-medium text-on-surface">read-only</span></>}
           </p>
@@ -265,9 +267,12 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
               <Button variant="outline" onClick={() => setComposeOpen(true)} className="gap-2">
                 <Send className="w-4 h-4" /> Send Email
               </Button>
-              <Button variant="outline" onClick={openImport} className="gap-2">
-                <Upload className="w-4 h-4" /> Import
-              </Button>
+              {/* Importing is the sales manager's job (the API refuses agents too). */}
+              {canManage && (
+                <Button variant="outline" onClick={openImport} className="gap-2">
+                  <Upload className="w-4 h-4" /> Import
+                </Button>
+              )}
               <Button onClick={openCreate} className="gap-2">
                 <Plus className="w-4 h-4" /> New Lead
               </Button>
@@ -340,19 +345,22 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
               <option value="">All Sectors</option>
               {sectorOptions.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
-            {/* The team pipeline is shared, so everyone can narrow it by owner —
-                including to the unclaimed pool, which is what agents pick from. */}
-            <select
-              value={ownerFilter}
-              onChange={(e) => setOwnerFilter(e.target.value)}
-              className="px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
-            >
-              <option value="">Anyone</option>
-              <option value="unassigned">Unassigned</option>
-              {agents.filter((a) => a.status === 'active').map((a) => (
-                <option key={a._id} value={a._id}>{a.firstName} {a.lastName}</option>
-              ))}
-            </select>
+            {/* Managers (and read-only marketing) narrow the pipeline by owner,
+                including the unassigned leads still waiting to be handed out.
+                An agent only ever sees their own leads, so there is nothing to pick. */}
+            {!ownLeadsOnly && (
+              <select
+                value={ownerFilter}
+                onChange={(e) => setOwnerFilter(e.target.value)}
+                className="px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+              >
+                <option value="">Anyone</option>
+                <option value="unassigned">Unassigned</option>
+                {agents.filter((a) => a.status === 'active').map((a) => (
+                  <option key={a._id} value={a._id}>{a.firstName} {a.lastName}</option>
+                ))}
+              </select>
+            )}
             {/* Only cross-team readers see more than one team's leads. */}
             {crossTeam && (
               <select

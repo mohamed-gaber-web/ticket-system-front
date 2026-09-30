@@ -290,8 +290,10 @@ export function EmployeeForm({ mode, initialValues, departments, submitting, emp
       else if (values.password.length < 8) e.password = 'Password must be at least 8 characters';
     }
     if (values.phone && !/^\+?\d{10,15}$/.test(values.phone.replace(/[\s-]/g, ''))) e.phone = 'Mobile must be 10-15 digits';
-    // Without a team a sales employee would see no leads at all
-    if (values.role === 'sales' && !values.teleSalesTeam) e.teleSalesTeam = 'Choose the tele-sales team this employee works in';
+    // Without a team a sales employee or sales manager would see no leads at all
+    if ((values.role === 'sales' || values.role === 'sales_manager') && !values.teleSalesTeam) {
+      e.teleSalesTeam = 'Choose the tele-sales team this employee works in';
+    }
     if (withHr) {
       const hr = values.hr;
       if (hr.nationalId && !/^[A-Za-z0-9]{5,20}$/.test(hr.nationalId)) e['hr.nationalId'] = 'Letters and digits only (14 digits for an Egyptian ID)';
