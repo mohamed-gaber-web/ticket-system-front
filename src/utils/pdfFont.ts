@@ -86,9 +86,41 @@ export const replaceUnsupportedSymbols = (text: string): string =>
 export const pdfSafeLatin = (text: string): string =>
   replaceUnsupportedSymbols(text).replace(/[Ā-\u{10FFFF}]/gu, (ch) => (WIN_ANSI_EXTRAS.has(ch) ? ch : '?'));
 
+/**
+ * How jsPDF's built-in bidi engine must treat our text.
+ *
+ * jsPDF 3 runs every `doc.text()` call through that engine, and by default it
+ * reads the input as already *visual* — fine for plain Arabic, but mixed text
+ * came out scrambled: "(المرحلة 2)" printed with its brackets backwards and
+ * numbers / English words in the wrong place. We hand it logical text (as
+ * stored) and ask for visual output, with brackets mirrored inside Arabic.
+ * The paragraph is left-to-right because that is how the app itself displays
+ * every name — users type mixed Arabic/English to look right in that layout,
+ * so the PDF must lay it out the same way.
+ */
+const BIDI_OPTIONS = {
+  isInputVisual: false,
+  isOutputVisual: true,
+  isInputRtl: false,
+  isOutputRtl: false,
+  isSymmetricSwapping: true,
+};
+
+/**
+ * Pass BIDI_OPTIONS on every text call of this document. autoTable calls
+ * `doc.text()` without a way to add options, so the instance method is wrapped.
+ * Latin text is unaffected: a left-to-right run reorders to itself.
+ */
+const applyLogicalBidi = (doc: jsPDF) => {
+  const draw = doc.text.bind(doc) as (...args: unknown[]) => jsPDF;
+  (doc as unknown as { text: (...args: unknown[]) => jsPDF }).text = (text, x, y, options, ...rest) =>
+    draw(text, x, y, { ...((options as object | undefined) ?? {}), ...BIDI_OPTIONS }, ...rest);
+};
+
 export const registerArabicFont = async (doc: jsPDF): Promise<string | null> => {
   try {
     const base64 = await loadFontData();
+    applyLogicalBidi(doc);
     doc.addFileToVFS(FONT_FILE, base64);
     doc.addFont(FONT_FILE, ARABIC_FONT, 'normal');
     // Bold cells (e.g. main-task names) must resolve too: without a 'bold'

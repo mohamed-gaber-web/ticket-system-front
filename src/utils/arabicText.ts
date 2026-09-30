@@ -7,13 +7,11 @@
  * comes out as disconnected letters in reverse order, or as mojibake when the
  * built-in Helvetica (WinAnsi) is used and has no Arabic glyphs at all.
  *
- * `shapeArabic` does the two steps the PDF writer skips:
- *   1. contextual shaping — each letter is replaced by its isolated / initial /
- *      medial / final presentation form (Unicode block FE70–FEFF), which any
- *      Arabic font ships as plain code points, plus the lam-alef ligatures;
- *   2. visual reordering — the RTL runs are reversed so that drawing them
- *      left-to-right reproduces right-to-left reading order, while embedded
- *      Latin words, numbers, dates and punctuation keep their own direction.
+ * `shapeArabic` does the contextual shaping: each letter is replaced by its
+ * isolated / initial / medial / final presentation form (Unicode block
+ * FE70–FEFF), which any Arabic font ships as plain code points, plus the
+ * lam-alef ligatures. Right-to-left ordering is left to jsPDF's built-in bidi
+ * engine (see shapeArabic below).
  *
  * This is deliberately dependency-free (like `countryPhone.ts`): it covers the
  * Arabic script this system actually stores, not the whole Unicode bidi
@@ -175,90 +173,17 @@ const toPresentationForms = (text: string): string => {
   return String.fromCodePoint(...out);
 };
 
-// Characters that flip when an RTL run is mirrored for display. Angle brackets
-// are deliberately left out: in this app "<" and ">" are not brackets but the
-// subtask indent marker, and mirroring it turns an indent into an arrow that
-// points the wrong way.
-const MIRRORED: Record<string, string> = {
-  '(': ')', ')': '(', '[': ']', ']': '[', '{': '}', '}': '{', '«': '»', '»': '«',
-};
-
-const isNeutral = (ch: string) => /[\s\p{P}\p{S}]/u.test(ch);
-const isLtrStrong = (ch: string) => /[A-Za-zÀ-ɏ]/.test(ch);
-const isDigit = (ch: string) => /[0-9]/.test(ch);
-
 /**
- * Reorder a shaped string for a left-to-right drawing engine.
+ * Make a string printable by jsPDF: contextual letter forms, in LOGICAL order.
  *
- * The RTL text is reversed, while runs of Latin letters, digits and the
- * punctuation glued to them (dates, "W12 – W14", emails, %) stay readable.
- */
-const toVisualOrder = (text: string): string => {
-  const chars = [...text];
-  // The paragraph takes the direction of its first strongly-typed character;
-  // everything neutral before that one follows it.
-  const firstStrong = chars.find((ch) => isArabicChar(ch.codePointAt(0)!) || isLtrStrong(ch));
-  const rtlParagraph = Boolean(firstStrong && isArabicChar(firstStrong.codePointAt(0)!));
-
-  type Run = { rtl: boolean; chars: string[] };
-  const runs: Run[] = [];
-
-  for (const ch of chars) {
-    const strongRtl = isArabicChar(ch.codePointAt(0)!);
-    const strongLtr = isLtrStrong(ch);
-    const last = runs[runs.length - 1];
-    if (!strongRtl && !strongLtr) {
-      // Digits, spaces and punctuation have no direction of their own: they
-      // continue the surrounding run, so "(المرحلة 2)" stays one RTL phrase
-      // instead of flinging the number to the other end of the line.
-      if (last) last.chars.push(ch);
-      else runs.push({ rtl: rtlParagraph, chars: [ch] });
-      continue;
-    }
-    if (last && last.rtl === strongRtl) last.chars.push(ch);
-    else runs.push({ rtl: strongRtl, chars: [ch] });
-  }
-
-  for (const run of runs) {
-    if (!run.rtl) continue;
-    run.chars.reverse();
-    for (let i = 0; i < run.chars.length; i++) {
-      const mirrored = MIRRORED[run.chars[i]];
-      if (mirrored) run.chars[i] = mirrored;
-    }
-    // A Latin/number sequence inside an RTL run was reversed with it; undo that
-    // so "Task 12" reads forwards while the Arabic around it reads backwards.
-    let start = -1;
-    const flush = (end: number) => {
-      if (start === -1) return;
-      // Neutrals that merely trail the sequence are not part of it.
-      let stop = end;
-      while (stop > start && isNeutral(run.chars[stop - 1]) && !isDigit(run.chars[stop - 1])) stop -= 1;
-      if (stop - start > 1) {
-        const slice = run.chars.slice(start, stop).reverse();
-        run.chars.splice(start, stop - start, ...slice);
-      }
-      start = -1;
-    };
-    for (let i = 0; i < run.chars.length; i++) {
-      const ch = run.chars[i];
-      if (isLtrStrong(ch) || isDigit(ch) || (start !== -1 && isNeutral(ch))) {
-        if (start === -1) start = i;
-      } else {
-        flush(i);
-      }
-    }
-    flush(run.chars.length);
-  }
-
-  // Right-to-left paragraph: the runs themselves also come out in reverse.
-  if (rtlParagraph) runs.reverse();
-
-  return runs.map((r) => r.chars.join('')).join('');
-};
-
-/**
- * Make a string printable by jsPDF: contextual forms, then visual order.
+ * Do not reorder here. Since jsPDF 3 every `doc.text()` call runs its own bidi
+ * engine (the `postProcessText` hook; configured in pdfFont.ts), which puts
+ * right-to-left runs in drawing order. Reordering here as well reversed Arabic
+ * twice: words and letters came out backwards, and a wrapped cell printed its
+ * lines in the wrong order. Kept logical, autoTable wraps the text as written
+ * and jsPDF reorders each line on its own. jsPDF's Arabic parser leaves
+ * presentation forms untouched.
+ *
  * Text without Arabic is returned untouched, so it is safe to map over every
  * cell of a report.
  */
@@ -267,7 +192,7 @@ export const shapeArabic = (value: unknown): string => {
   if (!hasArabic(text)) return text;
   return text
     .split('\n')
-    .map((line) => toVisualOrder(toPresentationForms(line)))
+    .map((line) => toPresentationForms(line))
     .join('\n');
 };
 
