@@ -23,6 +23,7 @@ import {
 import { toast } from 'sonner';
 import type { TaskStatus, CreateTaskData, TaskParentRef } from '@/types/task.types';
 import Swal from 'sweetalert2';
+import { lastTaskListPath } from './taskListState';
 import withReactContent from 'sweetalert2-react-content';
 
 const MySwal = withReactContent(Swal);
@@ -118,7 +119,7 @@ export default function ViewTask() {
       confirmButtonText: 'Delete task', cancelButtonText: 'Cancel', reverseButtons: true,
     }).then((result) => {
       if (result.isConfirmed) {
-        dispatch(deleteTask(currentTask._id)).then(() => navigate('/tasks'));
+        dispatch(deleteTask(currentTask._id)).then(() => navigate(lastTaskListPath()));
       }
     });
   };
@@ -272,7 +273,7 @@ export default function ViewTask() {
     <div className="p-8 space-y-0 w-full">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm text-on-surface-variant mb-6">
-        <button onClick={() => navigate('/tasks')} className="hover:text-brand-500 transition-colors font-medium">
+        <button onClick={() => navigate(lastTaskListPath())} className="hover:text-brand-500 transition-colors font-medium">
           Tasks
         </button>
         {parentRef && (

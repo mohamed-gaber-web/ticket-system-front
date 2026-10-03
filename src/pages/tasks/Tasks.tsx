@@ -10,6 +10,7 @@ import { fetchDepartments } from '@/redux/slices/departmentSlice';
 import { fetchConsultants } from '@/redux/slices/consultantSlice';
 import { fetchTaskCategories } from '@/redux/slices/taskCategorySlice';
 import { getTasks } from '@/api/tasksApi';
+import { loadTaskListFilters, saveTaskListFilters } from './taskListState';
 import type { Task, TaskStatus, TaskSortField } from '@/types/task.types';
 import { Button } from '@/components/ui/button';
 import {
@@ -61,7 +62,9 @@ function getWeekDateRange(weekNum: number, year = new Date().getFullYear()) {
 // Total data columns (excluding the expand column) — used for subtask row colSpan.
 const DATA_COLSPAN = 12;
 
-export default function Tasks() {
+// `mine` renders the "My Tasks" page: only tasks the signed-in employee is
+// assigned to, responsible for or created. Without it, the department list.
+export default function Tasks({ mine = false }: { mine?: boolean }) {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { tasks, loading, total } = useAppSelector((state) => state.tasks);
@@ -69,23 +72,31 @@ export default function Tasks() {
   const { consultantDepartment, user } = useAppSelector((state) => state.auth);
   const { consultants } = useAppSelector((state) => state.consultants);
   const { taskCategories } = useAppSelector((state) => state.taskCategories);
-  const { isAdmin, isManagerOrAdmin } = useAccess();
-  // Plain employees open on "my tasks"; managers and admins on the whole
-  // department. The API pins non-admins to their department either way.
-  const [mineOnly, setMineOnly] = useState(!isManagerOrAdmin);
+  const { isAdmin } = useAccess();
 
   const [searchParams] = useSearchParams();
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<TaskStatus | ''>('');
-  const [deptFilter, setDeptFilter] = useState(searchParams.get('department') || '');
-  const [categoryFilter, setCategoryFilter] = useState('');
-  const [startDateFilter, setStartDateFilter] = useState('');
-  const [endDateFilter, setEndDateFilter] = useState('');
-  const [assignedToFilter, setAssignedToFilter] = useState('');
-  const [weekFilter, setWeekFilter] = useState('');
-  const [sortField, setSortField] = useState<TaskSortField>('createdAt');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [page, setPage] = useState(1);
+  // Start from the filters this list had last time in this tab, so going into a
+  // task and back keeps them. A ?department= link still wins over the saved one.
+  const [saved] = useState(() => loadTaskListFilters(mine));
+  const [search, setSearch] = useState(saved.search ?? '');
+  const [statusFilter, setStatusFilter] = useState<TaskStatus | ''>((saved.status as TaskStatus) ?? '');
+  const [deptFilter, setDeptFilter] = useState(searchParams.get('department') || saved.department || '');
+  const [categoryFilter, setCategoryFilter] = useState(saved.category ?? '');
+  const [startDateFilter, setStartDateFilter] = useState(saved.startDate ?? '');
+  const [endDateFilter, setEndDateFilter] = useState(saved.endDate ?? '');
+  const [assignedToFilter, setAssignedToFilter] = useState(saved.assignedTo ?? '');
+  const [weekFilter, setWeekFilter] = useState(saved.week ?? '');
+  const [sortField, setSortField] = useState<TaskSortField>((saved.sortField as TaskSortField) ?? 'createdAt');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(saved.sortOrder ?? 'desc');
+  const [page, setPage] = useState(saved.page ?? 1);
+
+  useEffect(() => {
+    saveTaskListFilters(mine, {
+      search, status: statusFilter, department: deptFilter, category: categoryFilter,
+      startDate: startDateFilter, endDate: endDateFilter, assignedTo: assignedToFilter,
+      week: weekFilter, sortField, sortOrder, page,
+    });
+  }, [mine, search, statusFilter, deptFilter, categoryFilter, startDateFilter, endDateFilter, assignedToFilter, weekFilter, sortField, sortOrder, page]);
   const [exporting, setExporting] = useState(false);
   const limit = 20;
 
@@ -105,7 +116,7 @@ export default function Tasks() {
     if (search) params.search = search;
     if (statusFilter) params.status = statusFilter;
     if (isAdmin && deptFilter) params.department = deptFilter;
-    if (mineOnly) params.mine = 'true';
+    if (mine) params.mine = 'true';
     if (categoryFilter) params.category = categoryFilter;
     if (startDateFilter) params.startDate = startDateFilter;
     if (endDateFilter) params.endDate = endDateFilter;
@@ -114,7 +125,7 @@ export default function Tasks() {
     params.sort = sortField;
     params.order = sortOrder;
     return params;
-  }, [search, statusFilter, deptFilter, categoryFilter, startDateFilter, endDateFilter, assignedToFilter, weekFilter, sortField, sortOrder, isAdmin, mineOnly]);
+  }, [search, statusFilter, deptFilter, categoryFilter, startDateFilter, endDateFilter, assignedToFilter, weekFilter, sortField, sortOrder, isAdmin, mine]);
 
   const load = useCallback(() => {
     dispatch(fetchTasks(buildParams({ page, limit })));
@@ -295,6 +306,11 @@ export default function Tasks() {
 
   const pages = Math.ceil(total / limit);
 
+  // A remembered page can outlive the list (tasks deleted meanwhile) — fall back to the last one.
+  useEffect(() => {
+    if (!loading && pages > 0 && page > pages) setPage(pages);
+  }, [loading, pages]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const renderDelay = (task: Task) => {
     const d = task.delayDays ?? 0;
     if (d > 0) {
@@ -381,6 +397,13 @@ export default function Tasks() {
               )}
               <div className="min-w-0">
                 <p className={`font-medium text-on-surface ${isSubTask ? 'text-sm' : ''}`}>{task.name}</p>
+                {/* Filtered lists include matching subtasks — name their main task */}
+                {!isSubTask && task.parentTask && typeof task.parentTask === 'object' && (
+                  <p className="inline-flex items-center gap-1 text-[11px] text-on-surface-variant mt-0.5">
+                    <GitBranch className="w-3 h-3" />
+                    Subtask of {task.parentTask.taskNumber ?? task.parentTask.name}
+                  </p>
+                )}
                 {task.description && (
                   <p className="text-xs text-on-surface-variant mt-0.5 line-clamp-1">{task.description}</p>
                 )}
@@ -488,24 +511,15 @@ export default function Tasks() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-on-surface">Tasks</h1>
+          <h1 className="text-2xl font-bold text-on-surface">{mine ? 'My Tasks' : 'Tasks'}</h1>
           <p className="text-sm text-on-surface-variant mt-0.5">
-            {mineOnly
-              ? 'My tasks'
+            {mine
+              ? 'Tasks assigned to you, where you are responsible, or that you created'
               : consultantDepartment && !isAdmin
                 ? `${(user as any)?.department?.name ?? consultantDepartment} department tasks`
                 : 'All department tasks'}
           </p>
         </div>
-        <label className="flex items-center gap-2 text-sm text-on-surface-variant cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={mineOnly}
-            onChange={(e) => setMineOnly(e.target.checked)}
-            className="h-4 w-4 rounded border-outline-variant accent-primary"
-          />
-          Only my tasks
-        </label>
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={handleExportExcel} disabled={exporting || tasks.length === 0}>
             {exporting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
@@ -535,7 +549,7 @@ export default function Tasks() {
         </div>
 
         {/* Row 1: search + who/what */}
-        <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3 ${isAdmin ? 'xl:grid-cols-6' : 'xl:grid-cols-5'}`}>
+        <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3 ${['xl:grid-cols-4', 'xl:grid-cols-5', 'xl:grid-cols-6'][Number(isAdmin) + Number(!mine)]}`}>
           <div className="sm:col-span-2">
             <label className="block text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant mb-1">Search</label>
             <div className="relative">
@@ -582,15 +596,17 @@ export default function Tasks() {
               placeholder="All departments"
             />
           )}
-          <SearchSelect
-            label="Assigned to"
-            icon={<UserCheck className="w-4 h-4" />}
-            value={assignedToFilter}
-            onChange={(v) => { setAssignedToFilter(v); setPage(1); }}
-            options={assigneeOptions}
-            allLabel="All assignees"
-            placeholder="All assignees"
-          />
+          {!mine && (
+            <SearchSelect
+              label="Assigned to"
+              icon={<UserCheck className="w-4 h-4" />}
+              value={assignedToFilter}
+              onChange={(v) => { setAssignedToFilter(v); setPage(1); }}
+              options={assigneeOptions}
+              allLabel="All assignees"
+              placeholder="All assignees"
+            />
+          )}
         </div>
 
         {/* Row 2: when */}

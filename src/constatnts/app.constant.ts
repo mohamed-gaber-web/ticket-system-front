@@ -8,7 +8,7 @@ import {
   GaugeCircle,
   CalendarDays,
   // UsersRound, // Hidden - not in use
-  // UserCheck, // Hidden - not in use
+  UserCheck,
   Clock,
   // BarChart3,    // Hidden - Reports not in use
   FileBarChart,
@@ -256,6 +256,7 @@ const TASKS_GROUP: NavLink = {
   isGroup: true,
   children: [
     { name: "Dashboard", path: "/tasks/dashboard", icon: LayoutDashboard },
+    { name: "My Tasks", path: "/tasks/my", icon: UserCheck },
     { name: "All Tasks", path: "/tasks", icon: ListChecks },
     { name: "Create Task", path: "/tasks/create", icon: CheckSquare },
     { name: "Task Categories", path: "/task-categories", icon: FolderKanban, minRole: "manager" },
