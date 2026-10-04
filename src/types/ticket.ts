@@ -185,6 +185,7 @@ export interface CreateTicketData {
   createdAt?: string;
   resolvedAt?: string;
   closedAt?: string;
+  deliveredAt?: string;
 }
 
 export interface CreateSubTicketData {
@@ -259,6 +260,7 @@ export interface UpdateTicketData {
   createdAt?: string;
   resolvedAt?: string;
   closedAt?: string;
+  deliveredAt?: string;
 }
 
 export interface TicketQueryParams {

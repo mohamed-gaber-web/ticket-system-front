@@ -102,6 +102,7 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
           durationHours: undefined,
           resolvedAt: '',
           closedAt: '',
+          deliveredAt: '',
         }
       : {
           ticketNumber: generateTicketNumber(),
@@ -123,6 +124,7 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
           durationHours: undefined,
           resolvedAt: '',
           closedAt: '',
+          deliveredAt: '',
         }
   );
 
@@ -265,6 +267,7 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
           durationHours: initialData.durationHours,
           resolvedAt: toDateInput(initialData.resolvedAt),
           closedAt: toDateInput(initialData.closedAt),
+          deliveredAt: toDateInput(initialData.deliveredAt),
         });
       } else {
         setFormData({
@@ -287,6 +290,7 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
           durationHours: initialData.durationHours,
           resolvedAt: toDateInput(initialData.resolvedAt),
           closedAt: toDateInput(initialData.closedAt),
+          deliveredAt: toDateInput(initialData.deliveredAt),
         });
       }
     }
@@ -816,6 +820,19 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
                 value={(formData as any).closedAt || ''}
                 onChange={handleChange}
               />
+            </div>
+
+            <div>
+              <label className="form-label">Delivered Date</label>
+              <Input
+                type="date"
+                name="deliveredAt"
+                value={(formData as UpdateTicketData).deliveredAt || ''}
+                onChange={handleChange}
+              />
+              <p className="mt-1 text-xs text-on-surface-variant">
+                When the ticket was delivered to the customer. Used by the consultant evaluation (early / on time / late).
+              </p>
             </div>
           </div>
         </div>

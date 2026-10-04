@@ -438,7 +438,16 @@ export default function EmployeeEvaluationPage() {
                                 </span>
                               </td>
                               <td className="px-4 py-2.5 text-on-surface-variant whitespace-nowrap">{fmtDate(t.deadline)}</td>
-                              <td className="px-4 py-2.5 text-on-surface-variant whitespace-nowrap">{fmtDate(t.resolvedDate)}</td>
+                              <td className="px-4 py-2.5 text-on-surface-variant whitespace-nowrap">
+                                {fmtDate(t.resolvedDate)}
+                                {/* No Delivered date on the ticket: say which date was used instead */}
+                                {t.resolvedDate && t.deliveredVia && t.deliveredVia !== 'delivered' && (
+                                  <span className="ml-1.5 text-[10px] font-medium uppercase tracking-wide rounded px-1.5 py-0.5 bg-surface-container-high"
+                                    title={`No Delivered date on the ticket — the ${t.deliveredVia} date is used. Set Delivered Date on the ticket to override.`}>
+                                    {t.deliveredVia}
+                                  </span>
+                                )}
+                              </td>
                               <td className="px-4 py-2.5 text-center">
                                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${meta.cls}`}>
                                   {meta.label}

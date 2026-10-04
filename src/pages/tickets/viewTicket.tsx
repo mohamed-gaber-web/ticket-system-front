@@ -939,6 +939,7 @@ export default function ViewTicket() {
                 {currentTicket.deliveryEstimationDate && <TimelineEntry label="Delivery Date" date={currentTicket.deliveryEstimationDate} color="red" />}
                 {currentTicket.resolvedAt && <TimelineEntry label="Resolved" date={currentTicket.resolvedAt} color="green" />}
                 {currentTicket.closedAt && <TimelineEntry label="Closed" date={currentTicket.closedAt} color="gray" />}
+                {currentTicket.deliveredAt && <TimelineEntry label="Delivered" date={currentTicket.deliveredAt} color="green" />}
               </div>
             </div>
 

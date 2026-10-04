@@ -66,6 +66,8 @@ export interface EvaluationTicketDetail {
   status: string;
   deadline: string | null;
   resolvedDate: string | null;
+  /** Which date `resolvedDate` is: the Delivered date, else Resolved, else Closed (never delivered). */
+  deliveredVia?: 'delivered' | 'resolved' | 'closed' | null;
   /** null = not counted (no delivery date / still within deadline). */
   category: TicketCategory;
   counted: boolean;
