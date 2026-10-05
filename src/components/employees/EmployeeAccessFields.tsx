@@ -17,7 +17,8 @@ import { ShieldCheck } from 'lucide-react';
 export interface EmployeeAccessValue {
   role: EmployeeRole;
   department?: string | null;
-  teleSalesTeam?: string | null;
+  /** The tele-sales teams this employee sees — Team A, Team B, or both. */
+  teleSalesTeams?: string[];
   modules?: ModuleKey[];
 }
 
@@ -25,15 +26,15 @@ interface Props {
   value: EmployeeAccessValue;
   onChange: (next: EmployeeAccessValue) => void;
   departments: { _id: string; name: string }[];
-  /** Validation message for the tele-sales team (sales and sales managers need one). */
+  /** Validation message for the tele-sales teams (sales and sales managers need one). */
   teamError?: string;
 }
 
 const ROLE_HINTS: Record<EmployeeRole, string> = {
   admin: 'Every module, every team; manages everyone.',
   consultant: 'Ticketing only.',
-  sales: 'Tele-sales: only the leads assigned to them, inside one team.',
-  sales_manager: 'Tele-sales: runs one team — all its leads, imports, assigns, its sales people.',
+  sales: 'Tele-sales: every lead of the teams ticked below; imports leads.',
+  sales_manager: 'Tele-sales: the teams ticked below — all their leads, assigns, their sales people.',
   marketing: 'Tele-sales (read-only, every team) and Tasks.',
   marketing_manager: 'The same as marketing, and runs the marketing people.',
   developer: 'Development boards they create or are added to.',
@@ -64,7 +65,12 @@ export function EmployeeAccessFields({ value, onChange, departments, teamError }
   useEffect(() => {
     if (isSalesFamily) dispatch(fetchTeams(undefined));
   }, [isSalesFamily, dispatch]);
+  const ticked = value.teleSalesTeams ?? [];
+  // Active teams, plus any inactive one still ticked so it can be unticked
+  const shownTeams = teams.filter((t) => t.isActive !== false || ticked.includes(t._id));
   const activeTeams = teams.filter((t) => t.isActive !== false);
+  const toggleTeam = (id: string) =>
+    onChange({ ...value, teleSalesTeams: ticked.includes(id) ? ticked.filter((t) => t !== id) : [...ticked, id] });
 
   // Same rule as the API's assignableRoles: admin → any role, HR → any but
   // admin, a manager → the plain role of their own family.
@@ -93,7 +99,7 @@ export function EmployeeAccessFields({ value, onChange, departments, teamError }
       // A department only makes sense for consultants/admins; sales and
       // marketing are filed automatically. A team only for the sales family.
       department: roleFamily(role) === 'sales' || roleFamily(role) === 'marketing' ? undefined : value.department,
-      teleSalesTeam: roleFamily(role) === 'sales' ? value.teleSalesTeam : null,
+      teleSalesTeams: roleFamily(role) === 'sales' ? value.teleSalesTeams : [],
       // A role change resets the override to the new role's defaults
       modules: [],
     });
@@ -121,16 +127,26 @@ export function EmployeeAccessFields({ value, onChange, departments, teamError }
         {isSalesFamily && (
           <div>
             <label className="form-label">
-              Tele-sales Team<span className="required">*</span>
+              Tele-sales Teams<span className="required">*</span>
             </label>
-            <CustomSelect
-              value={value.teleSalesTeam ?? ''}
-              onChange={(val) => onChange({ ...value, teleSalesTeam: val || null })}
-              options={[
-                { value: '', label: teamsLoading ? 'Loading teams…' : 'Select a team' },
-                ...activeTeams.map((t) => ({ value: t._id, label: t.name })),
-              ]}
-            />
+            <div className={`rounded-xl border p-3 space-y-2 ${teamError ? 'border-error' : 'border-outline-variant/40'}`}>
+              {teamsLoading && shownTeams.length === 0 && (
+                <p className="text-sm text-on-surface-variant">Loading teams…</p>
+              )}
+              {shownTeams.map((t) => (
+                <label key={t._id} className="flex items-center gap-2 text-sm text-on-surface cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={ticked.includes(t._id)}
+                    onChange={() => toggleTeam(t._id)}
+                    className="h-4 w-4 rounded border-outline-variant accent-primary"
+                  />
+                  {t.name}
+                  {t.code && <span className="text-xs text-on-surface-variant">({t.code})</span>}
+                  {t.isActive === false && <span className="text-xs text-amber-700">inactive</span>}
+                </label>
+              ))}
+            </div>
             {!teamsLoading && activeTeams.length === 0 && (
               <p className="text-xs text-amber-700 mt-1">
                 No active tele-sales teams yet — an administrator creates them under TeleSales → Teams.
@@ -141,8 +157,8 @@ export function EmployeeAccessFields({ value, onChange, departments, teamError }
             ) : (
               <p className="text-xs text-on-surface-variant mt-1">
                 {value.role === 'sales'
-                  ? 'The agent sees only the leads of this team that are assigned to them.'
-                  : 'The manager sees and runs this team only — other teams stay hidden.'}
+                  ? 'The agent sees every lead of the ticked teams — other teams stay hidden.'
+                  : 'The manager sees and runs the ticked teams only — other teams stay hidden.'}
               </p>
             )}
           </div>

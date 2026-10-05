@@ -83,8 +83,10 @@ export interface Consultant {
   position?: string;
   role: ConsultantRole;
   department?: ConsultantDepartmentObject | string | null;
-  /** Sales family only — the tele-sales team (country) this person works in. */
+  /** Sales family only — the home tele-sales team (default owner of what they create). */
   teleSalesTeam?: { _id: string; name: string; code?: string; isActive?: boolean } | string | null;
+  /** Sales family only — every tele-sales team this person sees (home team included). */
+  teleSalesTeams?: ({ _id: string; name: string; code?: string; isActive?: boolean } | string)[];
   /** Admin-set override of the role's default modules; empty = defaults. */
   modules?: ModuleKey[];
   status: ConsultantStatus;
@@ -154,6 +156,7 @@ export interface CreateConsultantData {
   role: ConsultantRole;
   department?: string | null;
   teleSalesTeam?: string | null;
+  teleSalesTeams?: string[];
   modules?: ModuleKey[];
   status: ConsultantStatus;
   monthlyTargetHours?: number | null;
@@ -171,6 +174,7 @@ export interface UpdateConsultantData {
   role?: ConsultantRole;
   department?: string | null;
   teleSalesTeam?: string | null;
+  teleSalesTeams?: string[];
   modules?: ModuleKey[];
   status?: ConsultantStatus;
   monthlyTargetHours?: number | null;

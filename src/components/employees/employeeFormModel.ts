@@ -38,7 +38,8 @@ export interface EmployeeFormValues {
   password: string;
   role: EmployeeRole;
   department?: string | null;
-  teleSalesTeam?: string | null;
+  /** The ticked tele-sales teams (sales family only). */
+  teleSalesTeams: string[];
   modules: ModuleKey[];
   status: ConsultantStatus;
   monthlyTargetHours: string;
@@ -59,13 +60,21 @@ export const emptyEmployeeForm = (role: EmployeeRole): EmployeeFormValues => ({
   password: '',
   role,
   department: undefined,
-  teleSalesTeam: null,
+  teleSalesTeams: [],
   modules: [],
   status: 'active',
   monthlyTargetHours: '',
   profilePicture: null,
   hr: emptyHr(),
 });
+
+/** The names of every tele-sales team an employee sees, home team first. */
+export const employeeTeamNames = (c: Pick<Consultant, 'teleSalesTeam' | 'teleSalesTeams'>): string[] => {
+  const names = [c.teleSalesTeam, ...(c.teleSalesTeams ?? [])]
+    .map((t) => (t && typeof t === 'object' ? t.name : ''))
+    .filter(Boolean);
+  return [...new Set(names)];
+};
 
 const refId = (v: unknown): string =>
   v && typeof v === 'object' ? String((v as { _id: string })._id) : v ? String(v) : '';
@@ -100,7 +109,8 @@ export const employeeToForm = (c: Consultant): EmployeeFormValues => {
     password: '',
     role: c.role,
     department: refId(c.department) || undefined,
-    teleSalesTeam: refId(c.teleSalesTeam) || null,
+    // Home team first, then the other ticked teams
+    teleSalesTeams: [...new Set([c.teleSalesTeam, ...(c.teleSalesTeams ?? [])].map(refId).filter(Boolean))],
     modules: c.modules ?? [],
     status: c.status,
     monthlyTargetHours: c.monthlyTargetHours == null ? '' : String(c.monthlyTargetHours),
@@ -124,7 +134,7 @@ export const formToPayload = (v: EmployeeFormValues, withHr: boolean): UpdateCon
     position: v.position.trim(),
     role: v.role,
     department: v.department ?? null,
-    teleSalesTeam: v.teleSalesTeam ?? null,
+    teleSalesTeams: v.teleSalesTeams,
     modules: v.modules,
     status: v.status,
     monthlyTargetHours: num(v.monthlyTargetHours),

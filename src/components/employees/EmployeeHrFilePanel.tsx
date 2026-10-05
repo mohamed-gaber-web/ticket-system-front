@@ -16,6 +16,7 @@ import {
   toDateInput,
 } from '@/lib/hr';
 import { Link } from 'react-router-dom';
+import { employeeTeamNames } from './employeeFormModel';
 
 const Item = ({ label, children }: { label: string; children: ReactNode }) => (
   <div className="min-w-0">
@@ -87,9 +88,9 @@ export function EmployeeHrFilePanel({ employee }: { employee: Consultant }) {
           </Item>
           <Item label="Section">{hr.section}</Item>
           {(employee.role === 'sales' || employee.role === 'sales_manager') && (
-            <Item label="Tele-sales Team">
-              {employee.teleSalesTeam && typeof employee.teleSalesTeam === 'object'
-                ? employee.teleSalesTeam.name
+            <Item label="Tele-sales Teams">
+              {employeeTeamNames(employee).length > 0
+                ? employeeTeamNames(employee).join(', ')
                 : employee.role === 'sales'
                   ? <span className="text-amber-700 font-medium">No team — sees no leads</span>
                   : 'All teams'}

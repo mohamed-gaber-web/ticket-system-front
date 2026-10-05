@@ -19,7 +19,7 @@ import {
   VALUE_CURRENCIES, DEFAULT_VALUE_CURRENCY, type ValueCurrency,
 } from '@/types/teleSales.types';
 import { dialCodeForCountry, isValidPhoneForCountry } from '@/utils/countryPhone';
-import { isSuperAdmin, canManageTeam } from '@/lib/teleSalesRole';
+import { isSuperAdmin, canManageTeam, ownTeams, ownTeamId } from '@/lib/teleSalesRole';
 
 const LEAD_SOURCES: LeadSource[] = ['LinkedIn', 'Website', 'Referral', 'Cold Call', 'Exhibition', 'Partner', 'Other'];
 
@@ -180,6 +180,10 @@ export function LeadFormModal({ open, lead, defaultSalesType, onClose, onSaved }
   // which controls are worth showing.
   const superAdmin = isSuperAdmin(user);
   const canAssign = canManageTeam(user);
+  // Someone on several teams chooses which of them owns a NEW lead (moving an
+  // existing lead between teams stays a super admin's).
+  const myTeams = ownTeams(user);
+  const pickOwnTeam = !superAdmin && !lead && myTeams.length > 1;
 
   const sectorOptions = industrySectors.length
     ? industrySectors.filter((s) => s.isActive).map((s) => s.name)
@@ -198,9 +202,11 @@ export function LeadFormModal({ open, lead, defaultSalesType, onClose, onSaved }
   // Re-seed the form every time the modal opens, for the lead it was opened with.
   useEffect(() => {
     if (!open) return;
-    setForm(lead ? buildFormFromLead(lead) : { ...emptyForm, salesType: defaultSalesType ?? emptyForm.salesType });
+    setForm(lead
+      ? buildFormFromLead(lead)
+      : { ...emptyForm, salesType: defaultSalesType ?? emptyForm.salesType, team: pickOwnTeam ? ownTeamId(user) : emptyForm.team });
     setTagInput('');
-  }, [open, lead, defaultSalesType]);
+  }, [open, lead, defaultSalesType]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load the lookup lists the dropdowns need. Cheap enough to refetch per open.
   useEffect(() => {
@@ -277,7 +283,7 @@ export function LeadFormModal({ open, lead, defaultSalesType, onClose, onSaved }
     }
     // A super admin has no home team for the backend to fall back on, so the lead
     // would have nowhere to live and would be invisible to every agent.
-    if (superAdmin && !form.team) {
+    if ((superAdmin || pickOwnTeam) && !form.team) {
       toast.error('Choose which team owns this lead');
       return;
     }
@@ -288,7 +294,7 @@ export function LeadFormModal({ open, lead, defaultSalesType, onClose, onSaved }
     if (!payload.valueCurrency) delete payload.valueCurrency;
     // Everyone else works inside their own team; the server ignores the field for
     // them, so sending it would only be misleading.
-    if (!superAdmin) delete payload.team;
+    if (!superAdmin && !pickOwnTeam) delete payload.team;
 
     setSubmitting(true);
     try {
@@ -498,6 +504,16 @@ export function LeadFormModal({ open, lead, defaultSalesType, onClose, onSaved }
                   <SelectField value={form.team || ''} onChange={(e) => setForm(p => ({ ...p, team: e.target.value }))}>
                     <option value="">Select a team</option>
                     {teams.filter((t) => t.isActive || teamId(lead?.team) === t._id).map((t) => (
+                      <option key={t._id} value={t._id}>{t.name}</option>
+                    ))}
+                  </SelectField>
+                </Field>
+              )}
+              {pickOwnTeam && (
+                <Field label="Owning Team" required hint="Only this team will see the lead.">
+                  <SelectField value={form.team || ''} onChange={(e) => setForm(p => ({ ...p, team: e.target.value }))}>
+                    <option value="">Select a team</option>
+                    {myTeams.map((t) => (
                       <option key={t._id} value={t._id}>{t.name}</option>
                     ))}
                   </SelectField>

@@ -306,6 +306,10 @@ export interface Lead {
   valueCurrency?: ValueCurrency;
   valueSource?: LeadValueSource;
   valueUpdatedAt?: string;
+  /** The proposal price — the Quoted Value logged at "Proposal Sent". Not replaced by later Revised / Final values. */
+  proposalValue?: number;
+  proposalCurrency?: ValueCurrency;
+  proposalUpdatedAt?: string;
   status: LeadStatus;
   lastCallDate?: string;
   nextFollowUpDate?: string;

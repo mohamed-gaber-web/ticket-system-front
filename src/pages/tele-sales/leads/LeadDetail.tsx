@@ -13,11 +13,13 @@ import {
   ArrowLeft, Phone, Mail, Building2, User, Briefcase, Tag, Edit2, Pencil,
   PhoneCall, Calendar, Paperclip, Plus, CheckCircle2, Trash2, MapPin,
   Globe, FileText, Upload, Download, File as FileIcon, Image as ImageIcon,
-  Send, Sparkles, Wallet, CircleDot,
+  Send, Sparkles, Wallet, CircleDot, Zap, FileSignature,
 } from 'lucide-react';
 import GmailCompose from '@/components/tele-sales/GmailCompose';
 import { LeadEmailThread } from '@/components/tele-sales/LeadEmailThread';
 import { StatusChangeModal } from '@/components/tele-sales/StatusChangeModal';
+import { StatusUpdateForm } from '@/components/tele-sales/StatusUpdateForm';
+import { useLeadEmailSender } from '@/hooks/useLeadEmailSender';
 import { LeadFormModal } from '@/components/tele-sales/LeadFormModal';
 import { PipelineStepper } from '@/components/tele-sales/PipelineStepper';
 import { StatusHistoryTab } from '@/components/tele-sales/StatusHistoryTab';
@@ -55,6 +57,8 @@ export default function LeadDetail() {
   const { user } = useAppSelector((s) => s.auth);
   // Marketing may look at everything here but change nothing.
   const readOnly = isReadOnly(user);
+  // Lead mail goes out from the sales mailbox, not the agent's own address.
+  const emailSender = useLeadEmailSender();
 
   // Deep link: /tele-sales/leads/:id?tab=emails (used by reply notifications).
   const [searchParams] = useSearchParams();
@@ -239,6 +243,8 @@ export default function LeadDetail() {
   const handleStatusChanged = () => {
     loadStatusHistory();
     loadFollowUps();
+    // A Follow-up may have emailed the customer along with it
+    loadEmails();
   };
 
   const handleAddCall = async (e: React.FormEvent) => {
@@ -316,6 +322,7 @@ export default function LeadDetail() {
   const hasValue = (lead.potentialValue ?? 0) > 0;
   const valueSource: LeadValueSource | undefined = hasValue ? lead.valueSource ?? 'manual' : undefined;
   const countsAs = lead.status === 'Closed Won' ? 'won' : lead.status === 'Closed Lost' ? 'lost' : 'open';
+  const hasProposal = (lead.proposalValue ?? 0) > 0;
 
   return (
     <div className="p-6 space-y-5">
@@ -375,7 +382,7 @@ export default function LeadDetail() {
       </div>
 
       {/* Stats bar */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <div className="bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant/20 text-center"
           title={valueSource ? LEAD_VALUE_SOURCES[valueSource].explain : 'No value yet — see "Lead Value" on the Info tab'}>
           <p className="text-lg font-bold text-on-surface tabular-nums">
@@ -384,6 +391,13 @@ export default function LeadDetail() {
           <p className="text-xs text-on-surface-variant mt-1">
             Lead Value{valueSource && <> · {LEAD_VALUE_SOURCES[valueSource].label}</>}
           </p>
+        </div>
+        <div className="bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant/20 text-center"
+          title="The Quoted Value logged when the proposal was sent">
+          <p className="text-lg font-bold text-on-surface tabular-nums">
+            {hasProposal ? formatMoney(lead.proposalValue!, lead.proposalCurrency) : '—'}
+          </p>
+          <p className="text-xs text-on-surface-variant mt-1">Proposal Price</p>
         </div>
         <div className="bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant/20 text-center">
           <p className="text-2xl font-bold text-on-surface">{lead.callAttempts}</p>
@@ -400,6 +414,19 @@ export default function LeadDetail() {
       </div>
 
       <PipelineStepper status={lead.status} />
+
+      {/* Quick Update — the current status's inputs, ready to log another
+          follow-up, attempt, meeting round… or switch to the next status. */}
+      {!readOnly && lead.status !== 'Closed Won' && (
+        <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/20 p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Zap className="w-4 h-4 text-primary" />
+            <h3 className="font-semibold text-on-surface text-sm uppercase tracking-wide">Quick Update</h3>
+            <span className="text-xs text-on-surface-variant">— current status: <LeadStatusBadge status={lead.status} size="sm" /></span>
+          </div>
+          <StatusUpdateForm lead={lead} variant="inline" onChanged={handleStatusChanged} />
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="border-b border-outline-variant/20">
@@ -493,6 +520,18 @@ export default function LeadDetail() {
                 </p>
               )}
             </div>
+            {hasProposal && (
+              <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/20 p-5 space-y-2">
+                <h3 className="font-semibold text-on-surface text-sm uppercase tracking-wide text-on-surface-variant flex items-center gap-2">
+                  <FileSignature className="w-4 h-4" /> Proposal Price
+                </h3>
+                <p className="text-2xl font-bold text-on-surface tabular-nums">{formatMoney(lead.proposalValue!, lead.proposalCurrency)}</p>
+                <p className="text-sm text-on-surface-variant">
+                  The Quoted Value logged at Proposal Sent{lead.proposalUpdatedAt && <> on {formatDate(lead.proposalUpdatedAt)}</>}.
+                  A later Revised or Final value changes the Lead Value, not this.
+                </p>
+              </div>
+            )}
             {(lead.entityType || lead.industrySector || lead.businessClassification ||
               lead.country || lead.fullAddress) && (
               <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/20 p-5 space-y-4">
@@ -658,7 +697,7 @@ export default function LeadDetail() {
       {tab === 'assistant' && (
         <SalesAssistantPanel
           lead={lead}
-          agentEmail={user?.email}
+          agentEmail={emailSender ?? undefined}
           onEmailSent={() => loadEmails()}
         />
       )}
@@ -772,7 +811,7 @@ export default function LeadDetail() {
         onClose={() => { setComposeOpen(false); setReplyTo(null); }}
         defaultTo={lead.email ? [lead.email] : []}
         contextLabel={lead.contactPersonName || lead.companyName}
-        fromLabel={user?.email}
+        fromLabel={emailSender ?? undefined}
         replyTo={replyTo}
         onSent={() => { setReplyTo(null); loadEmails(); setTab('emails'); }}
       />

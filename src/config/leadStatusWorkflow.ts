@@ -5,6 +5,7 @@
 import type { Lead } from '@/types/teleSales.types';
 
 export type LeadStatus =
+  | 'No Action'
   | 'New Lead'
   | 'No Answer'
   | 'Call Back Later'
@@ -55,6 +56,12 @@ export interface StatusWorkflowEntry {
   call?: boolean;
   fu?: boolean;
   mail?: boolean;
+  /**
+   * Offer "Send an email to the customer" next to this status's inputs: ticked,
+   * a pre-filled email goes out (from the sales mailbox) when the status saves.
+   * Frontend only — the email is sent through the normal lead email endpoint.
+   */
+  quickEmail?: boolean;
   att?: boolean;
 }
 
@@ -62,23 +69,30 @@ const isoLocal = (d: Date) => new Date(d.getTime() - d.getTimezoneOffset() * 600
 const hoursFromNow = (h: number) => isoLocal(new Date(Date.now() + h * 3600e3));
 
 export const LEAD_STATUSES: LeadStatus[] = [
-  'New Lead', 'No Answer', 'Call Back Later', 'Wrong Number', 'Interested',
+  'No Action', 'New Lead', 'No Answer', 'Call Back Later', 'Wrong Number', 'Interested',
   'Follow-up', 'Meeting Scheduled', 'Under Preparation', 'Proposal Sent', 'Negotiation', 'Closed Won', 'Closed Lost',
 ];
 
-/** The status every lead starts in. Set automatically — never offered as a choice. */
+/** The status every lead created by hand starts in. Set automatically — never offered as a choice. */
 export const INITIAL_LEAD_STATUS: LeadStatus = 'New Lead';
 
+/** The status every imported lead starts in: nobody has acted on it yet. */
+export const IMPORTED_LEAD_STATUS: LeadStatus = 'No Action';
+
 /**
- * Statuses a user may pick when creating or importing leads. "New Lead" is left
- * out: leaving the choice blank gives it anyway, so offering it only confused
- * agents. List filters still use LEAD_STATUSES so those leads stay findable.
+ * Statuses a user may pick when creating or importing leads. "New Lead" and
+ * "No Action" are left out: leaving the choice blank gives them anyway, so
+ * offering them only confused agents. List filters still use LEAD_STATUSES so
+ * those leads stay findable.
  */
-export const PICKABLE_LEAD_STATUSES: LeadStatus[] = LEAD_STATUSES.filter((s) => s !== INITIAL_LEAD_STATUS);
+export const PICKABLE_LEAD_STATUSES: LeadStatus[] = LEAD_STATUSES.filter(
+  (s) => s !== INITIAL_LEAD_STATUS && s !== IMPORTED_LEAD_STATUS,
+);
 
 export const STEPS = ['New Lead', 'Contact Attempts', 'Qualified', 'Meeting', 'Proposal', 'Negotiation', 'Closed'];
 
 export const STATUS_COLORS: Record<LeadStatus, string> = {
+  'No Action': 'bg-slate-100 text-slate-600',
   'New Lead': 'bg-blue-100 text-blue-700',
   'No Answer': 'bg-gray-100 text-gray-600',
   'Call Back Later': 'bg-yellow-50 text-yellow-600',
@@ -96,6 +110,12 @@ export const STATUS_COLORS: Record<LeadStatus, string> = {
 const MODULES = ['D365 Finance & Operations', 'Business Central', 'Power Platform', 'MASAR Mobile App', 'Support / SLA', 'Licenses only'];
 
 export const LEAD_STATUS_WORKFLOW: Record<LeadStatus, StatusWorkflowEntry> = {
+  'No Action': {
+    ar: 'لم يتم اتخاذ إجراء', color: '#475569', bg: '#f1f5f9', step: 0,
+    desc: 'Imported lead — no action has been taken on it yet.',
+    fields: [],
+  },
+
   'New Lead': {
     ar: 'عميل محتمل جديد', color: '#1d4ed8', bg: '#e0edff', step: 0,
     desc: 'Assign an owner and set the first-contact SLA deadline.',
@@ -188,6 +208,7 @@ export const LEAD_STATUS_WORKFLOW: Record<LeadStatus, StatusWorkflowEntry> = {
     ],
     task: (v) => ({ title: `Follow-up — ${v.topic}`, due: v.nextDate, kind: 'follow' }),
     fu: true,
+    quickEmail: true,
   },
 
   'Meeting Scheduled': {
@@ -295,21 +316,24 @@ export const LEAD_STATUS_WORKFLOW: Record<LeadStatus, StatusWorkflowEntry> = {
   },
 };
 
-// Allowed transitions from each status. Self-transitions (e.g. "No Answer" →
-// "No Answer") are intentional — they represent another logged attempt.
+// Allowed transitions from each status. Every working status lists itself first:
+// a self-transition is a quick update of the same status (another follow-up,
+// another attempt, a new meeting round, a revised quote) logged with fresh
+// details. "No Action" has nothing to update and Closed Won is final.
 export const NEXT: Record<LeadStatus, LeadStatus[]> = {
-  'New Lead': ['No Answer', 'Call Back Later', 'Wrong Number', 'Interested', 'Follow-up', 'Meeting Scheduled', 'Closed Lost'],
+  'No Action': ['New Lead', 'No Answer', 'Call Back Later', 'Wrong Number', 'Interested', 'Follow-up', 'Meeting Scheduled', 'Closed Lost'],
+  'New Lead': ['New Lead', 'No Answer', 'Call Back Later', 'Wrong Number', 'Interested', 'Follow-up', 'Meeting Scheduled', 'Closed Lost'],
   'No Answer': ['No Answer', 'Call Back Later', 'Wrong Number', 'Interested', 'Follow-up', 'Meeting Scheduled', 'Closed Lost'],
-  'Call Back Later': ['No Answer', 'Call Back Later', 'Interested', 'Follow-up', 'Meeting Scheduled', 'Closed Lost'],
-  'Wrong Number': ['New Lead', 'Follow-up', 'Closed Lost'],
-  'Interested': ['Follow-up', 'Meeting Scheduled', 'Under Preparation', 'Proposal Sent', 'No Answer', 'Call Back Later', 'Closed Lost'],
+  'Call Back Later': ['Call Back Later', 'No Answer', 'Interested', 'Follow-up', 'Meeting Scheduled', 'Closed Lost'],
+  'Wrong Number': ['Wrong Number', 'New Lead', 'Follow-up', 'Closed Lost'],
+  'Interested': ['Interested', 'Follow-up', 'Meeting Scheduled', 'Under Preparation', 'Proposal Sent', 'No Answer', 'Call Back Later', 'Closed Lost'],
   'Follow-up': ['Follow-up', 'Meeting Scheduled', 'Under Preparation', 'Proposal Sent', 'No Answer', 'Call Back Later', 'Closed Lost'],
   'Meeting Scheduled': ['Meeting Scheduled', 'Follow-up', 'Under Preparation', 'Proposal Sent', 'No Answer', 'Closed Lost'],
-  'Under Preparation': ['Proposal Sent', 'Meeting Scheduled', 'Follow-up', 'Closed Lost'],
-  'Proposal Sent': ['Negotiation', 'Meeting Scheduled', 'Follow-up', 'Closed Won', 'Closed Lost'],
-  'Negotiation': ['Meeting Scheduled', 'Proposal Sent', 'Follow-up', 'Closed Won', 'Closed Lost'],
+  'Under Preparation': ['Under Preparation', 'Proposal Sent', 'Meeting Scheduled', 'Follow-up', 'Closed Lost'],
+  'Proposal Sent': ['Proposal Sent', 'Negotiation', 'Meeting Scheduled', 'Follow-up', 'Closed Won', 'Closed Lost'],
+  'Negotiation': ['Negotiation', 'Meeting Scheduled', 'Proposal Sent', 'Follow-up', 'Closed Won', 'Closed Lost'],
   'Closed Won': [],
-  'Closed Lost': ['New Lead'],
+  'Closed Lost': ['Closed Lost', 'New Lead'],
 };
 
 export const isTransitionAllowed = (from: LeadStatus, to: LeadStatus) => (NEXT[from] || []).includes(to);

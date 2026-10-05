@@ -28,8 +28,9 @@ import {
   Target,
   Globe,
   Info,
+  CircleDashed,
 } from 'lucide-react';
-import { isCrossTeamReader, isSalesManager, ownTeamName } from '@/lib/teleSalesRole';
+import { isCrossTeamReader, ownTeamNames, ownTeams } from '@/lib/teleSalesRole';
 import { formatMoney, type CurrencyTotal } from '@/types/teleSales.types';
 
 /* ─────────────────────────────────────────────────────────────
@@ -137,6 +138,7 @@ function StatCard({ label, value, icon: Icon, numberColor, iconBg, iconColor, ba
 
 // One icon per pipeline status — used in the full Sales Pipeline breakdown below.
 const STATUS_ICONS: Record<LeadStatus, React.ReactNode> = {
+  'No Action': <CircleDashed className="w-3.5 h-3.5" />,
   'New Lead': <PhoneCall className="w-3.5 h-3.5" />,
   'No Answer': <PhoneOff className="w-3.5 h-3.5" />,
   'Call Back Later': <Clock3 className="w-3.5 h-3.5" />,
@@ -219,15 +221,15 @@ export default function TeleSalesDashboard() {
               reading these totals as company-wide. */}
           <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-primary/10 text-primary">
             <Globe className="w-3 h-3" />
-            {isCrossTeamReader(user) ? 'All teams' : ownTeamName(user)}
+            {isCrossTeamReader(user) ? 'All teams' : ownTeamNames(user)}
           </span>
         </div>
         <p className="text-on-surface-variant text-sm mt-1">
           {isCrossTeamReader(user)
             ? "Here's the TeleSales overview across every team"
-            : isSalesManager(user)
-              ? "Here's your team's TeleSales overview"
-              : "Here's the overview of the leads assigned to you"}
+            : ownTeams(user).length > 1
+              ? "Here's the TeleSales overview of your teams"
+              : "Here's your team's TeleSales overview"}
         </p>
       </motion.div>
 
@@ -305,7 +307,7 @@ export default function TeleSalesDashboard() {
             <li><span className="font-medium text-on-surface">Revised Value</span> entered at Negotiation</li>
             <li><span className="font-medium text-on-surface">Final Deal Value</span> entered at Closed Won</li>
           </ol>
-          <p>The totals add those values per currency, only for the leads you can see{isCrossTeamReader(user) ? '' : isSalesManager(user) ? ' (your team)' : ' (your leads)'}.</p>
+          <p>The totals add those values per currency, only for the leads you can see{isCrossTeamReader(user) ? '' : ' (your teams)'}.</p>
         </div>
       </motion.div>
 

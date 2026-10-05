@@ -69,6 +69,8 @@ export interface Employee extends User {
   modules?: ModuleKey[];
   department?: { _id: string; name: string } | string | null;
   teleSalesTeam?: TeleSalesTeamRef | string | null;
+  /** Every tele-sales team this employee sees (home team included). */
+  teleSalesTeams?: (TeleSalesTeamRef | string)[];
   monthlyTargetHours?: number | null;
 }
 

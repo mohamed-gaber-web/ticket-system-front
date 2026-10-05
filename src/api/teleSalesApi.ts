@@ -178,6 +178,10 @@ export const markLeadEmailRead = (leadId: string, emailId: string): Promise<Lead
   api.patch(`/leads/${leadId}/emails/${emailId}/read`).then((r) => r.data);
 
 /** Pull new replies from the shared mailbox right now. */
+/** The mailbox lead email goes out from (sales@growpath.net). */
+export const getLeadEmailSender = (): Promise<{ success: boolean; data: { mailbox: string | null } }> =>
+  api.get('/leads/emails/sender').then((r) => r.data);
+
 export const syncLeadInbox = (): Promise<{ success: boolean; message: string; data: { processed: number; filed: number } }> =>
   api.post('/leads/emails/sync').then((r) => r.data);
 

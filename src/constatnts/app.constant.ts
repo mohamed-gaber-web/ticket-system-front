@@ -30,7 +30,6 @@ import {
   Building,
   CalendarClock,
   PhoneCall,
-  UserPlus,
   CheckSquare,
   SquareKanban,
   CalendarHeart,
@@ -239,7 +238,6 @@ const TELE_SALES_GROUP: NavLink = {
     { name: "Opportunities", path: "/tele-sales/opportunities", icon: Star },
     { name: "Recent Calls", path: "/tele-sales/calls/recent", icon: Clock },
     { name: "Email Management", path: "/tele-sales/emails", icon: Mail },
-    { name: "Agents", path: "/tele-sales/agents", icon: UserPlus, minRole: "manager" },
     { ...PRODUCT_CATALOG_GROUP, isGroup: undefined, isSubGroup: true },
     {
       name: "Modules",

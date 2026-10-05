@@ -142,7 +142,6 @@ const LeadDetail = lazy(() => import("@/pages/tele-sales/leads/LeadDetail"));
 const RecentCalls = lazy(() => import("@/pages/tele-sales/leads/RecentCalls"));
 const EmailManagement = lazy(() => import("@/pages/tele-sales/emails/EmailManagement"));
 const TicketEmails = lazy(() => import("@/pages/tickets/TicketEmails"));
-const TeleSalesAgents = lazy(() => import("@/pages/tele-sales/agents/Agents"));
 const TeleSalesTeams = lazy(() => import("@/pages/tele-sales/teams/Teams"));
 // Sales assistant (product catalog group)
 const TeleSalesProducts = lazy(() => import("@/pages/tele-sales/products/Products"));
@@ -198,7 +197,8 @@ export const routes: RouteObject[] = [
       { path: "leads/:id", element: <Lazy><LeadDetail /></Lazy> },
       { path: "calls/recent", element: <Lazy><RecentCalls /></Lazy> },
       { path: "emails", element: <Lazy><EmailManagement /></Lazy> },
-      { path: "agents", element: <ManagerRoute><Lazy><TeleSalesAgents /></Lazy></ManagerRoute> },
+      // Sales people are employees now — managed under HR > Employees
+      { path: "agents", element: <Navigate to="/hr/employees" replace /> },
       // Team management moved to HR (/hr/teams); keep old links working.
       { path: "teams", element: <Navigate to="/hr/teams" replace /> },
       // Product catalog group — readable by every tele-sales role; the pages hide the

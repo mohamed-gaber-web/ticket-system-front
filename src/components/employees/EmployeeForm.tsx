@@ -291,8 +291,8 @@ export function EmployeeForm({ mode, initialValues, departments, submitting, emp
     }
     if (values.phone && !/^\+?\d{10,15}$/.test(values.phone.replace(/[\s-]/g, ''))) e.phone = 'Mobile must be 10-15 digits';
     // Without a team a sales employee or sales manager would see no leads at all
-    if ((values.role === 'sales' || values.role === 'sales_manager') && !values.teleSalesTeam) {
-      e.teleSalesTeam = 'Choose the tele-sales team this employee works in';
+    if ((values.role === 'sales' || values.role === 'sales_manager') && values.teleSalesTeams.length === 0) {
+      e.teleSalesTeams = 'Tick at least one tele-sales team this employee works in';
     }
     if (withHr) {
       const hr = values.hr;
@@ -322,7 +322,7 @@ export function EmployeeForm({ mode, initialValues, departments, submitting, emp
 
   // Which section a field error lives in, to scroll to the first one
   const SECTION_OF: Record<string, string> = {
-    firstName: 'basic', lastName: 'basic', email: 'basic', phone: 'basic', password: 'access', teleSalesTeam: 'access',
+    firstName: 'basic', lastName: 'basic', email: 'basic', phone: 'basic', password: 'access', teleSalesTeams: 'access',
     'hr.nationalId': 'personal', 'hr.interviewDate': 'recruitment', 'hr.contractEndDate': 'contract',
     'hr.contractDurationMonths': 'contract', 'hr.probationPeriodMonths': 'contract',
     'hr.basicSalary': 'payroll', 'hr.grossSalary': 'payroll', 'hr.netSalary': 'payroll',
@@ -705,15 +705,15 @@ export function EmployeeForm({ mode, initialValues, departments, submitting, emp
               value={{
                 role: values.role,
                 department: values.department,
-                teleSalesTeam: values.teleSalesTeam,
+                teleSalesTeams: values.teleSalesTeams,
                 modules: values.modules,
               }}
               onChange={(next) => {
-                setValues((prev) => ({ ...prev, ...next, modules: next.modules ?? [] }));
-                if (errors.teleSalesTeam) setErrors((prev) => ({ ...prev, teleSalesTeam: '' }));
+                setValues((prev) => ({ ...prev, ...next, teleSalesTeams: next.teleSalesTeams ?? [], modules: next.modules ?? [] }));
+                if (errors.teleSalesTeams) setErrors((prev) => ({ ...prev, teleSalesTeams: '' }));
               }}
               departments={departments}
-              teamError={errors.teleSalesTeam}
+              teamError={errors.teleSalesTeams}
             />
             {mode === 'create' && (
               <Grid>

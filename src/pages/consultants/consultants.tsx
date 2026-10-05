@@ -16,6 +16,7 @@ import Swal from 'sweetalert2';
 import AdminChangePasswordDialog from '@/components/admin/AdminChangePasswordDialog';
 import { getTickets } from '@/api/ticketApi';
 import { EMPLOYEE_CREATE_PATH, EMPLOYEE_STATUS_OPTIONS, employeeEditPath, employeeViewPath } from '@/lib/hr';
+import { employeeTeamNames } from '@/components/employees/employeeFormModel';
 
 const PAGE_SIZE = 10;
 
@@ -375,9 +376,13 @@ export default function Consultants() {
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {consultant.teleSalesTeam && typeof consultant.teleSalesTeam === 'object' ? (
-                          <span className="px-2 py-1 text-xs font-medium rounded-md border bg-blue-50 text-blue-800 border-blue-200">
-                            {consultant.teleSalesTeam.name}
+                        {employeeTeamNames(consultant).length > 0 ? (
+                          <span className="flex flex-wrap gap-1">
+                            {employeeTeamNames(consultant).map((name) => (
+                              <span key={name} className="px-2 py-1 text-xs font-medium rounded-md border bg-blue-50 text-blue-800 border-blue-200">
+                                {name}
+                              </span>
+                            ))}
                           </span>
                         ) : consultant.role === 'sales' ? (
                           <span className="text-xs font-medium text-amber-700" title="A sales employee without a team sees no leads">
