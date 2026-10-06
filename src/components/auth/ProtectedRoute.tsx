@@ -96,7 +96,7 @@ export const ManagerRoute = ({ children }: { children: ReactNode }) => (
   </ProtectedRoute>
 );
 
-/** Managers, admins and HR — whoever may create and edit employee records. */
+/** Admins and HR — whoever may create and edit employee records. */
 export const EmployeeManagerRoute = ({ children }: { children: ReactNode }) => (
   <ProtectedRoute allowedUserTypes={['employee']} minRole="employee-manager">
     {children}

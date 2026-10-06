@@ -23,7 +23,7 @@ export interface Access {
   seesAllBoards: boolean;
   /** Has the HR module (admins always do): sees and edits the confidential HR file. */
   isHr: boolean;
-  /** May open the employee create/edit screens: managers, admins and HR. */
+  /** May open the employee directory and its create/edit screens: admins and HR. */
   canManageEmployees: boolean;
   modules: ModuleKey[];
   hasModule: (m: ModuleKey) => boolean;
@@ -63,7 +63,7 @@ export const useAccess = (): Access => {
       isCrossTeam: isAdmin,
       seesAllBoards: isAdmin || role === 'developer_manager',
       isHr: resolved.includes('hr'),
-      canManageEmployees: isAdmin || isManager || resolved.includes('hr'),
+      canManageEmployees: isAdmin || resolved.includes('hr'),
       modules: resolved,
       hasModule: (m: ModuleKey) => resolved.includes(m),
       teleSalesTeam,

@@ -16,13 +16,13 @@ const CURRENT_YEAR = new Date().getFullYear();
 const YEARS = [CURRENT_YEAR - 1, CURRENT_YEAR, CURRENT_YEAR + 1];
 
 export default function EmployeeBalance() {
-  // Managers see the balances of their own family, admins everyone's — the
-  // API scopes the list, the page only picks the view.
-  const { isManagerOrAdmin } = useAccess();
+  // Admins and HR manage everyone's balances; everyone else sees only their own
+  // (the API enforces the same split).
+  const { isHr } = useAccess();
 
   const [year, setYear] = useState(CURRENT_YEAR);
 
-  if (isManagerOrAdmin) return <AdminBalances year={year} setYear={setYear} />;
+  if (isHr) return <AdminBalances year={year} setYear={setYear} />;
   return <MyBalanceView year={year} setYear={setYear} />;
 }
 

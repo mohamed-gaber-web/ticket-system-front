@@ -36,6 +36,19 @@ function LegacyEmployeeRedirect({ to }: { to: (id?: string) => string }) {
   return <Navigate to={to(id)} replace />;
 }
 
+// An employee's profile page: admins and HR open anyone's, everyone else only
+// their own (the API answers 404 for the rest).
+function EmployeeViewRoute({ children }: { children: ReactNode }) {
+  const { id } = useParams<{ id: string }>();
+  const { isHr } = useAccess();
+  const ownId = useAppSelector((s) => s.auth.user?._id);
+  return (
+    <EmployeeRoute>
+      {isHr || (id && id === ownId) ? children : <Navigate to="/unauthorized" replace />}
+    </EmployeeRoute>
+  );
+}
+
 // Guard: meeting book — every employee, and customers (read-only)
 function CalendarRoute({ children }: { children: ReactNode }) {
   return <ProtectedRoute allowedUserTypes={['employee', 'customer']}>{children}</ProtectedRoute>;
@@ -253,10 +266,10 @@ export const routes: RouteObject[] = [
       // HR — the employee directory. The roster is readable by any employee
       // (pickers need it); creating and editing is for managers, HR and admins,
       // and the confidential HR file only ever reaches HR and admins.
-      { path: "/hr/employees", element: <EmployeeRoute><Lazy><Consultants /></Lazy></EmployeeRoute> },
+      { path: "/hr/employees", element: <ModuleRoute module="hr"><Lazy><Consultants /></Lazy></ModuleRoute> },
       { path: "/hr/employees/create", element: <EmployeeManagerRoute><Lazy><CreateConsultant /></Lazy></EmployeeManagerRoute> },
       { path: "/hr/employees/edit/:id", element: <EmployeeManagerRoute><Lazy><EditConsultant /></Lazy></EmployeeManagerRoute> },
-      { path: "/hr/employees/view/:id", element: <EmployeeRoute><Lazy><ViewConsultant /></Lazy></EmployeeRoute> },
+      { path: "/hr/employees/view/:id", element: <EmployeeViewRoute><Lazy><ViewConsultant /></Lazy></EmployeeViewRoute> },
       // Tele-sales teams are managed by HR (admins always hold the hr module)
       { path: "/hr/teams", element: <ModuleRoute module="hr"><Lazy><TeleSalesTeams /></Lazy></ModuleRoute> },
       { path: "/consultants", element: <Navigate to="/hr/employees" replace /> },

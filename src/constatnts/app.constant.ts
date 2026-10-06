@@ -274,17 +274,18 @@ const DEVELOPMENT_GROUP: NavLink = {
 // HR menu — the employee directory (with the confidential HR file for HR and
 // admins), teams, leave approvals and balances, plus ticketing Performance.
 // Every link says who sees it; the group shows when any link survives, so a
-// consultant without the HR module still finds Performance here. Managers keep
-// the directory and balances for the people they run.
+// consultant without the HR module still finds Performance here. The directory
+// and everyone's balances are for admins and HR only; others use My Balance and
+// their profile.
 const HR_GROUP: NavLink = {
   name: "HR",
   icon: Contact,
   isGroup: true,
   children: [
-    { name: "Employees", path: "/hr/employees", icon: UserCog, module: "hr", orMinRole: "manager" },
+    { name: "Employees", path: "/hr/employees", icon: UserCog, module: "hr" },
     { name: "Teams", path: "/hr/teams", icon: Globe, module: "hr" },
     { name: "Approvals", path: "/employee-requests/approvals", icon: ClipboardCheck, minRole: "manager" },
-    { name: "Balances", path: "/employee-requests/balances", icon: Wallet, module: "hr", orMinRole: "manager" },
+    { name: "Balances", path: "/employee-requests/balances", icon: Wallet, module: "hr" },
     PERFORMANCE_GROUP,
   ],
 };
