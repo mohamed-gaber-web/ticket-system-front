@@ -13,6 +13,7 @@ import {
 import TaskFileUpload from '@/components/tasks/TaskFileUpload';
 import TaskAttachmentList from '@/components/tasks/TaskAttachmentList';
 import TaskComments from '@/components/tasks/TaskComments';
+import TaskPostponements from '@/components/tasks/TaskPostponements';
 import { getWeekDateRange, getWeekNumber, weekRangeLabel } from '@/utils/weekUtils';
 import {
   Edit, Trash2, CheckSquare, User, Calendar,
@@ -243,6 +244,9 @@ export default function ViewTask() {
     ? (currentTask.category as any).name
     : null;
   const delayDays = currentTask.delayDays ?? 0;
+  // The end date before the first postponement (oldest entry's previousEndDate).
+  const originalEnd = [...(currentTask.postponements ?? [])]
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt))[0]?.previousEndDate ?? undefined;
 
   const assignee = typeof currentTask.assignedTo === 'object' && currentTask.assignedTo
     ? `${currentTask.assignedTo.firstName} ${currentTask.assignedTo.lastName}` : null;
@@ -456,7 +460,11 @@ export default function ViewTask() {
               <>
                 {(currentTask.scheduledWeek != null || currentTask.duration != null) && <div className="border-t border-outline-variant/15" />}
                 {currentTask.startDate && <SchedRow icon={<CalendarDays className="w-4 h-4 text-green-600" />} label="Start Date" value={fmtDate(currentTask.startDate)!} />}
-                {currentTask.endDate && <SchedRow icon={<CalendarDays className="w-4 h-4 text-error" />} label="End Date" value={fmtDate(currentTask.endDate)!} />}
+                {currentTask.endDate && <SchedRow icon={<CalendarDays className="w-4 h-4 text-error" />} label="End Date" value={fmtDate(currentTask.endDate)!}
+                  sub={currentTask.postponements?.length ? `Postponed ${currentTask.postponements.length} time${currentTask.postponements.length === 1 ? '' : 's'}` : undefined} />}
+                {!!originalEnd && (
+                  <SchedRow icon={<CalendarDays className="w-4 h-4 text-on-surface-variant" />} label="Original End Date" value={fmtDate(originalEnd)!} />
+                )}
               </>
             )}
             {currentTask.scheduledWeek == null && currentTask.duration == null && !currentTask.startDate && !currentTask.endDate && (
@@ -509,6 +517,17 @@ export default function ViewTask() {
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Postponing Card */}
+          <div className="bg-surface-container-lowest rounded-[1.25rem] p-5 shadow-sm ring-1 ring-outline-variant/20 md:col-span-2">
+            <h2 className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-4">
+              Postponing History
+              {!!currentTask.postponements?.length && (
+                <span className="ml-1 text-primary">({currentTask.postponements.length})</span>
+              )}
+            </h2>
+            <TaskPostponements items={currentTask.postponements} />
           </div>
         </div>
       )}

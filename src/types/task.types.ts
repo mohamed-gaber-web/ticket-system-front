@@ -27,6 +27,18 @@ export interface TaskParentRef {
   endDate?: string;
 }
 
+/** One entry of a task's postponement history (append-only). */
+export interface TaskPostponement {
+  _id: string;
+  /** The new end date the task was postponed to. */
+  date: string;
+  /** The end date it replaced. */
+  previousEndDate?: string | null;
+  comment: string;
+  postponedBy?: TaskConsultant | string | null;
+  createdAt: string;
+}
+
 export interface Task {
   _id: string;
   taskNumber?: string;
@@ -48,6 +60,7 @@ export interface Task {
   createdBy?: TaskConsultant | string | null;
   parentTask?: TaskParentRef | string | null;
   subTaskCount?: number;
+  postponements?: TaskPostponement[];
   createdAt: string;
   updatedAt: string;
 }
@@ -70,7 +83,10 @@ export interface CreateTaskData {
   parentTask?: string | null;
 }
 
-export interface UpdateTaskData extends Partial<CreateTaskData> {}
+export interface UpdateTaskData extends Partial<CreateTaskData> {
+  /** Appends one entry to the task's postponement history. */
+  postpone?: { date: string; comment: string };
+}
 
 export type TaskSortField =
   | 'taskNumber'
@@ -186,6 +202,9 @@ export interface TaskReportSummary {
   onTimeRate: number;
   avgDelayDays: number;
   totalDuration: number;
+  /** Tasks postponed at least once, and the number of postponements across them. */
+  postponedTasks?: number;
+  totalPostponements?: number;
 }
 
 export interface TaskReport {

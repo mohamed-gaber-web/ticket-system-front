@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CalendarDays, CheckCircle2, CheckSquare, Circle, Flag, MessageSquare, Plus, Send, Tag, Trash2, User, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { CalendarDays, CheckCircle2, CheckSquare, Circle, Flag, MessageSquare, Plus, Send, Tag, Ticket as TicketIcon, Trash2, User, X } from 'lucide-react';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
@@ -171,6 +172,16 @@ export function CardDetailDialog({ cardId, board, canAdmin, onClose }: Props) {
                 />
               </DialogTitle>
               <DialogDescription className="sr-only">Card details</DialogDescription>
+              {card.ticket && (
+                <Link
+                  to={`/tickets/view/${card.ticket._id}`}
+                  className="inline-flex items-center gap-1.5 rounded-md bg-primary/10 px-2 py-1 text-xs font-semibold text-primary hover:bg-primary/15"
+                >
+                  <TicketIcon className="h-3.5 w-3.5" />
+                  {card.ticket.ticketNumber ?? 'Ticket'}
+                  {card.ticket.status && <span className="font-normal text-on-surface-variant">· {card.ticket.status.replace(/_/g, ' ')}</span>}
+                </Link>
+              )}
             </div>
 
             {/* Labels on the card */}

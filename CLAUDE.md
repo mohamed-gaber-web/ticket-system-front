@@ -84,3 +84,5 @@ State lives in `src/redux/slices/developmentSlice.ts`, normalised as `lists` + `
 restores the snapshot taken at drag start. `useAccess().seesAllBoards` (admin or development
 manager) plus "is the creator" decides who gets the board-shaping controls; the API re-checks.
 Shared helpers (`personName`, `contrastText`, dnd ids) are in `src/lib/development.ts`.
+Board settings has a **Tickets** tab (only `seesAllBoards`) that links a department + employee to the board;
+matching tickets arrive as cards carrying `card.ticket`, shown as a ticket-number badge that opens the ticket.

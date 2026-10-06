@@ -6,10 +6,11 @@ import { createTask, updateTask, fetchTaskById, clearCurrentTask } from '@/redux
 import { fetchDepartments } from '@/redux/slices/departmentSlice';
 import { fetchConsultants } from '@/redux/slices/consultantSlice';
 import { fetchTaskCategories } from '@/redux/slices/taskCategorySlice';
-import type { TaskStatus, CreateTaskData, TaskParentRef } from '@/types/task.types';
+import type { TaskStatus, CreateTaskData, UpdateTaskData, TaskParentRef } from '@/types/task.types';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Save, ArrowLeft, GitBranch } from 'lucide-react';
+import TaskPostponements from '@/components/tasks/TaskPostponements';
 import { sendTaskAssignedEmail } from '@/api/emailApi';
 import { getWeekDateRange, getWeekNumber } from '@/utils/weekUtils';
 
@@ -59,6 +60,11 @@ export default function TaskForm() {
     duration: '',
     status: 'pending' as TaskStatus,
   });
+
+  // Edit only: "Postpone this task?" — when ticked, a date + comment are
+  // required and saved as a new entry in the task's postponement history.
+  // The postponing date becomes the new end date (the API applies it too).
+  const [postpone, setPostpone] = useState({ enabled: false, date: '', comment: '' });
 
   useEffect(() => {
     dispatch(fetchDepartments({ isActive: true, limit: 999 } as any));
@@ -115,6 +121,26 @@ export default function TaskForm() {
       return { ...f, endDate: value, endWeek: week != null ? String(week) : '' };
     });
 
+  // The end date as saved, before any postponement in this edit.
+  const savedEnd = toDay(currentTask?.endDate);
+  // Earliest allowed postponing date: the day after the saved end date.
+  const postponeMin = savedEnd
+    ? new Date(new Date(`${savedEnd}T00:00:00Z`).getTime() + 86400000).toISOString().slice(0, 10)
+    : undefined;
+
+  const setPostponeDate = (value: string) => {
+    setPostpone((p) => ({ ...p, date: value }));
+    setEndDate(value || savedEnd);
+  };
+  const togglePostpone = (enabled: boolean) => {
+    if (enabled) {
+      setPostpone((p) => ({ ...p, enabled: true }));
+    } else {
+      setPostpone({ enabled: false, date: '', comment: '' });
+      setEndDate(savedEnd);
+    }
+  };
+
   const validate = (): string | null => {
     if (!form.name.trim()) return 'Task name is required';
     if (!form.description.trim()) return 'Description is required';
@@ -131,6 +157,11 @@ export default function TaskForm() {
     if (form.endDate < form.startDate) return 'End date must be on or after start date';
     if (parent && parentStart && parentEnd && (form.startDate < parentStart || form.endDate > parentEnd)) {
       return `Subtask dates must stay within the main task range (${fmtDay(parent.startDate)} → ${fmtDay(parent.endDate)})`;
+    }
+    if (isEdit && postpone.enabled) {
+      if (!postpone.date) return 'Postponing date is required';
+      if (savedEnd && postpone.date <= savedEnd) return `Postponing date must be after the current end date (${fmtDay(savedEnd)})`;
+      if (!postpone.comment.trim()) return 'Postponing comment is required';
     }
     return null;
   };
@@ -158,7 +189,10 @@ export default function TaskForm() {
 
     try {
       if (isEdit && id) {
-        await dispatch(updateTask({ id, data })).unwrap();
+        const update: UpdateTaskData = postpone.enabled
+          ? { ...data, postpone: { date: postpone.date, comment: postpone.comment.trim() } }
+          : data;
+        await dispatch(updateTask({ id, data: update })).unwrap();
         navigate(`/tasks/${id}`);
       } else {
         const created = await dispatch(createTask(data)).unwrap();
@@ -330,8 +364,10 @@ export default function TaskForm() {
               onChange={(e) => setEndDate(e.target.value)}
               min={form.startDate || parentStart || undefined}
               max={parentEnd || undefined}
-              className={INPUT_CLS}
+              disabled={postpone.enabled}
+              className={`${INPUT_CLS} disabled:opacity-80 disabled:cursor-not-allowed`}
             />
+            {postpone.enabled && <p className="text-[11px] text-on-surface-variant">Set by postponing date</p>}
           </div>
           <div className="space-y-1.5">
             <label className="text-sm font-semibold text-on-surface">Start Week *</label>
@@ -392,6 +428,59 @@ export default function TaskForm() {
             className={`${INPUT_CLS} resize-y`}
           />
         </div>
+
+        {/* Row 5 (edit only): Postponing */}
+        {isEdit && (
+          <div className="space-y-4 rounded-[0.875rem] border border-outline-variant/40 p-5">
+            <label className="flex items-center gap-2.5 cursor-pointer select-none w-fit">
+              <input
+                type="checkbox"
+                checked={postpone.enabled}
+                onChange={(e) => togglePostpone(e.target.checked)}
+                className="w-4 h-4 accent-primary"
+              />
+              <span className="text-sm font-semibold text-on-surface">Postpone this task?</span>
+              <span className="text-xs text-on-surface-variant">{postpone.enabled ? 'Yes' : 'No'}</span>
+            </label>
+
+            {postpone.enabled && (
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold text-on-surface">Postponing Date *</label>
+                  <input
+                    required
+                    type="date"
+                    value={postpone.date}
+                    onChange={(e) => setPostponeDate(e.target.value)}
+                    min={postponeMin}
+                    max={parentEnd || undefined}
+                    className={INPUT_CLS}
+                  />
+                  <p className="text-[11px] text-on-surface-variant">Becomes the new end date (current: {fmtDay(savedEnd)})</p>
+                </div>
+                <div className="space-y-1.5 lg:col-span-3">
+                  <label className="text-sm font-semibold text-on-surface">Postponing Comment *</label>
+                  <textarea
+                    required
+                    value={postpone.comment}
+                    onChange={(e) => setPostpone({ ...postpone, comment: e.target.value })}
+                    placeholder="Why is the task being postponed?"
+                    rows={2}
+                    maxLength={1000}
+                    className={`${INPUT_CLS} resize-y`}
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-2 pt-2 border-t border-outline-variant/20">
+              <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">
+                Postponing History ({currentTask?.postponements?.length ?? 0})
+              </p>
+              <TaskPostponements items={currentTask?.postponements} />
+            </div>
+          </div>
+        )}
 
         {/* Submit */}
         <div className="flex justify-end gap-3 pt-2 border-t border-outline-variant/20">

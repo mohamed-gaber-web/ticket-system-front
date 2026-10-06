@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Archive, ArchiveRestore, Check, Pencil, Plus, Tag, Trash2, Users, X } from 'lucide-react';
+import { Archive, ArchiveRestore, Check, Pencil, Plus, Tag, Ticket, Trash2, Users, X } from 'lucide-react';
+import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -9,9 +10,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ConsultantSelect } from '@/components/ui/consultant-select';
-import { useAppDispatch } from '@/redux/hooks/hooks';
+import { CustomSelect } from '@/components/ui/custom-select';
+import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
+import { useAccess } from '@/redux/hooks/useAccess';
+import { fetchDepartments } from '@/redux/slices/departmentSlice';
 import { useDevelopers } from '@/redux/hooks/useDevelopers';
-import { addLabel, deleteBoard, deleteLabel, setBoardMembers, updateBoard, updateLabel } from '@/redux/slices/developmentSlice';
+import { addLabel, deleteBoard, deleteLabel, fetchBoardFull, setBoardMembers, setTicketRule, updateBoard, updateLabel } from '@/redux/slices/developmentSlice';
 import type { DevBoard, DevLabel } from '@/types/development.types';
 import { cn } from '@/lib/utils';
 import { contrastText } from '@/lib/development';
@@ -20,7 +24,9 @@ const MySwal = withReactContent(Swal);
 
 const PALETTE = ['#2563eb', '#0891b2', '#059669', '#65a30d', '#ca8a04', '#ea580c', '#dc2626', '#db2777', '#7c3aed', '#64748b'];
 
-type Tab = 'general' | 'members' | 'labels';
+type Tab = 'general' | 'members' | 'labels' | 'tickets';
+
+const refId = (v: { _id: string } | string | null | undefined) => (v && typeof v === 'object' ? v._id : v ?? '');
 
 interface Props {
   board: DevBoard;
@@ -99,14 +105,36 @@ export function BoardSettingsDialog({ board, open, initialTab = 'general', onOpe
   const [newLabel, setNewLabel] = useState('');
   const [newColor, setNewColor] = useState(PALETTE[0]);
   const [saving, setSaving] = useState(false);
+  // Linked tickets — only admins and the development manager set them
+  const { seesAllBoards } = useAccess();
+  const lists = useAppSelector((s) => s.development.lists);
+  const departments = useAppSelector((s) => s.departments.departments);
+  const [ruleDepartment, setRuleDepartment] = useState('');
+  const [ruleEmployee, setRuleEmployee] = useState('');
+  const [ruleList, setRuleList] = useState('');
 
+  // Reset the form only when the dialog opens — not on every board update, or
+  // saving one tab (which refreshes the board) would jump back to General and
+  // wipe unsaved edits on the others.
+  const wasOpen = useRef(false);
   useEffect(() => {
-    if (!open) return;
-    setTab(initialTab);
-    setName(board.name);
-    setDescription(board.description ?? '');
-    setMembers(board.members.map((m) => m._id));
+    if (open && !wasOpen.current) {
+      setTab(initialTab);
+      setName(board.name);
+      setDescription(board.description ?? '');
+      setMembers(board.members.map((m) => m._id));
+      setRuleDepartment(refId(board.ticketRule?.department));
+      setRuleEmployee(refId(board.ticketRule?.employee));
+      setRuleList(board.ticketRule?.list ?? '');
+    }
+    wasOpen.current = open;
   }, [open, initialTab, board]);
+
+  // Always load the full list: another page may have left a filtered one in the store
+  const ticketsTabOpen = open && seesAllBoards && tab === 'tickets';
+  useEffect(() => {
+    if (ticketsTabOpen) dispatch(fetchDepartments({ limit: 1000 } as never));
+  }, [ticketsTabOpen, dispatch]);
 
   const creatorId = board.createdBy._id;
   const roster = useMemo(() => developers.filter((d) => d._id !== creatorId), [developers, creatorId]);
@@ -128,6 +156,30 @@ export function BoardSettingsDialog({ board, open, initialTab = 'general', onOpe
     try {
       await dispatch(setBoardMembers({ id: board._id, members })).unwrap();
       onOpenChange(false);
+    } catch {
+      /* toast shown by slice */
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const saveTicketRule = async (remove = false) => {
+    setSaving(true);
+    try {
+      const result = await dispatch(
+        setTicketRule({
+          id: board._id,
+          rule: remove ? null : { department: ruleDepartment, employee: ruleEmployee, list: ruleList || null },
+        }),
+      ).unwrap();
+      toast.success(result.message ?? (remove ? 'Ticket link removed' : 'Ticket link saved'));
+      // Imported tickets arrived as new cards — reload the board to show them
+      if (result.imported > 0) dispatch(fetchBoardFull(board._id));
+      if (remove) {
+        setRuleDepartment('');
+        setRuleEmployee('');
+        setRuleList('');
+      }
     } catch {
       /* toast shown by slice */
     } finally {
@@ -184,6 +236,7 @@ export function BoardSettingsDialog({ board, open, initialTab = 'general', onOpe
     { key: 'general', label: 'General', icon: Pencil },
     { key: 'members', label: 'Members', icon: Users },
     { key: 'labels', label: 'Labels', icon: Tag },
+    ...(seesAllBoards ? [{ key: 'tickets' as Tab, label: 'Tickets', icon: Ticket }] : []),
   ];
 
   return (
@@ -253,6 +306,50 @@ export function BoardSettingsDialog({ board, open, initialTab = 'general', onOpe
             <div className="flex justify-end">
               <Button type="button" onClick={saveMembers} disabled={saving}>
                 Save members
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {tab === 'tickets' && seesAllBoards && (
+          <div className="space-y-4">
+            <p className="text-sm text-on-surface-variant">
+              Tickets of this department assigned to this employee get a card on the board automatically. Saving also
+              adds the matching tickets that are still open. Cards link to their ticket; moving a card does not change the ticket.
+            </p>
+            <div className="space-y-2">
+              <Label>Department</Label>
+              <CustomSelect
+                value={ruleDepartment}
+                onChange={setRuleDepartment}
+                options={departments.map((d) => ({ value: d._id, label: d.name }))}
+                placeholder="Choose a department"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Assigned to</Label>
+              <ConsultantSelect consultants={developers} loading={loading} value={ruleEmployee} onChange={setRuleEmployee} placeholder="Choose an employee…" />
+              <p className="text-xs text-on-surface-variant">Only people who can open the Development module are listed.</p>
+            </div>
+            <div className="space-y-2">
+              <Label>Add cards to column</Label>
+              <CustomSelect
+                value={ruleList}
+                onChange={setRuleList}
+                options={[{ value: '', label: 'First column' }, ...lists.map((l) => ({ value: l._id, label: l.name }))]}
+                placeholder="First column"
+              />
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
+              {board.ticketRule ? (
+                <Button type="button" variant="ghost" size="sm" className="gap-1.5 text-error hover:text-error" onClick={() => saveTicketRule(true)} disabled={saving}>
+                  <X className="h-4 w-4" /> Remove link
+                </Button>
+              ) : (
+                <span />
+              )}
+              <Button type="button" onClick={() => saveTicketRule()} disabled={saving || !ruleDepartment || !ruleEmployee}>
+                Save link
               </Button>
             </div>
           </div>

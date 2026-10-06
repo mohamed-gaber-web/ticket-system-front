@@ -103,6 +103,15 @@ export const setBoardMembers = thunk(
   'Members updated'
 );
 
+export const setTicketRule = thunk(
+  'setTicketRule',
+  async ({ id, rule }: { id: string; rule: { department: string; employee: string; list?: string | null } | null }) => {
+    const res = await devApi.setTicketRule(id, rule);
+    return { ...res.data, message: res.message };
+  },
+  'Failed to save the ticket link'
+);
+
 export const addLabel = thunk(
   'addLabel',
   async ({ boardId, name, color }: { boardId: string; name: string; color: string }) =>
@@ -339,6 +348,9 @@ const developmentSlice = createSlice({
       })
       .addCase(setBoardMembers.fulfilled, (state, action) => {
         if (state.board?._id === action.payload._id) state.board.members = action.payload.members;
+      })
+      .addCase(setTicketRule.fulfilled, (state, action) => {
+        if (state.board?._id === action.payload.board._id) state.board.ticketRule = action.payload.board.ticketRule ?? null;
       })
       .addCase(addLabel.fulfilled, (state, action) => setLabels(state, action.payload))
       .addCase(updateLabel.fulfilled, (state, action) => setLabels(state, action.payload))
