@@ -207,7 +207,7 @@ export function EmployeeForm({ mode, initialValues, departments, submitting, emp
   // Same rule as the API: only an admin edits the file of an admin or of
   // someone holding HR/admin access
   const canEditDocuments =
-    withHr && (access.isAdmin || !holdsPrivilegedModule(initialValues.role, initialValues.modules));
+    withHr && (access.isAdmin || !holdsPrivilegedModule(initialValues.roles, initialValues.modules));
   const [people, setPeople] = useState<Consultant[]>([]);
   const [peopleLoading, setPeopleLoading] = useState(false);
   // Derived fields follow their inputs until the user types into them
@@ -291,7 +291,7 @@ export function EmployeeForm({ mode, initialValues, departments, submitting, emp
     }
     if (values.phone && !/^\+?\d{10,15}$/.test(values.phone.replace(/[\s-]/g, ''))) e.phone = 'Mobile must be 10-15 digits';
     // Without a team a sales employee or sales manager would see no leads at all
-    if ((values.role === 'sales' || values.role === 'sales_manager') && values.teleSalesTeams.length === 0) {
+    if (values.roles.some((r) => r === 'sales' || r === 'sales_manager') && values.teleSalesTeams.length === 0) {
       e.teleSalesTeams = 'Tick at least one tele-sales team this employee works in';
     }
     if (withHr) {
@@ -514,7 +514,7 @@ export function EmployeeForm({ mode, initialValues, departments, submitting, emp
             </Field>
           </Grid>
           <p className="text-xs text-on-surface-variant mt-4">
-            Department is set under <button type="button" className="text-primary font-semibold hover:underline" onClick={() => scrollTo('access')}>System Access</button> together with the role.
+            Departments are set under <button type="button" className="text-primary font-semibold hover:underline" onClick={() => scrollTo('access')}>System Access</button> together with the roles.
           </p>
         </Section>
 
@@ -703,8 +703,8 @@ export function EmployeeForm({ mode, initialValues, departments, submitting, emp
           <div className="space-y-6">
             <EmployeeAccessFields
               value={{
-                role: values.role,
-                department: values.department,
+                roles: values.roles,
+                departmentIds: values.departmentIds,
                 teleSalesTeams: values.teleSalesTeams,
                 modules: values.modules,
               }}

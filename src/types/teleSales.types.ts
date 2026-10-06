@@ -86,6 +86,9 @@ export interface TeleSalesAgent {
   status: TeleSalesStatus;
   /** Null for admins and the sales manager, who work across every team. */
   team?: TeamRef;
+  /** Home team and every ticked team (the employee record's checkboxes). */
+  teleSalesTeam?: TeamRef;
+  teleSalesTeams?: TeamRef[];
   lastLogin?: string;
   createdAt: string;
   updatedAt: string;
@@ -180,8 +183,8 @@ export function isValidUrl(raw: string | null | undefined): boolean {
 
 // ── Spec enums (tele-sales lead field specification) ──────────────────────────
 
-// Sales_Type — where the record sits in the pipeline.
-export const SALES_TYPES = ['Lead', 'Opportunity'] as const;
+// Sales_Type — the pipeline stage: raw Data → Lead → Opportunity (see src/lib/leadStages.ts).
+export const SALES_TYPES = ['Data', 'Lead', 'Opportunity'] as const;
 export type SalesType = (typeof SALES_TYPES)[number];
 
 // Field 1: Entity_Type
@@ -310,6 +313,11 @@ export interface Lead {
   proposalValue?: number;
   proposalCurrency?: ValueCurrency;
   proposalUpdatedAt?: string;
+  /** When / by whom the record moved Data → Lead and Lead → Opportunity. */
+  convertedToLeadAt?: string;
+  convertedToLeadBy?: string;
+  convertedToOpportunityAt?: string;
+  convertedToOpportunityBy?: string;
   status: LeadStatus;
   lastCallDate?: string;
   nextFollowUpDate?: string;
@@ -317,7 +325,14 @@ export interface Lead {
   meetingsCount: number;
   firstContactDeadline?: string;
   painPoints?: string;
+  /** Free-text needs from before the catalog lookup; read-only now. */
   customerNeeds?: string;
+  /** Customer Need — catalog products (populated on the lead page, ids elsewhere). */
+  customerNeedProducts?: Array<NeedProductRef | string>;
+  /** Existing customer: the account (ticketing Company) and who asked (one of its Customer users). */
+  isExistingCustomer?: boolean;
+  account?: AccountRef | string | null;
+  accountContact?: AccountContact | string | null;
   budget?: string;
   isDecisionMaker?: boolean;
   tags: string[];
@@ -359,10 +374,73 @@ export interface CreateLeadData {
   status?: LeadStatus;
   painPoints?: string;
   customerNeeds?: string;
+  /** Product ids picked as Customer Need. */
+  customerNeedProducts?: string[];
+  isExistingCustomer?: boolean;
+  /** Company id; required when isExistingCustomer. */
+  account?: string;
+  /** Customer id of that company; optional. */
+  accountContact?: string;
   budget?: string;
   isDecisionMaker?: boolean;
   tags?: string[];
 }
+
+/** POST /leads/bulk — shared changes applied to many selected records. */
+export interface BulkUpdateLeadsRequest {
+  ids: string[];
+  /** Only non-empty values are applied; a bulk edit never blanks a field. */
+  set?: Partial<Pick<CreateLeadData,
+    'priority' | 'entityType' | 'industrySector' | 'businessClassification' | 'country' | 'leadSource' | 'leadSourceDetail' | 'dataSource'>>;
+  tags?: { add?: string[]; remove?: string[] };
+  /** Managers and admins only. */
+  assignedTo?: string;
+  status?: { newStatus: LeadStatus; values: Record<string, unknown> };
+}
+
+export interface BulkUpdateLeadsResponse {
+  success: boolean;
+  message: string;
+  total: number;
+  updated: number;
+  /** Records left unchanged, each with the reason. */
+  skipped: { _id: string; name: string; reason: string }[];
+}
+
+/** An existing customer's company (ticketing Company), as the lead lookups return it. */
+export interface AccountRef {
+  _id: string;
+  name: string;
+}
+
+/** One of that company's people, with the details the lead form copies. */
+export interface AccountContact {
+  _id: string;
+  contactPerson: string;
+  companyName?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  country?: string;
+}
+
+/** The id of a populated-or-not reference. */
+export const refId = (ref: { _id: string } | string | null | undefined): string =>
+  !ref ? '' : typeof ref === 'string' ? ref : ref._id;
+
+/** A Customer Need product as the lead API returns it. */
+export interface NeedProductRef {
+  _id: string;
+  name: string;
+  sku?: string;
+  category?: string;
+  status?: 'active' | 'archived';
+}
+
+/** The ids of a lead's Customer Need products, populated or not. */
+export const needProductIds = (lead: Pick<Lead, 'customerNeedProducts'>): string[] =>
+  (lead.customerNeedProducts ?? []).map((p) => (typeof p === 'string' ? p : p._id));
 
 export interface UpdateLeadData extends Partial<CreateLeadData> {}
 
@@ -414,6 +492,8 @@ export interface LeadStatsResponse {
     byStatus: { _id: LeadStatus; count: number; value: number }[];
     /** Sum of lead values: open = not Closed Won/Lost. Biggest total first. */
     values?: { open: CurrencyTotal[]; won: CurrencyTotal[]; lost: CurrencyTotal[] };
+    /** Records per pipeline stage, within what the caller may see. */
+    byStage?: Record<SalesType, number>;
   };
 }
 
@@ -686,7 +766,8 @@ export interface LeadEmailResponse {
 /** A single parsed row ready to be imported. Mirrors the importable Lead fields. */
 export interface ImportLeadRow {
   companyName?: string;
-  contactPersonName: string;
+  /** Imports land in Data, where nothing is mandatory. */
+  contactPersonName?: string;
   email?: string;
   jobTitle?: string;
   industry?: string;

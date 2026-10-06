@@ -393,11 +393,11 @@ const ProfilePage = () => {
               {u.position || <span className="italic">No position set</span>}
             </p>
             <div className="flex flex-wrap items-center gap-2 mt-2">
-              {u.role && (
-                <span className={cn('px-2.5 py-0.5 rounded-md text-xs font-semibold', ROLE_BADGE[u.role] ?? ROLE_BADGE.consultant)}>
-                  {formatLabel(u.role)}
+              {[u.role, ...(u.extraRoles ?? [])].filter(Boolean).map((r: string) => (
+                <span key={r} className={cn('px-2.5 py-0.5 rounded-md text-xs font-semibold', ROLE_BADGE[r] ?? ROLE_BADGE.consultant)}>
+                  {formatLabel(r)}
                 </span>
-              )}
+              ))}
               {u.department && (
                 <span className="px-2.5 py-0.5 rounded-md text-xs font-semibold bg-indigo-100 text-indigo-800">
                   {formatLabel(u.department)}
@@ -486,7 +486,7 @@ const ProfilePage = () => {
               <div>
                 <label className="form-label">Role</label>
                 <div className="mt-1 px-3 py-2 rounded-[0.75rem] bg-surface-container-low text-sm text-on-surface-variant border border-surface-container-high">
-                  {u.role ? formatLabel(u.role) : '—'}
+                  {u.role ? [u.role, ...(u.extraRoles ?? [])].map((r: string) => formatLabel(r)).join(', ') : '—'}
                 </div>
               </div>
               <div>
@@ -737,7 +737,7 @@ const ProfilePage = () => {
                 <div>
                   <label className="form-label">Role</label>
                   <div className="mt-1 px-3 py-2 rounded-[0.75rem] bg-surface-container-low text-sm text-on-surface-variant border border-surface-container-high">
-                    {u.role ? formatLabel(u.role) : '—'}
+                    {u.role ? [u.role, ...(u.extraRoles ?? [])].map((r: string) => formatLabel(r)).join(', ') : '—'}
                   </div>
                 </div>
                 <div>

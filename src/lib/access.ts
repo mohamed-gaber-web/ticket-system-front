@@ -63,27 +63,43 @@ export const isManagerRole = (role: string | null | undefined): boolean =>
 export const roleLabel = (role: string | null | undefined): string =>
   isEmployeeRole(role) ? ROLE_LABELS[role] : role ? String(role) : '';
 
+/** One role or several → the valid, de-duplicated list. */
+const asRoles = (roles: string | readonly string[] | null | undefined): EmployeeRole[] =>
+  [...new Set((Array.isArray(roles) ? roles : [roles]).filter(isEmployeeRole))];
+
+/**
+ * Every role an employee holds — the primary `role` plus `extraRoles` — the
+ * mirror of the server's rolesOf. Access ORs across all of them.
+ */
+export const rolesOf = (user: { role?: string | null; extraRoles?: string[] | null } | null | undefined): EmployeeRole[] =>
+  asRoles([user?.role ?? '', ...(user?.extraRoles ?? [])]);
+
 /**
  * The modules an employee may open: admins everything, otherwise the explicit
- * override when one exists, else the role defaults. Same rule as the server.
+ * override when one exists, else the union of their roles' defaults. Same rule
+ * as the server. Takes one role or the whole list.
  */
 export const effectiveModules = (
-  role: string | null | undefined,
+  roles: string | readonly string[] | null | undefined,
   modules?: string[] | null,
 ): ModuleKey[] => {
-  if (!isEmployeeRole(role)) return [];
-  if (role === 'admin') return [...MODULES];
+  const list = asRoles(roles);
+  if (list.length === 0) return [];
+  if (list.includes('admin')) return [...MODULES];
   const explicit = (modules ?? []).filter((m): m is ModuleKey => (MODULES as string[]).includes(m));
   if (explicit.length) return explicit;
-  return [...ROLE_DEFAULT_MODULES[role]];
+  return [...new Set(list.flatMap((r) => ROLE_DEFAULT_MODULES[r]))];
 };
 
 /**
  * Holds a module that opens other people's data (`hr`, `admin`). Only an admin
  * may manage such an account — same rule as the API's holdsPrivilegedModule.
  */
-export const holdsPrivilegedModule = (role: string | null | undefined, modules?: string[] | null): boolean =>
-  effectiveModules(role, modules).some((m) => m === 'hr' || m === 'admin');
+export const holdsPrivilegedModule = (roles: string | readonly string[] | null | undefined, modules?: string[] | null): boolean =>
+  effectiveModules(roles, modules).some((m) => m === 'hr' || m === 'admin');
+
+/** Role labels for a list of roles, primary first: "Sales Manager, Developer". */
+export const rolesLabel = (roles: readonly string[]): string => roles.map(roleLabel).filter(Boolean).join(', ');
 
 /** Where an employee lands after login, by module priority. */
 export const homePathFor = (modules: ModuleKey[]): string => {

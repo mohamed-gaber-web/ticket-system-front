@@ -113,6 +113,21 @@ export const updateLead = createAsyncThunk(
   }
 );
 
+export const convertLead = createAsyncThunk(
+  'teleSalesLeads/convertLead',
+  async ({ id, to }: { id: string; to: 'Lead' | 'Opportunity' }, { rejectWithValue }) => {
+    try {
+      const response = await teleSalesApi.convertLead(id, to);
+      toast.success(response.message || `Converted to ${to}`);
+      return response.data;
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Failed to convert the record';
+      toast.error(message);
+      return rejectWithValue(message);
+    }
+  }
+);
+
 export const changeLeadStatus = createAsyncThunk(
   'teleSalesLeads/changeLeadStatus',
   async ({ id, data }: { id: string; data: ChangeLeadStatusData }, { rejectWithValue }) => {
@@ -189,6 +204,15 @@ const teleSalesLeadsSlice = createSlice({
         if (idx !== -1) state.leads[idx] = action.payload;
       })
       .addCase(updateLead.rejected, (state, action) => { state.loading = false; state.error = action.payload as string; });
+
+    // A converted record leaves the tab it was listed in.
+    builder
+      .addCase(convertLead.fulfilled, (state, action) => {
+        if (state.currentLead?._id === action.payload._id) state.currentLead = action.payload;
+        const before = state.leads.length;
+        state.leads = state.leads.filter((l) => l._id !== action.payload._id);
+        if (state.leads.length < before) state.total = Math.max(0, state.total - 1);
+      });
 
     builder
       .addCase(changeLeadStatus.pending, (state) => { state.loading = true; state.error = null; })

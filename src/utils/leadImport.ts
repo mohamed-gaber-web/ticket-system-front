@@ -180,16 +180,19 @@ export async function parseLeadsFile(file: File): Promise<ParsedImport> {
     const phoneOther = cell(row, firstCol('phoneOther')) || generics.slice(2).join(', ');
     const phonePrimary = phonePrimaryRaw ? normalizeEgyptPhone(phonePrimaryRaw) : '';
 
-    // A row needs at least a contact name to be meaningful; otherwise skip it.
-    if (!contactPersonName) {
+    // Rows land in Data, where nothing is mandatory — but a row with no company,
+    // contact, phone or email identifies nothing, so it is skipped.
+    const companyName = cell(row, firstCol('companyName'));
+    const email = cell(row, firstCol('email'));
+    if (!contactPersonName && !companyName && !email && !phonePrimary && !phoneSecondary && !phoneOther) {
       skippedEmpty += 1;
       continue;
     }
 
     rows.push({
-      contactPersonName,
-      companyName: cell(row, firstCol('companyName')) || undefined,
-      email: cell(row, firstCol('email')) || undefined,
+      contactPersonName: contactPersonName || undefined,
+      companyName: companyName || undefined,
+      email: email || undefined,
       jobTitle: cell(row, firstCol('jobTitle')) || undefined,
       industry: cell(row, firstCol('industry')) || undefined,
       department: cell(row, firstCol('department')) || undefined,

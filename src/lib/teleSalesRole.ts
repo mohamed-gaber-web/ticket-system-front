@@ -1,5 +1,5 @@
 import { teamId, teamName, type TeamRef } from '@/types/teleSales.types';
-import { roleFamily } from '@/lib/access';
+import { roleFamily, rolesOf } from '@/lib/access';
 
 /**
  * Role predicates for the tele-sales module, mirroring
@@ -20,16 +20,23 @@ import { roleFamily } from '@/lib/access';
  */
 type MaybeUser = unknown;
 
-const roleOf = (user: MaybeUser): string | undefined => (user as any)?.role;
+/** Every role the user holds (primary + extra) — access ORs across them. */
+const rolesHeld = (user: MaybeUser) => rolesOf(user as { role?: string; extraRoles?: string[] } | null);
+const holdsMarketing = (user: MaybeUser) => rolesHeld(user).some((r) => roleFamily(r) === 'marketing');
 
 /** The system administrator — the only role that manages the teams themselves. */
-export const isSystemAdmin = (user: MaybeUser): boolean => roleOf(user) === 'admin';
+export const isSystemAdmin = (user: MaybeUser): boolean => rolesHeld(user).includes('admin');
 
 /** Runs their teams. */
-export const isSalesManager = (user: MaybeUser): boolean => roleOf(user) === 'sales_manager';
+export const isSalesManager = (user: MaybeUser): boolean => rolesHeld(user).includes('sales_manager');
 
-/** Marketing reads every team's pipeline but may not change it. */
-export const isReadOnly = (user: MaybeUser): boolean => roleFamily(roleOf(user)) === 'marketing';
+/**
+ * Writing tele-sales data needs a sales role (Sales / Sales Manager) or admin —
+ * only sales employees own records. Marketing, and anyone who reaches the module
+ * through a module override, reads only. Grants add up: marketing + sales writes.
+ */
+export const isReadOnly = (user: MaybeUser): boolean =>
+  !rolesHeld(user).some((r) => r === 'admin' || r === 'sales' || r === 'sales_manager');
 
 /**
  * Works across every team with full write access: admins only. Kept under its
@@ -38,8 +45,8 @@ export const isReadOnly = (user: MaybeUser): boolean => roleFamily(roleOf(user))
  */
 export const isSuperAdmin = (user: MaybeUser): boolean => isSystemAdmin(user);
 
-/** Sees every team (read or write): admins and marketing. */
-export const isCrossTeamReader = (user: MaybeUser): boolean => isSuperAdmin(user) || isReadOnly(user);
+/** Sees every team (read or write): admins and anyone holding a marketing role. */
+export const isCrossTeamReader = (user: MaybeUser): boolean => isSuperAdmin(user) || holdsMarketing(user);
 
 /**
  * May act on the pipeline as a whole — bulk-assign and reassign leads, delete

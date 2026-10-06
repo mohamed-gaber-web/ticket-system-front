@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { useAccess } from '@/redux/hooks/useAccess';
-import { ROLES, ROLE_LABELS, roleFamily, isManagerRole, roleLabel, holdsPrivilegedModule } from '@/lib/access';
+import { ROLES, ROLE_LABELS, roleFamily, isManagerRole, roleLabel, holdsPrivilegedModule, rolesOf } from '@/lib/access';
 import type { EmployeeRole } from '@/types/auth.types';
 import { fetchConsultants, deleteConsultant, adminResetConsultantPassword, updateConsultant } from '@/redux/slices/consultantSlice';
 import { fetchDepartments } from '@/redux/slices/departmentSlice';
@@ -34,12 +34,18 @@ export default function Consultants() {
   // account holding HR/admin access; HR anyone else but themselves; managers
   // the plain employees of their own family.
   const selfId = useAppSelector((state) => (state.auth.user as { _id?: string } | null)?._id);
-  const canManage = (c: { _id: string; role: string; modules?: string[] }) =>
-    isAdmin ||
-    (!holdsPrivilegedModule(c.role, c.modules) &&
-      access.isHr && c.role !== 'admin' && c._id !== selfId) ||
-    (!holdsPrivilegedModule(c.role, c.modules) &&
-      access.isManager && roleFamily(c.role) === access.family && !isManagerRole(c.role) && c.role !== 'admin');
+  const canManage = (c: { _id: string; role: string; extraRoles?: string[]; modules?: string[] }) => {
+    if (isAdmin) return true;
+    const roles = rolesOf(c);
+    if (holdsPrivilegedModule(roles, c.modules) || roles.includes('admin')) return false;
+    if (access.isHr) return c._id !== selfId;
+    // A manager runs the plain employees of the families they manage.
+    const managed = access.roles.filter(isManagerRole).map(roleFamily);
+    return !roles.some(isManagerRole) && roles.some((r) => managed.includes(roleFamily(r)));
+  };
+  /** Extra roles / departments beyond the primary, shown as a "+N" chip. */
+  const extraCount = (list?: unknown[]) => (list?.length ? list.length : 0);
+  const extraTitle = (labels: string[]) => `Also: ${labels.join(', ')}`;
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -346,6 +352,14 @@ export default function Consultants() {
                             {formatRole(consultant.role)}
                           </span>
                         )}
+                        {extraCount(consultant.extraRoles) > 0 && (
+                          <span
+                            className="ml-1.5 px-1.5 py-0.5 text-[10px] font-semibold rounded-md bg-surface-container-high text-on-surface-variant"
+                            title={extraTitle((consultant.extraRoles ?? []).map(formatRole))}
+                          >
+                            +{extraCount(consultant.extraRoles)}
+                          </span>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {consultant.department ? (
@@ -373,6 +387,14 @@ export default function Consultants() {
                           )
                         ) : (
                           <span className="text-on-surface-variant/40 text-sm">&mdash;</span>
+                        )}
+                        {extraCount(consultant.departments) > 0 && (
+                          <span
+                            className="ml-1.5 px-1.5 py-0.5 text-[10px] font-semibold rounded-md bg-surface-container-high text-on-surface-variant"
+                            title={extraTitle((consultant.departments ?? []).map((d) => getDeptName(d)))}
+                          >
+                            +{extraCount(consultant.departments)}
+                          </span>
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">

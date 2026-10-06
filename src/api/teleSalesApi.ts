@@ -13,6 +13,10 @@ import type {
   UpdateLeadData,
   ImportLeadsRequest,
   ImportLeadsResponse,
+  BulkUpdateLeadsRequest,
+  BulkUpdateLeadsResponse,
+  AccountRef,
+  AccountContact,
   CallLogsResponse,
   RecentCallsResponse,
   CreateCallLogData,
@@ -86,6 +90,21 @@ export const getLeadById = (id: string): Promise<LeadResponse> =>
 
 export const getLeadStats = (): Promise<LeadStatsResponse> =>
   api.get('/leads/stats').then((r) => r.data);
+
+/** Existing-customer lookups for the lead form: companies, then one company's contacts. */
+export const getLeadAccounts = (search?: string): Promise<{ success: boolean; data: AccountRef[] }> =>
+  api.get('/leads/accounts', { params: search ? { search } : undefined }).then((r) => r.data);
+
+export const getLeadAccountContacts = (accountId: string): Promise<{ success: boolean; data: AccountContact[] }> =>
+  api.get(`/leads/accounts/${accountId}/contacts`).then((r) => r.data);
+
+/** Apply shared field values, tags, owner and/or status to many records at once. */
+export const bulkUpdateLeads = (data: BulkUpdateLeadsRequest): Promise<BulkUpdateLeadsResponse> =>
+  api.post('/leads/bulk', data).then((r) => r.data);
+
+/** Move a record one stage forward (Data → Lead, Lead → Opportunity). */
+export const convertLead = (id: string, to: 'Lead' | 'Opportunity'): Promise<LeadResponse> =>
+  api.post(`/leads/${id}/convert`, { to }).then((r) => r.data);
 
 export const createLead = (data: CreateLeadData): Promise<LeadResponse> =>
   api.post('/leads', data).then((r) => r.data);
@@ -179,7 +198,7 @@ export const markLeadEmailRead = (leadId: string, emailId: string): Promise<Lead
 
 /** Pull new replies from the shared mailbox right now. */
 /** The mailbox lead email goes out from (sales@growpath.net). */
-export const getLeadEmailSender = (): Promise<{ success: boolean; data: { mailbox: string | null } }> =>
+export const getLeadEmailSender = (): Promise<{ success: boolean; data: { mailbox: string | null; name?: string } }> =>
   api.get('/leads/emails/sender').then((r) => r.data);
 
 export const syncLeadInbox = (): Promise<{ success: boolean; message: string; data: { processed: number; filed: number } }> =>

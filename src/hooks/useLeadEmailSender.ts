@@ -6,8 +6,9 @@ let cached: string | null = null;
 let pending: Promise<string | null> | null = null;
 
 /**
- * The mailbox lead email is sent from (sales@growpath.net), for the composer's
- * "From" row. Null until it has loaded, or if the API cannot say.
+ * Who lead email is sent from, for the composer's "From" row — the display name
+ * and mailbox, e.g. "Grow Path For Business Development <sales@growpath.net>".
+ * Null until it has loaded, or if the API cannot say.
  */
 export function useLeadEmailSender(): string | null {
   const [mailbox, setMailbox] = useState<string | null>(cached);
@@ -15,7 +16,11 @@ export function useLeadEmailSender(): string | null {
   useEffect(() => {
     if (cached) return;
     pending ??= getLeadEmailSender()
-      .then((r) => (cached = r.data?.mailbox ?? null))
+      .then((r) => {
+        const { mailbox, name } = r.data ?? {};
+        cached = mailbox ? (name ? `${name} <${mailbox}>` : mailbox) : null;
+        return cached;
+      })
       .catch(() => {
         pending = null; // let a later composer try again
         return null;

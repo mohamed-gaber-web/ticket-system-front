@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils';
 import { useAccess } from '@/redux/hooks/useAccess';
 import { EmployeeHrFilePanel } from '@/components/employees/EmployeeHrFilePanel';
 import { EmployeeDocuments } from '@/components/employees/EmployeeDocuments';
-import { holdsPrivilegedModule } from '@/lib/access';
+import { holdsPrivilegedModule, rolesOf } from '@/lib/access';
 import { EMPLOYEES_PATH, EMPLOYEE_STATUS_OPTIONS, employeeEditPath } from '@/lib/hr';
 
 const TICKET_LIMIT = 10;
@@ -276,9 +276,11 @@ export default function ViewEmployee() {
             )}
           </p>
           <div className="flex flex-wrap items-center gap-2 mt-2">
-            <span className={cn('px-2.5 py-0.5 rounded-md text-xs font-semibold', ROLE_BADGE[currentConsultant.role])}>
-              {formatLabel(currentConsultant.role)}
-            </span>
+            {rolesOf(currentConsultant).map((r) => (
+              <span key={r} className={cn('px-2.5 py-0.5 rounded-md text-xs font-semibold', ROLE_BADGE[r])}>
+                {formatLabel(r)}
+              </span>
+            ))}
             <span className={cn('px-2.5 py-0.5 rounded-md text-xs font-semibold', STATUS_BADGE[currentConsultant.status])}>
               {formatLabel(currentConsultant.status)}
             </span>
@@ -365,9 +367,9 @@ export default function ViewEmployee() {
             employeeId={currentConsultant._id}
             canEdit={
               access.isAdmin ||
-              (currentConsultant.role !== 'admin' &&
+              (!rolesOf(currentConsultant).includes('admin') &&
                 currentConsultant._id !== selfId &&
-                !holdsPrivilegedModule(currentConsultant.role, currentConsultant.modules))
+                !holdsPrivilegedModule(rolesOf(currentConsultant), currentConsultant.modules))
             }
           />
         </section>

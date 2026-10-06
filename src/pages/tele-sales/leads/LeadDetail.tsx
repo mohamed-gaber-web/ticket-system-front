@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { isReadOnly } from '@/lib/teleSalesRole';
-import { fetchLeadById } from '@/redux/slices/teleSalesLeadsSlice';
+import { fetchLeadById, convertLead } from '@/redux/slices/teleSalesLeadsSlice';
+import { STAGE_META, NEXT_STAGE, stageOf, missingLeadFields, recordName } from '@/lib/leadStages';
 import * as teleSalesApi from '@/api/teleSalesApi';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,7 +14,7 @@ import {
   ArrowLeft, Phone, Mail, Building2, User, Briefcase, Tag, Edit2, Pencil,
   PhoneCall, Calendar, Paperclip, Plus, CheckCircle2, Trash2, MapPin,
   Globe, FileText, Upload, Download, File as FileIcon, Image as ImageIcon,
-  Send, Sparkles, Wallet, CircleDot, Zap, FileSignature,
+  Send, Sparkles, Wallet, CircleDot, Zap, FileSignature, ArrowRightCircle, AlertTriangle,
 } from 'lucide-react';
 import GmailCompose from '@/components/tele-sales/GmailCompose';
 import { LeadEmailThread } from '@/components/tele-sales/LeadEmailThread';
@@ -28,7 +29,7 @@ import { mergeCallEntries, mergeFollowUpEntries } from '@/utils/leadActivityMerg
 import { LEAD_STATUS_WORKFLOW } from '@/config/leadStatusWorkflow';
 import { LeadStatusBadge } from '@/components/tele-sales/LeadStatusBadge';
 import type { CallLog, FollowUp, CreateCallLogData, LeadAttachment, LeadEmail, LeadEmailThreadSummary, LeadStatusHistoryEntry, LeadValueSource } from '@/types/teleSales.types';
-import { LEAD_SOURCE_DETAILS, LEAD_VALUE_SOURCES, formatMoney } from '@/types/teleSales.types';
+import { LEAD_SOURCE_DETAILS, LEAD_VALUE_SOURCES, formatMoney, type NeedProductRef, type AccountRef, type AccountContact } from '@/types/teleSales.types';
 
 const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15MB
 
@@ -89,6 +90,9 @@ export default function LeadDetail() {
 
   // Edit lead modal
   const [editOpen, setEditOpen] = useState(false);
+  // Data → Lead: the edit form in "complete & convert" mode
+  const [convertOpen, setConvertOpen] = useState(false);
+  const [converting, setConverting] = useState(false);
 
   // isAdmin reserved for future use (e.g. reassign controls)
   // const isAdmin = (user as any)?.role === 'admin';
@@ -323,17 +327,51 @@ export default function LeadDetail() {
   const valueSource: LeadValueSource | undefined = hasValue ? lead.valueSource ?? 'manual' : undefined;
   const countsAs = lead.status === 'Closed Won' ? 'won' : lead.status === 'Closed Lost' ? 'lost' : 'open';
   const hasProposal = (lead.proposalValue ?? 0) > 0;
+  const stage = stageOf(lead);
+  const stageMeta = STAGE_META[stage];
+  const nextStage = NEXT_STAGE[stage];
+  // What a Data record still needs before it can become a Lead.
+  const missing = stage === 'Data' ? missingLeadFields(lead) : [];
+  // Customer Need — the catalog products picked on the lead form.
+  const needProducts = (lead.customerNeedProducts ?? []).filter((p): p is NeedProductRef => typeof p !== 'string');
+  // Existing customer: the account and who asked, as populated by the API.
+  const account = lead.isExistingCustomer && lead.account && typeof lead.account === 'object' ? (lead.account as AccountRef) : null;
+  const accountContact = account && lead.accountContact && typeof lead.accountContact === 'object' ? (lead.accountContact as AccountContact) : null;
+
+  // Data → Lead goes through the form (mandatory fields); Lead → Opportunity is a confirm.
+  const handleConvert = async () => {
+    if (stage === 'Data') {
+      setConvertOpen(true);
+      return;
+    }
+    const r = await Swal.fire({
+      title: 'Convert to Opportunity?',
+      text: `"${recordName(lead)}" moves to Opportunities.`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#003A8F',
+      confirmButtonText: 'Convert',
+    });
+    if (!r.isConfirmed) return;
+    setConverting(true);
+    try {
+      await dispatch(convertLead({ id: lead._id, to: 'Opportunity' }));
+    } finally {
+      setConverting(false);
+    }
+  };
 
   return (
     <div className="p-6 space-y-5">
       {/* Back + Header */}
       <div className="flex items-start gap-4">
-        <button onClick={() => navigate('/tele-sales/leads')} className="p-2 rounded-xl hover:bg-surface-container text-on-surface-variant mt-0.5">
+        <button onClick={() => navigate(stageMeta.path)} title={`Back to ${stageMeta.plural}`} className="p-2 rounded-xl hover:bg-surface-container text-on-surface-variant mt-0.5">
           <ArrowLeft className="w-5 h-5" />
         </button>
         <div className="flex-1">
           <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-2xl font-bold text-on-surface">{lead.companyName}</h1>
+            <h1 className="text-2xl font-bold text-on-surface">{recordName(lead)}</h1>
+            <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${stageMeta.badge}`} title="Pipeline stage">{stageMeta.label}</span>
             {lead.customerId && (
               <span className="font-mono text-xs px-2 py-1 rounded-md bg-surface-container-high text-on-surface-variant">{lead.customerId}</span>
             )}
@@ -343,7 +381,7 @@ export default function LeadDetail() {
             </span>
           </div>
           <p className="text-on-surface-variant text-sm mt-1 flex items-center gap-1.5 flex-wrap">
-            <span>{lead.contactPersonName}</span>
+            {lead.contactPersonName && <span>{lead.contactPersonName}</span>}
             {(lead.phonePrimary || lead.phoneSecondary) && (
               <>
                 <span aria-hidden>·</span>
@@ -359,8 +397,14 @@ export default function LeadDetail() {
           <Button size="sm" onClick={() => setTab('assistant')} className="gap-2" title="Send documents, product details and templates to this lead">
             <Sparkles className="w-4 h-4" /> Sales Assistant
           </Button>
+          {nextStage && !(stage === 'Lead' && lead.status === 'Closed Lost') && (
+            <Button size="sm" onClick={handleConvert} disabled={converting} className="gap-2"
+              title={stage === 'Data' ? 'Complete the mandatory fields and move this record to Leads' : 'Move this lead to Opportunities'}>
+              <ArrowRightCircle className="w-4 h-4" /> Convert to {STAGE_META[nextStage].label}
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={() => setEditOpen(true)} className="gap-2">
-            <Pencil className="w-4 h-4" /> Edit Lead
+            <Pencil className="w-4 h-4" /> Edit {stageMeta.label}
           </Button>
           <Button
             variant="outline"
@@ -380,6 +424,25 @@ export default function LeadDetail() {
         </div>
         )}
       </div>
+
+      {/* Raw data: what is still missing before it can be converted */}
+      {stage === 'Data' && (
+        <div className={`rounded-2xl border p-4 flex items-start gap-3 ${missing.length ? 'border-amber-200 bg-amber-50' : 'border-emerald-200 bg-emerald-50'}`}>
+          {missing.length
+            ? <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            : <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />}
+          <div className="text-sm">
+            {missing.length ? (
+              <>
+                <p className="font-semibold text-amber-900">Raw data — complete it to convert it to a Lead</p>
+                <p className="text-amber-800 mt-0.5">Still missing: {missing.join(', ')}</p>
+              </>
+            ) : (
+              <p className="font-semibold text-emerald-900">Every mandatory field is filled in — ready to convert to a Lead.</p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Stats bar */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
@@ -451,8 +514,16 @@ export default function LeadDetail() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/20 p-5 space-y-4">
             <h3 className="font-semibold text-on-surface text-sm uppercase tracking-wide text-on-surface-variant">Contact Details</h3>
-            <InfoRow icon={<Building2 className="w-4 h-4" />} label="Company" value={lead.companyName} />
-            <InfoRow icon={<User className="w-4 h-4" />} label="Contact Person" value={lead.contactPersonName} />
+            {account && (
+              <InfoRow icon={<CheckCircle2 className="w-4 h-4" />} label="Existing Customer" value={
+                <span>
+                  <span className="font-medium">{account.name}</span>
+                  {accountContact && <span className="text-on-surface-variant"> — requested by {accountContact.contactPerson}</span>}
+                </span>
+              } />
+            )}
+            <InfoRow icon={<Building2 className="w-4 h-4" />} label="Company" value={lead.companyName || '—'} />
+            <InfoRow icon={<User className="w-4 h-4" />} label="Contact Person" value={lead.contactPersonName || '—'} />
             {lead.email && <InfoRow icon={<Mail className="w-4 h-4" />} label="Email" value={lead.email} />}
             {lead.website && <InfoRow icon={<Globe className="w-4 h-4" />} label="Website" value={lead.website} />}
             {lead.phonePrimary && <InfoRow icon={<Phone className="w-4 h-4" />} label="Phone (Primary)" value={<PhoneLink number={lead.phonePrimary} showIcon={false} leadId={lead._id} onLogged={handleCallLogged} />} />}
@@ -473,7 +544,7 @@ export default function LeadDetail() {
             <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/20 p-5 space-y-4">
               <h3 className="font-semibold text-on-surface text-sm uppercase tracking-wide text-on-surface-variant">Lead Details</h3>
               <InfoRow icon={<CircleDot className="w-4 h-4" />} label="Status" value={<LeadStatusBadge status={lead.status} size="sm" />} />
-              <InfoRow icon={<Tag className="w-4 h-4" />} label="Sales Type" value={lead.salesType || 'Lead'} />
+              <InfoRow icon={<Tag className="w-4 h-4" />} label="Stage" value={stageMeta.label} />
               {lead.leadSource && <InfoRow icon={<Tag className="w-4 h-4" />} label="Source" value={lead.leadSource} />}
               {lead.leadSource && lead.leadSourceDetail && sourceDetailSpec && (
                 <InfoRow
@@ -543,11 +614,23 @@ export default function LeadDetail() {
                 {lead.fullAddress && <InfoRow icon={<MapPin className="w-4 h-4" />} label="Full Address" value={lead.fullAddress} />}
               </div>
             )}
-            {(lead.painPoints || lead.customerNeeds || lead.budget) && (
+            {(lead.painPoints || lead.customerNeeds || lead.budget || needProducts.length > 0) && (
               <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/20 p-5 space-y-4">
                 <h3 className="font-semibold text-on-surface text-sm uppercase tracking-wide text-on-surface-variant">Notes & Insights</h3>
+                {needProducts.length > 0 && (
+                  <InfoRow icon={<Tag className="w-4 h-4" />} label="Customer Need" value={
+                    <span className="flex flex-wrap gap-1.5">
+                      {needProducts.map((p) => (
+                        <span key={p._id} title={[p.sku, p.category].filter(Boolean).join(' · ') || undefined}
+                          className={`text-xs font-medium px-2.5 py-1 rounded-full ${p.status === 'archived' ? 'bg-surface-container-high text-on-surface-variant line-through' : 'bg-primary/10 text-primary'}`}>
+                          {p.name}
+                        </span>
+                      ))}
+                    </span>
+                  } />
+                )}
                 {lead.painPoints && <InfoRow icon={<Tag className="w-4 h-4" />} label="Pain Points" value={lead.painPoints} />}
-                {lead.customerNeeds && <InfoRow icon={<Tag className="w-4 h-4" />} label="Customer Needs" value={lead.customerNeeds} />}
+                {lead.customerNeeds && <InfoRow icon={<Tag className="w-4 h-4" />} label={needProducts.length ? 'Earlier Need Notes' : 'Customer Needs'} value={lead.customerNeeds} />}
                 {lead.budget && <InfoRow icon={<Tag className="w-4 h-4" />} label="Budget" value={lead.budget} />}
               </div>
             )}
@@ -804,13 +887,20 @@ export default function LeadDetail() {
         onClose={() => setEditOpen(false)}
       />
 
+      <LeadFormModal
+        open={convertOpen}
+        lead={lead}
+        convert
+        onClose={() => setConvertOpen(false)}
+      />
+
       {/* Gmail-style compose window */}
       <GmailCompose
         leadId={lead._id}
         open={composeOpen}
         onClose={() => { setComposeOpen(false); setReplyTo(null); }}
         defaultTo={lead.email ? [lead.email] : []}
-        contextLabel={lead.contactPersonName || lead.companyName}
+        contextLabel={lead.contactPersonName || recordName(lead)}
         fromLabel={emailSender ?? undefined}
         replyTo={replyTo}
         onSent={() => { setReplyTo(null); loadEmails(); setTab('emails'); }}

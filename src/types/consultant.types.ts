@@ -81,8 +81,14 @@ export interface Consultant {
   email: string;
   phone?: string;
   position?: string;
+  /** The primary role (admin, when held, is always primary). */
   role: ConsultantRole;
+  /** Roles held besides the primary one; access ORs across all of them. */
+  extraRoles?: ConsultantRole[];
+  /** The primary department. */
   department?: ConsultantDepartmentObject | string | null;
+  /** Departments besides the primary one; tasks are visible from any of them. */
+  departments?: (ConsultantDepartmentObject | string)[];
   /** Sales family only — the home tele-sales team (default owner of what they create). */
   teleSalesTeam?: { _id: string; name: string; code?: string; isActive?: boolean } | string | null;
   /** Sales family only — every tele-sales team this person sees (home team included). */
@@ -154,7 +160,11 @@ export interface CreateConsultantData {
   phone?: string;
   position?: string;
   role: ConsultantRole;
+  /** Every role, primary first — the multi-select. Takes precedence over `role`. */
+  roles?: ConsultantRole[];
   department?: string | null;
+  /** Every department, primary first — the multi-select. Takes precedence over `department`. */
+  departments?: string[];
   teleSalesTeam?: string | null;
   teleSalesTeams?: string[];
   modules?: ModuleKey[];
@@ -172,7 +182,9 @@ export interface UpdateConsultantData {
   phone?: string;
   position?: string;
   role?: ConsultantRole;
+  roles?: ConsultantRole[];
   department?: string | null;
+  departments?: string[];
   teleSalesTeam?: string | null;
   teleSalesTeams?: string[];
   modules?: ModuleKey[];

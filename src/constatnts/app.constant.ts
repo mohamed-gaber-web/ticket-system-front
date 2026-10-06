@@ -234,6 +234,7 @@ const TELE_SALES_GROUP: NavLink = {
   isGroup: true,
   children: [
     { name: "Dashboard", path: "/tele-sales", icon: LayoutDashboard },
+    { name: "Data", path: "/tele-sales/data", icon: Database },
     { name: "Leads", path: "/tele-sales/leads", icon: PhoneCall },
     { name: "Opportunities", path: "/tele-sales/opportunities", icon: Star },
     { name: "Recent Calls", path: "/tele-sales/calls/recent", icon: Clock },

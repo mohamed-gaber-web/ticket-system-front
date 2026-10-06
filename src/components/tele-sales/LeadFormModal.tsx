@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
-import { createLead, updateLead } from '@/redux/slices/teleSalesLeadsSlice';
-import { fetchAgents } from '@/redux/slices/teleSalesAgentsSlice';
+import { createLead, updateLead, convertLead } from '@/redux/slices/teleSalesLeadsSlice';
 import { fetchTeams } from '@/redux/slices/teleSalesTeamsSlice';
 import { fetchIndustrySectors } from '@/redux/slices/industrySectorSlice';
 import { fetchCountries } from '@/redux/slices/countrySlice';
@@ -9,32 +8,24 @@ import { fetchBusinessClassifications } from '@/redux/slices/businessClassificat
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { Building2, MapPin, Phone, ClipboardList, StickyNote, Tags, ChevronDown, X } from 'lucide-react';
+import { Building2, MapPin, Phone, ClipboardList, StickyNote, Tags, ChevronDown, X, UserCheck } from 'lucide-react';
 import { INITIAL_LEAD_STATUS, PICKABLE_LEAD_STATUSES, type LeadStatus } from '@/config/leadStatusWorkflow';
 import type {
   Lead, LeadPriority, LeadSource, CreateLeadData, EntityType, IndustrySector, SalesType,
 } from '@/types/teleSales.types';
 import {
-  ENTITY_TYPES, INDUSTRY_SECTORS, SALES_TYPES, LEAD_SOURCE_DETAILS, isValidUrl, teamId,
+  ENTITY_TYPES, INDUSTRY_SECTORS, LEAD_SOURCE_DETAILS, isValidUrl, teamId,
   VALUE_CURRENCIES, DEFAULT_VALUE_CURRENCY, type ValueCurrency,
 } from '@/types/teleSales.types';
+import { REQUIRED_LEAD_FIELDS, STAGE_META, stageOf, hasIdentity } from '@/lib/leadStages';
+import { needProductIds, refId, type NeedProductRef, type AccountRef, type AccountContact } from '@/types/teleSales.types';
+import { ExistingCustomerFields } from '@/components/tele-sales/ExistingCustomerFields';
+import { ProductNeedSelect } from '@/components/tele-sales/ProductNeedSelect';
+import { useTeamAgents } from '@/hooks/useTeamAgents';
 import { dialCodeForCountry, isValidPhoneForCountry } from '@/utils/countryPhone';
 import { isSuperAdmin, canManageTeam, ownTeams, ownTeamId } from '@/lib/teleSalesRole';
 
 const LEAD_SOURCES: LeadSource[] = ['LinkedIn', 'Website', 'Referral', 'Cold Call', 'Exhibition', 'Partner', 'Other'];
-
-/** Fields the lead form requires on both add and update (mirrors the backend). */
-const REQUIRED_FIELDS: { key: keyof CreateLeadData; label: string }[] = [
-  { key: 'companyName', label: 'Company name' },
-  { key: 'contactPersonName', label: 'Contact person' },
-  { key: 'phonePrimary', label: 'Phone (primary)' },
-  { key: 'email', label: 'Email' },
-  { key: 'website', label: 'Website' },
-  { key: 'leadSource', label: 'Lead source' },
-  { key: 'entityType', label: 'Entity type' },
-  { key: 'industrySector', label: 'Industry sector' },
-  { key: 'businessClassification', label: 'Business classification' },
-];
 
 const EMAIL_REGEX = /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/;
 
@@ -115,14 +106,19 @@ const emptyForm: CreateLeadData = {
   status: 'New Lead',
   painPoints: '',
   customerNeeds: '',
+  customerNeedProducts: [],
+  isExistingCustomer: false,
+  account: '',
+  accountContact: '',
   budget: '',
   isDecisionMaker: false,
   tags: [],
 };
 
 const buildFormFromLead = (lead: Lead): CreateLeadData => ({
-  companyName: lead.companyName,
-  contactPersonName: lead.contactPersonName,
+  // Raw Data may have neither yet.
+  companyName: lead.companyName || '',
+  contactPersonName: lead.contactPersonName || '',
   email: lead.email || '',
   jobTitle: lead.jobTitle || '',
   industry: lead.industry || '',
@@ -149,6 +145,10 @@ const buildFormFromLead = (lead: Lead): CreateLeadData => ({
   status: lead.status,
   painPoints: lead.painPoints || '',
   customerNeeds: lead.customerNeeds || '',
+  customerNeedProducts: needProductIds(lead),
+  isExistingCustomer: !!lead.isExistingCustomer,
+  account: refId(lead.account),
+  accountContact: refId(lead.accountContact),
   budget: lead.budget || '',
   isDecisionMaker: lead.isDecisionMaker,
   tags: lead.tags,
@@ -158,17 +158,21 @@ interface LeadFormModalProps {
   open: boolean;
   /** The lead being edited, or null/undefined for "create a new lead". */
   lead?: Lead | null;
-  /** Sales type new leads default to (mirrors the locked "Opportunities" tab). */
-  defaultSalesType?: SalesType;
+  /** The stage a NEW record is created in: "Data" (nothing mandatory) or "Lead". */
+  stage?: SalesType;
+  /**
+   * Edit a Data record and convert it to a Lead on save: every mandatory field is
+   * required, then the record moves to the Leads tab.
+   */
+  convert?: boolean;
   onClose: () => void;
   /** Called with the saved lead once create/update succeeds. */
   onSaved?: (lead: Lead) => void;
 }
 
 /** Create/edit lead form, shared by the Leads table and the lead detail page. */
-export function LeadFormModal({ open, lead, defaultSalesType, onClose, onSaved }: LeadFormModalProps) {
+export function LeadFormModal({ open, lead, stage, convert = false, onClose, onSaved }: LeadFormModalProps) {
   const dispatch = useAppDispatch();
-  const { agents } = useAppSelector((s) => s.teleSalesAgents);
   const { industrySectors } = useAppSelector((s) => s.industrySectors);
   const { countries } = useAppSelector((s) => s.countries);
   const { businessClassifications } = useAppSelector((s) => s.businessClassifications);
@@ -184,6 +188,12 @@ export function LeadFormModal({ open, lead, defaultSalesType, onClose, onSaved }
   // existing lead between teams stays a super admin's).
   const myTeams = ownTeams(user);
   const pickOwnTeam = !superAdmin && !lead && myTeams.length > 1;
+
+  // A raw Data record has no mandatory fields; a Lead or Opportunity (and a Data
+  // record being converted) needs them all.
+  const formStage: SalesType = lead ? stageOf(lead) : stage === 'Data' ? 'Data' : 'Lead';
+  const raw = formStage === 'Data' && !convert;
+  const strict = !raw;
 
   const sectorOptions = industrySectors.length
     ? industrySectors.filter((s) => s.isActive).map((s) => s.name)
@@ -204,22 +214,51 @@ export function LeadFormModal({ open, lead, defaultSalesType, onClose, onSaved }
     if (!open) return;
     setForm(lead
       ? buildFormFromLead(lead)
-      : { ...emptyForm, salesType: defaultSalesType ?? emptyForm.salesType, team: pickOwnTeam ? ownTeamId(user) : emptyForm.team });
+      : { ...emptyForm, salesType: formStage, team: pickOwnTeam ? ownTeamId(user) : emptyForm.team });
     setTagInput('');
-  }, [open, lead, defaultSalesType]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [open, lead, stage]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load the lookup lists the dropdowns need. Cheap enough to refetch per open.
   useEffect(() => {
     if (!open) return;
-    // The roster is team-scoped server-side, so this is safe to load for anyone
-    // who might need the assignee picker. The limit is explicit because the
-    // endpoint defaults to 20, which would quietly hide older colleagues from it.
-    if (canAssign) dispatch(fetchAgents({ limit: 200 }));
     if (superAdmin) dispatch(fetchTeams(undefined));
     dispatch(fetchIndustrySectors({ limit: 1000 }));
     dispatch(fetchCountries({ limit: 1000 }));
     dispatch(fetchBusinessClassifications({ limit: 1000 }));
   }, [open, canAssign, superAdmin, dispatch]);
+
+  // Team → Agent: the assignee picker lists only the employees of the owning team —
+  // the one picked on the form, else the lead's own team, else the caller's.
+  const teamOnForm = superAdmin || pickOwnTeam;
+  const formTeam = teamOnForm ? form.team : lead ? teamId(lead.team) : ownTeamId(user);
+  const { agents: teamAgents, loading: agentsLoading } = useTeamAgents(canAssign && open ? formTeam : null);
+  // The current owner stays selectable even if they're no longer on the list
+  // (deactivated, or moved team) so an unrelated edit doesn't silently unassign.
+  const currentOwner = lead?.assignedTo && typeof lead.assignedTo === 'object' ? lead.assignedTo : null;
+  const ownerMissing = !!currentOwner && form.assignedTo === currentOwner._id && !teamAgents.some((a) => a._id === currentOwner._id);
+  // A different team invalidates the chosen agent, so it is cleared with it.
+  const changeTeam = (team: string) =>
+    setForm((p) => ({ ...p, team, assignedTo: team === p.team ? p.assignedTo : '' }));
+
+  // Existing customer: picking the account / contact fills the lead's fields from
+  // them (only where they hold a value), so nothing is typed twice.
+  const setExisting = (existing: boolean) =>
+    setForm((p) => ({ ...p, isExistingCustomer: existing, ...(existing ? {} : { account: '', accountContact: '' }) }));
+  const pickAccount = (a: AccountRef | null) =>
+    setForm((p) => ({ ...p, account: a?._id ?? '', accountContact: '', ...(a ? { companyName: a.name } : {}) }));
+  const pickContact = (c: AccountContact | null) =>
+    setForm((p) => ({
+      ...p,
+      accountContact: c?._id ?? '',
+      ...(c && {
+        contactPersonName: c.contactPerson || p.contactPersonName,
+        email: c.email || p.email,
+        phonePrimary: c.phone || p.phonePrimary,
+        fullAddress: [c.address, c.city].filter(Boolean).join(', ') || p.fullAddress,
+        country: c.country || p.country,
+        companyName: p.companyName || c.companyName || '',
+      }),
+    }));
 
   // Which follow-up field (if any) the currently selected lead source asks for.
   const sourceDetailSpec = form.leadSource ? LEAD_SOURCE_DETAILS[form.leadSource] : undefined;
@@ -235,13 +274,23 @@ export function LeadFormModal({ open, lead, defaultSalesType, onClose, onSaved }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Mandatory on both add and update — mirrors the backend's required-field check.
-    const missing = REQUIRED_FIELDS.filter(({ key }) => !String(form[key] ?? '').trim());
-    if (missing.length > 0) {
-      toast.error(`${missing.map((m) => m.label).join(', ')} ${missing.length > 1 ? 'are' : 'is'} required`);
+    if (form.isExistingCustomer && !form.account) {
+      toast.error("Choose the existing customer's company");
       return;
     }
-    if (!EMAIL_REGEX.test(form.email!.trim())) {
+    // Mandatory on a Lead or Opportunity (add, update and convert) — mirrors the
+    // backend's required-field check. Raw Data only needs something to identify it.
+    if (strict) {
+      const missing = REQUIRED_LEAD_FIELDS.filter(({ key }) => !String(form[key] ?? '').trim());
+      if (missing.length > 0) {
+        toast.error(`${missing.map((m) => m.label).join(', ')} ${missing.length > 1 ? 'are' : 'is'} required`);
+        return;
+      }
+    } else if (!hasIdentity(form)) {
+      toast.error('Enter at least a company, contact person, phone or email');
+      return;
+    }
+    if ((strict || form.email?.trim()) && !EMAIL_REGEX.test(form.email!.trim())) {
       toast.error('Enter a valid email address');
       return;
     }
@@ -250,7 +299,7 @@ export function LeadFormModal({ open, lead, defaultSalesType, onClose, onSaved }
     // for none, so `sourceDetailSpec` is undefined and the field isn't rendered.
     const detailSpec = form.leadSource ? LEAD_SOURCE_DETAILS[form.leadSource] : undefined;
     const detail = form.leadSourceDetail?.trim() || '';
-    if (detailSpec) {
+    if (detailSpec && strict) {
       if (!detail) {
         toast.error(`${detailSpec.label} is required for the "${form.leadSource}" lead source`);
         return;
@@ -266,7 +315,7 @@ export function LeadFormModal({ open, lead, defaultSalesType, onClose, onSaved }
     const primary = form.phonePrimary?.trim() || '';
     // Validate against the selected country's rules (falls back to a lenient
     // international check for countries not in the built-in table).
-    if (!isValidPhoneForCountry(primary, form.country)) {
+    if ((strict || primary) && !isValidPhoneForCountry(primary, form.country)) {
       const dc = dialCodeForCountry(form.country);
       toast.error(
         form.country && dc
@@ -276,8 +325,8 @@ export function LeadFormModal({ open, lead, defaultSalesType, onClose, onSaved }
       return;
     }
     // Only rendered for managers/admins — a plain agent is auto-assigned to
-    // themselves server-side instead. See LeadFormModal's Assign To field.
-    if (canAssign && !form.assignedTo) {
+    // themselves server-side instead. Raw Data may stay in the team pool.
+    if (canAssign && strict && !form.assignedTo) {
       toast.error('Choose who this lead is assigned to');
       return;
     }
@@ -295,15 +344,26 @@ export function LeadFormModal({ open, lead, defaultSalesType, onClose, onSaved }
     // Everyone else works inside their own team; the server ignores the field for
     // them, so sending it would only be misleading.
     if (!superAdmin && !pickOwnTeam) delete payload.team;
+    // Raw data starts in "No Action" whatever is picked (the API agrees).
+    if (raw) delete payload.status;
 
     setSubmitting(true);
     try {
       if (lead) {
         // Status changes go exclusively through the "Change Status" workflow now
-        // (see LeadDetail's StatusChangeModal) — the edit form no longer sends it.
+        // (see LeadDetail's StatusChangeModal) — the edit form no longer sends it,
+        // and the stage only moves through the convert action.
         delete (payload as any).status;
+        delete payload.salesType;
         const action = await dispatch(updateLead({ id: lead._id, data: payload }));
-        if (updateLead.fulfilled.match(action)) onSaved?.(action.payload);
+        if (!updateLead.fulfilled.match(action)) return;
+        if (convert) {
+          const converted = await dispatch(convertLead({ id: lead._id, to: 'Lead' }));
+          if (!convertLead.fulfilled.match(converted)) return;
+          onSaved?.(converted.payload);
+        } else {
+          onSaved?.(action.payload);
+        }
       } else {
         const action = await dispatch(createLead(payload));
         if (createLead.fulfilled.match(action)) onSaved?.(action.payload);
@@ -323,13 +383,20 @@ export function LeadFormModal({ open, lead, defaultSalesType, onClose, onSaved }
         <div className="flex items-center justify-between px-7 py-5 border-b border-outline-variant/20 bg-surface-container-lowest">
           <div className="min-w-0">
             <div className="flex items-center gap-2.5 flex-wrap">
-              <h2 className="text-xl font-bold text-on-surface truncate">{lead ? 'Edit Lead' : 'New Lead'}</h2>
+              <h2 className="text-xl font-bold text-on-surface truncate">
+                {convert ? 'Convert to Lead' : lead ? `Edit ${STAGE_META[formStage].label}` : raw ? 'Add Data' : 'New Lead'}
+              </h2>
+              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${STAGE_META[formStage].badge}`}>{STAGE_META[formStage].label}</span>
               {lead?.customerId && (
                 <span className="font-mono text-xs px-2 py-0.5 rounded-md bg-surface-container-high text-on-surface-variant">{lead.customerId}</span>
               )}
             </div>
             <p className="text-sm text-on-surface-variant mt-0.5">
-              {lead ? 'Update this lead’s details' : 'A customer ID is assigned automatically on save'}
+              {convert
+                ? 'Complete every mandatory field — the record then moves to Leads'
+                : raw
+                  ? 'Raw data — no field is mandatory. Complete it later and convert it to a Lead.'
+                  : lead ? 'Update this record’s details' : 'A customer ID is assigned automatically on save'}
             </p>
           </div>
           <button onClick={onClose} className="p-2 rounded-xl hover:bg-surface-container text-on-surface-variant transition-colors shrink-0">
@@ -339,12 +406,23 @@ export function LeadFormModal({ open, lead, defaultSalesType, onClose, onSaved }
 
         {/* Body */}
         <form id="lead-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-7 py-6 space-y-5">
+          <SectionCard icon={<UserCheck className="w-5 h-5" />} title="Customer" subtitle="An existing customer fills the details below from their account">
+            <ExistingCustomerFields
+              isExisting={!!form.isExistingCustomer}
+              account={form.account || ''}
+              accountContact={form.accountContact || ''}
+              onToggle={setExisting}
+              onAccount={pickAccount}
+              onContact={pickContact}
+            />
+          </SectionCard>
+
           <SectionCard icon={<Building2 className="w-5 h-5" />} title="Business Information">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field label="Company Name" required>
+              <Field label="Company Name" required={strict}>
                 <Input value={form.companyName} onChange={(e) => setForm(p => ({ ...p, companyName: e.target.value }))} placeholder="Acme Corp" />
               </Field>
-              <Field label="Contact Person" required>
+              <Field label="Contact Person" required={strict}>
                 <Input value={form.contactPersonName} onChange={(e) => setForm(p => ({ ...p, contactPersonName: e.target.value }))} placeholder="John Doe" />
               </Field>
               <Field label="Job Title">
@@ -355,13 +433,13 @@ export function LeadFormModal({ open, lead, defaultSalesType, onClose, onSaved }
 
           <SectionCard icon={<MapPin className="w-5 h-5" />} title="Classification & Location">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field label="Entity Type" required>
+              <Field label="Entity Type" required={strict}>
                 <SelectField value={form.entityType || ''} onChange={(e) => setForm(p => ({ ...p, entityType: (e.target.value as EntityType) || undefined }))}>
                   <option value="">Select type</option>
                   {ENTITY_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
                 </SelectField>
               </Field>
-              <Field label="Industry Sector" required>
+              <Field label="Industry Sector" required={strict}>
                 <SelectField value={form.industrySector || ''} onChange={(e) => setForm(p => ({ ...p, industrySector: (e.target.value as IndustrySector) || undefined }))}>
                   <option value="">Select sector</option>
                   {(form.industrySector && !sectorOptions.includes(form.industrySector)
@@ -370,7 +448,7 @@ export function LeadFormModal({ open, lead, defaultSalesType, onClose, onSaved }
                   ).map((s) => <option key={s} value={s}>{s}</option>)}
                 </SelectField>
               </Field>
-              <Field label="Business Classification" required className="sm:col-span-2" hint="Specific activity — managed from Modules ▸ Business Classifications.">
+              <Field label="Business Classification" required={strict} className="sm:col-span-2" hint="Specific activity — managed from Modules ▸ Business Classifications.">
                 <SelectField value={form.businessClassification || ''} onChange={(e) => setForm(p => ({ ...p, businessClassification: e.target.value }))}>
                   <option value="">Select classification</option>
                   {(form.businessClassification && !classificationOptions.includes(form.businessClassification)
@@ -398,7 +476,7 @@ export function LeadFormModal({ open, lead, defaultSalesType, onClose, onSaved }
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Field
                 label="Phone — Primary"
-                required
+                required={strict}
                 hint={dialCodeForCountry(form.country)
                   ? `${form.country} dialing code ${dialCodeForCountry(form.country)} — enter the local number or the full ${dialCodeForCountry(form.country)} form`
                   : undefined}
@@ -411,10 +489,10 @@ export function LeadFormModal({ open, lead, defaultSalesType, onClose, onSaved }
               <Field label="Phone — Other" hint="Hotlines, 0800 toll-free numbers.">
                 <Input value={form.phoneOther} onChange={(e) => setForm(p => ({ ...p, phoneOther: e.target.value }))} placeholder="19XXX, 0800 XXX XXXX" />
               </Field>
-              <Field label="Email" required>
+              <Field label="Email" required={strict}>
                 <Input type="email" value={form.email} onChange={(e) => setForm(p => ({ ...p, email: e.target.value }))} placeholder="john@example.com" />
               </Field>
-              <Field label="Website" required className="sm:col-span-2">
+              <Field label="Website" required={strict} className="sm:col-span-2">
                 <Input value={form.website} onChange={(e) => setForm(p => ({ ...p, website: e.target.value }))} placeholder="https://example.com" />
               </Field>
             </div>
@@ -422,12 +500,7 @@ export function LeadFormModal({ open, lead, defaultSalesType, onClose, onSaved }
 
           <SectionCard icon={<ClipboardList className="w-5 h-5" />} title="Lead Details">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field label="Sales Type" hint="Lead = unqualified, Opportunity = qualified.">
-                <SelectField value={form.salesType || 'Lead'} onChange={(e) => setForm(p => ({ ...p, salesType: e.target.value as SalesType }))}>
-                  {SALES_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-                </SelectField>
-              </Field>
-              <Field label="Lead Source" required>
+              <Field label="Lead Source" required={strict}>
                 <SelectField
                   value={form.leadSource || ''}
                   onChange={(e) => setForm(p => ({
@@ -443,7 +516,7 @@ export function LeadFormModal({ open, lead, defaultSalesType, onClose, onSaved }
                 </SelectField>
               </Field>
               {sourceDetailSpec && (
-                <Field label={sourceDetailSpec.label} required className="sm:col-span-2">
+                <Field label={sourceDetailSpec.label} required={strict} className="sm:col-span-2">
                   <Input
                     type={sourceDetailSpec.type === 'url' ? 'url' : 'text'}
                     value={form.leadSourceDetail}
@@ -457,7 +530,7 @@ export function LeadFormModal({ open, lead, defaultSalesType, onClose, onSaved }
                   {(['High', 'Medium', 'Low'] as LeadPriority[]).map((pv) => <option key={pv} value={pv}>{pv}</option>)}
                 </SelectField>
               </Field>
-              {!lead && (
+              {!lead && !raw && (
                 <Field label="Status">
                   {/* Blank = the initial status, which is applied automatically and not offered as a choice. */}
                   <SelectField
@@ -481,27 +554,18 @@ export function LeadFormModal({ open, lead, defaultSalesType, onClose, onSaved }
                   </SelectField>
                 </div>
               </Field>
-              {canAssign && (
-                <Field label="Assign To" required hint="Only agents on the owning team can be assigned.">
-                  <SelectField value={form.assignedTo || ''} onChange={(e) => setForm(p => ({ ...p, assignedTo: e.target.value }))}>
-                    <option value="">Select agent</option>
-                    {agents.filter((a) => a.status === 'active').map((a) => (
-                      <option key={a._id} value={a._id}>{a.firstName} {a.lastName}</option>
-                    ))}
-                  </SelectField>
-                </Field>
-              )}
-              {/* Moving a lead across the tenant boundary removes it from its
-                  current team's view entirely, so only a super admin sees this. */}
+              {/* Team first: the Agent list below depends on it. Moving a lead across
+                  the tenant boundary removes it from its current team's view
+                  entirely, so only a super admin may change an existing lead's team. */}
               {superAdmin && (
                 <Field
                   label="Owning Team"
                   required
                   hint={lead
-                    ? 'Changing this hands the lead to another team. If its current owner is not on that team, it becomes unassigned.'
+                    ? 'Changing this hands the lead to another team and clears the agent — pick one from the new team.'
                     : 'Only this team will see the lead.'}
                 >
-                  <SelectField value={form.team || ''} onChange={(e) => setForm(p => ({ ...p, team: e.target.value }))}>
+                  <SelectField value={form.team || ''} onChange={(e) => changeTeam(e.target.value)}>
                     <option value="">Select a team</option>
                     {teams.filter((t) => t.isActive || teamId(lead?.team) === t._id).map((t) => (
                       <option key={t._id} value={t._id}>{t.name}</option>
@@ -511,10 +575,31 @@ export function LeadFormModal({ open, lead, defaultSalesType, onClose, onSaved }
               )}
               {pickOwnTeam && (
                 <Field label="Owning Team" required hint="Only this team will see the lead.">
-                  <SelectField value={form.team || ''} onChange={(e) => setForm(p => ({ ...p, team: e.target.value }))}>
+                  <SelectField value={form.team || ''} onChange={(e) => changeTeam(e.target.value)}>
                     <option value="">Select a team</option>
                     {myTeams.map((t) => (
                       <option key={t._id} value={t._id}>{t.name}</option>
+                    ))}
+                  </SelectField>
+                </Field>
+              )}
+              {canAssign && (
+                <Field
+                  label="Assign To"
+                  required={strict}
+                  hint={!formTeam
+                    ? 'Choose the owning team first — only its employees can be assigned.'
+                    : raw ? 'Employees of the owning team. Leave empty to keep it in the team pool.' : 'Employees of the owning team.'}
+                >
+                  <SelectField value={form.assignedTo || ''} onChange={(e) => setForm(p => ({ ...p, assignedTo: e.target.value }))}>
+                    <option value="">
+                      {!formTeam ? 'Select a team first' : agentsLoading ? 'Loading…' : raw ? 'Unassigned — team pool' : 'Select agent'}
+                    </option>
+                    {ownerMissing && currentOwner && (
+                      <option value={currentOwner._id}>{currentOwner.firstName} {currentOwner.lastName} (current)</option>
+                    )}
+                    {teamAgents.map((a) => (
+                      <option key={a._id} value={a._id}>{a.firstName} {a.lastName}</option>
                     ))}
                   </SelectField>
                 </Field>
@@ -531,9 +616,18 @@ export function LeadFormModal({ open, lead, defaultSalesType, onClose, onSaved }
                 <textarea value={form.painPoints} onChange={(e) => setForm(p => ({ ...p, painPoints: e.target.value }))}
                   rows={2} className={textareaCls} placeholder="What challenges does the customer face?" />
               </Field>
-              <Field label="Customer Needs">
-                <textarea value={form.customerNeeds} onChange={(e) => setForm(p => ({ ...p, customerNeeds: e.target.value }))}
-                  rows={2} className={textareaCls} placeholder="What does the customer need?" />
+              <Field label="Customer Need" hint="Pick one or more products from the Product Catalog.">
+                <ProductNeedSelect
+                  value={form.customerNeedProducts ?? []}
+                  onChange={(ids) => setForm(p => ({ ...p, customerNeedProducts: ids }))}
+                  current={(lead?.customerNeedProducts ?? []).filter((p): p is NeedProductRef => typeof p !== 'string')}
+                />
+                {/* Needs typed before the catalog lookup existed stay readable. */}
+                {lead?.customerNeeds && (
+                  <p className="text-xs text-on-surface-variant mt-1.5">
+                    Earlier notes: <span className="text-on-surface">{lead.customerNeeds}</span>
+                  </p>
+                )}
               </Field>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field label="Budget">
@@ -570,7 +664,11 @@ export function LeadFormModal({ open, lead, defaultSalesType, onClose, onSaved }
         <div className="flex justify-end gap-3 px-7 py-4 border-t border-outline-variant/20 bg-surface-container-lowest">
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
           <Button type="submit" form="lead-form" disabled={submitting}>
-            {submitting ? 'Saving…' : lead ? 'Update Lead' : 'Create Lead'}
+            {submitting
+              ? 'Saving…'
+              : convert ? 'Save & Convert to Lead'
+                : lead ? `Update ${STAGE_META[formStage].label}`
+                  : raw ? 'Add Data' : 'Create Lead'}
           </Button>
         </div>
       </div>
