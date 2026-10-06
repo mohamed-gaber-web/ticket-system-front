@@ -1,15 +1,20 @@
 import { useMemo } from 'react';
 import { useAppSelector } from './hooks';
 import type { EmployeeRole, ModuleKey, RoleFamily, TeleSalesTeamRef } from '@/types/auth.types';
-import { effectiveModules, isManagerRole, roleFamily, roleLabel } from '@/lib/access';
+import { effectiveModules, isManagerRole, roleFamily, roleLabel, rolesOf, rolesLabel } from '@/lib/access';
 
 export interface Access {
   userType: 'employee' | 'customer' | null;
   isEmployee: boolean;
   isCustomer: boolean;
-  /** Employee role, null for customers. */
+  /** Primary employee role, null for customers. */
   role: EmployeeRole | null;
+  /** Every role held (primary first); the predicates below OR across them. */
+  roles: EmployeeRole[];
+  /** The primary role's family. */
   family: RoleFamily | null;
+  /** Every family the roles belong to. */
+  families: RoleFamily[];
   roleLabel: string;
   isAdmin: boolean;
   isManager: boolean;
@@ -40,10 +45,13 @@ export const useAccess = (): Access => {
   return useMemo(() => {
     const isEmployee = userType === 'employee';
     const role = isEmployee ? consultantRole : null;
-    const resolved = isEmployee ? effectiveModules(role, modules) : [];
-    const isAdmin = role === 'admin';
-    const isManager = isManagerRole(role);
+    // Multi-role employees: the primary role plus the extra ones on the profile.
+    const roles = isEmployee ? rolesOf({ role, extraRoles: (user as { extraRoles?: string[] } | null)?.extraRoles }) : [];
+    const resolved = isEmployee ? effectiveModules(roles, modules) : [];
+    const isAdmin = roles.includes('admin');
+    const isManager = roles.some(isManagerRole);
     const family = roleFamily(role);
+    const families = [...new Set(roles.map(roleFamily).filter((f): f is RoleFamily => !!f))];
     const rawTeam = (user as any)?.teleSalesTeam ?? (user as any)?.team ?? null;
     const teleSalesTeam =
       rawTeam && typeof rawTeam === 'object' ? (rawTeam as TeleSalesTeamRef) : null;
@@ -53,15 +61,17 @@ export const useAccess = (): Access => {
       isEmployee,
       isCustomer: userType === 'customer',
       role,
+      roles,
       family,
-      roleLabel: roleLabel(role),
+      families,
+      roleLabel: roles.length > 1 ? rolesLabel(roles) : roleLabel(role),
       isAdmin,
       isManager,
       isManagerOrAdmin: isAdmin || isManager,
-      isSalesManager: role === 'sales_manager',
-      isMarketing: family === 'marketing',
+      isSalesManager: roles.includes('sales_manager'),
+      isMarketing: families.includes('marketing'),
       isCrossTeam: isAdmin,
-      seesAllBoards: isAdmin || role === 'developer_manager',
+      seesAllBoards: isAdmin || roles.includes('developer_manager'),
       isHr: resolved.includes('hr'),
       canManageEmployees: isAdmin || resolved.includes('hr'),
       modules: resolved,

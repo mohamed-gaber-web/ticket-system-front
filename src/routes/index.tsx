@@ -203,8 +203,10 @@ export const routes: RouteObject[] = [
     ),
     children: [
       { index: true, element: <Lazy><TeleSalesDashboard /></Lazy> },
-      { path: "leads", element: <Lazy><Leads /></Lazy> },
-      { path: "opportunities", element: <Lazy><Leads lockedSalesType="Opportunity" title="Opportunities" /></Lazy> },
+      // The three pipeline stages share one page; the key resets its filters per tab.
+      { path: "data", element: <Lazy><Leads key="data" stage="Data" /></Lazy> },
+      { path: "leads", element: <Lazy><Leads key="lead" stage="Lead" /></Lazy> },
+      { path: "opportunities", element: <Lazy><Leads key="opportunity" stage="Opportunity" /></Lazy> },
       // The Interested tab was replaced by Opportunities; keep old links working.
       { path: "interested", element: <Navigate to="/tele-sales/opportunities" replace /> },
       { path: "leads/:id", element: <Lazy><LeadDetail /></Lazy> },

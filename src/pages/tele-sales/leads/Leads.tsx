@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, NavLink } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
-import { fetchLeads, deleteLead, importLeads } from '@/redux/slices/teleSalesLeadsSlice';
+import { fetchLeads, deleteLead, importLeads, convertLead, fetchLeadStats } from '@/redux/slices/teleSalesLeadsSlice';
 import { fetchAgents } from '@/redux/slices/teleSalesAgentsSlice';
 import { fetchTeams } from '@/redux/slices/teleSalesTeamsSlice';
 import { fetchIndustrySectors } from '@/redux/slices/industrySectorSlice';
@@ -13,18 +13,21 @@ import Swal from 'sweetalert2';
 import {
   Plus, Search, Phone, User, Eye, Pencil, Trash2, Send,
   ChevronLeft, ChevronRight, Filter, X, Upload, FileSpreadsheet, CheckCircle2, AlertTriangle,
-  ClipboardList,
+  ClipboardList, ArrowRightCircle, Layers, UserCheck,
 } from 'lucide-react';
+import { BulkEditDialog } from '@/components/tele-sales/BulkEditDialog';
+import { useTeamAgents } from '@/hooks/useTeamAgents';
 import GmailCompose from '@/components/tele-sales/GmailCompose';
 import { StatusRulesModal } from '@/components/tele-sales/StatusRulesModal';
 import { LeadFormModal } from '@/components/tele-sales/LeadFormModal';
 import { useLeadEmailSender } from '@/hooks/useLeadEmailSender';
-import { LEAD_STATUSES, PICKABLE_LEAD_STATUSES, IMPORTED_LEAD_STATUS, STATUS_COLORS, type LeadStatus } from '@/config/leadStatusWorkflow';
+import { LEAD_STATUSES, STATUS_COLORS, type LeadStatus } from '@/config/leadStatusWorkflow';
 import type {
   Lead, LeadPriority, LeadSource, ImportLeadsResponse,
   EntityType, IndustrySector, SalesType,
 } from '@/types/teleSales.types';
-import { ENTITY_TYPES, INDUSTRY_SECTORS, SALES_TYPES, teamName, formatMoney } from '@/types/teleSales.types';
+import { ENTITY_TYPES, INDUSTRY_SECTORS, teamName, formatMoney } from '@/types/teleSales.types';
+import { STAGE_META, STAGE_ORDER, NEXT_STAGE, recordName } from '@/lib/leadStages';
 import { parseLeadsFile, FIELD_LABELS, type ParsedImport } from '@/utils/leadImport';
 import { isSuperAdmin, isCrossTeamReader, isReadOnly, canManageTeam, ownTeamId, ownTeamNames, ownTeams } from '@/lib/teleSalesRole';
 
@@ -36,15 +39,15 @@ interface LeadsProps {
   /** When set, the page is locked to this status: the status filter is fixed and
    *  hidden, and the list only shows those leads. */
   lockedStatus?: LeadStatus;
-  /** When set, the page is locked to this sales type (used by the "Opportunities"
-   *  tab): the sales-type filter is fixed and hidden, and new leads created from
-   *  this page default to it. */
-  lockedSalesType?: SalesType;
-  /** Optional page heading override (defaults to "Leads"). */
-  title?: string;
+  /**
+   * The pipeline stage this tab lists — Data, Leads or Opportunities. Import and
+   * "Add Data" live on Data only, "New Lead" on Leads; Opportunities only come
+   * from converting a Lead.
+   */
+  stage?: SalesType;
 }
 
-export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsProps = {}) {
+export default function Leads({ lockedStatus, stage = 'Lead' }: LeadsProps = {}) {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { leads, loading, total, pages } = useAppSelector((s) => s.teleSalesLeads);
@@ -63,6 +66,10 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
   const emailSender = useLeadEmailSender();
   const canManage = canManageTeam(user);
   const myTeams = ownTeams(user);
+  // A plain agent sees only the records assigned to them (the API enforces it),
+  // so the owner filter would only ever offer themselves.
+  const seesOnlyOwn = !crossTeam && !canManage;
+  const stats = useAppSelector((s) => s.teleSalesLeads.stats);
   // More than one team on screen: offer the team filter / column / import target.
   const multiTeam = crossTeam || myTeams.length > 1;
   const teamOptions = crossTeam ? teams : myTeams;
@@ -83,7 +90,6 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState(lockedStatus ?? '');
   const [priorityFilter, setPriorityFilter] = useState('');
-  const [salesTypeFilter, setSalesTypeFilter] = useState<string>(lockedSalesType ?? '');
   const [entityTypeFilter, setEntityTypeFilter] = useState('');
   const [sectorFilter, setSectorFilter] = useState('');
   // Cross-team readers pick any team, a multi-team employee one of theirs.
@@ -95,6 +101,12 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
   const [showFilters, setShowFilters] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
+  // Data record being completed and converted to a Lead.
+  const [convertingLead, setConvertingLead] = useState<Lead | null>(null);
+  // Grid selection for bulk edit / mass reassignment (current page only).
+  const [selected, setSelected] = useState<string[]>([]);
+  // The ids the open Bulk Edit dialog works on, frozen when it opens.
+  const [bulkIds, setBulkIds] = useState<string[] | null>(null);
 
   // Import state
   const [isImportOpen, setIsImportOpen] = useState(false);
@@ -105,17 +117,24 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
   const [importResult, setImportResult] = useState<ImportLeadsResponse | null>(null);
   const [importAssignedTo, setImportAssignedTo] = useState('');
   const [importTeam, setImportTeam] = useState('');
-  const [importStatus, setImportStatus] = useState<LeadStatus>(IMPORTED_LEAD_STATUS);
   const [importSource, setImportSource] = useState<string>('');
   const [skipDuplicates, setSkipDuplicates] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Team → Agent lookups. The owner filter follows the team filter (with no team
+  // picked it lists everyone the caller can see); the import's "Assign All To"
+  // follows the team the batch lands in.
+  const { agents: filterTeamAgents } = useTeamAgents(teamFilter || null);
+  const ownerOptions = teamFilter ? filterTeamAgents : agents.filter((a) => a.status === 'active');
+  const importTargetTeam = multiTeam ? importTeam : ownTeamId(user);
+  const { agents: importAgents, loading: importAgentsLoading } = useTeamAgents(isImportOpen && canManage ? importTargetTeam : null);
 
   const load = useCallback(() => {
     dispatch(fetchLeads({
       search: search || undefined,
       status: (lockedStatus ?? (statusFilter as LeadStatus)) || undefined,
       priority: priorityFilter as LeadPriority || undefined,
-      salesType: (lockedSalesType ?? (salesTypeFilter as SalesType)) || undefined,
+      salesType: stage,
       entityType: entityTypeFilter as EntityType || undefined,
       industrySector: sectorFilter as IndustrySector || undefined,
       team: multiTeam && teamFilter ? teamFilter : undefined,
@@ -123,9 +142,12 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
       page,
       limit: itemsPerPage,
     }));
-  }, [dispatch, lockedStatus, lockedSalesType, search, statusFilter, priorityFilter, salesTypeFilter, entityTypeFilter, sectorFilter, teamFilter, ownerFilter, multiTeam, page, itemsPerPage]);
+  }, [dispatch, lockedStatus, stage, search, statusFilter, priorityFilter, entityTypeFilter, sectorFilter, teamFilter, ownerFilter, multiTeam, page, itemsPerPage]);
 
   useEffect(() => { load(); }, [load]);
+  // Stage counts for the tab bar; refreshed whenever the list reloads.
+  const reload = useCallback(() => { load(); dispatch(fetchLeadStats()); }, [load, dispatch]);
+  useEffect(() => { dispatch(fetchLeadStats()); }, [dispatch, stage]);
   // Every member of a team now needs the roster: the table shows assignee names
   // and the owner filter lists colleagues. The API returns only this team's agents.
   //
@@ -138,7 +160,16 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
   useEffect(() => { dispatch(fetchTeams(undefined)); }, [dispatch]);
 
   // Reset page on filter / page-size change
-  useEffect(() => { setPage(1); }, [search, statusFilter, priorityFilter, salesTypeFilter, entityTypeFilter, sectorFilter, teamFilter, ownerFilter, itemsPerPage]);
+  useEffect(() => { setPage(1); }, [search, statusFilter, priorityFilter, stage, entityTypeFilter, sectorFilter, teamFilter, ownerFilter, itemsPerPage]);
+  // A selection only means something for the rows on screen.
+  useEffect(() => { setSelected([]); }, [search, statusFilter, priorityFilter, stage, entityTypeFilter, sectorFilter, teamFilter, ownerFilter, itemsPerPage, page]);
+
+  const pageIds = leads.map((l) => l._id);
+  const allOnPage = pageIds.length > 0 && pageIds.every((id) => selected.includes(id));
+  const someOnPage = !allOnPage && pageIds.some((id) => selected.includes(id));
+  const toggleRow = (id: string) =>
+    setSelected((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
+  const toggleAll = () => setSelected(allOnPage ? [] : pageIds);
 
   const handlePageChange = (newPage: number) => {
     if (newPage < 1 || newPage > pages || newPage === page) return;
@@ -168,10 +199,31 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
     setIsDialogOpen(true);
   };
 
+  // Data → Lead needs the form (mandatory fields); Lead → Opportunity is a confirm.
+  const handleConvert = async (lead: Lead) => {
+    if (stage === 'Data') {
+      setConvertingLead(lead);
+      return;
+    }
+    const result = await Swal.fire({
+      title: 'Convert to Opportunity?',
+      text: `"${recordName(lead)}" moves to Opportunities.`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#003A8F',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Convert',
+    });
+    if (result.isConfirmed) {
+      const action = await dispatch(convertLead({ id: lead._id, to: 'Opportunity' }));
+      if (convertLead.fulfilled.match(action)) dispatch(fetchLeadStats());
+    }
+  };
+
   const handleDelete = async (lead: Lead) => {
     const result = await Swal.fire({
-      title: 'Delete Lead?',
-      text: `"${lead.companyName}" will be permanently deleted.`,
+      title: `Delete ${STAGE_META[stage].label}?`,
+      text: `"${recordName(lead)}" will be permanently deleted.`,
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#ef4444',
@@ -190,7 +242,6 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
     setImportResult(null);
     setImportAssignedTo('');
     setImportTeam(superAdmin ? '' : ownTeamId(user));
-    setImportStatus(IMPORTED_LEAD_STATUS);
     setImportSource('');
     setSkipDuplicates(true);
     setIsImportOpen(true);
@@ -203,7 +254,7 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
     try {
       const result = await parseLeadsFile(file);
       if (result.rows.length === 0) {
-        toast.error('No valid rows found in the file. Make sure it has a header row with a name and phone column.');
+        toast.error('No rows found in the file. Make sure it has a header row (company, contact, phone or email).');
       }
       setParsed(result);
     } catch (err) {
@@ -231,13 +282,12 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
         // A super admin picks any team, a multi-team employee one of theirs; the
         // API ignores a team the caller is not on and uses their home team.
         team: multiTeam && importTeam ? importTeam : undefined,
-        status: canManage ? importStatus : undefined,
         leadSource: (importSource as LeadSource) || undefined,
         skipDuplicates,
       }));
       if (importLeads.fulfilled.match(action)) {
         setImportResult(action.payload);
-        if (action.payload.inserted > 0) load();
+        if (action.payload.inserted > 0) reload();
       }
     } finally {
       setImporting(false);
@@ -246,20 +296,44 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
 
   const formatDate = (d?: string) => !d ? '—' : new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
 
+  const meta = STAGE_META[stage];
+  const nextStage = NEXT_STAGE[stage];
+
   return (
     <div className="p-6 space-y-5">
+      {/* Pipeline stage tabs: Data → Leads → Opportunities */}
+      <nav aria-label="Pipeline stages" className="flex gap-1 border-b border-outline-variant/20">
+        {STAGE_ORDER.map((s) => (
+          <NavLink
+            key={s}
+            to={STAGE_META[s].path}
+            className={`flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 -mb-px transition-colors ${
+              s === stage ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant hover:text-on-surface'
+            }`}
+          >
+            {STAGE_META[s].plural}
+            {stats?.byStage && (
+              <span className={`text-xs tabular-nums px-2 py-0.5 rounded-full ${s === stage ? 'bg-primary/10 text-primary' : 'bg-surface-container-high text-on-surface-variant'}`}>
+                {stats.byStage[s].toLocaleString()}
+              </span>
+            )}
+          </NavLink>
+        ))}
+      </nav>
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-on-surface">{title ?? 'Leads'}</h1>
+          <h1 className="text-2xl font-bold text-on-surface">{meta.plural}</h1>
           <p className="text-sm text-on-surface-variant mt-0.5">
-            {total} {lockedSalesType
-              ? `${lockedSalesType.toLowerCase()} record${total === 1 ? '' : 's'}`
-              : lockedStatus ? `${lockedStatus.toLowerCase()} leads` : 'total leads'}
+            {total.toLocaleString()} {lockedStatus ? `${lockedStatus.toLowerCase()} ` : ''}record{total === 1 ? '' : 's'}
             {/* Makes it obvious whose pipeline is on screen — the whole point of
                 the separation is that this is never "everyone's". */}
-            {!crossTeam && <> in <span className="font-medium text-on-surface">{ownTeamNames(user)}</span></>}
+            {seesOnlyOwn
+              ? <> assigned to <span className="font-medium text-on-surface">you</span></>
+              : !crossTeam && <> in <span className="font-medium text-on-surface">{ownTeamNames(user)}</span></>}
             {readOnly && <> · <span className="font-medium text-on-surface">read-only</span></>}
+            <span className="hidden md:inline"> · {meta.hint}</span>
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -273,13 +347,19 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
               <Button variant="outline" onClick={() => setComposeOpen(true)} className="gap-2">
                 <Send className="w-4 h-4" /> Send Email
               </Button>
-              {/* Every role that writes may import; an agent's batch is assigned to them. */}
-              <Button variant="outline" onClick={openImport} className="gap-2">
-                <Upload className="w-4 h-4" /> Import
-              </Button>
-              <Button onClick={openCreate} className="gap-2">
-                <Plus className="w-4 h-4" /> New Lead
-              </Button>
+              {/* Imports land in Data, so they start here and nowhere else. Every role
+                  that writes may import; an agent's batch is assigned to them. */}
+              {stage === 'Data' && (
+                <Button variant="outline" onClick={openImport} className="gap-2">
+                  <Upload className="w-4 h-4" /> Import
+                </Button>
+              )}
+              {/* Opportunities only come from converting a Lead. */}
+              {stage !== 'Opportunity' && (
+                <Button onClick={openCreate} className="gap-2">
+                  <Plus className="w-4 h-4" /> {stage === 'Data' ? 'Add Data' : 'New Lead'}
+                </Button>
+              )}
             </>
           )}
         </div>
@@ -323,16 +403,6 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
               <option value="">All Priorities</option>
               {(['High', 'Medium', 'Low'] as LeadPriority[]).map((p) => <option key={p} value={p}>{p}</option>)}
             </select>
-            {!lockedSalesType && (
-              <select
-                value={salesTypeFilter}
-                onChange={(e) => setSalesTypeFilter(e.target.value)}
-                className="px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
-              >
-                <option value="">All Sales Types</option>
-                {SALES_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-              </select>
-            )}
             <select
               value={entityTypeFilter}
               onChange={(e) => setEntityTypeFilter(e.target.value)}
@@ -349,32 +419,35 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
               <option value="">All Sectors</option>
               {sectorOptions.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
-            {/* Narrow the team pipeline by owner, including the unassigned leads
-                still waiting to be handed out. */}
-            <select
-              value={ownerFilter}
-              onChange={(e) => setOwnerFilter(e.target.value)}
-              className="px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
-            >
-              <option value="">Anyone</option>
-              <option value="unassigned">Unassigned</option>
-              {agents.filter((a) => a.status === 'active').map((a) => (
-                <option key={a._id} value={a._id}>{a.firstName} {a.lastName}</option>
-              ))}
-            </select>
+            {/* Narrow the team pipeline by owner, including the unassigned records
+                still waiting to be handed out. An agent only has their own. */}
+            {!seesOnlyOwn && (
+              <select
+                value={ownerFilter}
+                onChange={(e) => setOwnerFilter(e.target.value)}
+                className="px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
+              >
+                <option value="">Anyone</option>
+                <option value="unassigned">Unassigned</option>
+                {ownerOptions.map((a) => (
+                  <option key={a._id} value={a._id}>{a.firstName} {a.lastName}</option>
+                ))}
+              </select>
+            )}
             {/* Only someone who sees more than one team has one to pick. */}
             {multiTeam && (
               <select
                 value={teamFilter}
-                onChange={(e) => setTeamFilter(e.target.value)}
+                // An owner picked for the old team means nothing in the new one.
+                onChange={(e) => { setTeamFilter(e.target.value); if (ownerFilter !== 'unassigned') setOwnerFilter(''); }}
                 className="px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
               >
                 <option value="">{crossTeam ? 'All Teams' : 'All My Teams'}</option>
                 {teamOptions.map((t) => <option key={t._id} value={t._id}>{t.name}</option>)}
               </select>
             )}
-            {((!lockedStatus && statusFilter) || priorityFilter || (!lockedSalesType && salesTypeFilter) || entityTypeFilter || sectorFilter || ownerFilter || teamFilter) && (
-              <button onClick={() => { if (!lockedStatus) setStatusFilter(''); setPriorityFilter(''); if (!lockedSalesType) setSalesTypeFilter(''); setEntityTypeFilter(''); setSectorFilter(''); setOwnerFilter(''); setTeamFilter(''); }}
+            {((!lockedStatus && statusFilter) || priorityFilter || entityTypeFilter || sectorFilter || ownerFilter || teamFilter) && (
+              <button onClick={() => { if (!lockedStatus) setStatusFilter(''); setPriorityFilter(''); setEntityTypeFilter(''); setSectorFilter(''); setOwnerFilter(''); setTeamFilter(''); }}
                 className="flex items-center gap-1 text-sm text-error hover:text-error/80">
                 <X className="w-3.5 h-3.5" /> Clear
               </button>
@@ -382,6 +455,24 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
           </div>
         )}
       </div>
+
+      {/* Bulk actions for the selected rows */}
+      {!readOnly && selected.length > 0 && (
+        <div className="flex items-center gap-3 flex-wrap rounded-2xl border border-primary/30 bg-primary/5 px-4 py-3" role="region" aria-label="Bulk actions">
+          <span className="text-sm font-semibold text-on-surface">{selected.length} selected</span>
+          <Button size="sm" onClick={() => setBulkIds(selected)} className="gap-2">
+            <Layers className="w-4 h-4" /> Bulk Edit
+          </Button>
+          {canManage && (
+            <Button size="sm" variant="outline" onClick={() => setBulkIds(selected)} className="gap-2">
+              <UserCheck className="w-4 h-4" /> Reassign
+            </Button>
+          )}
+          <button onClick={() => setSelected([])} className="ml-auto text-sm text-on-surface-variant hover:text-on-surface flex items-center gap-1">
+            <X className="w-3.5 h-3.5" /> Clear selection
+          </button>
+        </div>
+      )}
 
       {/* Table */}
       <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/20 shadow-sm overflow-hidden">
@@ -392,15 +483,31 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
         ) : leads.length === 0 ? (
           <div className="flex flex-col items-center py-16 text-on-surface-variant">
             <Phone className="w-10 h-10 mb-3 opacity-30" />
-            <p className="font-medium">No leads found</p>
-            <p className="text-sm mt-1">Try adjusting your filters or create a new lead</p>
+            <p className="font-medium">No {meta.plural.toLowerCase()} found</p>
+            <p className="text-sm mt-1">
+              {stage === 'Data' ? 'Import a file or add a record'
+                : stage === 'Lead' ? 'Convert a completed Data record, or create a new lead'
+                  : 'Convert a Lead to see it here'}
+            </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-outline-variant/20 bg-surface-container/50">
-                  {['Customer ID', 'Company Name', 'Contact Person', 'Phone', 'Entity Type', 'Sector', 'Status', 'Proposal Price', 'Sales Type', 'Source', 'Next Follow-up', 'Assigned To',
+                  {!readOnly && (
+                    <th className="pl-4 pr-1 py-3 w-8">
+                      <input
+                        type="checkbox"
+                        aria-label="Select all on this page"
+                        className="w-4 h-4 accent-primary cursor-pointer align-middle"
+                        checked={allOnPage}
+                        ref={(el) => { if (el) el.indeterminate = someOnPage; }}
+                        onChange={toggleAll}
+                      />
+                    </th>
+                  )}
+                  {['Customer ID', 'Company Name', 'Contact Person', 'Phone', 'Entity Type', 'Sector', 'Status', 'Proposal Price', 'Source', 'Next Follow-up', 'Assigned To',
                     // With a single team on screen the column would be one
                     // repeated value, so it only shows for multi-team viewers.
                     ...(multiTeam ? ['Team'] : []), ''].map((h) => (
@@ -410,13 +517,24 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
               </thead>
               <tbody className="divide-y divide-outline-variant/10">
                 {leads.map((lead) => (
-                  <tr key={lead._id} className="hover:bg-surface-container/40 transition-colors">
+                  <tr key={lead._id} className={`transition-colors ${selected.includes(lead._id) ? 'bg-primary/5' : 'hover:bg-surface-container/40'}`}>
+                    {!readOnly && (
+                      <td className="pl-4 pr-1 py-3 w-8">
+                        <input
+                          type="checkbox"
+                          aria-label={`Select ${recordName(lead)}`}
+                          className="w-4 h-4 accent-primary cursor-pointer align-middle"
+                          checked={selected.includes(lead._id)}
+                          onChange={() => toggleRow(lead._id)}
+                        />
+                      </td>
+                    )}
                     <td className="px-4 py-3 whitespace-nowrap">
                       {lead.customerId ? (
                         <button
                           onClick={() => navigate(`/tele-sales/leads/${lead._id}`)}
                           className="font-mono text-xs text-on-surface-variant hover:text-primary hover:underline underline-offset-2 transition-colors cursor-pointer rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                          title={`View ${lead.companyName}`}
+                          title={`View ${recordName(lead)}`}
                         >
                           {lead.customerId}
                         </button>
@@ -428,15 +546,20 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
                       <button
                         onClick={() => navigate(`/tele-sales/leads/${lead._id}`)}
                         className="font-medium text-on-surface hover:text-primary hover:underline underline-offset-2 transition-colors text-left cursor-pointer rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                        title={`View ${lead.companyName}`}
+                        title={`View ${recordName(lead)}`}
                       >
-                        {lead.companyName}
+                        {lead.companyName || <span className="italic text-on-surface-variant">{recordName(lead)}</span>}
                       </button>
+                      {lead.isExistingCustomer && (
+                        <span className="ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700" title="Existing customer">
+                          Existing
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-on-surface-variant whitespace-nowrap">
                       <div className="flex items-center gap-1">
                         <User className="w-3.5 h-3.5" />
-                        {lead.contactPersonName}
+                        {lead.contactPersonName || '—'}
                       </div>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
@@ -457,13 +580,6 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
                       {(lead.proposalValue ?? 0) > 0
                         ? <span className="font-medium text-on-surface">{formatMoney(lead.proposalValue!, lead.proposalCurrency)}</span>
                         : <span className="text-on-surface-variant">—</span>}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${
-                        lead.salesType === 'Opportunity'
-                          ? 'bg-emerald-100 text-emerald-700'
-                          : 'bg-sky-100 text-sky-700'
-                      }`}>{lead.salesType || 'Lead'}</span>
                     </td>
                     <td className="px-4 py-3 text-on-surface-variant whitespace-nowrap">{lead.leadSource || '—'}</td>
                     <td className="px-4 py-3 text-on-surface-variant whitespace-nowrap">{formatDate(lead.nextFollowUpDate)}</td>
@@ -491,6 +607,13 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
                           disabled={!lead.email}>
                           <Send className="w-4 h-4" />
                         </button>
+                        {!readOnly && nextStage && !(stage === 'Lead' && lead.status === 'Closed Lost') && (
+                          <button onClick={() => handleConvert(lead)}
+                            className="p-1.5 rounded-lg hover:bg-primary/10 text-on-surface-variant hover:text-primary transition-colors"
+                            title={stage === 'Data' ? 'Complete & convert to Lead' : 'Convert to Opportunity'}>
+                            <ArrowRightCircle className="w-4 h-4" />
+                          </button>
+                        )}
                         {!readOnly && (
                           <button onClick={() => openEdit(lead)}
                             className="p-1.5 rounded-lg hover:bg-surface-container text-on-surface-variant hover:text-brand-500 transition-colors" title="Edit">
@@ -580,9 +703,26 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
       <LeadFormModal
         open={isDialogOpen}
         lead={editingLead}
-        defaultSalesType={lockedSalesType}
+        stage={stage}
         onClose={() => setIsDialogOpen(false)}
-        onSaved={load}
+        onSaved={reload}
+      />
+
+      <BulkEditDialog
+        open={!!bulkIds}
+        ids={bulkIds ?? []}
+        canReassign={canManage}
+        onClose={() => setBulkIds(null)}
+        onDone={() => { setSelected([]); reload(); }}
+      />
+
+      {/* Data → Lead: complete the mandatory fields, then convert */}
+      <LeadFormModal
+        open={!!convertingLead}
+        lead={convertingLead}
+        convert
+        onClose={() => setConvertingLead(null)}
+        onSaved={reload}
       />
 
       {/* Import Dialog */}
@@ -591,7 +731,7 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
           <div className="bg-surface rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between px-6 py-5 border-b border-outline-variant/20">
               <h2 className="text-lg font-semibold text-on-surface flex items-center gap-2">
-                <FileSpreadsheet className="w-5 h-5 text-brand-500" /> Import Leads
+                <FileSpreadsheet className="w-5 h-5 text-brand-500" /> Import into Data
               </h2>
               <button onClick={() => setIsImportOpen(false)} className="p-2 rounded-lg hover:bg-surface-container text-on-surface-variant">
                 <X className="w-5 h-5" />
@@ -694,7 +834,7 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
                       {/* Preview */}
                       <div>
                         <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide mb-2">
-                          Preview — {parsed.rows.length} lead{parsed.rows.length === 1 ? '' : 's'} ready
+                          Preview — {parsed.rows.length} record{parsed.rows.length === 1 ? '' : 's'} ready (they land in Data; nothing is mandatory)
                           {parsed.skippedEmpty > 0 && `, ${parsed.skippedEmpty} empty row(s) skipped`}
                         </p>
                         <div className="border border-outline-variant/20 rounded-xl overflow-x-auto max-h-56 overflow-y-auto">
@@ -709,8 +849,8 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
                             <tbody className="divide-y divide-outline-variant/10">
                               {parsed.rows.slice(0, 50).map((r, i) => (
                                 <tr key={i}>
-                                  <td className="px-3 py-1.5 text-on-surface whitespace-nowrap">{r.contactPersonName}</td>
-                                  <td className="px-3 py-1.5 text-on-surface-variant whitespace-nowrap">{r.companyName || <span className="italic opacity-50">= contact</span>}</td>
+                                  <td className="px-3 py-1.5 text-on-surface whitespace-nowrap">{r.contactPersonName || '—'}</td>
+                                  <td className="px-3 py-1.5 text-on-surface-variant whitespace-nowrap">{r.companyName || (r.contactPersonName ? <span className="italic opacity-50">= contact</span> : '—')}</td>
                                   <td className="px-3 py-1.5 text-on-surface-variant whitespace-nowrap">{[r.phonePrimary, r.phoneSecondary, r.phoneOther].filter(Boolean).join(', ') || '—'}</td>
                                   <td className="px-3 py-1.5 text-on-surface-variant whitespace-nowrap">{r.email || '—'}</td>
                                   <td className="px-3 py-1.5 text-on-surface-variant whitespace-nowrap">{r.jobTitle || '—'}</td>
@@ -726,18 +866,8 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
 
                       {/* Options */}
                       <div className="grid grid-cols-2 gap-3">
-                        {/* Importing straight into a later status skips the workflow,
-                            so only a manager or admin may choose one (the API agrees). */}
-                        {canManage && (
-                        <div>
-                          <label className="text-sm font-medium text-on-surface mb-1 block">Default Status</label>
-                          <select value={importStatus === IMPORTED_LEAD_STATUS ? '' : importStatus} onChange={(e) => setImportStatus((e.target.value || IMPORTED_LEAD_STATUS) as LeadStatus)}
-                            className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
-                            <option value="">No Action — not contacted yet</option>
-                            {PICKABLE_LEAD_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-                          </select>
-                        </div>
-                        )}
+                        {/* Imported rows are raw Data: they always start in "No
+                            Action" (the API enforces it), so there is no status to pick. */}
                         <div>
                           <label className="text-sm font-medium text-on-surface mb-1 block">Lead Source</label>
                           <select value={importSource} onChange={(e) => setImportSource(e.target.value)}
@@ -752,7 +882,7 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
                         {multiTeam && (
                           <div className="col-span-2">
                             <label className="text-sm font-medium text-on-surface mb-1 block">Import Into Team *</label>
-                            <select value={importTeam} onChange={(e) => setImportTeam(e.target.value)}
+                            <select value={importTeam} onChange={(e) => { setImportTeam(e.target.value); setImportAssignedTo(''); }}
                               className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
                               <option value="">Select a team</option>
                               {(crossTeam ? teams.filter((t) => t.isActive) : myTeams).map((t) => (
@@ -768,12 +898,16 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
                           <div className="col-span-2">
                             <label className="text-sm font-medium text-on-surface mb-1 block">Assign All To</label>
                             <select value={importAssignedTo} onChange={(e) => setImportAssignedTo(e.target.value)}
-                              className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30">
-                              <option value="">Unassigned — leave in the team pool</option>
-                              {agents.filter((a) => a.status === 'active').map((a) => (
+                              disabled={!importTargetTeam}
+                              className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-60">
+                              <option value="">
+                                {!importTargetTeam ? 'Choose the team first' : importAgentsLoading ? 'Loading…' : 'Unassigned — leave in the team pool'}
+                              </option>
+                              {importAgents.map((a) => (
                                 <option key={a._id} value={a._id}>{a.firstName} {a.lastName}</option>
                               ))}
                             </select>
+                            <p className="text-xs text-on-surface-variant mt-1">Only employees of the team the records land in.</p>
                           </div>
                         )}
                         {!canManage && (
@@ -804,7 +938,7 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
                       disabled={!parsed || parsed.rows.length === 0 || importing || (multiTeam && !importTeam)}
                       title={multiTeam && !importTeam ? 'Choose which team these leads belong to' : undefined}
                     >
-                      {importing ? 'Importing…' : parsed?.rows.length ? `Import ${parsed.rows.length} Lead${parsed.rows.length === 1 ? '' : 's'}` : 'Import'}
+                      {importing ? 'Importing…' : parsed?.rows.length ? `Import ${parsed.rows.length} Record${parsed.rows.length === 1 ? '' : 's'}` : 'Import'}
                     </Button>
                   </div>
                 </>
@@ -822,7 +956,7 @@ export default function Leads({ lockedStatus, lockedSalesType, title }: LeadsPro
           open
           onClose={() => setEmailLead(null)}
           defaultTo={emailLead.email ? [emailLead.email] : []}
-          contextLabel={emailLead.contactPersonName || emailLead.companyName}
+          contextLabel={emailLead.contactPersonName || recordName(emailLead)}
           fromLabel={emailSender ?? undefined}
         />
       )}

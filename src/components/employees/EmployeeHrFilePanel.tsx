@@ -83,17 +83,18 @@ export function EmployeeHrFilePanel({ employee }: { employee: Consultant }) {
         <Card title="Job & Placement" icon={Briefcase}>
           <Item label="Employee Code">{employee.employeeCode}</Item>
           <Item label="Job Title">{employee.position}</Item>
-          <Item label="Department">
-            {employee.department && typeof employee.department === 'object' ? employee.department.name : null}
+          <Item label="Departments">
+            {[employee.department, ...(employee.departments ?? [])]
+              .map((d) => (d && typeof d === 'object' ? d.name : null))
+              .filter(Boolean)
+              .join(', ') || null}
           </Item>
           <Item label="Section">{hr.section}</Item>
-          {(employee.role === 'sales' || employee.role === 'sales_manager') && (
+          {[employee.role, ...(employee.extraRoles ?? [])].some((r) => r === 'sales' || r === 'sales_manager') && (
             <Item label="Tele-sales Teams">
               {employeeTeamNames(employee).length > 0
                 ? employeeTeamNames(employee).join(', ')
-                : employee.role === 'sales'
-                  ? <span className="text-amber-700 font-medium">No team — sees no leads</span>
-                  : 'All teams'}
+                : <span className="text-amber-700 font-medium">No team — sees no leads</span>}
             </Item>
           )}
           <Item label="Direct Manager">

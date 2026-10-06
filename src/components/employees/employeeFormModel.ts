@@ -36,8 +36,10 @@ export interface EmployeeFormValues {
   phone: string;
   position: string;
   password: string;
-  role: EmployeeRole;
-  department?: string | null;
+  /** Every role, primary first (the multi-select). */
+  roles: EmployeeRole[];
+  /** Every department id, primary first (the multi-select). */
+  departmentIds: string[];
   /** The ticked tele-sales teams (sales family only). */
   teleSalesTeams: string[];
   modules: ModuleKey[];
@@ -58,8 +60,8 @@ export const emptyEmployeeForm = (role: EmployeeRole): EmployeeFormValues => ({
   phone: '',
   position: '',
   password: '',
-  role,
-  department: undefined,
+  roles: [role],
+  departmentIds: [],
   teleSalesTeams: [],
   modules: [],
   status: 'active',
@@ -107,8 +109,8 @@ export const employeeToForm = (c: Consultant): EmployeeFormValues => {
     phone: c.phone ?? '',
     position: c.position ?? '',
     password: '',
-    role: c.role,
-    department: refId(c.department) || undefined,
+    roles: [...new Set([c.role, ...(c.extraRoles ?? [])])],
+    departmentIds: [...new Set([c.department, ...(c.departments ?? [])].map(refId).filter(Boolean))],
     // Home team first, then the other ticked teams
     teleSalesTeams: [...new Set([c.teleSalesTeam, ...(c.teleSalesTeams ?? [])].map(refId).filter(Boolean))],
     modules: c.modules ?? [],
@@ -132,8 +134,11 @@ export const formToPayload = (v: EmployeeFormValues, withHr: boolean): UpdateCon
     email: v.email.trim(),
     phone: v.phone.trim(),
     position: v.position.trim(),
-    role: v.role,
-    department: v.department ?? null,
+    // The lists are what the API reads; the single fields stay for older servers.
+    role: v.roles[0],
+    roles: v.roles,
+    department: v.departmentIds[0] ?? null,
+    departments: v.departmentIds,
     teleSalesTeams: v.teleSalesTeams,
     modules: v.modules,
     status: v.status,

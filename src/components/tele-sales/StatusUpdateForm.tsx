@@ -5,6 +5,8 @@ import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchAgents } from '@/redux/slices/teleSalesAgentsSlice';
 import { changeLeadStatus } from '@/redux/slices/teleSalesLeadsSlice';
 import * as teleSalesApi from '@/api/teleSalesApi';
+import { useTeamAgents } from '@/hooks/useTeamAgents';
+import { teamId } from '@/types/teleSales.types';
 import { Button } from '@/components/ui/button';
 import {
   LEAD_STATUS_WORKFLOW, NEXT, validateStatusFields,
@@ -24,6 +26,16 @@ interface StatusUpdateFormProps {
   onChanged?: (lead: Lead) => void;
   /** Dialog only — the Cancel button. */
   onCancel?: () => void;
+  /**
+   * Bulk mode (the Bulk Edit dialog): offer these statuses instead of the lead's
+   * transitions, fill the inputs once, and hand them to `onSubmit` instead of
+   * saving one lead. `lead` is then only a blank stand-in.
+   */
+  bulk?: {
+    targets: LeadStatus[];
+    count: number;
+    onSubmit: (newStatus: LeadStatus, values: Record<string, unknown>) => Promise<void>;
+  };
 }
 
 const MONEY_CURRENCIES = VALUE_CURRENCIES;
@@ -88,13 +100,17 @@ const initialValues = (status: LeadStatus, lead: Lead) => {
  * validated workflow (POST /leads/:id/status). Shared by the Change Status
  * dialog and the lead page's Quick Update card so both behave the same.
  */
-export function StatusUpdateForm({ lead, variant, onChanged, onCancel }: StatusUpdateFormProps) {
+export function StatusUpdateForm({ lead, variant, onChanged, onCancel, bulk }: StatusUpdateFormProps) {
   const dispatch = useAppDispatch();
-  const agents = useAppSelector((s) => s.teleSalesAgents.agents);
+  const allAgents = useAppSelector((s) => s.teleSalesAgents.agents);
+  // The owner picker ("New Lead") lists the employees of the lead's own team; in
+  // bulk mode the records may span teams, so it falls back to the full roster.
+  const { agents: leadTeamAgents } = useTeamAgents(bulk ? null : teamId(lead.team) || null);
+  const agents = bulk ? allAgents : leadTeamAgents;
 
-  const allowed = NEXT[lead.status] || [];
+  const allowed = bulk ? bulk.targets : NEXT[lead.status] || [];
   // The inline card starts on the current status — a quick update of it.
-  const defaultTarget = variant === 'inline' && allowed.includes(lead.status) ? lead.status : null;
+  const defaultTarget = !bulk && variant === 'inline' && allowed.includes(lead.status) ? lead.status : null;
 
   const [target, setTarget] = useState<LeadStatus | null>(defaultTarget);
   const [values, setValues] = useState<Record<string, any>>(defaultTarget ? initialValues(defaultTarget, lead) : {});
@@ -111,7 +127,7 @@ export function StatusUpdateForm({ lead, variant, onChanged, onCancel }: StatusU
     setValues(defaultTarget ? initialValues(defaultTarget, lead) : {});
     setFieldErrors({});
     setSendEmail(false);
-    if (agents.length === 0) dispatch(fetchAgents({ limit: 200 }));
+    if (bulk && allAgents.length === 0) dispatch(fetchAgents({ limit: 200 }));
   }, [lead._id, lead.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const config = target ? LEAD_STATUS_WORKFLOW[target] : null;
@@ -170,7 +186,7 @@ export function StatusUpdateForm({ lead, variant, onChanged, onCancel }: StatusU
     errors.forEach((e) => { map[e.field] = e.message; });
     // The email is checked BEFORE the status saves, so a typo never leaves a
     // follow-up logged without the email the agent meant to send.
-    const emailing = sendEmail && !!config?.quickEmail;
+    const emailing = !bulk && sendEmail && !!config?.quickEmail;
     const recipients = splitAddresses(email.to);
     if (emailing) {
       if (recipients.length === 0) map.email_to = 'Add at least one recipient';
@@ -180,6 +196,16 @@ export function StatusUpdateForm({ lead, variant, onChanged, onCancel }: StatusU
     }
     if (Object.keys(map).length > 0) {
       setFieldErrors(map);
+      return;
+    }
+
+    if (bulk) {
+      setSubmitting(true);
+      try {
+        await bulk.onSubmit(target, values);
+      } finally {
+        setSubmitting(false);
+      }
       return;
     }
 
@@ -338,14 +364,16 @@ export function StatusUpdateForm({ lead, variant, onChanged, onCancel }: StatusU
     );
   };
 
-  if (allowed.length === 0) {
+  if (allowed.length === 0 && !bulk) {
     return <p className="text-sm text-on-surface-variant py-6 text-center">This lead is closed as won and is read-only.</p>;
   }
 
   const visibleFields = config ? config.fields.filter((f) => isFieldVisible(f, values, lead)) : [];
-  const baseLabel = extraMeeting
-    ? 'Book Additional Meeting'
-    : target === lead.status ? 'Save Update' : 'Update Status';
+  const baseLabel = bulk
+    ? `Apply to ${bulk.count} record${bulk.count === 1 ? '' : 's'}`
+    : extraMeeting
+      ? 'Book Additional Meeting'
+      : target === lead.status ? 'Save Update' : 'Update Status';
   const submitLabel = sendEmail && config?.quickEmail ? `${baseLabel} & Send Email` : baseLabel;
 
   return (
@@ -394,7 +422,14 @@ export function StatusUpdateForm({ lead, variant, onChanged, onCancel }: StatusU
             </div>
           )}
 
-          {config.quickEmail && (
+          {bulk && (
+            <p className="rounded-xl bg-surface-container px-3 py-2 text-xs text-on-surface-variant">
+              These inputs are applied to every selected record. A record whose current status can't move to
+              {' '}<span className="font-medium text-on-surface">{target}</span> is skipped and listed afterwards.
+            </p>
+          )}
+
+          {config.quickEmail && !bulk && (
             <div className="rounded-xl border border-outline-variant/40 p-3 space-y-3">
               <label className={`flex items-center gap-2 text-sm font-medium ${lead.email ? 'text-on-surface cursor-pointer' : 'text-on-surface-variant'}`}>
                 <input

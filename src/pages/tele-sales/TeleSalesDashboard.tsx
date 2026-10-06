@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { isCrossTeamReader, ownTeamNames, ownTeams } from '@/lib/teleSalesRole';
 import { formatMoney, type CurrencyTotal } from '@/types/teleSales.types';
+import { STAGE_META, STAGE_ORDER, stageOf, recordName } from '@/lib/leadStages';
 
 /* ─────────────────────────────────────────────────────────────
    Spring presets — matches the main Tickets dashboard's motion language.
@@ -261,15 +262,28 @@ export default function TeleSalesDashboard() {
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ ...SP, delay: 0.15 }}
-        className="bg-gradient-to-r from-brand-500 to-brand-600 rounded-2xl p-5 text-white flex items-center justify-between"
+        className="bg-gradient-to-r from-brand-500 to-brand-600 rounded-2xl p-5 text-white flex items-center justify-between gap-6 flex-wrap"
       >
         <div>
-          <p className="text-white/70 text-sm">Total Leads</p>
+          <p className="text-white/70 text-sm">Total Records</p>
           <p className="text-4xl font-bold mt-1 tabular-nums">
             <AnimatedNumber to={stats?.total ?? 0} />
           </p>
         </div>
-        <Users className="w-12 h-12 text-white/30" />
+        {/* The three pipeline stages, each opening its tab */}
+        <div className="flex items-stretch gap-3 flex-wrap">
+          {STAGE_ORDER.map((s) => (
+            <button
+              key={s}
+              onClick={() => navigate(STAGE_META[s].path)}
+              className="rounded-xl bg-white/10 hover:bg-white/20 px-4 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+            >
+              <p className="text-white/70 text-xs">{STAGE_META[s].plural}</p>
+              <p className="text-2xl font-bold tabular-nums">{(stats?.byStage?.[s] ?? 0).toLocaleString()}</p>
+            </button>
+          ))}
+        </div>
+        <Users className="w-12 h-12 text-white/30 hidden lg:block" />
       </motion.div>
 
       {/* How the money on this page is calculated — every total above is a sum of
@@ -322,7 +336,7 @@ export default function TeleSalesDashboard() {
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-outline-variant/10">
           <h2 className="font-semibold text-on-surface">Sales Pipeline</h2>
-          <span className="text-xs text-on-surface-variant">{stats?.total ?? 0} total leads</span>
+          <span className="text-xs text-on-surface-variant">{stats?.total ?? 0} records (Data, Leads and Opportunities)</span>
         </div>
         <motion.div
           variants={stagger}
@@ -417,7 +431,7 @@ export default function TeleSalesDashboard() {
         {/* Recent Leads */}
         <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/20 shadow-sm overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b border-outline-variant/10">
-            <h2 className="font-semibold text-on-surface">Recent Leads</h2>
+            <h2 className="font-semibold text-on-surface">Recent Records</h2>
             <button onClick={() => navigate('/tele-sales/leads')} className="text-sm text-brand-500 hover:text-brand-600 font-medium flex items-center gap-1">
               View all <ArrowRight className="w-4 h-4" />
             </button>
@@ -441,9 +455,12 @@ export default function TeleSalesDashboard() {
                   className="px-5 py-3 flex items-center justify-between hover:bg-surface-container cursor-pointer"
                 >
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-on-surface truncate">{lead.companyName}</p>
+                    <p className="text-sm font-semibold text-on-surface truncate flex items-center gap-2">
+                      {recordName(lead)}
+                      <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${STAGE_META[stageOf(lead)].badge}`}>{STAGE_META[stageOf(lead)].label}</span>
+                    </p>
                     <p className="text-xs text-on-surface-variant mt-0.5 flex items-center gap-1.5 flex-wrap">
-                      <span>{lead.contactPersonName}</span>
+                      {lead.contactPersonName && <span>{lead.contactPersonName}</span>}
                       {(lead.phonePrimary || lead.phoneSecondary) && (
                         <>
                           <span aria-hidden>·</span>
