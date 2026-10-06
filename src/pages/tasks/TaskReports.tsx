@@ -5,7 +5,7 @@ import { fetchDepartments } from '@/redux/slices/departmentSlice';
 import { fetchConsultants } from '@/redux/slices/consultantSlice';
 import { fetchTaskCategories } from '@/redux/slices/taskCategorySlice';
 import { getTaskReport } from '@/api/tasksApi';
-import type { Task, TaskReport, TaskReportBreakdown, TaskReportParams, TaskReportScope, TaskStatus } from '@/types/task.types';
+import type { Task, TaskPostponement, TaskReport, TaskReportBreakdown, TaskReportParams, TaskReportScope, TaskStatus } from '@/types/task.types';
 import { Button } from '@/components/ui/button';
 import { getWeekDateRange } from '@/utils/weekUtils';
 import {
@@ -115,10 +115,19 @@ const groupTasks = (tasks: Task[]): ReportLine[] => {
   return lines;
 };
 
+// A task's postponements, oldest first; the first one holds the original end date.
+const postponementsOf = (t: Task): TaskPostponement[] =>
+  [...(t.postponements ?? [])].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+const originalEndDate = (t: Task): string | undefined =>
+  postponementsOf(t)[0]?.previousEndDate ?? undefined;
+const postponeLine = (p: TaskPostponement, n: number) =>
+  `${n}) ${p.previousEndDate ? `${fmtDate(p.previousEndDate)} -> ` : ''}${fmtDate(p.date)}: ${p.comment}`;
+
 // Rows for the task detail table and every export share one shape.
 const TASK_HEADERS = [
   'Task #', 'Type', 'Main Task', 'Name', 'Subtasks', 'Description', 'Category', 'Department', 'Assigned To',
   'Responsible', 'Start Week', 'End Week', 'Duration (hrs)', 'Start Date', 'End Date', 'Status', 'Delay (days)', 'Completed At',
+  'Postponed (times)', 'Original End Date', 'Postponing History',
 ];
 const taskRow = (t: Task, opts: { level?: 0 | 1; subTotal?: number; subDone?: number } = {}): (string | number)[] => [
   t.taskNumber ?? '',
@@ -139,7 +148,20 @@ const taskRow = (t: Task, opts: { level?: 0 | 1; subTotal?: number; subDone?: nu
   STATUS_META[t.status]?.label ?? t.status,
   t.delayDays ?? 0,
   fmtDate(t.completedAt ?? undefined),
+  t.postponements?.length ?? 0,
+  fmtDate(originalEndDate(t)),
+  postponementsOf(t).map((p, i) => postponeLine(p, i + 1)).join('\n'),
 ];
+
+// One row per postponement, for the dedicated Excel sheet and PDF section.
+const POSTPONE_HEADERS = ['Task #', 'Task', '#', 'From (End Date)', 'To (New End Date)', 'Comment', 'Postponed By', 'Postponed On'];
+const postponementRows = (tasks: Task[]): (string | number)[][] =>
+  tasks.flatMap((t) =>
+    postponementsOf(t).map((p, i) => [
+      t.taskNumber ?? '', t.name, i + 1, fmtDate(p.previousEndDate ?? undefined), fmtDate(p.date),
+      p.comment, personName(p.postponedBy), fmtDate(p.createdAt),
+    ])
+  );
 
 const BREAKDOWN_HEADERS = ['Name', 'Total', 'Pending', 'In Progress', 'Done', 'Overdue', 'Completion %', 'Hours', 'Avg delay (days)'];
 const breakdownRow = (b: TaskReportBreakdown): (string | number)[] => [
@@ -292,7 +314,7 @@ export default function TaskReports() {
   );
 
   const rows = report?.[breakdown] ?? [];
-  const tasks = report?.tasks ?? [];
+  const tasks = useMemo(() => report?.tasks ?? [], [report]);
   const lines = useMemo(() => groupTasks(tasks), [tasks]);
   const visibleLines = showAllTasks ? lines : lines.slice(0, 60);
   // Export rows follow the same grouping: main task, then its subtasks indented.
@@ -326,8 +348,12 @@ export default function TaskReports() {
       ['On-time completion %', s.onTimeRate],
       ['Avg delay (days)', s.avgDelayDays],
       ['Total planned hours', s.totalDuration],
+      ['Postponed tasks', s.postponedTasks ?? 0],
+      ['Total postponements', s.totalPostponements ?? 0],
     ];
   };
+
+  const postponeRows = useMemo(() => postponementRows(tasks), [tasks]);
 
   const autoWidth = (ws: XLSX.WorkSheet, data: (string | number)[][]) => {
     const cols = Math.max(...data.map((r) => r.length));
@@ -357,6 +383,11 @@ export default function TaskReports() {
       autoWidth(wsTasks, taskData);
       XLSX.utils.book_append_sheet(wb, wsTasks, 'Tasks');
 
+      const postponeData = [POSTPONE_HEADERS, ...postponeRows];
+      const wsPostpone = XLSX.utils.aoa_to_sheet(postponeData);
+      autoWidth(wsPostpone, postponeData);
+      XLSX.utils.book_append_sheet(wb, wsPostpone, 'Postponements');
+
       const buffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
       saveAs(new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), filename('xlsx'));
       toast.success('Report exported as Excel');
@@ -385,7 +416,7 @@ export default function TaskReports() {
       // jsPDF's built-in fonts hold no Arabic glyphs and it applies no shaping
       // or bidi, so Arabic reports get an embedded font and every cell goes
       // through shapeArabic(). The font is only fetched when it is needed.
-      const needsArabic = anyArabic([summaryRows(), exportRows, ...BREAKDOWNS.map(({ key }) => report[key].map(breakdownRow)), [scopeLabel, periodLabel]]);
+      const needsArabic = anyArabic([summaryRows(), exportRows, postponeRows, ...BREAKDOWNS.map(({ key }) => report[key].map(breakdownRow)), [scopeLabel, periodLabel]]);
       const arabicFont = needsArabic ? await registerArabicFont(doc) : null;
       if (needsArabic && !arabicFont) toast.error('Arabic font unavailable — the PDF may not show Arabic text');
       // Latin keeps Helvetica; only Arabic cells switch font, so English
@@ -418,10 +449,11 @@ export default function TaskReports() {
 
       autoTable(doc, {
         startY: 36,
-        head: [['Total', 'Main', 'Subtasks', 'Pending', 'In Progress', 'Done', 'Overdue', 'Completion', 'On-time', 'Avg delay', 'Hours']],
+        head: [['Total', 'Main', 'Subtasks', 'Pending', 'In Progress', 'Done', 'Overdue', 'Completion', 'On-time', 'Avg delay', 'Hours', 'Postponed', 'Postponements']],
         body: [[
           s.total, s.mainTasks, s.subTasks, s.pending, s.inProgress, s.done, s.overdue,
           `${s.completionRate}%`, `${s.onTimeRate}%`, `${s.avgDelayDays}d`, s.totalDuration,
+          s.postponedTasks ?? 0, s.totalPostponements ?? 0,
         ]],
         styles: { fontSize: 9 },
         headStyles: { fillColor: [47, 111, 237] },
@@ -449,12 +481,13 @@ export default function TaskReports() {
       const pdfBody = exportRows.map((r, i) => {
         if (r[1] === 'Subtask') subRowIdx.add(i);
         const weeks = r[11] !== '' && r[11] !== r[10] ? `W${r[10]} – W${r[11]}` : r[10] !== '' ? `W${r[10]}` : '';
-        // Task #, Name (indented for subtasks), Subtasks, Category, Assigned, Responsible, Weeks, Hrs, Start, End, Status, Delay
-        return [r[0], r[3], r[4], r[6], r[8], r[9], weeks, r[12], r[13], r[14], r[15], r[16]].map(forPdf);
+        const postponed = Number(r[18]) > 0 ? `${r[18]}x (orig. ${r[19]})` : '';
+        // Task #, Name (indented for subtasks), Subtasks, Category, Assigned, Responsible, Weeks, Hrs, Start, End, Status, Delay, Postponed
+        return [r[0], r[3], r[4], r[6], r[8], r[9], weeks, r[12], r[13], r[14], r[15], r[16], postponed].map(forPdf);
       });
       autoTable(doc, {
         startY: 20,
-        head: [['Task #', 'Task / ↳ Subtask', 'Subtasks', 'Category', 'Assigned To', 'Responsible', 'Weeks', 'Hrs', 'Start', 'End', 'Status', 'Delay'].map(pdfSafeLatin)],
+        head: [['Task #', 'Task / ↳ Subtask', 'Subtasks', 'Category', 'Assigned To', 'Responsible', 'Weeks', 'Hrs', 'Start', 'End', 'Status', 'Delay', 'Postponed'].map(pdfSafeLatin)],
         body: pdfBody,
         styles: { fontSize: 7 },
         headStyles: { fillColor: [47, 111, 237] },
@@ -470,6 +503,21 @@ export default function TaskReports() {
           }
         },
       });
+
+      if (postponeRows.length) {
+        const y = (doc as any).lastAutoTable.finalY + 8;
+        doc.setFontSize(12);
+        write(`Postponing History (${postponeRows.length})`, 14, y);
+        autoTable(doc, {
+          startY: y + 3,
+          head: [POSTPONE_HEADERS.map(pdfSafeLatin)],
+          body: postponeRows.map((r) => r.map(forPdf)),
+          styles: { fontSize: 7 },
+          headStyles: { fillColor: [47, 111, 237] },
+          columnStyles: { 1: { cellWidth: 50 }, 5: { cellWidth: 80 } },
+          didParseCell: styleArabicCells,
+        });
+      }
 
       doc.save(filename('pdf'));
       toast.success('Report exported as PDF');
@@ -791,15 +839,16 @@ export default function TaskReports() {
                     <th className="px-3 py-2">End</th>
                     <th className="px-3 py-2">Status</th>
                     <th className="px-3 py-2">Delay</th>
+                    <th className="px-3 py-2">Postponed</th>
                     <th className="px-3 py-2" />
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-outline-variant/10">
                   {visibleLines.length === 0 ? (
-                    <tr><td colSpan={13} className="px-3 py-8 text-center text-on-surface-variant/60 italic">No tasks match the filters</td></tr>
+                    <tr><td colSpan={14}className="px-3 py-8 text-center text-on-surface-variant/60 italic">No tasks match the filters</td></tr>
                   ) : visibleLines.map((line, i) => line.kind === 'group' ? (
                     <tr key={`g-${i}`} className="bg-surface-container-low/60">
-                      <td colSpan={13} className="px-3 py-1.5 text-xs text-on-surface-variant">
+                      <td colSpan={14} className="px-3 py-1.5 text-xs text-on-surface-variant">
                         <GitBranch className="inline w-3 h-3 mr-1 -mt-0.5" />
                         Subtasks of <span className="font-semibold text-on-surface">{line.label}</span>
                         <span className="opacity-70"> · main task is outside the current filters · {line.count} subtask{line.count === 1 ? '' : 's'}</span>
@@ -845,6 +894,18 @@ export default function TaskReports() {
                         {(t.delayDays ?? 0) > 0
                           ? <span className="inline-flex px-2 py-0.5 rounded-md bg-red-100 text-red-700 text-xs font-bold">+{t.delayDays}d</span>
                           : <span className="text-xs text-green-700 font-medium">On time</span>}
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        {t.postponements?.length
+                          ? (
+                            <span
+                              className="inline-flex px-2 py-0.5 rounded-md bg-orange-100 text-orange-800 text-xs font-bold"
+                              title={postponementsOf(t).map((p, n) => postponeLine(p, n + 1)).join('\n')}
+                            >
+                              {t.postponements.length}× · orig. {fmtDate(originalEndDate(t)) || '—'}
+                            </span>
+                          )
+                          : <span className="text-xs text-on-surface-variant/60">—</span>}
                       </td>
                       <td className="px-3 py-2">
                         <Button size="icon-sm" variant="ghost" onClick={() => navigate(`/tasks/${t._id}`)} aria-label="View task">
