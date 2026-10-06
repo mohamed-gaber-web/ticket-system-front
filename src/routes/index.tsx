@@ -328,7 +328,12 @@ export const routes: RouteObject[] = [
       },
       {
         path: "/tasks",
-        element: <ModuleRoute module="tasks"><Lazy><Tasks /></Lazy></ModuleRoute>,
+        element: <ModuleRoute module="tasks"><Lazy><Tasks key="all" /></Lazy></ModuleRoute>,
+      },
+      {
+        // `key` so switching between My Tasks and All Tasks starts with fresh filters
+        path: "/tasks/my",
+        element: <ModuleRoute module="tasks"><Lazy><Tasks key="mine" mine /></Lazy></ModuleRoute>,
       },
       {
         path: "/tasks/create",

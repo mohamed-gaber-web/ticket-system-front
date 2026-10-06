@@ -39,6 +39,16 @@ export const deleteBoard = async (id: string) =>
 export const setBoardMembers = async (id: string, members: string[]) =>
   (await api.put<ApiOne<DevBoard>>(`${base}/boards/${id}/members`, { members })).data;
 
+/** Link tickets to the board (department + employee [+ column]), or `null` to remove the link. */
+export const setTicketRule = async (
+  boardId: string,
+  payload: { department: string; employee: string; list?: string | null } | null,
+) =>
+  (await api.put<ApiOne<{ board: DevBoard; imported: number }> & { message?: string }>(
+    `${base}/boards/${boardId}/ticket-rule`,
+    payload ?? { ticketRule: null },
+  )).data;
+
 export const addLabel = async (boardId: string, payload: { name: string; color: string }) =>
   (await api.post<ApiOne<DevLabel[]>>(`${base}/boards/${boardId}/labels`, payload)).data;
 

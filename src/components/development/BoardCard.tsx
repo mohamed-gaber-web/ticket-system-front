@@ -1,6 +1,6 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { CalendarDays, CheckSquare, MessageSquare } from 'lucide-react';
+import { CalendarDays, CheckSquare, MessageSquare, Ticket } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { DevCard, DevLabel } from '@/types/development.types';
 import { PriorityBadge } from './PriorityBadge';
@@ -54,6 +54,11 @@ export function CardBody({ card, labels, dragging, overlay, onClick }: CardBodyP
       <p className={cn('text-sm font-semibold leading-snug text-on-surface break-words', done && 'line-through')}>{card.title}</p>
 
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-on-surface-variant">
+        {card.ticket && (
+          <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-1.5 py-0.5 font-semibold text-primary" title="Created from a ticket">
+            <Ticket className="h-3 w-3" /> {card.ticket.ticketNumber ?? 'Ticket'}
+          </span>
+        )}
         {card.priority !== 'medium' && <PriorityBadge priority={card.priority} />}
         {card.dueDate && (
           <span className={cn('inline-flex items-center gap-1', dueTone(card.dueDate, done))}>

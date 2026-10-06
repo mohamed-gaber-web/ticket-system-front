@@ -18,6 +18,25 @@ export interface DevLabel {
   color: string;
 }
 
+/**
+ * "Linked tickets": tickets of `department` assigned to `employee` get a card on
+ * the board (in `list`, else the first list). Set by admins / the development manager.
+ */
+export interface DevTicketRule {
+  department: { _id: string; name: string } | string;
+  employee: Pick<DevPerson, '_id' | 'firstName' | 'lastName'> | string;
+  list: string | null;
+  setBy: string;
+}
+
+/** The ticket a card was created from. */
+export interface DevCardTicket {
+  _id: string;
+  ticketNumber?: string;
+  subject?: string;
+  status?: string;
+}
+
 export interface DevBoard {
   _id: string;
   name: string;
@@ -26,6 +45,7 @@ export interface DevBoard {
   members: DevPerson[];
   labels: DevLabel[];
   archived: boolean;
+  ticketRule?: DevTicketRule | null;
   createdAt: string;
   updatedAt: string;
   /** Only on the list endpoint */
@@ -71,6 +91,8 @@ export interface DevCard {
   checklist: DevChecklistItem[];
   createdBy: Pick<DevPerson, '_id' | 'firstName' | 'lastName'>;
   completedAt: string | null;
+  /** Set when the board's ticket rule created the card. */
+  ticket?: DevCardTicket | null;
   createdAt: string;
   updatedAt: string;
 }
