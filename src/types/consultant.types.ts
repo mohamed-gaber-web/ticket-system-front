@@ -116,6 +116,8 @@ export interface ConsultantQueryParams {
   /** Employees who can open this module. */
   module?: ModuleKey;
   teleSalesTeam?: string;
+  /** Primary or extra department id. */
+  department?: string;
   search?: string;
 }
 

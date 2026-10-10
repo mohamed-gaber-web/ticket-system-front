@@ -4,12 +4,16 @@ import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { useAccess } from '@/redux/hooks/useAccess';
 import { ROLES, ROLE_LABELS, roleFamily, isManagerRole, roleLabel, holdsPrivilegedModule, rolesOf } from '@/lib/access';
 import type { EmployeeRole } from '@/types/auth.types';
+import type { ConsultantQueryParams, ConsultantStatus } from '@/types/consultant.types';
 import { fetchConsultants, deleteConsultant, adminResetConsultantPassword, updateConsultant } from '@/redux/slices/consultantSlice';
 import { fetchDepartments } from '@/redux/slices/departmentSlice';
 import { fetchTeams } from '@/redux/slices/teleSalesTeamsSlice';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, RefreshCw, Edit, Trash2, ChevronLeft, ChevronRight, KeyRound, Timer } from 'lucide-react';
+import { Plus, Search, RefreshCw, Edit, Trash2, ChevronLeft, ChevronRight, KeyRound, Timer, FileSpreadsheet, FileText } from 'lucide-react';
+import { toast } from 'sonner';
+import { getConsultants } from '@/api/consultantApi';
+import { exportEmployeesExcel, exportEmployeesPdf } from '@/utils/employeeExport';
 import { CustomSelect } from '@/components/ui/custom-select';
 import { cn } from '@/lib/utils';
 import Swal from 'sweetalert2';
@@ -79,15 +83,51 @@ export default function Consultants() {
     });
   }, [consultants]);
 
-  const loadConsultants = (page = currentPage) => {
-    const params: any = { page, limit: PAGE_SIZE };
+  const filterParams = () => {
+    const params: ConsultantQueryParams = {};
     if (searchTerm) params.search = searchTerm;
-    if (statusFilter) params.status = statusFilter;
-    if (roleFilter) params.role = roleFilter;
+    if (statusFilter) params.status = statusFilter as ConsultantStatus;
+    if (roleFilter) params.role = roleFilter as EmployeeRole;
     if (deptFilter) params.department = deptFilter;
     if (teamFilter) params.teleSalesTeam = teamFilter;
+    return params;
+  };
+
+  const loadConsultants = (page = currentPage) => {
     setCurrentPage(page);
-    dispatch(fetchConsultants(params));
+    dispatch(fetchConsultants({ ...filterParams(), page, limit: PAGE_SIZE }));
+  };
+
+  // Export every employee matching the filters (not just this page).
+  const [exporting, setExporting] = useState<'excel' | 'pdf' | null>(null);
+  const handleExport = async (format: 'excel' | 'pdf') => {
+    setExporting(format);
+    try {
+      const res = await getConsultants({ ...filterParams(), page: 1, limit: 5000 });
+      const list = res.data ?? [];
+      if (list.length === 0) {
+        toast.info('No employees match the filters');
+        return;
+      }
+      if (format === 'excel') {
+        exportEmployeesExcel(list);
+      } else {
+        const filters = [
+          statusFilter && `Status: ${EMPLOYEE_STATUS_OPTIONS.find((o) => o.value === statusFilter)?.label ?? statusFilter}`,
+          roleFilter && `Role: ${ROLE_LABELS[roleFilter as EmployeeRole] ?? roleFilter}`,
+          deptFilter && `Department: ${departments.find((d) => d._id === deptFilter)?.name ?? ''}`,
+          teamFilter && `Team: ${teams.find((t) => t._id === teamFilter)?.name ?? ''}`,
+          searchTerm && `Search: ${searchTerm}`,
+        ].filter(Boolean).join('  |  ');
+        const fontOk = await exportEmployeesPdf(list, filters);
+        if (!fontOk) toast.error('Arabic font unavailable — the PDF may not show Arabic text');
+      }
+      toast.success(`Exported ${list.length} employee(s)`);
+    } catch {
+      toast.error(`Failed to export ${format === 'excel' ? 'Excel' : 'PDF'}`);
+    } finally {
+      setExporting(null);
+    }
   };
 
   const handleSearch = () => {
@@ -167,12 +207,22 @@ export default function Consultants() {
           <h1 className="display-sm text-on-surface">Employees</h1>
           <p className="text-on-surface-variant mt-1">Manage employee accounts, roles and module access</p>
         </div>
-        {access.canManageEmployees && (
-          <Button onClick={() => navigate(EMPLOYEE_CREATE_PATH)}>
-            <Plus className="w-4 h-4 mr-2" />
-            Add Employee
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => handleExport('excel')} disabled={exporting !== null}>
+            <FileSpreadsheet className="w-4 h-4 mr-2" />
+            {exporting === 'excel' ? 'Exporting…' : 'Export Excel'}
           </Button>
-        )}
+          <Button variant="outline" onClick={() => handleExport('pdf')} disabled={exporting !== null}>
+            <FileText className="w-4 h-4 mr-2" />
+            {exporting === 'pdf' ? 'Exporting…' : 'Export PDF'}
+          </Button>
+          {access.canManageEmployees && (
+            <Button onClick={() => navigate(EMPLOYEE_CREATE_PATH)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Add Employee
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Filters */}
