@@ -17,15 +17,15 @@ export const ROLES: EmployeeRole[] = [
   'developer_manager',
 ];
 
-export const MODULES: ModuleKey[] = ['tickets', 'telesales', 'tasks', 'admin', 'development', 'hr'];
+export const MODULES: ModuleKey[] = ['tickets', 'telesales', 'tasks', 'admin', 'development', 'hr', 'marketing'];
 
 export const ROLE_DEFAULT_MODULES: Record<EmployeeRole, ModuleKey[]> = {
   admin: MODULES,
   consultant: ['tickets'],
   sales: ['telesales'],
   sales_manager: ['telesales'],
-  marketing: ['telesales', 'tasks'],
-  marketing_manager: ['telesales', 'tasks'],
+  marketing: ['telesales', 'tasks', 'marketing'],
+  marketing_manager: ['telesales', 'tasks', 'marketing'],
   developer: ['development'],
   developer_manager: ['development'],
 };
@@ -48,6 +48,7 @@ export const MODULE_LABELS: Record<ModuleKey, string> = {
   admin: 'Administration',
   development: 'Development',
   hr: 'HR',
+  marketing: 'Marketing',
 };
 
 export const isEmployeeRole = (role: unknown): role is EmployeeRole =>
@@ -107,6 +108,7 @@ export const homePathFor = (modules: ModuleKey[]): string => {
   if (modules.includes('telesales')) return '/tele-sales';
   if (modules.includes('tasks')) return '/tasks/dashboard';
   if (modules.includes('development')) return '/development';
+  if (modules.includes('marketing')) return '/marketing/csp';
   if (modules.includes('hr')) return '/hr/employees';
   return '/employee-requests';
 };

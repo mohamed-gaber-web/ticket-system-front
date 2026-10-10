@@ -37,7 +37,7 @@ const ROLE_HINTS: Record<EmployeeRole, string> = {
   consultant: 'Ticketing.',
   sales: 'Tele-sales: the records of the teams ticked below assigned to them; imports into Data.',
   sales_manager: 'Tele-sales: every record of the teams ticked below; assigns; runs their sales people.',
-  marketing: 'Tele-sales (read-only, every team) and Tasks.',
+  marketing: 'Marketing (CSP, email campaign), Tele-sales (read-only, every team) and Tasks.',
   marketing_manager: 'The same as marketing, and runs the marketing people.',
   developer: 'Development boards they create or are added to.',
   developer_manager: 'Every development board; runs the developer people.',

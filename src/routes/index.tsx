@@ -175,6 +175,11 @@ const TaskCategories = lazy(() => import("@/pages/task-categories/taskCategories
 const CreateTaskCategory = lazy(() => import("@/pages/task-categories/createTaskCategory"));
 const DevelopmentBoards = lazy(() => import("@/pages/development/DevelopmentBoards"));
 const DevelopmentBoard = lazy(() => import("@/pages/development/DevelopmentBoard"));
+
+// Marketing Module
+const CustomerSurveys = lazy(() => import("@/pages/marketing/CustomerSurveys"));
+const EmailCampaign = lazy(() => import("@/pages/marketing/EmailCampaign"));
+const SocialMedia = lazy(() => import("@/pages/marketing/SocialMedia"));
 const EditTaskCategory = lazy(() => import("@/pages/task-categories/editTaskCategory"));
 
 // Employee Requests Module
@@ -372,6 +377,12 @@ export const routes: RouteObject[] = [
       // Development Module — kanban boards; who sees which board is decided per board by the API
       { path: "/development", element: <ModuleRoute module="development"><Lazy><DevelopmentBoards /></Lazy></ModuleRoute> },
       { path: "/development/boards/:id", element: <ModuleRoute module="development"><Lazy><DevelopmentBoard /></Lazy></ModuleRoute> },
+
+      // Marketing Module — CSP surveys, email campaign, social media (coming soon)
+      { path: "/marketing", element: <Navigate to="/marketing/csp" replace /> },
+      { path: "/marketing/csp", element: <ModuleRoute module="marketing"><Lazy><CustomerSurveys /></Lazy></ModuleRoute> },
+      { path: "/marketing/email-campaign", element: <ModuleRoute module="marketing"><Lazy><EmailCampaign /></Lazy></ModuleRoute> },
+      { path: "/marketing/social-media", element: <ModuleRoute module="marketing"><Lazy><SocialMedia /></Lazy></ModuleRoute> },
       { path: "/task-categories/edit/:id", element: <ManagerRoute><Lazy><EditTaskCategory /></Lazy></ManagerRoute> },
 
       // Employee Requests Module — every employee submits; managers and admins review

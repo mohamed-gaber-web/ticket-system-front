@@ -24,6 +24,8 @@ export interface Access {
   isMarketing: boolean;
   /** Admins only: see and write every tele-sales team (a sales manager runs one). */
   isCrossTeam: boolean;
+  /** Admins and the marketing manager: run the marketing module's settings. */
+  canManageMarketing: boolean;
   /** Admins and the development manager: see and shape every development board. */
   seesAllBoards: boolean;
   /** Has the HR module (admins always do): sees and edits the confidential HR file. */
@@ -71,6 +73,7 @@ export const useAccess = (): Access => {
       isSalesManager: roles.includes('sales_manager'),
       isMarketing: families.includes('marketing'),
       isCrossTeam: isAdmin,
+      canManageMarketing: isAdmin || roles.includes('marketing_manager'),
       seesAllBoards: isAdmin || roles.includes('developer_manager'),
       isHr: resolved.includes('hr'),
       canManageEmployees: isAdmin || resolved.includes('hr'),

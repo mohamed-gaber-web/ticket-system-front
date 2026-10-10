@@ -40,6 +40,10 @@ import {
   MessageSquareText,
   Contact,
   Home,
+  Megaphone,
+  ClipboardList,
+  Send,
+  Share2,
 } from "lucide-react";
 import type { Access } from "@/redux/hooks/useAccess";
 import type { ModuleKey } from "@/types/auth.types";
@@ -272,6 +276,19 @@ const DEVELOPMENT_GROUP: NavLink = {
   ],
 };
 
+// Marketing — customer satisfaction surveys (CSP), the email campaign and
+// (coming soon) social media.
+const MARKETING_GROUP: NavLink = {
+  name: "Marketing",
+  icon: Megaphone,
+  isGroup: true,
+  children: [
+    { name: "CSP", path: "/marketing/csp", icon: ClipboardList },
+    { name: "Email Campaign", path: "/marketing/email-campaign", icon: Send },
+    { name: "Social Media", path: "/marketing/social-media", icon: Share2 },
+  ],
+};
+
 // HR menu — the employee directory (with the confidential HR file for HR and
 // admins), teams, leave approvals and balances, plus ticketing Performance.
 // Every link says who sees it; the group shows when any link survives, so a
@@ -307,6 +324,7 @@ const EMPLOYEE_NAV: NavEntry[] = [
   { module: "telesales", link: TELE_SALES_GROUP },
   { module: "tasks", link: TASKS_GROUP },
   { module: "development", link: DEVELOPMENT_GROUP },
+  { module: "marketing", link: MARKETING_GROUP },
   { module: "any", link: HR_GROUP },
   { module: "any", link: MY_REQUESTS_GROUP },
 ];
