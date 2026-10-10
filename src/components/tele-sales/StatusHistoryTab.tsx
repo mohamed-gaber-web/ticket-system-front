@@ -17,6 +17,26 @@ const formatFieldValue = (value: any): string => {
   return String(value);
 };
 
+/** The details an update was logged with, as a label / value table. */
+export function StatusEntryDetails({ entry, className = '' }: { entry: LeadStatusHistoryEntry; className?: string }) {
+  const config = LEAD_STATUS_WORKFLOW[entry.newStatus];
+  const rows = Object.entries(entry.fieldValues || {}).filter(([, v]) => v !== '' && v != null);
+  if (rows.length === 0) return null;
+  return (
+    <div className={`border border-outline-variant/30 rounded-xl overflow-hidden ${className}`}>
+      {rows.map(([key, value], idx) => {
+        const field = config?.fields.find((f) => f.k === key);
+        return (
+          <div key={key} className={`flex gap-3 px-3 py-1.5 text-sm ${idx % 2 === 0 ? 'bg-surface-container/50' : ''}`}>
+            <span className="text-on-surface-variant w-48 shrink-0 text-xs">{field?.label || key}</span>
+            <span className="font-medium text-on-surface break-words">{formatFieldValue(value)}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export function StatusHistoryTab({ leadId }: { leadId: string }) {
   const [history, setHistory] = useState<LeadStatusHistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,7 +73,6 @@ export function StatusHistoryTab({ leadId }: { leadId: string }) {
     <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/20 p-5">
       {history.map((entry, i) => {
         const config = LEAD_STATUS_WORKFLOW[entry.newStatus];
-        const rows = Object.entries(entry.fieldValues || {}).filter(([, v]) => v !== '' && v != null);
         return (
           <div key={entry._id} className="relative pl-6 pb-6 last:pb-0">
             {i < history.length - 1 && <div className="absolute left-[7px] top-4 bottom-0 w-px bg-outline-variant/30" />}
@@ -69,20 +88,13 @@ export function StatusHistoryTab({ leadId }: { leadId: string }) {
               <span className="text-xs text-on-surface-variant">
                 {fmt(entry.changedAt)} · by {entry.changedBy ? `${entry.changedBy.firstName} ${entry.changedBy.lastName}` : '—'}
               </span>
+              {entry.editedAt && (
+                <span className="text-xs text-on-surface-variant italic">
+                  · edited {fmt(entry.editedAt)}{entry.editedBy ? ` by ${entry.editedBy.firstName} ${entry.editedBy.lastName}` : ''}
+                </span>
+              )}
             </div>
-            {rows.length > 0 && (
-              <div className="mt-2 border border-outline-variant/30 rounded-xl overflow-hidden">
-                {rows.map(([key, value], idx) => {
-                  const field = config?.fields.find((f) => f.k === key);
-                  return (
-                    <div key={key} className={`flex gap-3 px-3 py-1.5 text-sm ${idx % 2 === 0 ? 'bg-surface-container/50' : ''}`}>
-                      <span className="text-on-surface-variant w-48 shrink-0 text-xs">{field?.label || key}</span>
-                      <span className="font-medium text-on-surface break-words">{formatFieldValue(value)}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+            <StatusEntryDetails entry={entry} className="mt-2" />
           </div>
         );
       })}

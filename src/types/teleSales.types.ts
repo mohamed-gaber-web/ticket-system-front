@@ -531,6 +531,9 @@ export interface LeadStatusHistoryEntry {
   fieldValues: Record<string, any>;
   changedAt: string;
   createdAt: string;
+  /** Set when the details were corrected in place (Quick Update → Edit). */
+  editedAt?: string | null;
+  editedBy?: Pick<TeleSalesAgent, '_id' | 'firstName' | 'lastName'> | null;
 }
 
 export interface LeadStatusHistoryResponse {
@@ -542,6 +545,8 @@ export interface LeadStatusHistoryResponse {
 export interface ChangeLeadStatusData {
   newStatus: LeadStatus;
   values: Record<string, any>;
+  /** Correct the current status's last update instead of logging a new one. */
+  amendLast?: boolean;
 }
 
 export interface ChangeLeadStatusResponse {

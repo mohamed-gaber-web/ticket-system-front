@@ -24,10 +24,10 @@ import { useLeadEmailSender } from '@/hooks/useLeadEmailSender';
 import { LEAD_STATUSES, STATUS_COLORS, type LeadStatus } from '@/config/leadStatusWorkflow';
 import type {
   Lead, LeadPriority, LeadSource, ImportLeadsResponse,
-  EntityType, IndustrySector, SalesType,
+  EntityType, IndustrySector, SalesType, NeedProductRef,
 } from '@/types/teleSales.types';
 import { ENTITY_TYPES, INDUSTRY_SECTORS, teamName, formatMoney } from '@/types/teleSales.types';
-import { STAGE_META, STAGE_ORDER, NEXT_STAGE, recordName } from '@/lib/leadStages';
+import { STAGE_META, STAGE_ORDER, NEXT_STAGE, recordName, stageOf } from '@/lib/leadStages';
 import { parseLeadsFile, FIELD_LABELS, type ParsedImport } from '@/utils/leadImport';
 import { isSuperAdmin, isCrossTeamReader, isReadOnly, canManageTeam, ownTeamId, ownTeamNames, ownTeams } from '@/lib/teleSalesRole';
 
@@ -507,7 +507,7 @@ export default function Leads({ lockedStatus, stage = 'Lead' }: LeadsProps = {})
                       />
                     </th>
                   )}
-                  {['Customer ID', 'Company Name', 'Contact Person', 'Phone', 'Entity Type', 'Sector', 'Status', 'Proposal Price', 'Source', 'Next Follow-up', 'Assigned To',
+                  {['Customer ID', 'Company Name', 'Contact Person', 'Phone', 'Entity Type', 'Sector', 'Customer Need', 'Status', 'Proposal Price', 'Source', 'Next Follow-up', 'Assigned To',
                     // With a single team on screen the column would be one
                     // repeated value, so it only shows for multi-team viewers.
                     ...(multiTeam ? ['Team'] : []), ''].map((h) => (
@@ -555,6 +555,12 @@ export default function Leads({ lockedStatus, stage = 'Lead' }: LeadsProps = {})
                           Existing
                         </span>
                       )}
+                      {/* The Leads tab also lists the leads already converted to Opportunities. */}
+                      {stage === 'Lead' && stageOf(lead) === 'Opportunity' && (
+                        <span className={`ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${STAGE_META.Opportunity.badge}`} title="Converted to an Opportunity">
+                          Opportunity
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-on-surface-variant whitespace-nowrap">
                       <div className="flex items-center gap-1">
@@ -571,6 +577,23 @@ export default function Leads({ lockedStatus, stage = 'Lead' }: LeadsProps = {})
                         : <span className="text-on-surface-variant">—</span>}
                     </td>
                     <td className="px-4 py-3 text-on-surface-variant whitespace-nowrap">{lead.industrySector || '—'}</td>
+                    <td className="px-4 py-3">
+                      {(() => {
+                        const needs = (lead.customerNeedProducts ?? []).filter((p): p is NeedProductRef => typeof p !== 'string');
+                        if (needs.length === 0) return <span className="text-on-surface-variant">—</span>;
+                        // Two chips keep the row short; the rest are counted and listed on hover.
+                        return (
+                          <div className="flex flex-wrap gap-1 max-w-[220px]" title={needs.map((p) => p.name).join(', ')}>
+                            {needs.slice(0, 2).map((p) => (
+                              <span key={p._id} className="text-xs font-medium px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface whitespace-nowrap">{p.name}</span>
+                            ))}
+                            {needs.length > 2 && (
+                              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary">+{needs.length - 2}</span>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </td>
                     <td className="px-4 py-3">
                       <span className={`text-xs font-medium px-2.5 py-1 rounded-full whitespace-nowrap ${STATUS_COLORS[lead.status] ?? 'bg-gray-100 text-gray-600'}`}>
                         {lead.status}
@@ -607,7 +630,7 @@ export default function Leads({ lockedStatus, stage = 'Lead' }: LeadsProps = {})
                           disabled={!lead.email}>
                           <Send className="w-4 h-4" />
                         </button>
-                        {!readOnly && nextStage && !(stage === 'Lead' && lead.status === 'Closed Lost') && (
+                        {!readOnly && nextStage && stageOf(lead) === stage && !(stage === 'Lead' && lead.status === 'Closed Lost') && (
                           <button onClick={() => handleConvert(lead)}
                             className="p-1.5 rounded-lg hover:bg-primary/10 text-on-surface-variant hover:text-primary transition-colors"
                             title={stage === 'Data' ? 'Complete & convert to Lead' : 'Convert to Opportunity'}>

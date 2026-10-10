@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { X, Upload, Loader2, Send } from 'lucide-react';
+import { X, Upload, Loader2, Send, Pencil, History } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchAgents } from '@/redux/slices/teleSalesAgentsSlice';
@@ -7,12 +7,13 @@ import { changeLeadStatus } from '@/redux/slices/teleSalesLeadsSlice';
 import * as teleSalesApi from '@/api/teleSalesApi';
 import { useTeamAgents } from '@/hooks/useTeamAgents';
 import { teamId } from '@/types/teleSales.types';
+import { StatusEntryDetails } from '@/components/tele-sales/StatusHistoryTab';
 import { Button } from '@/components/ui/button';
 import {
   LEAD_STATUS_WORKFLOW, NEXT, validateStatusFields,
   type LeadStatus, type StatusFieldDef,
 } from '@/config/leadStatusWorkflow';
-import type { Lead, ChangeLeadStatusError } from '@/types/teleSales.types';
+import type { Lead, ChangeLeadStatusError, LeadStatusHistoryEntry } from '@/types/teleSales.types';
 import { VALUE_CURRENCIES } from '@/types/teleSales.types';
 
 interface StatusUpdateFormProps {
@@ -24,6 +25,11 @@ interface StatusUpdateFormProps {
    */
   variant: 'dialog' | 'inline';
   onChanged?: (lead: Lead) => void;
+  /**
+   * Inline only — the lead's status history (newest first). A status logged
+   * before opens on its last update, read-only until the agent presses Edit.
+   */
+  history?: LeadStatusHistoryEntry[];
   /** Dialog only — the Cancel button. */
   onCancel?: () => void;
   /**
@@ -39,6 +45,12 @@ interface StatusUpdateFormProps {
 }
 
 const MONEY_CURRENCIES = VALUE_CURRENCIES;
+
+/** Statuses that bump a lead counter when logged (mirrors `increments` on the backend). */
+const COUNTED_STATUSES: Partial<Record<LeadStatus, 'callAttempts' | 'meetingsCount'>> = {
+  'No Answer': 'callAttempts',
+  'Meeting Scheduled': 'meetingsCount',
+};
 
 interface QuickEmail {
   to: string;
@@ -96,11 +108,43 @@ const initialValues = (status: LeadStatus, lead: Lead) => {
 };
 
 /**
+ * The form values a history entry was saved with. History stores them for display
+ * (see buildFieldValueMap on the backend): chips as "a, b", money as
+ * "50,000 EGP", a pasted link as { link }. This turns them back into inputs.
+ */
+const valuesFromHistory = (status: LeadStatus, lead: Lead, entry: LeadStatusHistoryEntry) => {
+  const out = initialValues(status, lead);
+  const saved = entry.fieldValues || {};
+  LEAD_STATUS_WORKFLOW[status].fields.forEach((f) => {
+    const raw = saved[f.k];
+    if (raw === undefined || raw === null || f.type === 'auto') return;
+    if (f.type === 'chips') {
+      out[f.k] = Array.isArray(raw) ? raw : String(raw).split(',').map((s) => s.trim()).filter(Boolean);
+    } else if (f.type === 'money') {
+      const m = String(raw).match(/^([\d,.]+)\s*([A-Z]{3})?$/);
+      if (m) {
+        out[f.k] = m[1].replace(/,/g, '');
+        if (m[2] && (MONEY_CURRENCIES as readonly string[]).includes(m[2])) out[`${f.k}__c`] = m[2];
+      }
+    } else if (f.type === 'attach') {
+      out[f.k] = raw.fileId ? raw : raw.link ?? undefined;
+    } else if (f.type === 'datetime') {
+      // datetime-local wants "YYYY-MM-DDTHH:mm" in local time
+      const d = new Date(raw);
+      out[f.k] = Number.isNaN(d.getTime()) ? '' : new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    } else {
+      out[f.k] = raw;
+    }
+  });
+  return out;
+};
+
+/**
  * Pick a status and fill the inputs it requires, then save it through the
  * validated workflow (POST /leads/:id/status). Shared by the Change Status
  * dialog and the lead page's Quick Update card so both behave the same.
  */
-export function StatusUpdateForm({ lead, variant, onChanged, onCancel, bulk }: StatusUpdateFormProps) {
+export function StatusUpdateForm({ lead, variant, onChanged, onCancel, bulk, history }: StatusUpdateFormProps) {
   const dispatch = useAppDispatch();
   const allAgents = useAppSelector((s) => s.teleSalesAgents.agents);
   // The owner picker ("New Lead") lists the employees of the lead's own team; in
@@ -111,33 +155,67 @@ export function StatusUpdateForm({ lead, variant, onChanged, onCancel, bulk }: S
   const allowed = bulk ? bulk.targets : NEXT[lead.status] || [];
   // The inline card starts on the current status — a quick update of it.
   const defaultTarget = !bulk && variant === 'inline' && allowed.includes(lead.status) ? lead.status : null;
+  // The picker leads with the current status, tagged "Current", so the agent can
+  // always see where the lead stands — even when it can't be re-logged (No Action).
+  const showCurrent = !bulk;
+  const pickerStatuses: LeadStatus[] = showCurrent
+    ? [lead.status, ...allowed.filter((s) => s !== lead.status)]
+    : allowed;
+
+  // The newest history entry of a status (history comes newest first). Only the
+  // inline card shows it; the dialog and bulk edit always start blank.
+  const lastUpdateOf = (status: LeadStatus | null) =>
+    (status && !bulk && variant === 'inline' && history?.find((h) => h.newStatus === status)) || null;
+  const startValues = (status: LeadStatus) => {
+    const last = lastUpdateOf(status);
+    return last ? valuesFromHistory(status, lead, last) : initialValues(status, lead);
+  };
 
   const [target, setTarget] = useState<LeadStatus | null>(defaultTarget);
-  const [values, setValues] = useState<Record<string, any>>(defaultTarget ? initialValues(defaultTarget, lead) : {});
+  const [values, setValues] = useState<Record<string, any>>(defaultTarget ? startValues(defaultTarget) : {});
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [uploadingField, setUploadingField] = useState<string | null>(null);
   // Optional email sent together with the status (statuses marked quickEmail)
   const [sendEmail, setSendEmail] = useState(false);
   const [email, setEmail] = useState<QuickEmail>({ to: '', subject: '', message: '' });
+  // A status with a last update opens read-only; Edit unlocks its inputs.
+  const [editing, setEditing] = useState(false);
+  const lastUpdate = lastUpdateOf(target);
+  const locked = !!lastUpdate && !editing;
+  // Editing the current status's newest update corrects it in place (the same
+  // history entry) instead of adding another; moving to a new status always adds.
+  const amending = !!lastUpdate && editing && target === lead.status && history?.[0]?._id === lastUpdate._id;
+
+  // History arrives after the first render and reloads after each save: show the
+  // newest update of the picked status unless the agent is mid-edit.
+  useEffect(() => {
+    if (target && !editing) setValues(startValues(target));
+  }, [lastUpdate?._id, lastUpdate?.editedAt]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Start over whenever the lead or its status changes (e.g. after a save).
   useEffect(() => {
     setTarget(defaultTarget);
-    setValues(defaultTarget ? initialValues(defaultTarget, lead) : {});
+    setValues(defaultTarget ? startValues(defaultTarget) : {});
     setFieldErrors({});
     setSendEmail(false);
+    setEditing(false);
     if (bulk && allAgents.length === 0) dispatch(fetchAgents({ limit: 200 }));
   }, [lead._id, lead.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const config = target ? LEAD_STATUS_WORKFLOW[target] : null;
-  const extraMeeting = target === 'Meeting Scheduled' && lead.meetingsCount > 0;
+  // An edit of the current status's last update describes that same attempt /
+  // meeting round, so its numbering is read from the counters before it was logged.
+  const counter = target === lead.status && lastUpdate ? COUNTED_STATUSES[target] : undefined;
+  const fieldLead: Lead = counter ? { ...lead, [counter]: Math.max(0, (lead[counter] || 0) - 1) } : lead;
+  const extraMeeting = target === 'Meeting Scheduled' && fieldLead.meetingsCount > 0;
 
   const pickStatus = (status: LeadStatus) => {
     setTarget(status);
-    setValues(initialValues(status, lead));
+    setValues(startValues(status));
     setFieldErrors({});
     setSendEmail(false);
+    setEditing(false);
   };
 
   const toggleSendEmail = (on: boolean) => {
@@ -159,9 +237,10 @@ export function StatusUpdateForm({ lead, variant, onChanged, onCancel, bulk }: S
 
   const reset = () => {
     setTarget(defaultTarget);
-    setValues(defaultTarget ? initialValues(defaultTarget, lead) : {});
+    setValues(defaultTarget ? startValues(defaultTarget) : {});
     setFieldErrors({});
     setSendEmail(false);
+    setEditing(false);
   };
 
   const handleAttachUpload = async (fieldKey: string, file: File) => {
@@ -181,7 +260,7 @@ export function StatusUpdateForm({ lead, variant, onChanged, onCancel, bulk }: S
 
   const handleSubmit = async () => {
     if (!target) return;
-    const { errors } = validateStatusFields(target, values, lead);
+    const { errors } = validateStatusFields(target, values, fieldLead);
     const map: Record<string, string> = {};
     errors.forEach((e) => { map[e.field] = e.message; });
     // The email is checked BEFORE the status saves, so a typo never leaves a
@@ -211,7 +290,7 @@ export function StatusUpdateForm({ lead, variant, onChanged, onCancel, bulk }: S
 
     setSubmitting(true);
     try {
-      const updated = await dispatch(changeLeadStatus({ id: lead._id, data: { newStatus: target, values } })).unwrap();
+      const updated = await dispatch(changeLeadStatus({ id: lead._id, data: { newStatus: target, values, ...(amending ? { amendLast: true } : {}) } })).unwrap();
       if (emailing) {
         try {
           await teleSalesApi.sendLeadEmail(lead._id, {
@@ -243,7 +322,7 @@ export function StatusUpdateForm({ lead, variant, onChanged, onCancel, bulk }: S
   const renderField = (field: StatusFieldDef) => {
     const value = values[field.k];
     const error = fieldErrors[field.k];
-    const needed = isFieldNeeded(field, values, lead);
+    const needed = isFieldNeeded(field, values, fieldLead);
     const baseInputCls = `w-full rounded-xl border bg-surface px-3 py-2 text-sm text-on-surface outline-none transition-colors focus:ring-2 focus:ring-primary/30 ${error ? 'border-error bg-error/5' : 'border-outline-variant'}`;
     // Long inputs take the full row of the inline card's two-column grid
     const wide = field.type === 'textarea' || field.type === 'chips' || field.type === 'attach';
@@ -251,7 +330,7 @@ export function StatusUpdateForm({ lead, variant, onChanged, onCancel, bulk }: S
     let control: React.ReactNode;
     switch (field.type) {
       case 'auto':
-        control = <div className="rounded-xl border border-dashed border-primary/30 bg-primary/5 px-3 py-2 text-sm font-semibold text-primary">{field.val?.(lead)}</div>;
+        control = <div className="rounded-xl border border-dashed border-primary/30 bg-primary/5 px-3 py-2 text-sm font-semibold text-primary">{field.val?.(fieldLead)}</div>;
         break;
       case 'text':
         control = <input type="text" className={baseInputCls} value={value || ''} onChange={(e) => setValue(field.k, e.target.value)} />;
@@ -368,12 +447,13 @@ export function StatusUpdateForm({ lead, variant, onChanged, onCancel, bulk }: S
     return <p className="text-sm text-on-surface-variant py-6 text-center">This lead is closed as won and is read-only.</p>;
   }
 
-  const visibleFields = config ? config.fields.filter((f) => isFieldVisible(f, values, lead)) : [];
+  const visibleFields = config ? config.fields.filter((f) => isFieldVisible(f, values, fieldLead)) : [];
   const baseLabel = bulk
     ? `Apply to ${bulk.count} record${bulk.count === 1 ? '' : 's'}`
     : extraMeeting
       ? 'Book Additional Meeting'
-      : target === lead.status ? 'Save Update' : 'Update Status';
+      : amending ? 'Save Changes'
+        : target === lead.status ? 'Save Update' : 'Update Status';
   const submitLabel = sendEmail && config?.quickEmail ? `${baseLabel} & Send Email` : baseLabel;
 
   return (
@@ -383,20 +463,32 @@ export function StatusUpdateForm({ lead, variant, onChanged, onCancel, bulk }: S
           {variant === 'inline' ? 'STATUS' : 'NEW STATUS'}
         </p>
         <div className="flex flex-wrap gap-2">
-          {allowed.map((status) => {
+          {pickerStatuses.map((status) => {
             const cfg = LEAD_STATUS_WORKFLOW[status];
-            const selected = target === status;
+            const isCurrent = showCurrent && status === lead.status;
+            // A current status that can't be re-logged (No Action) is shown, not picked.
+            const pickable = allowed.includes(status);
+            const selected = target === status || (isCurrent && !pickable && !target);
             return (
               <button
-                key={status} type="button" onClick={() => pickStatus(status)}
-                className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm transition-colors ${selected ? 'border-primary bg-primary/10 text-primary font-semibold' : 'border-outline-variant text-on-surface hover:bg-surface-container'}`}
+                key={status} type="button" disabled={!pickable} onClick={() => pickStatus(status)}
+                title={isCurrent ? (pickable ? 'Current status — log another update of it' : 'Current status — pick the next status to move on') : undefined}
+                className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm transition-colors disabled:cursor-default ${selected ? 'border-primary bg-primary/10 text-primary font-semibold' : 'border-outline-variant text-on-surface hover:bg-surface-container'}`}
               >
                 <span className="w-2 h-2 rounded-full shrink-0" style={{ background: cfg.color }} />
-                {pickerLabel(status, lead)}
+                {isCurrent && !pickable ? status : pickerLabel(status, lead)}
+                {isCurrent && (
+                  <span className="rounded-full bg-primary text-on-primary px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide">Current</span>
+                )}
               </button>
             );
           })}
         </div>
+        {showCurrent && !allowed.includes(lead.status) && !target && (
+          <p className="text-xs text-on-surface-variant mt-2">
+            This lead is <span className="font-medium text-on-surface">{lead.status}</span>. Pick the next status to update it.
+          </p>
+        )}
       </div>
 
       {config && (
@@ -414,6 +506,37 @@ export function StatusUpdateForm({ lead, variant, onChanged, onCancel, bulk }: S
             </div>
           )}
 
+          {lastUpdate && (
+            <div className="flex flex-wrap items-center gap-2 rounded-xl bg-surface-container px-3 py-2 text-xs text-on-surface-variant">
+              <History className="w-4 h-4 shrink-0" />
+              <span>
+                Last update: <span className="font-medium text-on-surface">{formatWhen(lastUpdate.changedAt)}</span>
+                {lastUpdate.changedBy && <> by <span className="font-medium text-on-surface">{lastUpdate.changedBy.firstName} {lastUpdate.changedBy.lastName}</span></>}
+                {lastUpdate.editedAt && <> · edited {formatWhen(lastUpdate.editedAt)}{lastUpdate.editedBy && <> by {lastUpdate.editedBy.firstName} {lastUpdate.editedBy.lastName}</>}</>}
+              </span>
+              {locked ? (
+                <Button size="sm" variant="outline" className="ml-auto gap-1.5" onClick={() => setEditing(true)}>
+                  <Pencil className="w-3.5 h-3.5" /> Edit
+                </Button>
+              ) : (
+                <Button size="sm" variant="ghost" className="ml-auto" onClick={() => { setEditing(false); setValues(startValues(target!)); setFieldErrors({}); setSendEmail(false); }}>
+                  Cancel edit
+                </Button>
+              )}
+            </div>
+          )}
+
+          {/* What the last update of this status recorded */}
+          {lastUpdate && <StatusEntryDetails entry={lastUpdate} />}
+          {amending && (
+            <p className="text-xs text-on-surface-variant">
+              Saving changes this last <span className="font-medium text-on-surface">{target}</span> update. It won't add a new one.
+              To log a new update, use Change Status.
+            </p>
+          )}
+
+          {/* Locked on the last update until Edit is pressed */}
+          <fieldset disabled={locked} className={`space-y-4 min-w-0 ${locked ? 'opacity-70' : ''}`}>
           {visibleFields.length === 0 ? (
             <p className="text-sm text-on-surface-variant">No inputs needed for this status.</p>
           ) : (
@@ -475,6 +598,7 @@ export function StatusUpdateForm({ lead, variant, onChanged, onCancel, bulk }: S
               )}
             </div>
           )}
+          </fieldset>
         </div>
       )}
 
@@ -486,7 +610,8 @@ export function StatusUpdateForm({ lead, variant, onChanged, onCancel, bulk }: S
         {variant === 'inline' && target && target !== defaultTarget && (
           <Button variant="outline" onClick={reset}>Reset</Button>
         )}
-        <Button onClick={handleSubmit} disabled={!target || submitting}>
+        <Button onClick={handleSubmit} disabled={!target || submitting || locked}
+          title={locked ? 'Press Edit to change the last update' : undefined}>
           {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : null}
           {submitLabel}
         </Button>

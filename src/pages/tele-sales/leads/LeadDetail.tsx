@@ -47,8 +47,8 @@ const PRIORITY_COLORS: Record<string, string> = {
   Low: 'bg-gray-100 text-gray-600',
 };
 
-type Tab = 'info' | 'assistant' | 'calls' | 'followups' | 'emails' | 'attachments' | 'hist';
-const TABS: Tab[] = ['info', 'assistant', 'calls', 'followups', 'emails', 'attachments', 'hist'];
+type Tab = 'info' | 'assistant' | 'calls' | 'followups' | 'emails' | 'attachments' | 'update' | 'hist';
+const TABS: Tab[] = ['info', 'assistant', 'calls', 'followups', 'emails', 'attachments', 'update', 'hist'];
 
 export default function LeadDetail() {
   const { id } = useParams<{ id: string }>();
@@ -316,6 +316,7 @@ export default function LeadDetail() {
   if (!currentLead) return <div className="p-6 text-on-surface-variant">Lead not found.</div>;
 
   const lead = currentLead;
+  const canQuickUpdate = !readOnly && lead.status !== 'Closed Won';
   // The follow-up detail's meaning depends on the source it was captured under.
   const sourceDetailSpec = lead.leadSource ? LEAD_SOURCE_DETAILS[lead.leadSource] : undefined;
   const assignedName = (lead.assignedTo as any)?.firstName
@@ -478,23 +479,10 @@ export default function LeadDetail() {
 
       <PipelineStepper status={lead.status} />
 
-      {/* Quick Update — the current status's inputs, ready to log another
-          follow-up, attempt, meeting round… or switch to the next status. */}
-      {!readOnly && lead.status !== 'Closed Won' && (
-        <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/20 p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <Zap className="w-4 h-4 text-primary" />
-            <h3 className="font-semibold text-on-surface text-sm uppercase tracking-wide">Quick Update</h3>
-            <span className="text-xs text-on-surface-variant">— current status: <LeadStatusBadge status={lead.status} size="sm" /></span>
-          </div>
-          <StatusUpdateForm lead={lead} variant="inline" onChanged={handleStatusChanged} />
-        </div>
-      )}
-
       {/* Tabs */}
       <div className="border-b border-outline-variant/20">
         <div className="flex gap-1">
-          {TABS.map((t) => (
+          {TABS.filter((t) => t !== 'update' || canQuickUpdate).map((t) => (
             <button key={t} onClick={() => setTab(t)}
               className={`px-5 py-3 text-sm font-medium transition-colors border-b-2 -mb-px ${tab === t ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant hover:text-on-surface'}`}>
               {t === 'info' ? 'Info'
@@ -503,6 +491,7 @@ export default function LeadDetail() {
                 : t === 'followups' ? `Follow-ups (${mergeFollowUpEntries(followUps).length})`
                 : t === 'emails' ? `Emails (${emails.length})`
                 : t === 'attachments' ? `Attachments (${attachments.length})`
+                : t === 'update' ? 'Quick Update'
                 : `Status History (${statusHistory.length})`}
             </button>
           ))}
@@ -868,6 +857,19 @@ export default function LeadDetail() {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Tab: Quick Update — the current status's inputs, opened on its last
+          update (read-only until Edit), or switch to the next status. */}
+      {tab === 'update' && canQuickUpdate && (
+        <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/20 p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Zap className="w-4 h-4 text-primary" />
+            <h3 className="font-semibold text-on-surface text-sm uppercase tracking-wide">Quick Update</h3>
+            <span className="text-xs text-on-surface-variant">— current status: <LeadStatusBadge status={lead.status} size="sm" /></span>
+          </div>
+          <StatusUpdateForm lead={lead} variant="inline" history={statusHistory} onChanged={handleStatusChanged} />
         </div>
       )}
 

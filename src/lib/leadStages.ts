@@ -25,7 +25,7 @@ export const STAGE_META: Record<SalesType, { label: string; plural: string; path
     plural: 'Leads',
     path: '/tele-sales/leads',
     badge: 'bg-sky-100 text-sky-700',
-    hint: 'Qualified records with every mandatory field',
+    hint: 'Qualified records with every mandatory field (Opportunities stay listed here too)',
   },
   Opportunity: {
     label: 'Opportunity',
