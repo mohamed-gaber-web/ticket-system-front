@@ -27,7 +27,10 @@ import { TicketIntelligencePanel } from '@/components/ai/TicketIntelligencePanel
 import { PendingOnDialog, PendingOnLine } from '@/components/tickets/PendingOnDialog';
 import { TicketEmailsTab } from '@/components/tickets/TicketEmailsTab';
 import { useAccess } from '@/redux/hooks/useAccess';
+import { TICKET_LIST_PATH, TICKET_LIST_TITLE, requesterName, ticketTypeOf } from '@/lib/ticketTypes';
+import { TicketTypeBadge } from '@/components/tickets/TicketTypeBadge';
 import {
+  User as UserIcon,
   ArrowLeft,
   Loader2,
   Paperclip,
@@ -249,7 +252,11 @@ export default function ViewTicket() {
 
   // priorityDot, priorityText, statusStyle moved to module-level constants above
 
-  const customer = typeof currentTicket.customer === 'string' ? null : currentTicket.customer;
+  const customer = currentTicket.customer && typeof currentTicket.customer === 'object' ? currentTicket.customer : null;
+  // Customer / Internal / R&D — Internal and R&D have a requester, no customer feedback
+  const ticketType = ticketTypeOf(currentTicket);
+  const isCustomerTypeTicket = ticketType === 'customer';
+  const requester = requesterName(currentTicket);
   const createdByConsultant = currentTicket.createdByConsultant && typeof currentTicket.createdByConsultant !== 'string'
     ? currentTicket.createdByConsultant : null;
   const category = typeof currentTicket.category === 'string' ? null : currentTicket.category;
@@ -313,7 +320,7 @@ export default function ViewTicket() {
 
   // Columns in exact order — aoa_to_sheet guarantees this order in the file
   const exportHeaders = [
-    'Ticket Number', 'Subject', 'Customer', 'Assignee', 'Company',
+    'Ticket Number', 'Subject', isCustomerTypeTicket ? 'Customer' : 'Requested By', 'Assignee', 'Company',
     'Priority', 'Status', ...PENDING_EXPORT_HEADERS, 'Created Date', 'Delivery Date',
     'Category', 'Source', 'Customer Email',
   ];
@@ -321,7 +328,7 @@ export default function ViewTicket() {
   const exportValues = [
     currentTicket.ticketNumber,
     currentTicket.subject,
-    customer?.contactPerson ?? '',
+    isCustomerTypeTicket ? customer?.contactPerson ?? '' : requester,
     firstConsultant ? `${firstConsultant.firstName} ${firstConsultant.lastName}` : '',
     customer?.companyName ?? '',
     currentTicket.priority,
@@ -380,8 +387,8 @@ export default function ViewTicket() {
     <div className="p-8 space-y-0 w-full">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm text-on-surface-variant mb-6">
-        <button onClick={() => navigate('/tickets')} className="hover:text-brand-500 transition-colors font-medium" aria-label="Back to tickets list">
-          Tickets
+        <button onClick={() => navigate(TICKET_LIST_PATH[ticketType])} className="hover:text-brand-500 transition-colors font-medium" aria-label={`Back to ${TICKET_LIST_TITLE[ticketType]} list`}>
+          {TICKET_LIST_TITLE[ticketType]}
         </button>
         <ChevronRight className="h-3.5 w-3.5" />
         <span className="text-on-surface font-semibold">{currentTicket.ticketNumber}</span>
@@ -407,6 +414,7 @@ export default function ViewTicket() {
               <span className="text-on-surface-variant font-mono text-sm font-semibold">
                 #{currentTicket.ticketNumber}
               </span>
+              {!isCustomer && <TicketTypeBadge type={ticketType} className="py-1 text-xs" />}
               <span className={`px-3 py-1 rounded-[0.5rem] text-xs font-bold uppercase tracking-[0.05em] ${STATUS_STYLE[currentTicket.status] || STATUS_STYLE.new}`}>
                 {displayStatus}
               </span>
@@ -451,6 +459,15 @@ export default function ViewTicket() {
                 <div className="flex items-center gap-1.5">
                   <Building2 className="h-3.5 w-3.5" />
                   <span className="font-medium">{customer.companyName}</span>
+                </div>
+              )}
+              {!isCustomerTypeTicket && (
+                <div className="flex items-center gap-1.5">
+                  <UserIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                  <span>
+                    Requested by{' '}
+                    <span className="font-medium text-on-surface">{requester || '—'}</span>
+                  </span>
                 </div>
               )}
               <div className="flex items-center gap-1.5">
@@ -720,8 +737,8 @@ export default function ViewTicket() {
               </div>
             </section>
 
-            {/* Feedback */}
-            {['resolved', 'closed', 'delivered'].includes(currentTicket.status) && (
+            {/* Feedback — customers rate Customer tickets only (the API refuses the rest) */}
+            {isCustomerTypeTicket && ['resolved', 'closed', 'delivered'].includes(currentTicket.status) && (
               <FeedbackSection
                 existingRating={currentTicket.customerRating}
                 existingFeedback={currentTicket.customerFeedback}

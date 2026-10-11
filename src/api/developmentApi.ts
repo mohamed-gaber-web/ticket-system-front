@@ -49,6 +49,13 @@ export const setTicketRule = async (
     payload ?? { ticketRule: null },
   )).data;
 
+/** Turn "Import R&D tickets" on/off for the board, with the column new cards land in. */
+export const setRndImport = async (boardId: string, payload: { enabled: boolean; list: string | null }) =>
+  (await api.put<ApiOne<{ board: DevBoard; imported: number }> & { message?: string }>(
+    `${base}/boards/${boardId}/rnd-import`,
+    payload,
+  )).data;
+
 export const addLabel = async (boardId: string, payload: { name: string; color: string }) =>
   (await api.post<ApiOne<DevLabel[]>>(`${base}/boards/${boardId}/labels`, payload)).data;
 

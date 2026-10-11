@@ -29,6 +29,7 @@ import { saveCsv } from '@/utils/exportFile';
 import { PENDING_EXPORT_HEADERS, pendingExportValues } from '@/utils/ticketPending';
 import autoTable from 'jspdf-autotable';
 import type { Ticket, Category, Consultant as TicketConsultant } from '@/types/ticket';
+import { ticketPartyName } from '@/lib/ticketTypes';
 import { getTickets } from '@/api/ticketApi';
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 200];
@@ -238,7 +239,8 @@ export default function ProjectTickets() {
       t.isSubTicket ? '' : String((t.subTickets as any[])?.length ?? 0),
       t.ticketNumber, parent?.ticketNumber ?? '',
       t.status.replace(/_/g, ' '), ...pendingExportValues(t), t.subject,
-      cust?.companyName ?? '',
+      // Company — or, for Internal / R&D, the requester / type label
+      ticketPartyName(t),
       createdBy ? `${createdBy.firstName} ${createdBy.lastName}` : '',
       assignee ? `${assignee.firstName} ${assignee.lastName}` : '',
       assignedBy ? `${assignedBy.firstName} ${assignedBy.lastName}` : '',

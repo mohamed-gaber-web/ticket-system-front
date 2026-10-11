@@ -15,7 +15,8 @@ import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { useAccess } from '@/redux/hooks/useAccess';
 import { fetchDepartments } from '@/redux/slices/departmentSlice';
 import { useDevelopers } from '@/redux/hooks/useDevelopers';
-import { addLabel, deleteBoard, deleteLabel, fetchBoardFull, setBoardMembers, setTicketRule, updateBoard, updateLabel } from '@/redux/slices/developmentSlice';
+import { addLabel, deleteBoard, deleteLabel, fetchBoardFull, setBoardMembers, setRndImport, setTicketRule, updateBoard, updateLabel } from '@/redux/slices/developmentSlice';
+import { Checkbox } from '@/components/ui/checkbox';
 import type { DevBoard, DevLabel } from '@/types/development.types';
 import { cn } from '@/lib/utils';
 import { contrastText } from '@/lib/development';
@@ -112,6 +113,9 @@ export function BoardSettingsDialog({ board, open, initialTab = 'general', onOpe
   const [ruleDepartment, setRuleDepartment] = useState('');
   const [ruleEmployee, setRuleEmployee] = useState('');
   const [ruleList, setRuleList] = useState('');
+  // "Import R&D tickets" — every R&D ticket gets a card, no department/assignee condition
+  const [rndEnabled, setRndEnabled] = useState(false);
+  const [rndList, setRndList] = useState('');
 
   // Reset the form only when the dialog opens — not on every board update, or
   // saving one tab (which refreshes the board) would jump back to General and
@@ -126,6 +130,8 @@ export function BoardSettingsDialog({ board, open, initialTab = 'general', onOpe
       setRuleDepartment(refId(board.ticketRule?.department));
       setRuleEmployee(refId(board.ticketRule?.employee));
       setRuleList(board.ticketRule?.list ?? '');
+      setRndEnabled(Boolean(board.rndImport?.enabled));
+      setRndList(board.rndImport?.list ?? '');
     }
     wasOpen.current = open;
   }, [open, initialTab, board]);
@@ -186,6 +192,30 @@ export function BoardSettingsDialog({ board, open, initialTab = 'general', onOpe
       setSaving(false);
     }
   };
+
+  const saveRndImport = async () => {
+    setSaving(true);
+    try {
+      const result = await dispatch(
+        setRndImport({ id: board._id, enabled: rndEnabled, list: rndEnabled ? rndList || null : null }),
+      ).unwrap();
+      toast.success(
+        result.message ??
+          (rndEnabled
+            ? `R&D import on${result.imported > 0 ? ` — ${result.imported} ticket${result.imported === 1 ? '' : 's'} added` : ''}`
+            : 'R&D import off'),
+      );
+      // Imported tickets arrived as new cards — reload the board to show them
+      if (result.imported > 0) dispatch(fetchBoardFull(board._id));
+    } catch {
+      /* toast shown by slice */
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const rndSaved = Boolean(board.rndImport?.enabled);
+  const rndDirty = rndEnabled !== rndSaved || (rndEnabled && rndList !== (board.rndImport?.list ?? ''));
 
   const submitLabel = async () => {
     const n = newLabel.trim();
@@ -351,6 +381,40 @@ export function BoardSettingsDialog({ board, open, initialTab = 'general', onOpe
               <Button type="button" onClick={() => saveTicketRule()} disabled={saving || !ruleDepartment || !ruleEmployee}>
                 Save link
               </Button>
+            </div>
+
+            <div className="space-y-3 rounded-[0.75rem] bg-surface-container-low p-3">
+              <div className="flex items-start gap-3">
+                <Checkbox
+                  id="bs-rnd-import"
+                  checked={rndEnabled}
+                  onCheckedChange={(v) => setRndEnabled(v === true)}
+                  className="mt-0.5"
+                  aria-describedby="bs-rnd-import-help"
+                />
+                <div className="space-y-1">
+                  <Label htmlFor="bs-rnd-import" className="cursor-pointer">Import R&amp;D tickets</Label>
+                  <p id="bs-rnd-import-help" className="text-xs text-on-surface-variant">
+                    Every R&amp;D ticket gets a card on this board. Turning it on also adds the R&amp;D tickets that are still open.
+                  </p>
+                </div>
+              </div>
+              {rndEnabled && (
+                <div className="space-y-2">
+                  <Label>Add R&amp;D cards to column</Label>
+                  <CustomSelect
+                    value={rndList}
+                    onChange={setRndList}
+                    options={[{ value: '', label: 'First column' }, ...lists.map((l) => ({ value: l._id, label: l.name }))]}
+                    placeholder="First column"
+                  />
+                </div>
+              )}
+              <div className="flex justify-end">
+                <Button type="button" size="sm" onClick={saveRndImport} disabled={saving || !rndDirty}>
+                  Save R&amp;D import
+                </Button>
+              </div>
             </div>
           </div>
         )}

@@ -88,10 +88,25 @@ export interface TicketAssignment {
   assignedBy: string;
 }
 
+/** Kind of ticket. Missing on older documents = "customer". Keep in step with the backend's TICKET_TYPES. */
+export type TicketType = 'customer' | 'internal' | 'rnd';
+
+/** The employee who asked for an Internal / R&D ticket (populated like assignedBy). */
+export interface TicketRequester {
+  _id: string;
+  firstName: string;
+  lastName: string;
+  email?: string;
+  fullName?: string;
+}
+
 export interface Ticket {
   _id: string;
   ticketNumber: string;
-  customer: string | Customer;
+  /** Absent for Internal / R&D tickets. */
+  customer?: string | Customer | null;
+  ticketType?: TicketType;
+  requestedBy?: string | TicketRequester | null;
   subject: string;
   description: string;
   category: string | Category;
@@ -160,7 +175,11 @@ export interface Ticket {
 
 export interface CreateTicketData {
   ticketNumber: string;
-  customer: string;
+  /** Required for Customer tickets only. */
+  customer?: string;
+  ticketType?: TicketType;
+  /** Employee id — Internal / R&D tickets. */
+  requestedBy?: string;
   subject: string;
   description: string;
   category: string;
@@ -232,7 +251,9 @@ export interface UpdateTicketData {
   pendingOn?: string | null;
   subject?: string;
   description?: string;
-  customer?: string;
+  customer?: string | null;
+  ticketType?: TicketType;
+  requestedBy?: string | null;
   category?: string;
   priority?: 'low' | 'medium' | 'high' | 'critical';
   priorityNumber?: number | null;
@@ -289,6 +310,8 @@ export interface TicketQueryParams {
   assignedConsultant?: string;
   customerName?: string;
   companyName?: string;
+  /** customer | internal | rnd — the per-type list/dashboard split. */
+  ticketType?: TicketType;
   includeSubTickets?: boolean;
   excludeServiceType?: string;
   excludeCategory?: string;
@@ -302,6 +325,17 @@ export interface TicketQueryParams {
   updatedDateFrom?: string;
   updatedDateTo?: string;
   scheduledWeek?: string | number;
+}
+
+/** GET/PUT /api/ticket-settings — who may see R&D tickets. Employees only. */
+export interface TicketSettings {
+  rndDepartment: { _id: string; name: string } | null;
+  /** Whether the caller may see R&D tickets (admin, or in the R&D department). */
+  canSeeRnd: boolean;
+}
+
+export interface UpdateTicketSettingsData {
+  rndDepartment: string | null;
 }
 
 export interface TicketResponse {

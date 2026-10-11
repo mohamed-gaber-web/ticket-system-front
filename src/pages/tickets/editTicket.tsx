@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Loader2, ArrowLeft } from 'lucide-react';
 import type { UpdateTicketData } from '@/types/ticket';
 import { toast } from 'sonner';
+import { TICKET_LIST_PATH, ticketTypeOf } from '@/lib/ticketTypes';
 
 export default function EditTicket() {
   const { id } = useParams<{ id: string }>();
@@ -44,7 +45,8 @@ export default function EditTicket() {
           await Promise.all(uploadPromises);
         }
 
-        navigate('/tickets');
+        // Back to the list of the ticket's (possibly changed) type
+        navigate(TICKET_LIST_PATH[data.ticketType ?? ticketTypeOf(currentTicket)]);
       } catch {
         // Error is handled by Redux slice / toast
       }

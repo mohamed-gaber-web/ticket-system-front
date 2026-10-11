@@ -27,8 +27,8 @@ import { Input } from "@/components/ui/input";
 import { CustomSelect } from "@/components/ui/custom-select";
 import { ConsultantSelect } from "@/components/ui/consultant-select";
 import { YtdComparison } from "@/components/dashboard/YtdComparison";
-import { INTERNAL_COMPANY_NAME } from '@/lib/internalTickets';
-import type { Ticket as TicketRecord } from "@/types/ticket";
+import { TICKET_LIST_TITLE, customerOf, requesterOf } from '@/lib/ticketTypes';
+import type { Ticket as TicketRecord, TicketType } from "@/types/ticket";
 import {
   motion,
   useMotionValue,
@@ -377,12 +377,26 @@ function BreakdownList({
    Main Dashboard
 ───────────────────────────────────────────────────────────── */
 /**
- * The ticketing dashboard. Customers' tickets and our own company's are kept
- * apart: the main dashboard covers customers only, and `internal` shows the
- * same dashboard for Grow Path's own tickets (Services → Internal Dashboard).
+ * The ticketing dashboard, one per ticket type: Customer (`/dashboard`), Internal
+ * and R&D. The API filters by `ticketType`. Internal / R&D tickets have no customer,
+ * so the company filter and the Customers card give way to a Requesters count.
  */
-export default function Dashboard({ internal = false }: { internal?: boolean }) {
+const DASHBOARD_TITLE: Record<TicketType, string> = {
+  customer: 'Dashboard',
+  internal: 'Internal Dashboard',
+  rnd: 'R&D Dashboard',
+};
+
+const DASHBOARD_SUBTITLE: Record<TicketType, string> = {
+  customer: 'Customer tickets at a glance',
+  internal: 'Internal tickets at a glance',
+  rnd: `${TICKET_LIST_TITLE.rnd} at a glance`,
+};
+
+export default function Dashboard({ ticketType = 'customer' }: { ticketType?: TicketType }) {
+  const isCustomerType = ticketType === 'customer';
   const dispatch = useAppDispatch();
+  const userType = useAppSelector((s) => s.auth.userType);
   const {
     tickets,
     loading: ticketsLoading,
@@ -404,19 +418,21 @@ export default function Dashboard({ internal = false }: { internal?: boolean }) 
   const [dateTo, setDateTo] = useState("");
 
   useEffect(() => {
-    const split = internal ? { companyName: INTERNAL_COMPANY_NAME } : { excludeCompanyName: INTERNAL_COMPANY_NAME };
+    // Customer users only have customer tickets — they send no type.
+    const split = userType === 'customer' ? {} : { ticketType };
     dispatch(fetchTickets({ limit: 10000, includeSubTickets: true, ...split }));
-    dispatch(fetchCustomers(split));
+    // The Customers card only exists on the customer dashboard
+    if (isCustomerType) dispatch(fetchCustomers(undefined));
     dispatch(fetchConsultants({ limit: 1000 }));
-  }, [dispatch, internal]);
+  }, [dispatch, ticketType, isCustomerType, userType]);
 
   // Company options derived from the loaded tickets (their customer's companyName),
   // so the dropdown only lists companies that actually have tickets.
   const companyOptions = useMemo(() => {
     const names = new Set<string>();
     for (const t of tickets) {
-      const c = t.customer;
-      if (typeof c === "object" && c?.companyName) names.add(c.companyName);
+      const c = customerOf(t);
+      if (c?.companyName) names.add(c.companyName);
     }
     return [
       { value: "", label: "All companies" },
@@ -433,17 +449,25 @@ export default function Dashboard({ internal = false }: { internal?: boolean }) 
   // splits this set.
   const filteredTickets = useMemo(() => {
     let arr = tickets;
-    if (company) {
-      arr = arr.filter((t) => {
-        const name = typeof t.customer === "object" && t.customer ? t.customer.companyName : "";
-        return name === company;
-      });
+    if (company && isCustomerType) {
+      arr = arr.filter((t) => (customerOf(t)?.companyName ?? "") === company);
     }
     if (consultant) {
       arr = arr.filter((t) => ticketConsultantIds(t).includes(consultant));
     }
     return arr;
-  }, [tickets, company, consultant]);
+  }, [tickets, company, consultant, isCustomerType]);
+
+  // Internal / R&D: how many different employees asked for the filtered tickets
+  const requesterCount = useMemo(() => {
+    const ids = new Set<string>();
+    for (const t of filteredTickets) {
+      const r = requesterOf(t);
+      const id = r?._id ?? (typeof t.requestedBy === "string" ? t.requestedBy : null);
+      if (id) ids.add(id);
+    }
+    return ids.size;
+  }, [filteredTickets]);
 
   // Tickets created in the range — basis for the three "what came in" totals.
   const createdTickets = useMemo(
@@ -590,10 +614,8 @@ export default function Dashboard({ internal = false }: { internal?: boolean }) 
         transition={{ ...SP, delay: 0 }}
       >
         <div>
-          <h1 className="display-sm text-on-surface">{internal ? 'Internal Dashboard' : 'Dashboard'}</h1>
-          <p className="text-sm text-on-surface-variant mt-1">
-            {internal ? `${INTERNAL_COMPANY_NAME}'s own tickets at a glance` : 'Customer tickets at a glance'}
-          </p>
+          <h1 className="display-sm text-on-surface">{DASHBOARD_TITLE[ticketType]}</h1>
+          <p className="text-sm text-on-surface-variant mt-1">{DASHBOARD_SUBTITLE[ticketType]}</p>
         </div>
         <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-surface-container-lowest border border-outline-variant/20 shadow-sm text-xs font-medium text-on-surface-variant">
           <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -609,8 +631,8 @@ export default function Dashboard({ internal = false }: { internal?: boolean }) 
         transition={{ ...SP, delay: 0.05 }}
       >
         <div className="flex flex-wrap items-end gap-x-4 gap-y-3">
-          {/* Company (the internal dashboard covers one company) */}
-          {!internal && (
+          {/* Company — Internal / R&D tickets have no customer */}
+          {isCustomerType && (
             <div className="flex items-center gap-2 h-10">
               <Building2 className="h-4 w-4 shrink-0 text-on-surface-variant" />
               <div className="w-52">
@@ -740,7 +762,11 @@ export default function Dashboard({ internal = false }: { internal?: boolean }) 
         <StatCard label="Sub Tickets"      value={stats.subTicketsCount}   icon={GitBranch}    numberColor="text-violet-600"        iconBg="bg-violet-100"              iconColor="text-violet-600"          bar="bg-violet-500"         loading={ticketsLoading}   idx={2}  hint={basis("new")} />
         <StatCard label="New"             value={stats.new}            icon={AlertTriangle} numberColor="text-yellow-700"       iconBg="bg-yellow-100"              iconColor="text-yellow-600"          bar="bg-yellow-400"         loading={ticketsLoading}   idx={3}  hint={basis("new")} />
         <StatCard label="In Progress"     value={stats.inProgress}     icon={Activity}      numberColor="text-brand-400"        iconBg="bg-brand-50"                iconColor="text-brand-400"           bar="bg-brand-400"          loading={ticketsLoading}   idx={4}  hint={basis("in_progress")} />
-        <StatCard label="Customers"       value={totalCustomers}       icon={Users}         numberColor="text-brand-700"        iconBg="bg-brand-100"               iconColor="text-brand-700"           bar="bg-brand-700"          loading={customersLoading} idx={5} />
+        {isCustomerType ? (
+          <StatCard label="Customers"     value={totalCustomers}       icon={Users}         numberColor="text-brand-700"        iconBg="bg-brand-100"               iconColor="text-brand-700"           bar="bg-brand-700"          loading={customersLoading} idx={5} />
+        ) : (
+          <StatCard label="Requesters"    value={requesterCount}       icon={Users}         numberColor="text-brand-700"        iconBg="bg-brand-100"               iconColor="text-brand-700"           bar="bg-brand-700"          loading={ticketsLoading}   idx={5} />
+        )}
         <StatCard label="Assigned"        value={stats.assigned}       icon={Ticket}        numberColor="text-accent-orange-500" iconBg="bg-accent-orange-100"      iconColor="text-accent-orange-500"   bar="bg-accent-orange-500"  loading={ticketsLoading}   idx={6}  hint={basis("assigned")} />
         <StatCard label="Closed"           value={stats.closed}          icon={CheckCircle2}  numberColor="text-emerald-600"      iconBg="bg-emerald-100"             iconColor="text-emerald-600"         bar="bg-emerald-500"        loading={ticketsLoading}   idx={7}  hint={basis("closed")} />
         <StatCard label="Resolved"         value={stats.resolved}        icon={TrendingUp}    numberColor="text-emerald-700"      iconBg="bg-green-100"               iconColor="text-emerald-700"         bar="bg-emerald-400"        loading={ticketsLoading}   idx={8}  hint={basis("resolved")} />

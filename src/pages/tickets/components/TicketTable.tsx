@@ -11,7 +11,9 @@ import { Button } from '@/components/ui/button';
 import { Edit, Trash2, Ticket as TicketIcon, Eye, CheckCircle, GitBranch, MoreVertical, ChevronRight, ChevronDown, Timer, ChevronsUpDown, ChevronUp, Pencil, CalendarDays, ChevronUp as Inc, ChevronDown as Dec, Check, X } from 'lucide-react';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
-import type { Ticket, Consultant, Category, UpdateTicketData } from '@/types/ticket';
+import type { Ticket, Consultant, Category, UpdateTicketData, TicketType } from '@/types/ticket';
+import { createTicketPath, isCustomerTicket, requesterName, ticketTypeOf } from '@/lib/ticketTypes';
+import { TicketTypeBadge } from '@/components/tickets/TicketTypeBadge';
 import type { ServiceType } from '@/types/serviceType.types';
 import { useAppSelector, useAppDispatch } from '@/redux/hooks/hooks';
 import { acceptTicket, fetchSubTickets, updateTicket, changeTicketStatus } from '@/redux/slices/ticketSlice';
@@ -27,6 +29,11 @@ interface TicketTableProps {
   onDelete: (id: string) => void;
   loading: boolean;
   hideCustomerColumns?: boolean;
+  /**
+   * The list's ticket type. Internal / R&D lists swap Company + Customer Name for a
+   * "Requested By" column. Omitted = a mixed list (Projects, Meetings, customer views).
+   */
+  ticketType?: TicketType;
 }
 
 
@@ -54,7 +61,9 @@ const PRIORITY_OPTIONS: { value: Ticket['priority']; label: string }[] = [
   { value: 'critical', label: 'Critical' },
 ];
 
-export default function TicketTable({ tickets, onDelete, loading }: TicketTableProps) {
+export default function TicketTable({ tickets, onDelete, loading, ticketType }: TicketTableProps) {
+  // Internal / R&D list: no customer columns, a "Requested By" column instead
+  const requesterList = ticketType !== undefined && ticketType !== 'customer';
   const dispatch = useAppDispatch();
   const { userType, user } = useAppSelector((state) => state.auth);
   const { loading: ticketLoading } = useAppSelector((state) => state.tickets);
@@ -567,7 +576,7 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
         <TicketIcon className="mx-auto h-12 w-12 text-on-surface-variant/40 mb-4" />
         <p className="text-on-surface text-lg font-semibold">No tickets found</p>
         <p className="text-on-surface-variant text-sm mt-2">Create your first ticket to get started</p>
-        <Button onClick={() => window.location.href = '/tickets/create'} className="mt-6">
+        <Button onClick={() => window.location.href = createTicketPath(isCustomer ? 'customer' : ticketType ?? 'customer')} className="mt-6">
           Create Ticket
         </Button>
       </div>
@@ -617,7 +626,7 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                     <SH col="ticketNumber" label="Ticket #" className="min-w-[100px]" />
                     <SH col="status" label="Status" className="min-w-[120px]" />
                     <TableHead className="min-w-[200px]">Subject</TableHead>
-                    <TableHead className="min-w-[140px]">Company</TableHead>
+                    <TableHead className="min-w-[140px]">{requesterList ? 'Requested By' : 'Company'}</TableHead>
                     <TableHead className="min-w-[140px]">Created By</TableHead>
                     <TableHead className="min-w-[140px]">Assignee</TableHead>
                     {isConsultant && <TableHead className="min-w-[120px]">Category</TableHead>}
@@ -635,7 +644,7 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                     <TableHead className="min-w-[140px]">Last Activity</TableHead>
                     <SH col="resolvedAt" label="Resolved Date" className="min-w-[120px]" />
                     <SH col="closedAt" label="Closed Date" className="min-w-[120px]" />
-                    <TableHead className="min-w-[140px]">Customer Name</TableHead>
+                    {!requesterList && <TableHead className="min-w-[140px]">Customer Name</TableHead>}
                     {!isCustomer && (
                       <TableHead className="text-right min-w-[60px] sticky right-0 z-[21] bg-surface-container-low shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.08)]">
                         Actions
@@ -798,13 +807,29 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                       </div>
                     </div>
                   </TableCell>
-                  {/* Company */}
+                  {/* Company — or, for Internal / R&D, who asked for it */}
                   <TableCell>
                     {(() => {
+                      const parent = ticket.isSubTicket ? subToParent.get(ticket._id) : undefined;
+                      const requester = requesterName(ticket) || (parent ? requesterName(parent) : '');
+                      if (requesterList) {
+                        return requester
+                          ? <span className="text-sm text-on-surface">{requester}</span>
+                          : <span className="text-on-surface-variant/40">&mdash;</span>;
+                      }
                       const c = getEffectiveCustomer(ticket);
-                      return c?.companyName
-                        ? <span className="text-sm text-on-surface">{c.companyName}</span>
-                        : <span className="text-on-surface-variant/40">&mdash;</span>;
+                      if (c?.companyName) return <span className="text-sm text-on-surface">{c.companyName}</span>;
+                      // Mixed list (Projects / Meetings): name the kind and the requester
+                      const typeSource = parent ?? ticket;
+                      if (!isCustomerTicket(typeSource)) {
+                        return (
+                          <div className="flex flex-col items-start gap-1">
+                            <TicketTypeBadge type={ticketTypeOf(typeSource)} />
+                            {requester && <span className="text-xs text-on-surface-variant">{requester}</span>}
+                          </div>
+                        );
+                      }
+                      return <span className="text-on-surface-variant/40">&mdash;</span>;
                     })()}
                   </TableCell>
                   {/* Created By */}
@@ -1163,14 +1188,16 @@ export default function TicketTable({ tickets, onDelete, loading }: TicketTableP
                     )}
                   </TableCell>
                   {/* Customer Name */}
-                  <TableCell>
-                    {(() => {
-                      const c = getEffectiveCustomer(ticket);
-                      return c?.contactPerson
-                        ? <span className="text-sm font-medium text-on-surface">{c.contactPerson}</span>
-                        : <span className="text-on-surface-variant/40">&mdash;</span>;
-                    })()}
-                  </TableCell>
+                  {!requesterList && (
+                    <TableCell>
+                      {(() => {
+                        const c = getEffectiveCustomer(ticket);
+                        return c?.contactPerson
+                          ? <span className="text-sm font-medium text-on-surface">{c.contactPerson}</span>
+                          : <span className="text-on-surface-variant/40">&mdash;</span>;
+                      })()}
+                    </TableCell>
+                  )}
                   {!isCustomer && (
                     <TableCell className={`sticky right-0 z-10 shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.08)] ${isSubTicket ? 'bg-primary-fixed/20' : 'bg-surface-container-lowest'}`}>
                       <div className="flex items-center justify-end gap-1">

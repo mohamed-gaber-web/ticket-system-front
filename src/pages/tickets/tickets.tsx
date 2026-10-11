@@ -24,15 +24,16 @@ import { preparePdfText } from '@/utils/pdfText';
 import { saveCsv } from '@/utils/exportFile';
 import { PENDING_EXPORT_HEADERS, pendingExportValues } from '@/utils/ticketPending';
 import autoTable from 'jspdf-autotable';
-import type { Ticket, Category, Consultant as TicketConsultant } from '@/types/ticket';
+import type { Ticket, Category, Consultant as TicketConsultant, TicketType } from '@/types/ticket';
 import { getTickets } from '@/api/ticketApi';
 import { fetchNlSearch, clearNlSearch } from '@/redux/slices/aiSlice';
-import { INTERNAL_COMPANY_NAME } from '@/lib/internalTickets';
+import { TICKET_LIST_SUBTITLE, TICKET_LIST_TITLE, createTicketPath, customerOf, requesterName } from '@/lib/ticketTypes';
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 200];
 
-/** `internal` = the Internal page: only our own company's tickets, which the main list leaves out. */
-export default function Tickets({ internal = false }: { internal?: boolean }) {
+/** One list page per ticket type (Customer / Internal / R&D); the API filters by `ticketType`. */
+export default function Tickets({ ticketType = 'customer' }: { ticketType?: TicketType }) {
+  const isCustomerType = ticketType === 'customer';
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const dispatch = useAppDispatch();
@@ -56,13 +57,11 @@ export default function Tickets({ internal = false }: { internal?: boolean }) {
     return companyName ? { companyName } : {};
   };
 
-  // Staff see our own company's tickets only on the Internal page; the main
-  // list leaves them out. Customers are already fenced to their own company.
-  const getInternalSplitParams = () => {
+  // Staff get one list per ticket type. Customer users only ever have customer
+  // tickets (the API fences them to their company), so they send no type.
+  const getTicketTypeParams = (): { ticketType?: TicketType } => {
     if (userType === 'customer') return {};
-    return internal
-      ? { companyName: INTERNAL_COMPANY_NAME }
-      : { excludeCompanyName: INTERNAL_COMPANY_NAME };
+    return { ticketType };
   };
 
   // --- URL param helpers ---
@@ -80,8 +79,9 @@ export default function Tickets({ internal = false }: { internal?: boolean }) {
   const departmentFilter  = spArray('department');
   const assignedByFilter  = spArray('consultant');
   const serviceTypeFilter = spArray('serviceType');
-  const customerFilter    = spArray('customer');
-  const companyFilter     = spArray('company');
+  // Internal / R&D tickets have no customer — their filters don't apply.
+  const customerFilter    = isCustomerType ? spArray('customer') : [];
+  const companyFilter     = isCustomerType ? spArray('company') : [];
   const moduleFilter           = spArray('module');
   const categoryFilter         = spArray('category');
   const serviceTypeNameFilter       = sp('serviceTypeName');
@@ -168,8 +168,10 @@ export default function Tickets({ internal = false }: { internal?: boolean }) {
   useEffect(() => {
     if (!isCustomer) {
       dispatch(fetchConsultants({ limit: 1000 }));
-      dispatch(fetchCustomers({ limit: 1000 }));
-      dispatch(fetchCompanies({ limit: 1000 }));
+      if (isCustomerType) {
+        dispatch(fetchCustomers({ limit: 1000 }));
+        dispatch(fetchCompanies({ limit: 1000 }));
+      }
       dispatch(fetchDepartments({ limit: 1000 }));
       dispatch(fetchServiceTypes({ limit: 1000 }));
       dispatch(fetchModules({ limit: 1000 }));
@@ -177,7 +179,7 @@ export default function Tickets({ internal = false }: { internal?: boolean }) {
     dispatch(fetchSources({ isActive: true, limit: 1000 }));
     dispatch(fetchCategories({ limit: 9999 }));
     dispatch(fetchCustomizedSolutions({ limit: 9999 }));
-  }, [isCustomer]);
+  }, [isCustomer, isCustomerType]);
 
   const resolveExcludeServiceTypeIds = () => {
     if (!excludeServiceTypeNames.length || !serviceTypes?.length) return [];
@@ -254,7 +256,7 @@ export default function Tickets({ internal = false }: { internal?: boolean }) {
     if (acceptedDateTo)          params.acceptedDateTo     = acceptedDateTo;
     if (updatedDateFrom)         params.updatedDateFrom    = updatedDateFrom;
     if (updatedDateTo)           params.updatedDateTo      = updatedDateTo;
-    Object.assign(params, getInternalSplitParams(), getCustomerScopeParams());
+    Object.assign(params, getTicketTypeParams(), getCustomerScopeParams());
     return params;
   };
 
@@ -353,20 +355,22 @@ export default function Tickets({ internal = false }: { internal?: boolean }) {
     Boolean(updatedDateTo),
   ].filter(Boolean).length;
 
+  // Internal / R&D exports carry "Requested By" instead of Company + Customer Name.
   const EXPORT_HEADERS = [
     'Sub Tickets', 'Ticket #', 'Parent Ticket #', 'Status', ...PENDING_EXPORT_HEADERS, 'Subject',
-    'Company', 'Created By', 'Assignee', 'Assigned By', 'Category',
+    isCustomerType ? 'Company' : 'Requested By', 'Created By', 'Assignee', 'Assigned By', 'Category',
     'Service Type', 'Priority', 'Priority #', 'Duration (hrs)', 'Week', 'Module',
     'Created Date', 'Assigned Date', 'Delivery Date',
     'Last Updated', 'Resolved Date', 'Closed Date',
-    'Customer Name', 'Type',
+    ...(isCustomerType ? ['Customer Name'] : []), 'Type',
   ];
 
   const fmtDate = (date?: string) =>
     date ? new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
 
   const getExportValues = (ticket: Ticket): string[] => {
-    const customerObj = typeof ticket.customer === 'object' && ticket.customer ? ticket.customer as any : null;
+    const customerObj = customerOf(ticket);
+    const requester = requesterName(ticket);
     const categoryObj = typeof ticket.category === 'object' && ticket.category ? (ticket.category as Category) : null;
     const serviceTypeObj = typeof ticket.serviceType === 'object' && ticket.serviceType ? ticket.serviceType as any : null;
     const assigneeObj = typeof ticket.acceptedBy === 'object' && ticket.acceptedBy ? (ticket.acceptedBy as TicketConsultant) : null;
@@ -384,7 +388,7 @@ export default function Tickets({ internal = false }: { internal?: boolean }) {
       ticket.status.replace(/_/g, ' '),
       ...pendingExportValues(ticket),
       ticket.subject,
-      customerObj?.companyName ?? '',
+      isCustomerType ? customerObj?.companyName ?? '' : requester,
       createdByObj ? `${createdByObj.firstName} ${createdByObj.lastName}` : '',
       assigneeObj ? `${assigneeObj.firstName} ${assigneeObj.lastName}` : '',
       assignedByObj ? `${assignedByObj.firstName} ${assignedByObj.lastName}` : '',
@@ -401,7 +405,7 @@ export default function Tickets({ internal = false }: { internal?: boolean }) {
       fmtDate(ticket.updatedAt),
       fmtDate(ticket.resolvedAt),
       fmtDate(ticket.closedAt),
-      customerObj?.contactPerson ?? '',
+      ...(isCustomerType ? [customerObj?.contactPerson ?? ''] : []),
       ticket.isSubTicket ? 'Sub-ticket' : 'Main Ticket',
     ];
   };
@@ -455,7 +459,7 @@ export default function Tickets({ internal = false }: { internal?: boolean }) {
     if (acceptedDateTo)          params.acceptedDateTo     = acceptedDateTo;
     if (updatedDateFrom)         params.updatedDateFrom    = updatedDateFrom;
     if (updatedDateTo)           params.updatedDateTo      = updatedDateTo;
-    Object.assign(params, getInternalSplitParams(), getCustomerScopeParams());
+    Object.assign(params, getTicketTypeParams(), getCustomerScopeParams());
     return params;
   };
 
@@ -505,7 +509,7 @@ export default function Tickets({ internal = false }: { internal?: boolean }) {
       const pdf = await preparePdfText(doc, body);
       if (pdf.fontMissing) toast.error('Arabic font unavailable — the PDF may not show Arabic text');
       doc.setFontSize(16);
-      pdf.write('Tickets Report', 14, 18);
+      pdf.write(`${isCustomerType ? 'Tickets' : TICKET_LIST_TITLE[ticketType]} Report`, 14, 18);
       doc.setFontSize(9);
       pdf.write(`Generated: ${new Date().toLocaleString()}  |  Total: ${data.length}`, 14, 25);
       autoTable(doc, {
@@ -558,8 +562,8 @@ export default function Tickets({ internal = false }: { internal?: boolean }) {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="display-sm text-on-surface">
-            {internal
-              ? 'Internal Tickets'
+            {!isCustomerType
+              ? TICKET_LIST_TITLE[ticketType]
               : serviceTypeNameFilter
               ? `${serviceTypeNameFilter} Tickets`
               : categoryNamesFilter.length
@@ -567,7 +571,7 @@ export default function Tickets({ internal = false }: { internal?: boolean }) {
               : 'Tickets'}
           </h1>
           <p className="text-on-surface-variant mt-1">
-            {internal ? `Tickets raised for ${INTERNAL_COMPANY_NAME}` : 'Manage your support tickets'}
+            {TICKET_LIST_SUBTITLE[ticketType]}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -612,7 +616,7 @@ export default function Tickets({ internal = false }: { internal?: boolean }) {
               </div>
             )}
           </div>
-          <Button onClick={() => navigate('/tickets/create')} className="gap-2">
+          <Button onClick={() => navigate(createTicketPath(isCustomer ? 'customer' : ticketType))} className="gap-2">
             <Plus className="h-4 w-4" />
             New Ticket
           </Button>
@@ -803,18 +807,20 @@ export default function Tickets({ internal = false }: { internal?: boolean }) {
                     label="Service Type"
                     options={serviceTypes?.filter(s => s.isActive).map((st) => ({ value: st._id, label: st.name })) || []}
                   />
-                  <MultiSelect
-                    values={customerFilter}
-                    onChange={(v) => updateFilters({ customer: v })}
-                    label="Customer"
-                    options={customers?.map((c) => ({ value: c._id, label: c.contactPerson })) || []}
-                  />
-                  {!internal && (
+                  {isCustomerType && (
+                    <MultiSelect
+                      values={customerFilter}
+                      onChange={(v) => updateFilters({ customer: v })}
+                      label="Customer"
+                      options={customers?.map((c) => ({ value: c._id, label: c.contactPerson })) || []}
+                    />
+                  )}
+                  {isCustomerType && (
                     <MultiSelect
                       values={companyFilter}
                       onChange={(v) => updateFilters({ company: v })}
                       label="Company"
-                      options={companies?.filter((c) => c.name.toLowerCase() !== INTERNAL_COMPANY_NAME.toLowerCase()).map((c) => ({ value: c.name, label: c.name })) ?? []}
+                      options={companies?.map((c) => ({ value: c.name, label: c.name })) ?? []}
                     />
                   )}
                   <MultiSelect
@@ -957,7 +963,7 @@ export default function Tickets({ internal = false }: { internal?: boolean }) {
       </div>
 
       {/* Ticket Table */}
-      <TicketTable tickets={tickets} onDelete={handleDelete} loading={loading} />
+      <TicketTable tickets={tickets} onDelete={handleDelete} loading={loading} ticketType={isCustomer ? undefined : ticketType} />
 
       {/* Pagination */}
       {total > 0 && (

@@ -29,6 +29,13 @@ export interface DevTicketRule {
   setBy: string;
 }
 
+/** "Import R&D tickets": every R&D ticket gets a card on the board (in `list`, else the first list). */
+export interface DevRndImport {
+  enabled: boolean;
+  list: string | null;
+  setBy?: string | null;
+}
+
 /** The ticket a card was created from. */
 export interface DevCardTicket {
   _id: string;
@@ -46,6 +53,7 @@ export interface DevBoard {
   labels: DevLabel[];
   archived: boolean;
   ticketRule?: DevTicketRule | null;
+  rndImport?: DevRndImport | null;
   createdAt: string;
   updatedAt: string;
   /** Only on the list endpoint */

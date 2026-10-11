@@ -10,6 +10,7 @@ import { Save, Mail, Phone, Calendar, Clock, Ticket as TicketIcon, Building2, Ma
 import { cn } from '@/lib/utils';
 import * as ticketApi from '@/api/ticketApi';
 import type { Ticket } from '@/types/ticket';
+import { ticketPartyName } from '@/lib/ticketTypes';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -848,9 +849,8 @@ const ProfilePage = () => {
                     </thead>
                     <tbody className="divide-y divide-surface-container-high">
                       {assignedTickets.map((ticket) => {
-                        const customer = typeof ticket.customer === 'object' && ticket.customer
-                          ? (ticket.customer as any)
-                          : null;
+                        // Company, or for Internal / R&D the requester / type label
+                        const party = ticketPartyName(ticket);
                         return (
                           <tr
                             key={ticket._id}
@@ -879,7 +879,7 @@ const ProfilePage = () => {
                               <p className="text-sm font-medium text-on-surface truncate">{ticket.subject}</p>
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap">
-                              <span className="text-sm text-on-surface-variant">{customer?.companyName || '—'}</span>
+                              <span className="text-sm text-on-surface-variant">{party || '—'}</span>
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap">
                               <div className="flex items-center gap-1.5">

@@ -44,6 +44,7 @@ import {
   ClipboardList,
   Send,
   Share2,
+  FlaskConical,
 } from "lucide-react";
 import type { Access } from "@/redux/hooks/useAccess";
 import type { ModuleKey } from "@/types/auth.types";
@@ -95,8 +96,8 @@ const PRODUCT_CATALOG_GROUP = {
   ],
 };
 
-// Consultant/Admin: /tickets is every customer's tickets except our own
-// company's, which have their own "Internal" page.
+// Consultant/Admin: one list + dashboard per ticket type — /tickets (Customer),
+// Internal, and R&D (only for admins + the R&D department: `requiresRnd`).
 const SERVICES_GROUP = {
   name: "Services",
   icon: Ticket,
@@ -105,6 +106,8 @@ const SERVICES_GROUP = {
     { name: "Tickets", path: "/tickets", icon: Ticket },
     { name: "Internal", path: "/tickets/internal", icon: Home },
     { name: "Internal Dashboard", path: "/dashboard/internal", icon: LayoutDashboard },
+    { name: "R&D Tickets", path: "/tickets/rnd", icon: FlaskConical, requiresRnd: true as const },
+    { name: "R&D Dashboard", path: "/dashboard/rnd", icon: LayoutDashboard, requiresRnd: true as const },
     { name: "Emails", path: "/tickets/emails", icon: Mail },
     { name: "Projects", path: "/projects", icon: FolderKanban },
     { name: "Meetings/Visit report", path: "/meetings", icon: CalendarDays },
@@ -165,6 +168,13 @@ export interface NavLink {
   module?: ModuleKey;
   /** Also shown, without `module`, to anyone of at least this rank. */
   orMinRole?: NavRank;
+  /** Only for who may see R&D tickets (admins + the R&D department). */
+  requiresRnd?: true;
+}
+
+/** Facts beyond useAccess() that decide links — loaded from the API. */
+export interface NavFlags {
+  canSeeRnd: boolean;
 }
 
 interface NavEntry {
@@ -186,6 +196,7 @@ const TICKETING_CONFIG_GROUP: NavLink = {
   children: [
     ...MODULES_GROUP.children,
     { name: "Working Hours", path: "/working-hours", icon: CalendarClock },
+    { name: "R&D Settings", path: "/ticket-settings", icon: FlaskConical, minRole: "admin" },
   ],
 };
 
@@ -336,25 +347,26 @@ const rankOk = (minRole: NavRank | undefined, access: Access) => {
 };
 
 /** Drop links the caller may not see, recursing into groups; drop empty groups. */
-const pruneLink = (link: NavLink, access: Access): NavLink | null => {
+const pruneLink = (link: NavLink, access: Access, flags: NavFlags): NavLink | null => {
   if (!rankOk(link.minRole, access)) return null;
   if (link.module && !access.hasModule(link.module) && !(link.orMinRole && rankOk(link.orMinRole, access))) return null;
+  if (link.requiresRnd && !flags.canSeeRnd) return null;
   if (!link.children) return link;
   const children = link.children
-    .map((c) => pruneLink(c, access))
+    .map((c) => pruneLink(c, access, flags))
     .filter((c): c is NavLink => c !== null);
   if (!children.length) return null;
   return { ...link, children };
 };
 
-export const buildEmployeeLinks = (access: Access): NavLink[] => {
+export const buildEmployeeLinks = (access: Access, flags: NavFlags = { canSeeRnd: false }): NavLink[] => {
   const seen = new Set<string>();
   const out: NavLink[] = [];
   for (const entry of EMPLOYEE_NAV) {
     const byRank = entry.orMinRole !== undefined && rankOk(entry.orMinRole, access);
     if (entry.module !== "any" && !access.hasModule(entry.module) && !byRank) continue;
     if (!rankOk(entry.minRole, access)) continue;
-    const link = pruneLink(entry.link, access);
+    const link = pruneLink(entry.link, access, flags);
     if (!link) continue;
     // Two groups may legitimately offer the same page (Balances for a manager
     // under both Employees and My Requests); the first one wins.
@@ -375,8 +387,8 @@ export const buildEmployeeLinks = (access: Access): NavLink[] => {
 /** The sidebar for the current user: customers get theirs, employees are filtered by module and rank. */
 // Typed loosely on purpose: the sidebar components model links as a
 // discriminated union that NavLink (a single shape) satisfies at runtime.
-export const getRouterLinks = (access: Access, customerRole?: string | null): any[] => {
+export const getRouterLinks = (access: Access, customerRole?: string | null, flags?: NavFlags): any[] => {
   if (access.isCustomer) return buildCustomerLinks(customerRole);
-  if (access.isEmployee) return buildEmployeeLinks(access);
+  if (access.isEmployee) return buildEmployeeLinks(access, flags);
   return [];
 };

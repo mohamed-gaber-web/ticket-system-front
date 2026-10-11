@@ -9,6 +9,7 @@ import ProtectedRoute, {
   ManagerRoute,
   AdminRoute,
   EmployeeManagerRoute,
+  RndRoute,
 } from "@/components/auth/ProtectedRoute";
 import { useAccess } from "@/redux/hooks/useAccess";
 import { homePathFor } from "@/lib/access";
@@ -61,7 +62,7 @@ function DashboardRouter() {
   const access = useAccess();
   if (!userType) return <PageLoader />;
   if (userType === "customer") return <Lazy><CustomerDashboard /></Lazy>;
-  if (access.hasModule("tickets")) return <Dashboard />;
+  if (access.hasModule("tickets")) return <Dashboard key="customer" ticketType="customer" />;
   const home = homePathFor(access.modules);
   return <Navigate to={home === "/" ? "/employee-requests" : home} replace />;
 }
@@ -144,6 +145,7 @@ const Countries = lazy(() => import("@/pages/countries/Countries"));
 const BusinessClassifications = lazy(() => import("@/pages/business-classifications/BusinessClassifications"));
 const Companies = lazy(() => import("@/pages/companies/Companies"));
 const WorkingHoursPage = lazy(() => import("@/pages/working-hours/WorkingHoursPage"));
+const TicketSettingsPage = lazy(() => import("@/pages/ticket-settings/TicketSettingsPage"));
 
 // Company Users Module
 const CompanyUsers = lazy(() => import("@/pages/company-users/companyUsers"));
@@ -258,9 +260,12 @@ export const routes: RouteObject[] = [
       { path: "/customers/summary", element: <ModuleRoute module="tickets"><Lazy><CustomerSummary /></Lazy></ModuleRoute> },
 
       // Ticket Routes
-      { path: "/tickets", element: <Lazy><Tickets key="all" /></Lazy> },
-      { path: "/tickets/internal", element: <EmployeeRoute><Lazy><Tickets key="internal" internal /></Lazy></EmployeeRoute> },
-      { path: "/dashboard/internal", element: <ModuleRoute module="tickets"><Dashboard key="internal" internal /></ModuleRoute> },
+      // One list + dashboard per ticket type; `key` remounts so filters start fresh per type.
+      { path: "/tickets", element: <Lazy><Tickets key="customer" ticketType="customer" /></Lazy> },
+      { path: "/tickets/internal", element: <EmployeeRoute><Lazy><Tickets key="internal" ticketType="internal" /></Lazy></EmployeeRoute> },
+      { path: "/tickets/rnd", element: <RndRoute><Lazy><Tickets key="rnd" ticketType="rnd" /></Lazy></RndRoute> },
+      { path: "/dashboard/internal", element: <ModuleRoute module="tickets"><Dashboard key="internal" ticketType="internal" /></ModuleRoute> },
+      { path: "/dashboard/rnd", element: <RndRoute module="tickets"><Dashboard key="rnd" ticketType="rnd" /></RndRoute> },
       { path: "/tickets/create", element: <Lazy><CreateTicket /></Lazy> },
       { path: "/tickets/edit/:id", element: <Lazy><EditTicket /></Lazy> },
       { path: "/tickets/emails", element: <ModuleRoute module="tickets"><Lazy><TicketEmails /></Lazy></ModuleRoute> },
@@ -328,6 +333,7 @@ export const routes: RouteObject[] = [
       { path: "/business-classifications", element: <ModuleRoute module="telesales"><Lazy><BusinessClassifications /></Lazy></ModuleRoute> },
       { path: "/companies", element: <ModuleRoute module="tickets"><Lazy><Companies /></Lazy></ModuleRoute> },
       { path: "/working-hours", element: <ModuleRoute module="tickets"><Lazy><WorkingHoursPage /></Lazy></ModuleRoute> },
+      { path: "/ticket-settings", element: <AdminRoute><Lazy><TicketSettingsPage /></Lazy></AdminRoute> },
 
       // Company Users — company_admin customers only
       {

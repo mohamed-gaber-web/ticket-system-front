@@ -2,6 +2,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { useAppSelector } from '@/redux/hooks/hooks';
 import { useAccess } from '@/redux/hooks/useAccess';
+import { useTicketSettings } from '@/redux/hooks/useTicketSettings';
 import type { UserType, ModuleKey } from '@/types/auth.types';
 import type { CustomerRole } from '@/types/customer.types';
 
@@ -100,6 +101,29 @@ export const ManagerRoute = ({ children }: { children: ReactNode }) => (
 export const EmployeeManagerRoute = ({ children }: { children: ReactNode }) => (
   <ProtectedRoute allowedUserTypes={['employee']} minRole="employee-manager">
     {children}
+  </ProtectedRoute>
+);
+
+/** Waits for the ticket settings, then lets through only who may see R&D tickets. */
+const RndGate = ({ children }: { children: ReactNode }) => {
+  const { canSeeRnd, ready } = useTicketSettings();
+  if (!ready) {
+    return (
+      <div className="flex items-center justify-center h-[60vh]" role="status" aria-label="Loading">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
+      </div>
+    );
+  }
+  return canSeeRnd ? <>{children}</> : <Navigate to="/unauthorized" replace />;
+};
+
+/**
+ * R&D tickets: admins + the R&D department (Ticketing Setup → R&D Settings).
+ * `module` additionally requires that module (the dashboard needs `tickets`).
+ */
+export const RndRoute = ({ children, module }: { children: ReactNode; module?: ModuleKey }) => (
+  <ProtectedRoute allowedUserTypes={['employee']} module={module}>
+    <RndGate>{children}</RndGate>
   </ProtectedRoute>
 );
 

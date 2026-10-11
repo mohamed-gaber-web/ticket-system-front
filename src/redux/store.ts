@@ -37,6 +37,7 @@ import employeeBalancesReducer from './slices/employeeBalanceSlice';
 import aiReducer from './slices/aiSlice';
 import evaluationReducer from './slices/evaluationSlice';
 import salesAssistantReducer from './slices/salesAssistantSlice';
+import ticketSettingsReducer from './slices/ticketSettingsSlice';
 
 export const store = configureStore({
   reducer: {
@@ -78,6 +79,7 @@ export const store = configureStore({
     ai: aiReducer,
     evaluation: evaluationReducer,
     salesAssistant: salesAssistantReducer,
+    ticketSettings: ticketSettingsReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

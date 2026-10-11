@@ -1,5 +1,6 @@
 import type { ThreadEmail, LeadEmailThreadSummary } from '@/types/teleSales.types';
 import type { InboxResponse, InboxRowBase } from '@/components/email/EmailInboxView';
+import type { TicketType } from '@/types/ticket';
 
 /**
  * A message in a ticket's email conversation with the customer. The backend
@@ -22,7 +23,9 @@ export interface TicketEmailInboxRow extends InboxRowBase {
     subject: string;
     status?: string;
     priority?: string;
-    customer?: { _id: string; companyName?: string; contactPerson?: string; email?: string };
+    /** Absent for Internal / R&D tickets. */
+    customer?: { _id: string; companyName?: string; contactPerson?: string; email?: string } | null;
+    ticketType?: TicketType;
   } | null;
 }
 

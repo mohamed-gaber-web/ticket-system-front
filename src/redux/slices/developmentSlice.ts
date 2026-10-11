@@ -112,6 +112,15 @@ export const setTicketRule = thunk(
   'Failed to save the ticket link'
 );
 
+export const setRndImport = thunk(
+  'setRndImport',
+  async ({ id, enabled, list }: { id: string; enabled: boolean; list: string | null }) => {
+    const res = await devApi.setRndImport(id, { enabled, list });
+    return { ...res.data, message: res.message };
+  },
+  'Failed to save the R&D import setting'
+);
+
 export const addLabel = thunk(
   'addLabel',
   async ({ boardId, name, color }: { boardId: string; name: string; color: string }) =>
@@ -351,6 +360,9 @@ const developmentSlice = createSlice({
       })
       .addCase(setTicketRule.fulfilled, (state, action) => {
         if (state.board?._id === action.payload.board._id) state.board.ticketRule = action.payload.board.ticketRule ?? null;
+      })
+      .addCase(setRndImport.fulfilled, (state, action) => {
+        if (state.board?._id === action.payload.board._id) state.board.rndImport = action.payload.board.rndImport ?? null;
       })
       .addCase(addLabel.fulfilled, (state, action) => setLabels(state, action.payload))
       .addCase(updateLabel.fulfilled, (state, action) => setLabels(state, action.payload))

@@ -6,16 +6,19 @@ import { Button } from "@/components/ui/button";
 import { getRouterLinks } from "@/constatnts/app.constant";
 import { useAppSelector } from "@/redux/hooks/hooks";
 import { useAccess } from "@/redux/hooks/useAccess";
+import { useTicketSettings } from "@/redux/hooks/useTicketSettings";
 
 export default function Sidebar() {
     const [isOpen, setIsOpen] = useState(true);
     const [isMobileOpen, setIsMobileOpen] = useState(false);
     const { customerRole } = useAppSelector((state) => state.auth);
     const access = useAccess();
+    // R&D links only for admins + the R&D department (loaded once from the API)
+    const { canSeeRnd } = useTicketSettings();
 
     // Customers get the portal links; employees get every group their modules
     // and rank unlock (see EMPLOYEE_NAV in app.constant.ts).
-    const links = getRouterLinks(access, customerRole);
+    const links = getRouterLinks(access, customerRole, { canSeeRnd });
 
     return (
         <>

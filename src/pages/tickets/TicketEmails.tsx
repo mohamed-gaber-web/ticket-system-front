@@ -2,6 +2,7 @@ import * as ticketEmailApi from '@/api/ticketEmailApi';
 import type { TicketEmailInboxFilter, TicketEmailInboxRow } from '@/types/ticketEmail.types';
 import { EmailInboxView, type InboxFilter } from '@/components/email/EmailInboxView';
 import { initialsOf } from '@/lib/emailInbox';
+import { TICKET_TYPE_LABELS } from '@/lib/ticketTypes';
 
 const FILTERS: InboxFilter<TicketEmailInboxFilter>[] = [
   { value: 'all', label: 'All conversations', hint: 'Every ticket with an email conversation' },
@@ -16,7 +17,10 @@ const TILE_FILTERS = { all: 'all', unread: 'unread', awaitingAgent: 'awaiting_ag
 const viewOf = (row: TicketEmailInboxRow) => {
   const t = row.ticket;
   if (!t) return null;
-  const company = t.customer?.companyName || t.customer?.contactPerson;
+  // Internal / R&D tickets have no customer — name the kind instead
+  const company =
+    t.customer?.companyName || t.customer?.contactPerson ||
+    (t.ticketType && t.ticketType !== 'customer' ? TICKET_TYPE_LABELS[t.ticketType] : undefined);
   return {
     key: t._id,
     tag: t.ticketNumber,

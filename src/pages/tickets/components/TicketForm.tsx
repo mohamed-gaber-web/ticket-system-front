@@ -1,9 +1,13 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import type { Ticket, CreateTicketData, UpdateTicketData } from '@/types/ticket';
+import type { Ticket, CreateTicketData, UpdateTicketData, TicketType } from '@/types/ticket';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { CustomSelect } from '@/components/ui/custom-select';
+import { ConsultantSelect } from '@/components/ui/consultant-select';
+import { fetchConsultants } from '@/redux/slices/consultantSlice';
+import { useTicketSettings } from '@/redux/hooks/useTicketSettings';
+import { TICKET_TYPE_LABELS, ticketTypeOf } from '@/lib/ticketTypes';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchCustomers } from '@/redux/slices/customerSlice';
@@ -26,7 +30,12 @@ interface Props {
   initialData?: Ticket;
   onSubmit: (data: CreateTicketData | UpdateTicketData, attachments?: File[]) => void;
   isEdit?: boolean;
+  /** Create mode: the type to pre-select (from `?type=` — the list the user came from). */
+  defaultType?: TicketType;
 }
+
+// Employees who can no longer ask for work are left out of "Requested By"
+const GONE_STATUSES = ['resigned', 'terminated'];
 
 // Generate week options for the current year (Saturday–Friday, Egypt calendar)
 const generateWeekOptions = () => {
@@ -64,7 +73,7 @@ const generateTicketNumber = () => {
   return `${prefix}-${timestamp}-${random}`;
 };
 
-export default function TicketForm({ initialData, onSubmit, isEdit = false }: Props) {
+export default function TicketForm({ initialData, onSubmit, isEdit = false, defaultType = 'customer' }: Props) {
   const dispatch = useAppDispatch();
   const { categories, loading: categoriesLoading } = useAppSelector((state) => state.categories);
   const { customers, loading: customersLoading } = useAppSelector((state) => state.customers);
@@ -80,6 +89,37 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
   const isConsultant = userType === 'employee';
   const isAdmin = isConsultant && consultantRole === 'admin';
   const customerId = isConsultant ? '' : (user?._id || '');
+
+  // Ticket type (staff only — customers always raise Customer tickets) and, for
+  // Internal / R&D, the employee asking for the work (defaults to me).
+  const { canSeeRnd, ready: settingsReady } = useTicketSettings();
+  const { consultants, loading: consultantsLoading } = useAppSelector((state) => state.consultants);
+  const [ticketType, setTicketType] = useState<TicketType>(isConsultant ? defaultType : 'customer');
+  const [requestedBy, setRequestedBy] = useState<string>(isConsultant && !isEdit ? user?._id ?? '' : '');
+  const isCustomerType = !isConsultant || ticketType === 'customer';
+  // On edit, the customer the ticket already had (only admins may change it)
+  const initialCustomerId =
+    initialData?.customer && typeof initialData.customer === 'object'
+      ? initialData.customer._id
+      : initialData?.customer ?? '';
+
+  // R&D asked for (e.g. ?type=rnd) but the user may not see R&D → Customer
+  useEffect(() => {
+    if (!isEdit && settingsReady && !canSeeRnd && ticketType === 'rnd') setTicketType('customer');
+  }, [isEdit, settingsReady, canSeeRnd, ticketType]);
+
+  const ticketTypeOptions = useMemo(
+    () =>
+      (['customer', 'internal', 'rnd'] as TicketType[])
+        .filter((t) => t !== 'rnd' || canSeeRnd || ticketType === 'rnd')
+        .map((t) => ({ value: t, label: TICKET_TYPE_LABELS[t] })),
+    [canSeeRnd, ticketType]
+  );
+
+  const requesterChoices = useMemo(
+    () => consultants.filter((c) => !GONE_STATUSES.includes(c.status) || c._id === requestedBy),
+    [consultants, requestedBy]
+  );
 
   const [formData, setFormData] = useState<CreateTicketData | UpdateTicketData>(
     isEdit
@@ -203,6 +243,8 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
     // Fetch customers if user is a consultant
     if (isConsultant) {
       dispatch(fetchCustomers({ limit: 1000 }));
+      // "Requested By" for Internal / R&D tickets
+      dispatch(fetchConsultants({ limit: 1000 }));
     }
     // Fetch all reference data for the new properties
     dispatch(fetchEnvironments({ isActive: true, limit: 1000 }));
@@ -247,13 +289,15 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
       const toDateInput = (val?: string) => (val ? val.slice(0, 10) : '');
 
       if (isEdit) {
+        setTicketType(ticketTypeOf(initialData));
+        setRequestedBy(extractId(initialData.requestedBy ?? undefined));
         setFormData({
           subject: initialData.subject,
           description: initialData.description,
           category: categoryId,
           priority: initialData.priority,
           status: initialData.status,
-          customer: extractId(initialData.customer as string | { _id: string }),
+          customer: extractId(initialData.customer ?? undefined),
           startDate: toDateInput(initialData.startDate),
           deliveryEstimationDate: toDateInput(initialData.deliveryEstimationDate),
           environment: extractId(initialData.environment),
@@ -402,13 +446,20 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validation for create mode
-    if (!isEdit) {
-      const createData = formData as CreateTicketData;
-      if (!createData.customer) {
-        toast.error('Customer information is missing. Please refresh the page and try again.');
-        return;
-      }
+    // Customer: required for Customer tickets only. Customer users fill it from
+    // their own account; staff pick it.
+    if (!isConsultant && !isEdit && !(formData as CreateTicketData).customer) {
+      toast.error('Customer information is missing. Please refresh the page and try again.');
+      return;
+    }
+    if (isConsultant && isCustomerType && !formData.customer) {
+      toast.error('Customer is required for Customer tickets.');
+      return;
+    }
+    // Internal / R&D: who asked for it
+    if (isConsultant && !isCustomerType && !requestedBy) {
+      toast.error('Requested By is required for Internal and R&D tickets.');
+      return;
     }
 
     if (!formData.serviceType) {
@@ -445,16 +496,23 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
       }
     }
 
-    // Clean up empty optional fields before submitting
+    // Clean up empty optional fields before submitting. Internal / R&D tickets
+    // carry no customer — on edit `customer: null` clears one the ticket had.
     const cleanedData = Object.fromEntries(
-      Object.entries(formData).filter(([_, value]) =>
-        value !== '' && value !== undefined && !(Array.isArray(value) && value.length === 0)
+      Object.entries(formData).filter(([key, value]) =>
+        value !== '' && value !== undefined && !(Array.isArray(value) && value.length === 0) &&
+        !(key === 'customer' && !isCustomerType)
       )
     );
 
+    // Staff send the type (customers' tickets are always Customer — the API forces it)
+    const typeFields: Pick<CreateTicketData, 'ticketType' | 'requestedBy'> = isConsultant
+      ? { ticketType, ...(isCustomerType ? {} : { requestedBy }) }
+      : {};
+
     const finalData = isEdit
-      ? cleanedData
-      : { ...cleanedData, notifyEmails };
+      ? { ...cleanedData, ...typeFields, ...(isConsultant && !isCustomerType ? { customer: null } : {}) }
+      : { ...cleanedData, ...typeFields, notifyEmails };
 
     onSubmit(finalData as CreateTicketData | UpdateTicketData, attachments);
   };
@@ -465,11 +523,50 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
       <div className="space-y-4">
         <h3 className="form-section-title">Basic Information</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Customer Selection - Consultants on create; Consultants & Admins on edit */}
+          {/* Ticket Type — staff only; R&D only for who may see it */}
           {isConsultant && (
             <div className="md:col-span-2">
+              <label className="form-label">Ticket Type *</label>
+              <CustomSelect
+                value={ticketType}
+                onChange={(val) => {
+                  const next = val as TicketType;
+                  setTicketType(next);
+                  // Internal / R&D need a requester — start with me
+                  if (next !== 'customer' && !requestedBy && user?._id) setRequestedBy(user._id);
+                }}
+                placeholder="Ticket type"
+                options={ticketTypeOptions}
+              />
+              <p className="mt-1 text-xs text-on-surface-variant">
+                {ticketType === 'customer'
+                  ? 'Work for a customer — the customer is notified and can rate it.'
+                  : ticketType === 'internal'
+                  ? 'Work for our own team — no customer, no customer emails or rating.'
+                  : 'Research & development — visible to admins and the R&D department only.'}
+              </p>
+            </div>
+          )}
+
+          {/* Requested By — Internal / R&D tickets */}
+          {isConsultant && !isCustomerType && (
+            <div className="md:col-span-2">
+              <label className="form-label">Requested By *</label>
+              <ConsultantSelect
+                consultants={requesterChoices}
+                loading={consultantsLoading}
+                value={requestedBy}
+                onChange={setRequestedBy}
+                placeholder="Choose the employee asking for this…"
+              />
+            </div>
+          )}
+
+          {/* Customer Selection — staff, Customer tickets only */}
+          {isConsultant && isCustomerType && (
+            <div className="md:col-span-2">
               <div className="flex items-center justify-between mb-2">
-                <label className="form-label">Customer {!isEdit && '*'}</label>
+                <label className="form-label">Customer *</label>
                 {!isEdit && (
                   <Link
                     to="/customers/create"
@@ -489,10 +586,10 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
                 }
                 onChange={(val) => setFormData({ ...formData, customer: val })}
                 placeholder={customersLoading ? 'Loading customers...' : 'Select a customer'}
-                disabled={customersLoading || (isEdit && !isAdmin)}
+                disabled={customersLoading || (isEdit && !isAdmin && Boolean(initialCustomerId))}
                 options={customerOptions}
               />
-              {isEdit && !isAdmin && (
+              {isEdit && !isAdmin && Boolean(initialCustomerId) && (
                 <p className="mt-1 text-xs text-on-surface-variant">Only admins can change the customer on an existing ticket.</p>
               )}
             </div>
@@ -754,7 +851,7 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false }: Pr
             </div>
 
             <div>
-              <label className="form-label">Customer Delivery Date *</label>
+              <label className="form-label">{isCustomerType ? 'Customer Delivery Date *' : 'Delivery Date *'}</label>
               <Input
                 type="date"
                 name="deliveryEstimationDate"
