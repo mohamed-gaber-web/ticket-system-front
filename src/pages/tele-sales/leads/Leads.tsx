@@ -507,7 +507,11 @@ export default function Leads({ lockedStatus, stage = 'Lead' }: LeadsProps = {})
                       />
                     </th>
                   )}
-                  {['Customer ID', 'Company Name', 'Contact Person', 'Phone', 'Entity Type', 'Sector', 'Customer Need', 'Status', 'Proposal Price', 'Source', 'Next Follow-up', 'Assigned To',
+                  {['Customer ID', 'Company Name', 'Contact Person', 'Phone', 'Entity Type', 'Sector', 'Customer Need', 'Status', 'Proposal Price',
+                    // The Leads tab mixes Leads and their converted Opportunities,
+                    // so it gets a Sales Type column; Data/Opportunities are single-value.
+                    ...(stage === 'Lead' ? ['Sales Type'] : []),
+                    'Source', 'Next Follow-up', 'Assigned To',
                     // With a single team on screen the column would be one
                     // repeated value, so it only shows for multi-team viewers.
                     ...(multiTeam ? ['Team'] : []), ''].map((h) => (
@@ -555,12 +559,7 @@ export default function Leads({ lockedStatus, stage = 'Lead' }: LeadsProps = {})
                           Existing
                         </span>
                       )}
-                      {/* The Leads tab also lists the leads already converted to Opportunities. */}
-                      {stage === 'Lead' && stageOf(lead) === 'Opportunity' && (
-                        <span className={`ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${STAGE_META.Opportunity.badge}`} title="Converted to an Opportunity">
-                          Opportunity
-                        </span>
-                      )}
+                      {/* Lead vs converted Opportunity now shows in the dedicated Sales Type column. */}
                     </td>
                     <td className="px-4 py-3 text-on-surface-variant whitespace-nowrap">
                       <div className="flex items-center gap-1">
@@ -604,6 +603,13 @@ export default function Leads({ lockedStatus, stage = 'Lead' }: LeadsProps = {})
                         ? <span className="font-medium text-on-surface">{formatMoney(lead.proposalValue!, lead.proposalCurrency)}</span>
                         : <span className="text-on-surface-variant">—</span>}
                     </td>
+                    {stage === 'Lead' && (
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${STAGE_META[stageOf(lead)].badge}`} title={STAGE_META[stageOf(lead)].hint}>
+                          {STAGE_META[stageOf(lead)].label}
+                        </span>
+                      </td>
+                    )}
                     <td className="px-4 py-3 text-on-surface-variant whitespace-nowrap">{lead.leadSource || '—'}</td>
                     <td className="px-4 py-3 text-on-surface-variant whitespace-nowrap">{formatDate(lead.nextFollowUpDate)}</td>
                     <td className="px-4 py-3 text-on-surface-variant whitespace-nowrap">
