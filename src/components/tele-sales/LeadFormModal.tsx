@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { Building2, MapPin, Phone, ClipboardList, StickyNote, Tags, ChevronDown, X, UserCheck } from 'lucide-react';
-import { INITIAL_LEAD_STATUS, PICKABLE_LEAD_STATUSES, type LeadStatus } from '@/config/leadStatusWorkflow';
+import { IMPORTED_LEAD_STATUS, PICKABLE_LEAD_STATUSES, type LeadStatus } from '@/config/leadStatusWorkflow';
 import type {
   Lead, LeadPriority, LeadSource, CreateLeadData, EntityType, IndustrySector, SalesType,
 } from '@/types/teleSales.types';
@@ -103,7 +103,7 @@ const emptyForm: CreateLeadData = {
   assignedTo: '',
   priority: 'Medium',
   potentialValue: undefined,
-  status: 'New Lead',
+  status: IMPORTED_LEAD_STATUS,
   painPoints: '',
   customerNeeds: '',
   customerNeedProducts: [],
@@ -532,12 +532,13 @@ export function LeadFormModal({ open, lead, stage, convert = false, onClose, onS
               </Field>
               {!lead && !raw && (
                 <Field label="Status">
-                  {/* Blank = the initial status, which is applied automatically and not offered as a choice. */}
+                  {/* New leads start in "No Action" (nobody has worked them yet); the agent
+                      may instead pick a working status if contact has already happened. */}
                   <SelectField
-                    value={!form.status || form.status === INITIAL_LEAD_STATUS ? '' : form.status}
-                    onChange={(e) => setForm(p => ({ ...p, status: (e.target.value || INITIAL_LEAD_STATUS) as LeadStatus }))}
+                    value={form.status || IMPORTED_LEAD_STATUS}
+                    onChange={(e) => setForm(p => ({ ...p, status: e.target.value as LeadStatus }))}
                   >
-                    <option value="">Not contacted yet</option>
+                    <option value={IMPORTED_LEAD_STATUS}>{IMPORTED_LEAD_STATUS}</option>
                     {PICKABLE_LEAD_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
                   </SelectField>
                 </Field>
