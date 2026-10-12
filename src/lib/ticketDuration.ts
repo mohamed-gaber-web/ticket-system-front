@@ -5,7 +5,7 @@
  * too just tells the user before the request. Keep in step with durationError
  * in the backend's ticketController.js.
  */
-const STATUSES_WITHOUT_DURATION = new Set(['new', 'assigned']);
+const STATUSES_WITHOUT_DURATION = new Set(['new', 'assigned', 'cancelled', 'on_hold']);
 
 export const DURATION_REQUIRED_MESSAGE =
   "Enter the ticket's duration (hours, more than 0) before moving it past Assigned.";

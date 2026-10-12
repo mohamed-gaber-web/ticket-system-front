@@ -26,7 +26,7 @@ export function activityDate(t: DatedTicket): string {
     case 'resolved':  return t.resolvedAt  || t.updatedAt || t.createdAt;
     case 'delivered': return t.deliveredAt || t.updatedAt || t.createdAt;
     case 'closed':    return t.closedAt || t.resolvedAt || t.updatedAt || t.createdAt;
-    // in_progress, customer_pending, tested, not_related and reopened have no stamp
+    // in_progress, customer_pending, tested, not_related, on_hold, cancelled and reopened have no stamp
     // of their own; updatedAt is when the ticket last moved, the closest proxy.
     default:          return t.updatedAt || t.createdAt;
   }
@@ -45,6 +45,8 @@ export const DATE_BASIS: Record<string, string> = {
   delivered:        'by delivered date',
   closed:           'by closed date',
   not_related:      'by last update',
+  on_hold:          'by last update',
+  cancelled:        'by last update',
 };
 
 export interface DateRange {
@@ -103,7 +105,7 @@ export const TICKET_ACTIVITY_LABELS: Record<TicketActivityType, string> = {
 };
 
 /** Statuses where the work is over — nobody is expected to act, so idle time is not shown. */
-const IDLE_EXEMPT = new Set(['closed', 'not_related']);
+const IDLE_EXEMPT = new Set(['closed', 'not_related', 'cancelled', 'on_hold']);
 
 interface ActivityTicket {
   status: string;

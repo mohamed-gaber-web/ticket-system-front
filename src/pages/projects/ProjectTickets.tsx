@@ -384,6 +384,8 @@ export default function ProjectTickets() {
               { value: 'resolved', label: 'Resolved' }, { value: 'tested', label: 'Tested' },
               { value: 'delivered', label: 'Delivered' }, { value: 'closed', label: 'Closed' },
               { value: 'not_related', label: 'Not Related' },
+              { value: 'on_hold', label: 'On Hold' },
+              { value: 'cancelled', label: 'Cancelled' },
             ]} />
 
           <MultiSelect values={priorityFilter} onChange={(v) => updateFilters({ priority: v })} label="Priority" className="min-w-[140px]"

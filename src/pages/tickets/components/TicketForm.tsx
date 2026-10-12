@@ -790,6 +790,8 @@ export default function TicketForm({ initialData, onSubmit, isEdit = false, defa
                   { value: 'closed', label: 'Closed' },
                   { value: 'delivered', label: 'Delivered' },
                   { value: 'not_related', label: 'Not Related' },
+                  { value: 'on_hold', label: 'On Hold' },
+                  { value: 'cancelled', label: 'Cancelled' },
                 ]}
               />
             </div>

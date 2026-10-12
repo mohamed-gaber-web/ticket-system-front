@@ -16,7 +16,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const TICKET_LIMIT = 10;
-const TERMINAL_STATUSES = new Set(['resolved', 'closed', 'delivered', 'tested', 'not_related']);
+const TERMINAL_STATUSES = new Set(['resolved', 'closed', 'delivered', 'tested', 'not_related', 'cancelled']);
 
 const fmtDate = (d?: string) =>
   d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
@@ -46,6 +46,8 @@ const STATUS_TICKET: Record<string, string> = {
   delivered:        'bg-teal-500 text-white',
   closed:           'bg-surface-container-highest text-on-surface-variant',
   not_related:      'bg-slate-500 text-white',
+  on_hold:          'bg-amber-500 text-white',
+  cancelled:        'bg-rose-600 text-white',
 };
 const ROLE_BADGE: Record<string, string> = {
   admin: 'bg-emerald-100 text-emerald-800',

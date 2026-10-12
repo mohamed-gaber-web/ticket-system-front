@@ -698,6 +698,8 @@ export default function Tickets({ ticketType = 'customer' }: { ticketType?: Tick
               { value: 'delivered', label: 'Delivered' },
               { value: 'closed', label: 'Closed' },
               { value: 'not_related', label: 'Not Related' },
+              { value: 'on_hold', label: 'On Hold' },
+              { value: 'cancelled', label: 'Cancelled' },
             ]}
           />
 

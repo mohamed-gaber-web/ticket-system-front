@@ -12,6 +12,8 @@ import {
   FlaskConical,
   PackageCheck,
   Ban,
+  PauseCircle,
+  XCircle,
   ShieldCheck,
   User,
   Plus,
@@ -185,6 +187,8 @@ function getStatusCfg(status: string) {
     case 'delivered':      return { Icon: PackageCheck,  color: 'text-teal-600',          bg: 'bg-teal-100',         dot: 'bg-teal-500',      pill: 'bg-teal-100 text-teal-700',            label: 'Delivered' };
     case 'closed':         return { Icon: CheckCircle2,  color: 'text-emerald-700',       bg: 'bg-emerald-500/10',   dot: 'bg-emerald-600',   pill: 'bg-emerald-500/12 text-emerald-800',   label: 'Closed' };
     case 'not_related':    return { Icon: Ban,           color: 'text-slate-500',         bg: 'bg-slate-100',        dot: 'bg-slate-400',     pill: 'bg-slate-100 text-slate-600',          label: 'Not Related' };
+    case 'on_hold':    return { Icon: PauseCircle,           color: 'text-amber-500',         bg: 'bg-amber-100',        dot: 'bg-amber-400',     pill: 'bg-amber-100 text-amber-600',          label: 'On Hold' };
+    case 'cancelled':    return { Icon: XCircle,           color: 'text-rose-500',         bg: 'bg-rose-100',        dot: 'bg-rose-400',     pill: 'bg-rose-100 text-rose-600',          label: 'Cancelled' };
     default:               return { Icon: AlertTriangle, color: 'text-yellow-600',        bg: 'bg-yellow-100',       dot: 'bg-yellow-400',    pill: 'bg-yellow-100 text-yellow-700',        label: status };
   }
 }
@@ -315,6 +319,8 @@ export default function CustomerDashboard() {
       tested:          byStatus(main, 'tested'),
       delivered:       byStatus(main, 'delivered'),
       notRelated:      byStatus(main, 'not_related'),
+      onHold:      byStatus(main, 'on_hold'),
+      cancelled:      byStatus(main, 'cancelled'),
       subNew:             byStatus(subs, 'new'),
       subAssigned:        byStatus(subs, 'assigned'),
       subInProgress:      byStatus(subs, 'in_progress'),
@@ -324,6 +330,8 @@ export default function CustomerDashboard() {
       subDelivered:       byStatus(subs, 'delivered'),
       subClosed:          byStatus(subs, 'closed'),
       subNotRelated:      byStatus(subs, 'not_related'),
+      subOnHold:      byStatus(subs, 'on_hold'),
+      subCancelled:      byStatus(subs, 'cancelled'),
     };
   }, [createdTickets, activityTickets]);
 
@@ -331,9 +339,9 @@ export default function CustomerDashboard() {
   // drawn as a share of what's actually charted rather than of the created-in-range total.
   const chartTotals = useMemo(() => ({
     main: stats.new + stats.assigned + stats.inProgress + stats.customerPending
-        + stats.resolved + stats.tested + stats.delivered + stats.closed + stats.notRelated,
+        + stats.resolved + stats.tested + stats.delivered + stats.closed + stats.notRelated + stats.onHold + stats.cancelled,
     sub:  stats.subNew + stats.subAssigned + stats.subInProgress + stats.subCustomerPending
-        + stats.subResolved + stats.subTested + stats.subDelivered + stats.subClosed + stats.subNotRelated,
+        + stats.subResolved + stats.subTested + stats.subDelivered + stats.subClosed + stats.subNotRelated + stats.subOnHold + stats.subCancelled,
   }), [stats]);
 
   const metrics = useMemo(() => {
@@ -508,6 +516,8 @@ export default function CustomerDashboard() {
         <StatCard label="Tested"          value={stats.tested}            icon={FlaskConical} numberColor="text-cyan-600"           iconBg="bg-cyan-100"                iconColor="text-cyan-600"            bar="bg-cyan-500"           loading={ticketsLoading} idx={9}  hint={basis('tested')} />
         <StatCard label="Delivered"       value={stats.delivered}         icon={PackageCheck} numberColor="text-teal-600"           iconBg="bg-teal-100"                iconColor="text-teal-600"            bar="bg-teal-500"           loading={ticketsLoading} idx={10} hint={basis('delivered')} />
         <StatCard label="Not Related"     value={stats.notRelated}        icon={Ban}          numberColor="text-slate-600"          iconBg="bg-slate-100"               iconColor="text-slate-600"           bar="bg-slate-500"          loading={ticketsLoading} idx={11} hint={basis('not_related')} />
+        <StatCard label="On Hold"     value={stats.onHold}        icon={PauseCircle}          numberColor="text-amber-600"          iconBg="bg-amber-100"               iconColor="text-amber-600"           bar="bg-amber-500"          loading={ticketsLoading} idx={12} hint={basis('on_hold')} />
+        <StatCard label="Cancelled"     value={stats.cancelled}        icon={XCircle}          numberColor="text-rose-600"          iconBg="bg-rose-100"               iconColor="text-rose-600"           bar="bg-rose-500"          loading={ticketsLoading} idx={13} hint={basis('cancelled')} />
       </motion.div>
 
       {/* ── Main 2-col layout ── */}
@@ -555,6 +565,8 @@ export default function CustomerDashboard() {
                         { v: stats.delivered,       color: 'bg-teal-500' },
                         { v: stats.closed,          color: 'bg-emerald-600' },
                         { v: stats.notRelated,      color: 'bg-slate-500' },
+                        { v: stats.onHold,      color: 'bg-amber-500' },
+                        { v: stats.cancelled,      color: 'bg-rose-500' },
                       ].filter((s) => s.v > 0).map((seg, i) => (
                         <motion.div
                           key={seg.color}
@@ -576,6 +588,8 @@ export default function CustomerDashboard() {
                         { label: 'Delivered',     v: stats.delivered,       dot: 'bg-teal-500',          text: 'text-teal-600' },
                         { label: 'Closed',        v: stats.closed,          dot: 'bg-emerald-600',       text: 'text-emerald-700' },
                         { label: 'Not Related',   v: stats.notRelated,      dot: 'bg-slate-500',         text: 'text-slate-600' },
+                        { label: 'On Hold',   v: stats.onHold,      dot: 'bg-amber-500',         text: 'text-amber-600' },
+                        { label: 'Cancelled',   v: stats.cancelled,      dot: 'bg-rose-500',         text: 'text-rose-600' },
                       ].map((item) => (
                         <div key={item.label} className="flex items-center gap-2">
                           <div className={`h-2.5 w-2.5 rounded-full shrink-0 ${item.dot}`} />
@@ -769,6 +783,8 @@ export default function CustomerDashboard() {
                   { label: 'Delivered',     value: stats.delivered,       bar: 'bg-teal-500',          dot: 'bg-teal-500',          text: 'text-teal-600' },
                   { label: 'Closed',        value: stats.closed,          bar: 'bg-emerald-600',       dot: 'bg-emerald-600',       text: 'text-emerald-700' },
                   { label: 'Not Related',   value: stats.notRelated,      bar: 'bg-slate-500',         dot: 'bg-slate-500',         text: 'text-slate-600' },
+                  { label: 'On Hold',   value: stats.onHold,      bar: 'bg-amber-500',         dot: 'bg-amber-500',         text: 'text-amber-600' },
+                  { label: 'Cancelled',   value: stats.cancelled,      bar: 'bg-rose-500',         dot: 'bg-rose-500',         text: 'text-rose-600' },
                 ]}
                 total={chartTotals.main}
                 loading={ticketsLoading}
@@ -805,6 +821,8 @@ export default function CustomerDashboard() {
                   { label: 'Delivered',     value: stats.subDelivered,       bar: 'bg-teal-500',          dot: 'bg-teal-500',          text: 'text-teal-600' },
                   { label: 'Closed',        value: stats.subClosed,          bar: 'bg-emerald-600',       dot: 'bg-emerald-600',       text: 'text-emerald-700' },
                   { label: 'Not Related',   value: stats.subNotRelated,      bar: 'bg-slate-500',         dot: 'bg-slate-500',         text: 'text-slate-600' },
+                  { label: 'On Hold',   value: stats.subOnHold,      bar: 'bg-amber-500',         dot: 'bg-amber-500',         text: 'text-amber-600' },
+                  { label: 'Cancelled',   value: stats.subCancelled,      bar: 'bg-rose-500',         dot: 'bg-rose-500',         text: 'text-rose-600' },
                 ]}
                 total={chartTotals.sub}
                 loading={ticketsLoading}

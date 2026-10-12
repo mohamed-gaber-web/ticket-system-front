@@ -157,6 +157,8 @@ const STATUS_PILL: Record<string, { label: string; pill: string }> = {
   delivered:        { label: "Delivered",       pill: "bg-cyan-500/12 text-cyan-700"      },
   closed:           { label: "Closed",          pill: "bg-slate-400/20 text-slate-600"    },
   not_related:      { label: "Not Related",     pill: "bg-slate-500/12 text-slate-600"    },
+  on_hold:          { label: "On Hold",         pill: "bg-amber-500/12 text-amber-700"    },
+  cancelled:        { label: "Cancelled",       pill: "bg-rose-600/12 text-rose-700"      },
 };
 
 type SearchMode = 'customer' | 'company';

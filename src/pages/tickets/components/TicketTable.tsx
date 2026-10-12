@@ -52,6 +52,8 @@ const STATUS_OPTIONS: { value: Ticket['status']; label: string }[] = [
   { value: 'resolved', label: 'Resolved' },
   { value: 'closed', label: 'Closed' },
   { value: 'not_related', label: 'Not Related' },
+  { value: 'on_hold', label: 'On Hold' },
+  { value: 'cancelled', label: 'Cancelled' },
 ];
 
 const PRIORITY_OPTIONS: { value: Ticket['priority']; label: string }[] = [
@@ -494,6 +496,8 @@ export default function TicketTable({ tickets, onDelete, loading, ticketType }: 
       closed: 'bg-surface-container-highest text-on-surface-variant',
       delivered: 'bg-teal-500 text-white',
       not_related: 'bg-slate-500 text-white',
+      on_hold: 'bg-amber-500 text-white',
+      cancelled: 'bg-rose-600 text-white',
     };
 
     const displayStatus = status.replace(/_/g, ' ');

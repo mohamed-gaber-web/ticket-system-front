@@ -31,6 +31,8 @@ const STATUS_ROWS = [
   { key: 'delivered', label: 'Delivered' },
   { key: 'closed', label: 'Closed' },
   { key: 'not_related', label: 'Not Related' },
+  { key: 'on_hold', label: 'On Hold' },
+  { key: 'cancelled', label: 'Cancelled' },
 ] as const;
 
 const COMPLETED_STATUSES = ['resolved', 'tested', 'delivered', 'closed'];

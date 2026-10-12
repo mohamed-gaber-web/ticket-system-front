@@ -62,6 +62,8 @@ const STATUS_STYLE: Record<string, string> = {
   delivered:        'bg-teal-100 text-teal-700',
   closed:           'bg-surface-container-high text-on-surface-variant',
   not_related:      'bg-slate-100 text-slate-700',
+  on_hold:          'bg-amber-100 text-amber-700',
+  cancelled:        'bg-rose-100 text-rose-700',
 };
 
 const DONE = new Set(['resolved', 'closed', 'delivered', 'tested']);

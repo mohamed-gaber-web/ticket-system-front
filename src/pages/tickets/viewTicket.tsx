@@ -76,9 +76,11 @@ const STATUS_STYLE: Record<string, string> = {
   closed: 'bg-surface-container-highest text-on-surface-variant',
   delivered: 'bg-teal-500 text-white',
   not_related: 'bg-slate-500 text-white',
+  on_hold: 'bg-amber-500 text-white',
+  cancelled: 'bg-rose-600 text-white',
 };
 
-const ALL_STATUSES: { value: 'new' | 'assigned' | 'in_progress' | 'customer_pending' | 'resolved' | 'tested' | 'delivered' | 'closed' | 'not_related'; label: string }[] = [
+const ALL_STATUSES: { value: 'new' | 'assigned' | 'in_progress' | 'customer_pending' | 'resolved' | 'tested' | 'delivered' | 'closed' | 'not_related' | 'on_hold' | 'cancelled'; label: string }[] = [
   { value: 'new', label: 'New' },
   { value: 'assigned', label: 'Assigned' },
   { value: 'in_progress', label: 'In Progress' },
@@ -88,6 +90,8 @@ const ALL_STATUSES: { value: 'new' | 'assigned' | 'in_progress' | 'customer_pend
   { value: 'delivered', label: 'Delivered' },
   { value: 'closed', label: 'Closed' },
   { value: 'not_related', label: 'Not Related' },
+  { value: 'on_hold', label: 'On Hold' },
+  { value: 'cancelled', label: 'Cancelled' },
 ];
 
 type TicketTab = 'details' | 'comments' | 'attachments' | 'emails';
@@ -209,7 +213,7 @@ export default function ViewTicket() {
 
   const [showPendingDialog, setShowPendingDialog] = useState(false);
 
-  const handleStatusChange = async (newStatus: 'new' | 'assigned' | 'in_progress' | 'customer_pending' | 'resolved' | 'tested' | 'delivered' | 'closed' | 'reopened' | 'not_related', pendingOn?: string) => {
+  const handleStatusChange = async (newStatus: 'new' | 'assigned' | 'in_progress' | 'customer_pending' | 'resolved' | 'tested' | 'delivered' | 'closed' | 'reopened' | 'not_related' | 'on_hold' | 'cancelled', pendingOn?: string) => {
     if (!currentTicket) return;
     if (newStatus === currentTicket.status && newStatus !== 'customer_pending') return;
     if (newStatus === 'closed' && hasOpenSubTickets) {

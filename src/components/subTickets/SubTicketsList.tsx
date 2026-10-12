@@ -85,6 +85,8 @@ export function SubTicketsList({ parentTicketId, parentTicketNumber, isSubTicket
     closed: { bg: 'bg-surface-container-highest', text: 'text-on-surface-variant', label: 'Closed' },
     reopened: { bg: 'bg-brand-400', text: 'text-brand-500', label: 'Reopened' },
     not_related: { bg: 'bg-slate-500', text: 'text-slate-600', label: 'Not Related' },
+    on_hold: { bg: 'bg-amber-500', text: 'text-amber-600', label: 'On Hold' },
+    cancelled: { bg: 'bg-rose-600', text: 'text-rose-700', label: 'Cancelled' },
   };
 
   const allStatuses = Object.keys(statusConfig);
