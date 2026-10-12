@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 import { useAccess } from '@/redux/hooks/useAccess';
 import { EmployeeHrFilePanel } from '@/components/employees/EmployeeHrFilePanel';
 import { EmployeeDocuments } from '@/components/employees/EmployeeDocuments';
+import ProfileTasksCard from '@/components/tasks/ProfileTasksCard';
 import { holdsPrivilegedModule, rolesOf } from '@/lib/access';
 import { EMPLOYEES_PATH, EMPLOYEE_STATUS_OPTIONS, employeeEditPath } from '@/lib/hr';
 
@@ -569,10 +570,10 @@ export default function ViewEmployee() {
       </div>
 
       {/* Main Content: Edit Form + Assigned Tickets */}
-      <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
+      <div className="space-y-6">
 
         {/* Edit Profile Form — admin only */}
-        {isAdmin && <div className="xl:col-span-2 bg-surface-container-lowest rounded-[1rem] p-6">
+        {isAdmin && <div className="bg-surface-container-lowest rounded-[1rem] p-6">
           <h3 className="text-base font-semibold text-on-surface mb-5">Edit Profile</h3>
           <form onSubmit={handleSubmit} className="space-y-4">
 
@@ -683,174 +684,178 @@ export default function ViewEmployee() {
           </form>
         </div>}
 
-        {/* Assigned Tickets */}
-        <div className={`${isAdmin ? 'xl:col-span-3' : 'xl:col-span-5'} bg-surface-container-lowest rounded-[1rem] overflow-hidden flex flex-col`}>
-          <div className="px-6 py-4 border-b border-surface-container-high flex items-center gap-2 flex-wrap">
-            <TicketIcon className="w-4 h-4 text-on-surface-variant" />
-            <h3 className="text-base font-semibold text-on-surface">Assigned Tickets</h3>
-            <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-brand-100 text-brand-700 text-xs font-bold">
-              {ticketTotal}
-            </span>
-            <div className="ml-auto flex items-center gap-3 flex-wrap justify-end">
-              {/* Monthly hours */}
-              <span className="inline-flex items-center gap-1.5 text-xs text-on-surface-variant">
-                <Timer className="w-3.5 h-3.5 text-brand-500" />
-                {monthlyHoursLoading ? (
-                  <span className="inline-block h-3 w-10 bg-surface-container-high rounded animate-pulse" />
-                ) : (
-                  <span className="font-semibold text-on-surface">
-                    {monthlyHoursData.totalHours}h
-                  </span>
-                )}
-                <span>
-                  {new Date(hoursMonth.year, hoursMonth.month).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
-                </span>
-                {currentConsultant.monthlyTargetHours != null && !monthlyHoursLoading && (
-                  <span className={cn(
-                    'font-medium',
-                    monthlyHoursData.totalHours >= currentConsultant.monthlyTargetHours
-                      ? 'text-green-600'
-                      : 'text-on-surface-variant',
-                  )}>
-                    / {currentConsultant.monthlyTargetHours}h target
-                  </span>
-                )}
+        {/* Assigned Tickets beside Assigned Tasks (tickets take the full row when there are no tasks) */}
+        <div className="flex flex-col xl:flex-row gap-6">
+          {/* Assigned Tickets */}
+          <div className="flex-1 min-w-0 bg-surface-container-lowest rounded-[1rem] overflow-hidden flex flex-col">
+            <div className="px-6 py-4 border-b border-surface-container-high flex items-center gap-2 flex-wrap">
+              <TicketIcon className="w-4 h-4 text-on-surface-variant" />
+              <h3 className="text-base font-semibold text-on-surface">Assigned Tickets</h3>
+              <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-brand-100 text-brand-700 text-xs font-bold">
+                {ticketTotal}
               </span>
-              {/* Separator */}
-              <span className="text-surface-container-high">|</span>
-              {/* All-time hours */}
-              {totalAllTimeHours !== null ? (
-                <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-600">
-                  <Timer className="w-3.5 h-3.5" />
-                  {totalAllTimeHours}h total
+              <div className="ml-auto flex items-center gap-3 flex-wrap justify-end">
+                {/* Monthly hours */}
+                <span className="inline-flex items-center gap-1.5 text-xs text-on-surface-variant">
+                  <Timer className="w-3.5 h-3.5 text-brand-500" />
+                  {monthlyHoursLoading ? (
+                    <span className="inline-block h-3 w-10 bg-surface-container-high rounded animate-pulse" />
+                  ) : (
+                    <span className="font-semibold text-on-surface">
+                      {monthlyHoursData.totalHours}h
+                    </span>
+                  )}
+                  <span>
+                    {new Date(hoursMonth.year, hoursMonth.month).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                  </span>
+                  {currentConsultant.monthlyTargetHours != null && !monthlyHoursLoading && (
+                    <span className={cn(
+                      'font-medium',
+                      monthlyHoursData.totalHours >= currentConsultant.monthlyTargetHours
+                        ? 'text-green-600'
+                        : 'text-on-surface-variant',
+                    )}>
+                      / {currentConsultant.monthlyTargetHours}h target
+                    </span>
+                  )}
                 </span>
-              ) : (
-                <div className="h-4 w-16 bg-surface-container-high rounded animate-pulse" />
-              )}
-            </div>
-          </div>
-
-          {ticketsLoading ? (
-            <div className="flex items-center justify-center h-48">
-              <div className="animate-spin rounded-full h-7 w-7 border-2 border-primary/20 border-t-primary" />
-            </div>
-          ) : assignedTickets.length === 0 ? (
-            <div className="flex flex-col items-center justify-center flex-1 py-16">
-              <TicketIcon className="h-10 w-10 text-on-surface-variant/30 mb-3" />
-              <p className="text-on-surface-variant text-sm">No tickets assigned yet</p>
-            </div>
-          ) : (
-            <>
-              <div className="overflow-x-auto flex-1">
-                <table className="w-full">
-                  <thead className="bg-surface-container-low">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Ticket #</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Subject</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Customer</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Priority</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Status</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Internal Delivery</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Hours</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Delayed</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Created</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-surface-container-high">
-                    {assignedTickets.map((ticket) => {
-                      // Company, or for Internal / R&D the requester / type label
-                      const party = ticketPartyName(ticket);
-                      return (
-                        <tr
-                          key={ticket._id}
-                          className="hover:bg-surface-container-low cursor-pointer transition-colors"
-                          onClick={() => navigate(`/tickets/view/${ticket._id}`)}
-                        >
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            <span className="text-sm font-semibold text-brand-600">#{ticket.ticketNumber}</span>
-                          </td>
-                          <td className="px-4 py-3 max-w-[180px]">
-                            <p className="text-sm font-medium text-on-surface truncate">{ticket.subject}</p>
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            <span className="text-sm text-on-surface-variant">{party || '—'}</span>
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            <div className="flex items-center gap-1.5">
-                              <span className={cn('w-2 h-2 rounded-full flex-shrink-0', PRIORITY_DOT[ticket.priority] ?? PRIORITY_DOT.medium)} />
-                              <span className={cn('text-xs font-bold uppercase tracking-wide', PRIORITY_TEXT[ticket.priority] ?? PRIORITY_TEXT.medium)}>
-                                {ticket.priority}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            <span className={cn('inline-block px-2.5 py-0.5 rounded-md text-xs font-bold uppercase tracking-wide', STATUS_TICKET[ticket.status] ?? STATUS_TICKET.new)}>
-                              {ticket.status.replace('_', ' ')}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            <span className="text-sm text-on-surface-variant">
-                              {ticket.internalDeliveryDate ? fmtDate(ticket.internalDeliveryDate) : '—'}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            <span className="text-sm text-on-surface-variant">
-                              {ticket.durationHours != null ? `${ticket.durationHours}h` : '—'}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            {(() => {
-                              if (!ticket.internalDeliveryDate) return <span className="text-sm text-on-surface-variant/50">—</span>;
-                              const deliveryDate = new Date(ticket.internalDeliveryDate);
-                              const compareDate = ticket.resolvedAt || ticket.closedAt
-                                ? new Date(ticket.resolvedAt || ticket.closedAt!)
-                                : new Date();
-                              const delayed = Math.max(0, Math.floor((compareDate.getTime() - deliveryDate.getTime()) / 86400000));
-                              return delayed > 0 ? (
-                                <span className="text-sm font-semibold text-error">+{delayed}d</span>
-                              ) : (
-                                <span className="text-sm font-semibold text-green-600">On time</span>
-                              );
-                            })()}
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            <span className="text-sm text-on-surface-variant">{fmtDate(ticket.createdAt)}</span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                {/* Separator */}
+                <span className="text-surface-container-high">|</span>
+                {/* All-time hours */}
+                {totalAllTimeHours !== null ? (
+                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-600">
+                    <Timer className="w-3.5 h-3.5" />
+                    {totalAllTimeHours}h total
+                  </span>
+                ) : (
+                  <div className="h-4 w-16 bg-surface-container-high rounded animate-pulse" />
+                )}
               </div>
+            </div>
 
-              {ticketPages > 1 && (
-                <div className="px-4 py-3 border-t border-surface-container-high flex items-center justify-between">
-                  <p className="text-xs text-on-surface-variant">
-                    Page <span className="font-semibold">{ticketPage}</span> of{' '}
-                    <span className="font-semibold">{ticketPages}</span>
-                  </p>
-                  <div className="flex items-center gap-1.5">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={ticketPage <= 1}
-                      onClick={() => loadTickets(ticketPage - 1)}
-                    >
-                      Prev
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={ticketPage >= ticketPages}
-                      onClick={() => loadTickets(ticketPage + 1)}
-                    >
-                      Next
-                    </Button>
-                  </div>
+            {ticketsLoading ? (
+              <div className="flex items-center justify-center h-48">
+                <div className="animate-spin rounded-full h-7 w-7 border-2 border-primary/20 border-t-primary" />
+              </div>
+            ) : assignedTickets.length === 0 ? (
+              <div className="flex flex-col items-center justify-center flex-1 py-16">
+                <TicketIcon className="h-10 w-10 text-on-surface-variant/30 mb-3" />
+                <p className="text-on-surface-variant text-sm">No tickets assigned yet</p>
+              </div>
+            ) : (
+              <>
+                <div className="overflow-x-auto flex-1">
+                  <table className="w-full">
+                    <thead className="bg-surface-container-low">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Ticket #</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Subject</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Customer</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Priority</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Status</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Internal Delivery</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Hours</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Delayed</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Created</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-surface-container-high">
+                      {assignedTickets.map((ticket) => {
+                        // Company, or for Internal / R&D the requester / type label
+                        const party = ticketPartyName(ticket);
+                        return (
+                          <tr
+                            key={ticket._id}
+                            className="hover:bg-surface-container-low cursor-pointer transition-colors"
+                            onClick={() => navigate(`/tickets/view/${ticket._id}`)}
+                          >
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <span className="text-sm font-semibold text-brand-600">#{ticket.ticketNumber}</span>
+                            </td>
+                            <td className="px-4 py-3 max-w-[180px]">
+                              <p className="text-sm font-medium text-on-surface truncate">{ticket.subject}</p>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <span className="text-sm text-on-surface-variant">{party || '—'}</span>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <div className="flex items-center gap-1.5">
+                                <span className={cn('w-2 h-2 rounded-full flex-shrink-0', PRIORITY_DOT[ticket.priority] ?? PRIORITY_DOT.medium)} />
+                                <span className={cn('text-xs font-bold uppercase tracking-wide', PRIORITY_TEXT[ticket.priority] ?? PRIORITY_TEXT.medium)}>
+                                  {ticket.priority}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <span className={cn('inline-block px-2.5 py-0.5 rounded-md text-xs font-bold uppercase tracking-wide', STATUS_TICKET[ticket.status] ?? STATUS_TICKET.new)}>
+                                {ticket.status.replace('_', ' ')}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <span className="text-sm text-on-surface-variant">
+                                {ticket.internalDeliveryDate ? fmtDate(ticket.internalDeliveryDate) : '—'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <span className="text-sm text-on-surface-variant">
+                                {ticket.durationHours != null ? `${ticket.durationHours}h` : '—'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              {(() => {
+                                if (!ticket.internalDeliveryDate) return <span className="text-sm text-on-surface-variant/50">—</span>;
+                                const deliveryDate = new Date(ticket.internalDeliveryDate);
+                                const compareDate = ticket.resolvedAt || ticket.closedAt
+                                  ? new Date(ticket.resolvedAt || ticket.closedAt!)
+                                  : new Date();
+                                const delayed = Math.max(0, Math.floor((compareDate.getTime() - deliveryDate.getTime()) / 86400000));
+                                return delayed > 0 ? (
+                                  <span className="text-sm font-semibold text-error">+{delayed}d</span>
+                                ) : (
+                                  <span className="text-sm font-semibold text-green-600">On time</span>
+                                );
+                              })()}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <span className="text-sm text-on-surface-variant">{fmtDate(ticket.createdAt)}</span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
-              )}
-            </>
-          )}
+
+                {ticketPages > 1 && (
+                  <div className="px-4 py-3 border-t border-surface-container-high flex items-center justify-between">
+                    <p className="text-xs text-on-surface-variant">
+                      Page <span className="font-semibold">{ticketPage}</span> of{' '}
+                      <span className="font-semibold">{ticketPages}</span>
+                    </p>
+                    <div className="flex items-center gap-1.5">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={ticketPage <= 1}
+                        onClick={() => loadTickets(ticketPage - 1)}
+                      >
+                        Prev
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={ticketPage >= ticketPages}
+                        onClick={() => loadTickets(ticketPage + 1)}
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+          <ProfileTasksCard employeeId={id} className="flex-1 min-w-0" />
         </div>
       </div>
     </div>

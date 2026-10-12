@@ -8,6 +8,7 @@ import { ProfilePictureUpload } from '@/components/ui/profile-picture-upload';
 import { toast } from 'sonner';
 import { Save, Mail, Phone, Calendar, Clock, Ticket as TicketIcon, Building2, MapPin, GitBranch, Zap, CheckCircle2, ArchiveX, AlertTriangle, FlaskConical, PackageCheck, Ban, Users, Timer, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import ProfileTasksCard from '@/components/tasks/ProfileTasksCard';
 import * as ticketApi from '@/api/ticketApi';
 import type { Ticket } from '@/types/ticket';
 import { ticketPartyName } from '@/lib/ticketTypes';
@@ -510,6 +511,9 @@ const ProfilePage = () => {
             </div>
           </form>
         </div>
+
+        {/* Assigned Tasks — only when the employee has any */}
+        <ProfileTasksCard employeeId={u._id} />
       </div>
     );
   }
@@ -667,10 +671,10 @@ const ProfilePage = () => {
         </div>
 
         {/* Two-column: Edit Form + Assigned Tickets */}
-        <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
+        <div className="space-y-6">
 
           {/* Edit Profile Form — hidden in tasks view */}
-          {!isTasksView && <div className="xl:col-span-2 bg-surface-container-lowest rounded-[1rem] p-6">
+          {!isTasksView && <div className="bg-surface-container-lowest rounded-[1rem] p-6">
             <h3 className="text-base font-semibold text-on-surface mb-5">Edit Profile</h3>
             <form onSubmit={handleConsultantSubmit} className="space-y-4">
 
@@ -769,211 +773,215 @@ const ProfilePage = () => {
             </form>
           </div>}
 
-          {/* Assigned Tickets */}
-          <div className={cn('bg-surface-container-lowest rounded-[1rem] overflow-hidden flex flex-col', isTasksView ? 'xl:col-span-5' : 'xl:col-span-3')}>
-            <div className="px-6 py-4 border-b border-surface-container-high flex items-center gap-2 flex-wrap">
-              <TicketIcon className="w-4 h-4 text-on-surface-variant" />
-              <h3 className="text-base font-semibold text-on-surface">Assigned Tickets</h3>
-              <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-brand-100 text-brand-700 text-xs font-bold">
-                {ticketTotal}
-              </span>
-              {isTasksView && (
-                <div className="ml-auto flex items-center gap-3 flex-wrap">
-                  {/* Status filter */}
-                  <div className="flex items-center gap-1.5">
-                    <label className="text-xs font-medium text-on-surface-variant">Status</label>
-                    <select
-                      value={taskStatusFilter}
-                      onChange={(e) => {
-                        setTaskStatusFilter(e.target.value);
-                        loadTickets(1, userType ?? undefined, taskWeekFilter, e.target.value);
-                      }}
-                      className="h-7 rounded-md border border-border bg-surface-container-low text-sm text-on-surface px-2 pr-6 appearance-none focus:outline-none focus:ring-1 focus:ring-brand-500"
-                    >
-                      <option value="">All active</option>
-                      <option value="new">New</option>
-                      <option value="assigned">Assigned</option>
-                      <option value="in_progress">In Progress</option>
-                      <option value="customer_pending">Customer Pending</option>
-                      <option value="tested">Tested</option>
-                    </select>
-                  </div>
-                  {/* Week filter */}
-                  <div className="flex items-center gap-1.5">
-                    <label className="text-xs font-medium text-on-surface-variant">Week</label>
-                    <select
-                      value={taskWeekFilter}
-                      onChange={(e) => {
-                        setTaskWeekFilter(e.target.value);
-                        loadTickets(1, userType ?? undefined, e.target.value, taskStatusFilter);
-                      }}
-                      className="h-7 rounded-md border border-border bg-surface-container-low text-sm text-on-surface px-2 pr-6 appearance-none focus:outline-none focus:ring-1 focus:ring-brand-500"
-                    >
-                      <option value="">All weeks</option>
-                      {Array.from({ length: 52 }, (_, i) => (
-                        <option key={i + 1} value={String(i + 1)}>Week {i + 1}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {ticketsLoading ? (
-              <div className="flex items-center justify-center h-48">
-                <div className="animate-spin rounded-full h-7 w-7 border-2 border-primary/20 border-t-primary" />
-              </div>
-            ) : assignedTickets.length === 0 ? (
-              <div className="flex flex-col items-center justify-center flex-1 py-16">
-                <TicketIcon className="h-10 w-10 text-on-surface-variant/30 mb-3" />
-                <p className="text-on-surface-variant text-sm">No tickets assigned yet</p>
-              </div>
-            ) : (
-              <>
-                <div className="overflow-x-auto flex-1">
-                  <table className="w-full">
-                    <thead className="bg-surface-container-low">
-                      <tr>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Ticket #</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Subject</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Customer</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Priority</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Status</th>
-                        {isTasksView && <>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Delivery Date</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Internal Date</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Week</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Duration</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Delayed</th>
-                        </>}
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Created</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-surface-container-high">
-                      {assignedTickets.map((ticket) => {
-                        // Company, or for Internal / R&D the requester / type label
-                        const party = ticketPartyName(ticket);
-                        return (
-                          <tr
-                            key={ticket._id}
-                            className={cn(
-                              'cursor-pointer transition-colors',
-                              ticket.isSubTicket
-                                ? 'bg-primary-fixed/20 hover:bg-primary-fixed/30'
-                                : 'hover:bg-surface-container-low'
-                            )}
-                            onClick={() => window.open(`/tickets/view/${ticket._id}`, '_blank')}
-                          >
-                            <td className="px-4 py-3 whitespace-nowrap">
-                              <div className="flex items-center gap-1.5">
-                                {ticket.isSubTicket && (
-                                  <GitBranch className="w-3 h-3 text-brand-400 flex-shrink-0" />
-                                )}
-                                <span className={cn(
-                                  'text-sm font-semibold',
-                                  ticket.isSubTicket ? 'text-brand-400' : 'text-brand-600'
-                                )}>
-                                  #{ticket.ticketNumber}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 max-w-[180px]">
-                              <p className="text-sm font-medium text-on-surface truncate">{ticket.subject}</p>
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap">
-                              <span className="text-sm text-on-surface-variant">{party || '—'}</span>
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap">
-                              <div className="flex items-center gap-1.5">
-                                <span className={cn('w-2 h-2 rounded-full flex-shrink-0', PRIORITY_DOT[ticket.priority] ?? PRIORITY_DOT.medium)} />
-                                <span className={cn('text-xs font-bold uppercase tracking-wide', PRIORITY_TEXT[ticket.priority] ?? PRIORITY_TEXT.medium)}>
-                                  {ticket.priority}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap">
-                              <span className={cn('inline-block px-2.5 py-0.5 rounded-md text-xs font-bold uppercase tracking-wide', STATUS_TICKET[ticket.status] ?? STATUS_TICKET.new)}>
-                                {ticket.status.replace(/_/g, ' ')}
-                              </span>
-                            </td>
-                            {isTasksView && (() => {
-                              const delivery = ticket.deliveryEstimationDate ? new Date(ticket.deliveryEstimationDate) : null;
-                              const rawEnd = ticket.resolvedAt ? new Date(ticket.resolvedAt)
-                                : ticket.closedAt ? new Date(ticket.closedAt)
-                                : TERMINAL_STATUSES.has(ticket.status) ? null : new Date();
-                              const delayedDays = delivery && rawEnd
-                                ? Math.max(0, Math.floor((rawEnd.getTime() - delivery.getTime()) / 86400000))
-                                : null;
-                              return <>
-                                <td className="px-4 py-3 whitespace-nowrap">
-                                  <span className="text-sm text-on-surface-variant">
-                                    {delivery ? fmtDate(ticket.deliveryEstimationDate) : <span className="text-on-surface-variant/40">—</span>}
-                                  </span>
-                                </td>
-                                <td className="px-4 py-3 whitespace-nowrap">
-                                  {ticket.internalDeliveryDate ? (
-                                    <span className="text-sm text-on-surface-variant">{fmtDate(ticket.internalDeliveryDate)}</span>
-                                  ) : (
-                                    <span className="text-on-surface-variant/40 text-sm">—</span>
-                                  )}
-                                </td>
-                                <td className="px-4 py-3 whitespace-nowrap">
-                                  {ticket.scheduledWeek != null ? (
-                                    <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-md bg-brand-50 text-brand-700 text-xs font-bold">
-                                      W{ticket.scheduledWeek}
-                                    </span>
-                                  ) : (
-                                    <span className="text-on-surface-variant/40 text-sm">—</span>
-                                  )}
-                                </td>
-                                <td className="px-4 py-3 whitespace-nowrap">
-                                  {ticket.durationHours != null ? (
-                                    <span className="inline-flex items-center gap-1 text-sm font-semibold text-on-surface">
-                                      <Timer className="w-3.5 h-3.5 text-brand-500" />
-                                      {ticket.durationHours}h
-                                    </span>
-                                  ) : (
-                                    <span className="text-on-surface-variant/40 text-sm">—</span>
-                                  )}
-                                </td>
-                                <td className="px-4 py-3 whitespace-nowrap">
-                                  {delayedDays === null
-                                    ? <span className="text-on-surface-variant/40 text-sm">—</span>
-                                    : delayedDays > 0
-                                      ? <span className="text-sm font-semibold text-error">+{delayedDays}d</span>
-                                      : <span className="text-sm font-semibold text-green-600">On time</span>
-                                  }
-                                </td>
-                              </>;
-                            })()}
-                            <td className="px-4 py-3 whitespace-nowrap">
-                              <span className="text-sm text-on-surface-variant">{fmtDate(ticket.createdAt)}</span>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-
-                {ticketPages > 1 && (
-                  <div className="px-4 py-3 border-t border-surface-container-high flex items-center justify-between">
-                    <p className="text-xs text-on-surface-variant">
-                      Page <span className="font-semibold">{ticketPage}</span> of{' '}
-                      <span className="font-semibold">{ticketPages}</span>
-                    </p>
+          {/* Assigned Tickets beside Assigned Tasks (tickets take the full row when there are no tasks) */}
+          <div className="flex flex-col xl:flex-row gap-6">
+            {/* Assigned Tickets */}
+            <div className="flex-1 min-w-0 bg-surface-container-lowest rounded-[1rem] overflow-hidden flex flex-col">
+              <div className="px-6 py-4 border-b border-surface-container-high flex items-center gap-2 flex-wrap">
+                <TicketIcon className="w-4 h-4 text-on-surface-variant" />
+                <h3 className="text-base font-semibold text-on-surface">Assigned Tickets</h3>
+                <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-brand-100 text-brand-700 text-xs font-bold">
+                  {ticketTotal}
+                </span>
+                {isTasksView && (
+                  <div className="ml-auto flex items-center gap-3 flex-wrap">
+                    {/* Status filter */}
                     <div className="flex items-center gap-1.5">
-                      <Button size="sm" variant="outline" disabled={ticketPage <= 1} onClick={() => loadTickets(ticketPage - 1, userType ?? undefined)}>
-                        Prev
-                      </Button>
-                      <Button size="sm" variant="outline" disabled={ticketPage >= ticketPages} onClick={() => loadTickets(ticketPage + 1, userType ?? undefined)}>
-                        Next
-                      </Button>
+                      <label className="text-xs font-medium text-on-surface-variant">Status</label>
+                      <select
+                        value={taskStatusFilter}
+                        onChange={(e) => {
+                          setTaskStatusFilter(e.target.value);
+                          loadTickets(1, userType ?? undefined, taskWeekFilter, e.target.value);
+                        }}
+                        className="h-7 rounded-md border border-border bg-surface-container-low text-sm text-on-surface px-2 pr-6 appearance-none focus:outline-none focus:ring-1 focus:ring-brand-500"
+                      >
+                        <option value="">All active</option>
+                        <option value="new">New</option>
+                        <option value="assigned">Assigned</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="customer_pending">Customer Pending</option>
+                        <option value="tested">Tested</option>
+                      </select>
+                    </div>
+                    {/* Week filter */}
+                    <div className="flex items-center gap-1.5">
+                      <label className="text-xs font-medium text-on-surface-variant">Week</label>
+                      <select
+                        value={taskWeekFilter}
+                        onChange={(e) => {
+                          setTaskWeekFilter(e.target.value);
+                          loadTickets(1, userType ?? undefined, e.target.value, taskStatusFilter);
+                        }}
+                        className="h-7 rounded-md border border-border bg-surface-container-low text-sm text-on-surface px-2 pr-6 appearance-none focus:outline-none focus:ring-1 focus:ring-brand-500"
+                      >
+                        <option value="">All weeks</option>
+                        {Array.from({ length: 52 }, (_, i) => (
+                          <option key={i + 1} value={String(i + 1)}>Week {i + 1}</option>
+                        ))}
+                      </select>
                     </div>
                   </div>
                 )}
-              </>
-            )}
+              </div>
+
+              {ticketsLoading ? (
+                <div className="flex items-center justify-center h-48">
+                  <div className="animate-spin rounded-full h-7 w-7 border-2 border-primary/20 border-t-primary" />
+                </div>
+              ) : assignedTickets.length === 0 ? (
+                <div className="flex flex-col items-center justify-center flex-1 py-16">
+                  <TicketIcon className="h-10 w-10 text-on-surface-variant/30 mb-3" />
+                  <p className="text-on-surface-variant text-sm">No tickets assigned yet</p>
+                </div>
+              ) : (
+                <>
+                  <div className="overflow-x-auto flex-1">
+                    <table className="w-full">
+                      <thead className="bg-surface-container-low">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Ticket #</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Subject</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Customer</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Priority</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Status</th>
+                          {isTasksView && <>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Delivery Date</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Internal Date</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Week</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Duration</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Delayed</th>
+                          </>}
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Created</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-surface-container-high">
+                        {assignedTickets.map((ticket) => {
+                          // Company, or for Internal / R&D the requester / type label
+                          const party = ticketPartyName(ticket);
+                          return (
+                            <tr
+                              key={ticket._id}
+                              className={cn(
+                                'cursor-pointer transition-colors',
+                                ticket.isSubTicket
+                                  ? 'bg-primary-fixed/20 hover:bg-primary-fixed/30'
+                                  : 'hover:bg-surface-container-low'
+                              )}
+                              onClick={() => window.open(`/tickets/view/${ticket._id}`, '_blank')}
+                            >
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                <div className="flex items-center gap-1.5">
+                                  {ticket.isSubTicket && (
+                                    <GitBranch className="w-3 h-3 text-brand-400 flex-shrink-0" />
+                                  )}
+                                  <span className={cn(
+                                    'text-sm font-semibold',
+                                    ticket.isSubTicket ? 'text-brand-400' : 'text-brand-600'
+                                  )}>
+                                    #{ticket.ticketNumber}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 max-w-[180px]">
+                                <p className="text-sm font-medium text-on-surface truncate">{ticket.subject}</p>
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                <span className="text-sm text-on-surface-variant">{party || '—'}</span>
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                <div className="flex items-center gap-1.5">
+                                  <span className={cn('w-2 h-2 rounded-full flex-shrink-0', PRIORITY_DOT[ticket.priority] ?? PRIORITY_DOT.medium)} />
+                                  <span className={cn('text-xs font-bold uppercase tracking-wide', PRIORITY_TEXT[ticket.priority] ?? PRIORITY_TEXT.medium)}>
+                                    {ticket.priority}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                <span className={cn('inline-block px-2.5 py-0.5 rounded-md text-xs font-bold uppercase tracking-wide', STATUS_TICKET[ticket.status] ?? STATUS_TICKET.new)}>
+                                  {ticket.status.replace(/_/g, ' ')}
+                                </span>
+                              </td>
+                              {isTasksView && (() => {
+                                const delivery = ticket.deliveryEstimationDate ? new Date(ticket.deliveryEstimationDate) : null;
+                                const rawEnd = ticket.resolvedAt ? new Date(ticket.resolvedAt)
+                                  : ticket.closedAt ? new Date(ticket.closedAt)
+                                  : TERMINAL_STATUSES.has(ticket.status) ? null : new Date();
+                                const delayedDays = delivery && rawEnd
+                                  ? Math.max(0, Math.floor((rawEnd.getTime() - delivery.getTime()) / 86400000))
+                                  : null;
+                                return <>
+                                  <td className="px-4 py-3 whitespace-nowrap">
+                                    <span className="text-sm text-on-surface-variant">
+                                      {delivery ? fmtDate(ticket.deliveryEstimationDate) : <span className="text-on-surface-variant/40">—</span>}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3 whitespace-nowrap">
+                                    {ticket.internalDeliveryDate ? (
+                                      <span className="text-sm text-on-surface-variant">{fmtDate(ticket.internalDeliveryDate)}</span>
+                                    ) : (
+                                      <span className="text-on-surface-variant/40 text-sm">—</span>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-3 whitespace-nowrap">
+                                    {ticket.scheduledWeek != null ? (
+                                      <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-md bg-brand-50 text-brand-700 text-xs font-bold">
+                                        W{ticket.scheduledWeek}
+                                      </span>
+                                    ) : (
+                                      <span className="text-on-surface-variant/40 text-sm">—</span>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-3 whitespace-nowrap">
+                                    {ticket.durationHours != null ? (
+                                      <span className="inline-flex items-center gap-1 text-sm font-semibold text-on-surface">
+                                        <Timer className="w-3.5 h-3.5 text-brand-500" />
+                                        {ticket.durationHours}h
+                                      </span>
+                                    ) : (
+                                      <span className="text-on-surface-variant/40 text-sm">—</span>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-3 whitespace-nowrap">
+                                    {delayedDays === null
+                                      ? <span className="text-on-surface-variant/40 text-sm">—</span>
+                                      : delayedDays > 0
+                                        ? <span className="text-sm font-semibold text-error">+{delayedDays}d</span>
+                                        : <span className="text-sm font-semibold text-green-600">On time</span>
+                                    }
+                                  </td>
+                                </>;
+                              })()}
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                <span className="text-sm text-on-surface-variant">{fmtDate(ticket.createdAt)}</span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {ticketPages > 1 && (
+                    <div className="px-4 py-3 border-t border-surface-container-high flex items-center justify-between">
+                      <p className="text-xs text-on-surface-variant">
+                        Page <span className="font-semibold">{ticketPage}</span> of{' '}
+                        <span className="font-semibold">{ticketPages}</span>
+                      </p>
+                      <div className="flex items-center gap-1.5">
+                        <Button size="sm" variant="outline" disabled={ticketPage <= 1} onClick={() => loadTickets(ticketPage - 1, userType ?? undefined)}>
+                          Prev
+                        </Button>
+                        <Button size="sm" variant="outline" disabled={ticketPage >= ticketPages} onClick={() => loadTickets(ticketPage + 1, userType ?? undefined)}>
+                          Next
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+            <ProfileTasksCard employeeId={u._id} className="flex-1 min-w-0" />
           </div>
         </div>
       </div>
