@@ -92,3 +92,13 @@ matching tickets arrive as cards carrying `card.ticket`, shown as a ticket-numbe
 ## Marketing module
 
 Sidebar group "Marketing" (`module: "marketing"`): `/marketing/csp` (`CustomerSurveys.tsx` — customer `SearchSelect`, summary, survey editor with star rating + comment rows and a "+" button to add rows; edit/delete for the author or `useAccess().canManageMarketing`), `/marketing/email-campaign` (`EmailCampaign.tsx` — Import dialog parsing xlsx/csv via `src/utils/campaignImport.ts`, contact list with status tabs, send-hour chips (one random contact per hour, default 10 AM–4 PM Cairo), the **Activate** / **Pause** button (managers/admins; Activate confirms and saves the form), row checkboxes + "Mark as already emailed" (sent rows show a check and cannot be selected or deleted), email preview), `/marketing/social-media` (coming soon). API: `src/api/marketingApi.ts`, types `src/types/marketing.types.ts`.
+
+## My Home (employee landing page)
+
+`/home` (`pages/home/MyHome.tsx`) is where every employee lands: `/` redirects employees there via `RootRouter`, and the ticket dashboard moved to `/dashboard`. `/profile` sends employees to `/home`, except `?view=tasks`; customers keep the old profile page. The header's "My Home" item and the sidebar `MY_HOME_LINK` point at it.
+
+- **Data:** `GET /api/me/home` (`api/myHomeApi.ts`), stored in `redux/slices/myHomeSlice.ts`. Every toggle is applied optimistically in the thunk's `pending` and reverted in `rejected`, with an error toast.
+- **Derived values:** badges, hero tiles, the week plan and filtered lists are all computed in `pages/home/selectors.ts` from the raw data, using `lib/myHome.ts`, which mirrors the backend's `myHomeRules.js`. Never store a count.
+- **Existing endpoints it reuses:** ticket status (`ticketApi.updateTicketStatus`), email replies and read flags (ticket and lead email APIs), follow-ups (`teleSalesApi.updateFollowUp`), leave (`createEmployeeRequest`), and the profile edit (`authSlice.updateProfile`).
+- **Styling:** `pages/home/myHome.css`. Tokens are scoped to `.mh`, with a `.dark .mh` variant. Fonts are Instrument Sans and JetBrains Mono (loaded in `index.html`).
+- **Overlays:** `components/ui.tsx` `Overlay`, with focus trap, Esc and backdrop close, and focus return.

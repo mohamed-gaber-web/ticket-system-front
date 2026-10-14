@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { workingDaysBetween } from '@/lib/myHome';
 import { Plane, Clock } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { createEmployeeRequest } from '@/redux/slices/employeeRequestSlice';
@@ -51,15 +52,9 @@ export default function RequestFormDialog({ open, onClose, defaultType = 'vacati
   const set = (field: string, value: string) =>
     setForm((prev) => ({ ...prev, [field]: value }));
 
-  // Live preview of the computed duration
-  const vacationDays =
-    form.startDate && form.endDate && new Date(form.endDate) >= new Date(form.startDate)
-      ? Math.floor(
-          (new Date(form.endDate).setHours(0, 0, 0, 0) -
-            new Date(form.startDate).setHours(0, 0, 0, 0)) /
-            86400000
-        ) + 1
-      : 0;
+  // Live preview of the computed duration — working days only (Fri/Sat off);
+  // the server also leaves out public holidays.
+  const vacationDays = workingDaysBetween(form.startDate, form.endDate);
 
   const excuseHours = (() => {
     if (!form.fromTime || !form.toTime) return 0;
@@ -131,7 +126,7 @@ export default function RequestFormDialog({ open, onClose, defaultType = 'vacati
               </div>
               {vacationDays > 0 && (
                 <p className="col-span-2 text-xs text-on-surface-variant">
-                  Duration: <span className="font-semibold text-on-surface">{vacationDays} day{vacationDays > 1 ? 's' : ''}</span>
+                  Duration: <span className="font-semibold text-on-surface">{vacationDays} working day{vacationDays > 1 ? 's' : ''}</span> (Fri/Sat and holidays are not counted)
                 </p>
               )}
             </div>

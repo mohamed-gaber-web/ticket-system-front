@@ -129,6 +129,8 @@ const SERVICES_GROUP_CUSTOMER = {
 // Meeting Book — shared calendar for booking and tracking meetings with
 // customers and leads. Staff can book; customers see their own meetings.
 const MEETING_BOOK_LINK = { name: "Meeting Book", path: "/calendar", icon: CalendarDays };
+// The employee's landing page (replaces the old profile page).
+const MY_HOME_LINK = { name: "My Home", path: "/home", icon: Home };
 
 // Customer links — built dynamically based on role
 const buildCustomerLinks = (customerRole?: string | null) => {
@@ -205,7 +207,7 @@ const TICKETING_GROUP: NavLink = {
   icon: Ticket,
   isGroup: true,
   children: [
-    { name: "Dashboard", path: "/", icon: LayoutDashboard },
+    { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
     {
       name: "Customers",
       icon: Users,
@@ -330,6 +332,7 @@ const MY_REQUESTS_GROUP: NavLink = {
 };
 
 const EMPLOYEE_NAV: NavEntry[] = [
+  { module: "any", link: MY_HOME_LINK },
   { module: "any", link: MEETING_BOOK_LINK },
   { module: "tickets", link: TICKETING_GROUP },
   { module: "telesales", link: TELE_SALES_GROUP },

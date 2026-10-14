@@ -38,6 +38,7 @@ import aiReducer from './slices/aiSlice';
 import evaluationReducer from './slices/evaluationSlice';
 import salesAssistantReducer from './slices/salesAssistantSlice';
 import ticketSettingsReducer from './slices/ticketSettingsSlice';
+import myHomeReducer from './slices/myHomeSlice';
 
 export const store = configureStore({
   reducer: {
@@ -80,6 +81,7 @@ export const store = configureStore({
     evaluation: evaluationReducer,
     salesAssistant: salesAssistantReducer,
     ticketSettings: ticketSettingsReducer,
+    myHome: myHomeReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
