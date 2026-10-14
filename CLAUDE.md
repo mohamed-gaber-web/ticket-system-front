@@ -100,7 +100,7 @@ Sidebar group "Marketing" (`module: "marketing"`): `/marketing/csp` (`CustomerSu
 - **Data:** `GET /api/me/home` (`api/myHomeApi.ts`), stored in `redux/slices/myHomeSlice.ts`. Every toggle is applied optimistically in the thunk's `pending` and reverted in `rejected`, with an error toast.
 - **Derived values:** badges, hero tiles, the week plan and filtered lists are all computed in `pages/home/selectors.ts` from the raw data, using `lib/myHome.ts`, which mirrors the backend's `myHomeRules.js`. Never store a count.
 - **Existing endpoints it reuses:** ticket status (`ticketApi.updateTicketStatus`), email replies and read flags (ticket and lead email APIs), follow-ups (`teleSalesApi.updateFollowUp`), leave (`createEmployeeRequest`), and the profile edit (`authSlice.updateProfile`).
-- **Styling:** `pages/home/myHome.css`. Tokens are scoped to `.mh`, with a `.dark .mh` variant. Fonts are Instrument Sans and JetBrains Mono (loaded in `index.html`).
+- **Styling:** `pages/home/myHome.css`. Tokens are scoped to `.mh`, with a `.dark .mh` variant; it uses the app font (Manrope) and spans the full content width like the other modules (no max-width).
 - **Overlays:** `components/ui.tsx` `Overlay`, with focus trap, Esc and backdrop close, and focus return.
 
 ## Ticketing menu

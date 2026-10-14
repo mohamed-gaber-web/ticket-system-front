@@ -142,8 +142,6 @@
 
 /* ── Shell ─────────────────────────────────────────────────────────────── */
 .mh-wrap {
-  max-width: 1320px;
-  margin: 0 auto;
   padding: 0 28px 48px;
 }
 /* The section bar follows the app's own chrome (header / sidebar): white
@@ -178,8 +176,6 @@
   border-bottom: 1px solid var(--border);
 }
 .mh-nav-inner {
-  max-width: 1320px;
-  margin: 0 auto;
   padding: 0 28px;
   display: flex;
   align-items: center;
