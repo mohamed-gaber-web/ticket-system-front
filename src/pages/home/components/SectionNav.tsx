@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Search } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { setSearch } from '@/redux/slices/myHomeSlice';
-import { scrollToSection } from '@/lib/myHome';
+import { scrollParentOf, scrollToSection } from '@/lib/myHome';
 
 export interface NavItem {
   id: string;
@@ -17,25 +17,48 @@ export default function SectionNav({ items }: { items: NavItem[] }) {
   const search = useAppSelector((s) => s.myHome.ui.search);
   const [active, setActive] = useState(items[0]?.id);
 
+  const navRef = useRef<HTMLElement>(null);
+  // While a click scrolls the page, the clicked tab stays selected.
+  const lockUntil = useRef(0);
+
   useEffect(() => {
-    const visible = new Map<string, number>();
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const e of entries) visible.set(e.target.id, e.isIntersecting ? e.intersectionRatio : 0);
-        const best = items.map((i) => i.id).find((id) => (visible.get(id) ?? 0) > 0);
-        if (best) setActive(best);
-      },
-      { rootMargin: '-64px 0px -55% 0px', threshold: [0, 0.01, 0.25] }
-    );
-    for (const i of items) {
-      const el = document.getElementById(i.id);
-      if (el) observer.observe(el);
-    }
-    return () => observer.disconnect();
+    // The page scrolls inside the layout's <main>, not the window.
+    const scroller = scrollParentOf(navRef.current) ?? (document.scrollingElement as HTMLElement | null);
+    if (!scroller) return;
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      if (Date.now() < lockUntil.current) return;
+      const atBottom = scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 4;
+      if (atBottom) {
+        // The last sections can never reach the top of the screen — at the
+        // bottom of the page the last one is the current one.
+        setActive(items[items.length - 1]?.id);
+        return;
+      }
+      const line = scroller.getBoundingClientRect().top + (navRef.current?.offsetHeight ?? 0) + 24;
+      let current = items[0]?.id;
+      for (const item of items) {
+        const el = document.getElementById(item.id);
+        if (el && el.getBoundingClientRect().top <= line) current = item.id;
+      }
+      setActive(current);
+    };
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(update);
+    };
+    update();
+    scroller.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    return () => {
+      scroller.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+      if (frame) cancelAnimationFrame(frame);
+    };
   }, [items]);
 
   return (
-    <nav className="mh-nav" aria-label="My Home sections">
+    <nav ref={navRef} className="mh-nav" aria-label="My Home sections">
       <div className="mh-nav-inner">
         <div className="mh-nav-links">
           {items.map((i) => (
@@ -47,6 +70,7 @@ export default function SectionNav({ items }: { items: NavItem[] }) {
               onClick={(e) => {
                 e.preventDefault();
                 setActive(i.id);
+                lockUntil.current = Date.now() + 900;
                 scrollToSection(i.id);
               }}
             >

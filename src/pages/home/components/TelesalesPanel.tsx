@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Check, Undo2 } from 'lucide-react';
+import { Check, PhoneCall, Undo2 } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { logCall, toggleFollowUp, undoCall } from '@/redux/slices/myHomeSlice';
 import { relativeTime, shortDate } from '@/lib/myHome';
@@ -14,9 +14,9 @@ const OUTCOME: Record<CallOutcome | 'logged', { label: string; tone: string }> =
   logged: { label: 'Called', tone: '' },
 };
 
-// Light → dark green across the five funnel steps.
-const FUNNEL_BG = ['#e3f1ea', '#c3e3d2', '#8fcbab', '#3f9a72', '#0b5e45'];
-const FUNNEL_FG = ['#0b5e45', '#0b5e45', '#08402f', '#ffffff', '#ffffff'];
+// Light → dark brand blue across the five funnel steps.
+const FUNNEL_BG = ['#edf2ff', '#dae2ff', '#9db7f0', '#2f63c0', '#003a8f'];
+const FUNNEL_FG = ['#003a8f', '#003a8f', '#002b6b', '#ffffff', '#ffffff'];
 
 function FollowUpGroup({ title, tone, items }: { title: string; tone: string; items: HomeFollowUp[] }) {
   const dispatch = useAppDispatch();
@@ -68,7 +68,7 @@ export default function TelesalesPanel() {
   const k = ts.kpis;
   return (
     <Card id="telesales" labelledBy="mh-ts-title">
-      <CardHead id="mh-ts-title" title="Tele-sales & follow-ups">
+      <CardHead id="mh-ts-title" icon={PhoneCall} title="Tele-sales & follow-ups">
         <Pill tone="purple">Tele-sales role</Pill>
       </CardHead>
 

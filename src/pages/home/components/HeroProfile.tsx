@@ -26,7 +26,7 @@ function Tile({ n, label, target, alert, sub }: { n: number; label: string; targ
     >
       <div className="n">{n}</div>
       <div className="l">{label}</div>
-      {sub && <div className="l" style={{ color: '#ffb48f' }}>{sub}</div>}
+      {sub && <div className="l" style={{ color: '#ffd9c9' }}>{sub}</div>}
     </a>
   );
 }
@@ -52,7 +52,7 @@ export function FocusHero({ data }: { data: MyHomeData }) {
         </div>
         {data.profile.hasTickets && (
           <div>
-            <button type="button" className="mh-btn mint" onClick={() => dispatch(openLogTime({ ticketId: null }))}>
+            <button type="button" className="mh-btn light" onClick={() => dispatch(openLogTime({ ticketId: null }))}>
               <Clock size={16} aria-hidden="true" /> Log time
             </button>
           </div>

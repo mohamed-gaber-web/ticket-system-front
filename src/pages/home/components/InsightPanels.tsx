@@ -1,3 +1,4 @@
+import { Bell, GaugeCircle, Layers } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { relativeTime } from '@/lib/myHome';
 import type { MyHomeData } from '@/types/myHome.types';
@@ -6,7 +7,7 @@ import { Bar, Card, CardHead, Empty } from './ui';
 export function ModulesPanel({ data }: { data: MyHomeData }) {
   return (
     <Card labelledBy="mh-modules-title">
-      <CardHead id="mh-modules-title" title="Tickets by module" sub="This year">
+      <CardHead id="mh-modules-title" icon={Layers} title="Tickets by module" sub="This year">
         <div className="mh-meta" style={{ display: 'flex', gap: 12 }}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
             <span className="mh-dot" style={{ background: 'var(--primary)' }} aria-hidden="true" /> Closed
@@ -53,7 +54,7 @@ export function PerformancePanel({ data }: { data: MyHomeData }) {
   const drawn = points.filter((p) => p.value !== null);
   return (
     <Card id="performance" labelledBy="mh-perf-title">
-      <CardHead id="mh-perf-title" title="Performance" sub="Monthly evaluation score out of 100">
+      <CardHead id="mh-perf-title" icon={GaugeCircle} title="Performance" sub="Monthly evaluation score out of 100">
         <Link to="/consultants/evaluation/me" className="mh-btn ghost sm">
           Details
         </Link>
@@ -119,7 +120,7 @@ const ACTIVITY_COLOR: Record<string, string> = {
 export function ActivityPanel({ data }: { data: MyHomeData }) {
   return (
     <Card labelledBy="mh-activity-title">
-      <CardHead id="mh-activity-title" title="Recent activity" />
+      <CardHead id="mh-activity-title" icon={Bell} title="Recent activity" />
       {data.activity.length === 0 ? (
         <Empty>Nothing new.</Empty>
       ) : (

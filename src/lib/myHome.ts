@@ -203,10 +203,30 @@ export const workingDaysBetween = (from: string, to: string) => {
 };
 
 /** Smooth-scroll to a My Home section and keep its anchor in the URL. */
+/** The element that actually scrolls the page — the layout's <main>, not the window. */
+export const scrollParentOf = (el: HTMLElement | null): HTMLElement | null => {
+  for (let node = el?.parentElement ?? null; node; node = node.parentElement) {
+    const { overflowY } = getComputedStyle(node);
+    if (overflowY === 'auto' || overflowY === 'scroll') return node;
+  }
+  return null;
+};
+
 export const scrollToSection = (id: string) => {
   const el = document.getElementById(id);
   if (!el) return;
   const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-  el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+  const scroller = scrollParentOf(el);
+  if (scroller) {
+    // Scroll only the page's own container. scrollIntoView would also scroll
+    // every ancestor — for the last sections, which can't reach the top, that
+    // shoves the whole app shell (sidebar included) up and leaves a blank gap.
+    const nav = scroller.querySelector<HTMLElement>('.mh-nav');
+    const offset = (nav?.offsetHeight ?? 0) + 16;
+    const top = el.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop - offset;
+    scroller.scrollTo({ top: Math.max(0, top), behavior: reduce ? 'auto' : 'smooth' });
+  } else {
+    el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+  }
   history.replaceState(null, '', `#${id}`);
 };

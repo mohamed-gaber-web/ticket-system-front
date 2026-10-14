@@ -1,4 +1,4 @@
-import { X } from 'lucide-react';
+import { Ticket, X } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import {
   openTicket,
@@ -58,7 +58,7 @@ export default function TicketsPanel() {
 
   return (
     <Card id="work" labelledBy="mh-work-title">
-      <CardHead id="mh-work-title" title="Tickets">
+      <CardHead id="mh-work-title" icon={Ticket} title="Tickets">
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <Segmented
             label="Ticket type"

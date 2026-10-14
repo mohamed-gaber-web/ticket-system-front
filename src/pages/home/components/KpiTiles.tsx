@@ -1,7 +1,18 @@
-import { ArrowDownRight, ArrowUpRight } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, Clock, GaugeCircle, PieChart, Plane, type LucideIcon } from 'lucide-react';
 import { shortDate } from '@/lib/myHome';
 import type { MyHomeData } from '@/types/myHome.types';
 import { Bar, Card, Pill } from './ui';
+
+function KpiLabel({ icon: Icon, children }: { icon: LucideIcon; children: string }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+      <div className="label">{children}</div>
+      <span className="mh-head-icon" aria-hidden="true">
+        <Icon size={18} />
+      </span>
+    </div>
+  );
+}
 
 function Ring({ pct, size = 76 }: { pct: number; size?: number }) {
   const r = (size - 10) / 2;
@@ -36,7 +47,7 @@ export default function KpiTiles({ data }: { data: MyHomeData }) {
     <div className="mh-grid mh-grid-kpi">
       <Card className="mh-kpi">
         <div>
-          <div className="label">Hours this month</div>
+          <KpiLabel icon={Clock}>Hours this month</KpiLabel>
           <div className="big mono">
             {hours.logged}
             <small> / {hours.target}h</small>
@@ -49,10 +60,10 @@ export default function KpiTiles({ data }: { data: MyHomeData }) {
         </div>
       </Card>
       <Card className="mh-kpi">
+        <KpiLabel icon={PieChart}>Billable utilization</KpiLabel>
         <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
           <Ring pct={utilization.pct} />
           <div>
-            <div className="label">Billable utilization</div>
             <div className="mh-meta mono">
               {utilization.billable}h client · {utilization.internal}h internal
             </div>
@@ -62,7 +73,7 @@ export default function KpiTiles({ data }: { data: MyHomeData }) {
       </Card>
       <Card className="mh-kpi">
         <div>
-          <div className="label">Performance score YTD</div>
+          <KpiLabel icon={GaugeCircle}>Performance score YTD</KpiLabel>
           <div className="big mono">
             {rating.ytd ?? '—'}
             <small> / {rating.outOf}</small>
@@ -82,7 +93,7 @@ export default function KpiTiles({ data }: { data: MyHomeData }) {
       </Card>
       <Card className="mh-kpi">
         <div>
-          <div className="label">Vacation balance</div>
+          <KpiLabel icon={Plane}>Vacation balance</KpiLabel>
           <div className="big mono">
             {leave.daysLeft}
             <small> days left</small>

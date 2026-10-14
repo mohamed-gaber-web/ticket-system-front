@@ -1,3 +1,4 @@
+import { Mail } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { markEmailRead, openEmail, setEmailTab } from '@/redux/slices/myHomeSlice';
 import { ageLabel, emailAge, initialsOf } from '@/lib/myHome';
@@ -33,6 +34,7 @@ export default function EmailsPanel({ data }: { data: MyHomeData }) {
     <Card id="emails" labelledBy="mh-emails-title">
       <CardHead
         id="mh-emails-title"
+        icon={Mail}
         title="Client emails"
         sub={`Received from your clients · reply SLA ${data.config.emailSlaHours}h · oldest first`}
       >

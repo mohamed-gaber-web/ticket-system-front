@@ -1,4 +1,4 @@
-import { Check, Plus, Trash2 } from 'lucide-react';
+import { Check, GraduationCap, Plane, Plus, Trash2 } from 'lucide-react';
 import { useAppDispatch } from '@/redux/hooks/hooks';
 import { openModal, removeGoal, toggleGoalStep } from '@/redux/slices/myHomeSlice';
 import Swal from 'sweetalert2';
@@ -18,7 +18,7 @@ export function LeavePanel({ data }: { data: MyHomeData }) {
   const today = data.today;
   return (
     <Card id="leave" labelledBy="mh-leave-title">
-      <CardHead id="mh-leave-title" title="Leave">
+      <CardHead id="mh-leave-title" icon={Plane} title="Leave">
         <button type="button" className="mh-btn outline" onClick={() => dispatch(openModal({ modal: 'leave', open: true }))}>
           Request leave
         </button>
@@ -80,7 +80,7 @@ export function GrowthPanel({ data }: { data: MyHomeData }) {
   const dispatch = useAppDispatch();
   return (
     <Card id="growth" labelledBy="mh-growth-title">
-      <CardHead id="mh-growth-title" title="Growth plan" sub="What you want to learn or improve">
+      <CardHead id="mh-growth-title" icon={GraduationCap} title="Growth plan" sub="What you want to learn or improve">
         <button type="button" className="mh-btn outline" onClick={() => dispatch(openModal({ modal: 'goal', open: true }))}>
           <Plus size={15} aria-hidden="true" /> Add goal
         </button>

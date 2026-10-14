@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Check, Plus, Trash2 } from 'lucide-react';
+import { Check, ListChecks, Plus, Trash2 } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { addTodo, removeTodo, setTaskTab, toggleTask } from '@/redux/slices/myHomeSlice';
 import { dayKey, shortDate } from '@/lib/myHome';
@@ -26,7 +26,7 @@ export default function TasksPanel({ data }: { data: MyHomeData }) {
 
   return (
     <Card id="tasks" labelledBy="mh-tasks-title">
-      <CardHead id="mh-tasks-title" title="Tasks">
+      <CardHead id="mh-tasks-title" icon={ListChecks} title="Tasks">
         <Segmented
           label="Task filter"
           value={tab}

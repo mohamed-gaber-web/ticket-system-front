@@ -2,58 +2,74 @@
    page keeps its approved green palette without touching the app's theme. */
 
 .mh {
-  --font-sans: 'Instrument Sans', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  /* Project design system ("The Precise Curator", src/index.css): Manrope,
+     MD3 surfaces, deep blue primary, orange accent for alerts. */
+  --font-sans: inherit;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
-  --bg-page: #f4f5f1;
-  --bg-card: #ffffff;
-  --bg-subtle: #f6f7f4;
-  --bg-segment: #f1f3ee;
-  --border: #e3e6e1;
-  --border-strong: #d6dbd4;
-  --row-divider: #f0f2ee;
-  --track: #eceeea;
+  --bg-page: #faf8ff; /* surface */
+  --bg-card: #ffffff; /* surface-container-lowest */
+  --bg-subtle: #f3f3fd; /* surface-container-low */
+  --bg-segment: #ededf7; /* surface-container */
+  --bg-hover: #e7e7f1; /* surface-container-high */
+  --border: rgb(195 198 214 / 0.35); /* outline-variant, ghost */
+  --border-strong: #c3c6d6; /* outline-variant */
+  --row-divider: rgb(195 198 214 / 0.3);
+  --track: #e7e7f1;
+  --shadow-card: 0 1px 2px rgb(25 27 34 / 0.05);
+  --shadow-float: 0 20px 40px rgb(25 27 34 / 0.06); /* .shadow-ambient */
 
-  --chrome: #0f1f19;
-  --chrome-2: #17302a;
-  --chrome-border: #2a4a3e;
-  --chrome-text: #dce7e1;
-  --chrome-muted: #8fa89c;
-  --mint: #7fd6ae;
+  --text: #191b22; /* on-surface */
+  --text-2: #434653; /* on-surface-variant */
+  --text-muted: #5b5e6c;
 
-  --text: #121a16;
-  --text-2: #3a4540;
-  --text-muted: #5e6b65;
-
-  --primary: #0b5e45;
-  --primary-soft: #e3f1ea;
-  --danger-text: #a33f0e;
-  --danger-bg: #fbe4d2;
-  --danger-row: #fff8f2;
-  --over: #d9541e;
+  --primary: #003a8f; /* brand-500 */
+  --primary-hover: #002b6b;
+  --primary-gradient: linear-gradient(135deg, #003a8f, #004fbf);
+  --primary-soft: #edf2ff; /* brand-50 */
+  --primary-fixed: #dae2ff;
+  --on-primary-fixed: #001636;
+  --success: #1b6e3e;
+  --success-soft: #e2f4e8;
+  --danger-text: #ad2b00; /* accent-orange-600 */
+  --danger-bg: #ffe2d6; /* accent-orange-100 */
+  --danger-row: #fff4f0; /* accent-orange-50 */
+  --over: #d83a03; /* accent-orange-500 */
   --warn-text: #7a4d00;
   --warn-bg: #fcefd6;
-  --info-text: #1f4c8f;
-  --info-bg: #e4ecf8;
+  --info-text: #001636;
+  --info-bg: #dae2ff;
   --purple-text: #5a3e8c;
   --purple-bg: #efeaf7;
-  --neutral-text: #3a4540;
-  --neutral-bg: #eef0ec;
-  --open-bar: #e39a4f;
-  --used-cell: #c9d1cc;
+  --neutral-text: #434653;
+  --neutral-bg: #ededf7;
+  --open-bar: #e8762e; /* accent-orange-400 */
+  --used-cell: #c3c6d6;
 
-  --prio-critical: #c8441a;
-  --prio-high: #e08a2c;
-  --prio-medium: #7e8c85;
-  --prio-low: #b8c2bc;
+  --prio-critical: #d83a03;
+  --prio-high: #e8762e;
+  --prio-medium: #7a7d8c;
+  --prio-low: #c3c6d6;
 
-  --radius-card: 16px;
-  --radius-hero: 20px;
-  --radius-control: 12px;
+  /* Hero / toast chrome — the app's primary gradient. */
+  --chrome: #003a8f;
+  --chrome-gradient: linear-gradient(135deg, #003a8f, #004fbf);
+  --chrome-2: rgb(255 255 255 / 0.1);
+  --chrome-border: rgb(255 255 255 / 0.2);
+  --chrome-text: #e6ecff;
+  --chrome-muted: #bccbf0;
+
+  --radius-card: 1rem;
+  --radius-hero: 1.25rem;
+  --radius-control: 0.75rem;
   --radius-pill: 999px;
-  --gap-section: 24px;
-  --card-padding: 22px;
+  --gap-section: 20px;
+  --card-padding: 20px;
 
+  /* Positioned so absolutely-placed content (screen-reader labels) stays
+     inside the layout's scrolling <main> instead of stretching the window. */
+  position: relative;
+  isolation: isolate;
   font-family: var(--font-sans);
   color: var(--text);
   background: var(--bg-page);
@@ -63,31 +79,39 @@
 }
 
 .dark .mh {
-  --bg-page: #0d1512;
-  --bg-card: #142019;
-  --bg-subtle: #1a2822;
-  --bg-segment: #1a2822;
-  --border: #26372f;
-  --border-strong: #2f4339;
-  --row-divider: #1e2c26;
-  --track: #24342c;
-  --text: #e6eee9;
-  --text-2: #c3cfc8;
-  --text-muted: #94a59c;
-  --primary: #5cc79a;
-  --primary-soft: #183a2c;
-  --danger-text: #f0a37a;
-  --danger-bg: #3a2216;
-  --danger-row: #22180f;
+  --bg-page: #111318;
+  --bg-card: #1b1d25;
+  --bg-subtle: #22242c;
+  --bg-segment: #2a2c34;
+  --bg-hover: #31333c;
+  --border: rgb(67 70 83 / 0.6);
+  --border-strong: #434653;
+  --row-divider: rgb(67 70 83 / 0.5);
+  --track: #2a2c34;
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.3);
+  --shadow-float: 0 20px 40px rgb(0 0 0 / 0.3);
+  --text: #e1e2ec;
+  --text-2: #c3c6d6;
+  --text-muted: #a3a6b5;
+  --primary: #b3c5ff;
+  --primary-hover: #dae2ff;
+  --primary-soft: #1d2a48;
+  --primary-fixed: #1d2a48;
+  --on-primary-fixed: #dae2ff;
+  --success: #7fd6a2;
+  --success-soft: #173826;
+  --danger-text: #ffbfa6;
+  --danger-bg: #441100;
+  --danger-row: #2a1a14;
   --warn-text: #f2c66d;
   --warn-bg: #352a12;
-  --info-text: #9dbcf0;
-  --info-bg: #1a2740;
+  --info-text: #dae2ff;
+  --info-bg: #1d2a48;
   --purple-text: #c6b1ef;
   --purple-bg: #2a2140;
-  --neutral-text: #c3cfc8;
-  --neutral-bg: #22302a;
-  --used-cell: #3a4a42;
+  --neutral-text: #c3c6d6;
+  --neutral-bg: #2a2c34;
+  --used-cell: #434653;
 }
 
 .mh *,
@@ -122,12 +146,36 @@
   margin: 0 auto;
   padding: 0 28px 48px;
 }
+/* The section bar follows the app's own chrome (header / sidebar): white
+   surface, deep-blue active tab, orange alert badge — not the page palette. */
+.mh {
+  --app-surface: #ffffff;
+  --app-border: #e1e2ec;
+  --app-text: #434653;
+  --app-text-strong: #191b22;
+  --app-brand: #003a8f;
+  --app-brand-soft: #edf2ff;
+  --app-accent: #d83a03;
+  --app-field: #f3f3fd;
+}
+.dark .mh {
+  --app-surface: #191b22;
+  --app-border: #2e3140;
+  --app-text: #c3c6d6;
+  --app-text-strong: #e2e2ec;
+  --app-brand: #b1c5ff;
+  --app-brand-soft: #1d2a48;
+  --app-accent: #ff8a5c;
+  --app-field: #23252e;
+}
 .mh-nav {
   position: sticky;
   top: 0;
   z-index: 20;
-  background: var(--chrome);
-  border-bottom: 1px solid var(--chrome-border);
+  background: rgb(255 255 255 / 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
 }
 .mh-nav-inner {
   max-width: 1320px;
@@ -151,7 +199,7 @@
   gap: 8px;
   min-height: 44px;
   padding: 0 12px;
-  color: var(--chrome-muted);
+  color: var(--app-text);
   font-weight: 600;
   font-size: 13px;
   text-decoration: none;
@@ -159,11 +207,14 @@
   white-space: nowrap;
 }
 .mh-nav-link:hover {
-  color: var(--chrome-text);
+  color: var(--app-brand);
+}
+.dark .mh .mh-nav {
+  background: rgb(27 29 37 / 0.85);
 }
 .mh-nav-link[aria-current='true'] {
-  color: #fff;
-  border-bottom-color: var(--mint);
+  color: var(--app-brand);
+  border-bottom-color: var(--app-brand);
 }
 .mh-badge {
   font-family: var(--font-mono);
@@ -172,11 +223,11 @@
   line-height: 1;
   padding: 3px 7px;
   border-radius: var(--radius-pill);
-  background: var(--chrome-border);
-  color: var(--chrome-text);
+  background: var(--app-brand-soft);
+  color: var(--app-brand);
 }
 .mh-badge.hot {
-  background: #e9733a;
+  background: var(--app-accent);
   color: #fff;
 }
 .mh-search {
@@ -189,22 +240,27 @@
   width: 100%;
   height: 38px;
   border-radius: var(--radius-control);
-  background: var(--chrome-2);
-  border: 1px solid var(--chrome-border);
-  color: var(--chrome-text);
+  background: var(--app-field);
+  border: 1px solid var(--app-border);
+  color: var(--app-text-strong);
   padding: 0 12px 0 36px;
   font: inherit;
   font-size: 13px;
 }
 .mh-search input::placeholder {
-  color: var(--chrome-muted);
+  color: var(--app-text);
+  opacity: 0.8;
+}
+.mh-search input:focus-visible {
+  outline: 2px solid var(--app-brand);
+  outline-offset: 1px;
 }
 .mh-search svg {
   position: absolute;
   left: 11px;
   top: 50%;
   transform: translateY(-50%);
-  color: var(--chrome-muted);
+  color: var(--app-text);
 }
 
 .mh-grid {
@@ -253,9 +309,9 @@
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
   padding: var(--card-padding);
   min-width: 0;
-  scroll-margin-top: 64px;
 }
 .mh-card-head {
   display: flex;
@@ -266,10 +322,27 @@
   margin-bottom: 14px;
 }
 .mh-h2 {
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 700;
   margin: 0;
   letter-spacing: -0.01em;
+  color: var(--text);
+}
+.mh-head-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.mh-head-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 0.75rem;
+  background: var(--primary-soft);
+  color: var(--primary);
+  display: grid;
+  place-items: center;
+  flex: none;
 }
 .mh-sub {
   color: var(--text-muted);
@@ -313,7 +386,7 @@
 .mh-seg button[aria-selected='true'],
 .mh-seg button[aria-pressed='true'] {
   background: var(--bg-card);
-  color: var(--text);
+  color: var(--app-brand);
   box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
 }
 .mh-count {
@@ -341,12 +414,16 @@
   gap: 6px;
 }
 .mh-chip[aria-pressed='true'] {
-  background: var(--chrome);
-  border-color: var(--chrome);
+  background: var(--app-brand);
+  border-color: var(--app-brand);
   color: #fff;
 }
+.dark .mh .mh-chip[aria-pressed='true'] {
+  color: #0d1a33;
+}
 .mh-chip[aria-pressed='true'] .mh-count {
-  color: var(--chrome-text);
+  color: inherit;
+  opacity: 0.85;
 }
 .mh-chip.day {
   background: var(--primary-soft);
@@ -354,39 +431,51 @@
   color: var(--primary);
 }
 .mh-btn {
-  min-height: 36px;
-  padding: 0 14px;
-  border-radius: 10px;
-  border: 1px solid transparent;
+  min-height: 40px;
+  padding: 0 18px;
+  border-radius: 1rem;
+  border: 0;
   font-weight: 600;
-  font-size: 13px;
+  font-size: 13.5px;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 8px;
   white-space: nowrap;
   text-decoration: none;
+  transition: background-color 0.15s, opacity 0.15s, box-shadow 0.15s;
 }
 .mh-btn:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
 .mh-btn.primary {
-  background: var(--primary);
+  background: var(--primary-gradient);
   color: #fff;
+  box-shadow: var(--shadow-float);
+}
+.mh-btn.primary:hover:not(:disabled) {
+  opacity: 0.9;
 }
 .dark .mh .mh-btn.primary {
-  color: #08130e;
+  color: #fff;
 }
-.mh-btn.mint {
-  background: var(--mint);
-  color: var(--chrome);
+.mh-btn.light {
+  background: #ffffff;
+  color: #003a8f;
 }
 .mh-btn.outline {
   background: var(--bg-card);
-  border-color: var(--border-strong);
+  outline: 1px solid var(--border);
+  outline-offset: -1px;
   color: var(--text);
+}
+.mh-btn.outline:hover:not(:disabled) {
+  background: var(--bg-hover);
+}
+.mh-btn.ghost:hover {
+  background: var(--bg-hover);
 }
 .mh-btn.ghost {
   background: transparent;
@@ -398,26 +487,33 @@
 }
 .mh-btn.sm {
   min-height: 32px;
-  padding: 0 10px;
+  padding: 0 12px;
+  border-radius: 0.75rem;
   font-size: 12.5px;
 }
 .mh-icon-btn {
   width: 36px;
   height: 36px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  border: 0;
+  outline: 1px solid var(--border);
+  outline-offset: -1px;
   background: var(--bg-card);
   display: inline-grid;
   place-items: center;
   cursor: pointer;
   color: var(--text-2);
 }
+.mh-icon-btn:hover {
+  background: var(--bg-hover);
+  color: var(--primary);
+}
 .mh-input,
 .mh-select,
 .mh-textarea {
   width: 100%;
   min-height: 40px;
-  border-radius: 10px;
+  border-radius: 0.75rem;
   border: 1px solid var(--border-strong);
   background: var(--bg-card);
   color: var(--text);
@@ -454,8 +550,8 @@
   color: var(--neutral-text);
 }
 .mh-pill.ok {
-  background: var(--primary-soft);
-  color: var(--primary);
+  background: var(--success-soft);
+  color: var(--success);
 }
 .mh-pill.warn {
   background: var(--warn-bg);
@@ -492,8 +588,8 @@
   color: var(--purple-text);
 }
 .mh-pill.st-done {
-  background: var(--primary-soft);
-  color: var(--primary);
+  background: var(--success-soft);
+  color: var(--success);
 }
 .mh-dot {
   width: 8px;
@@ -545,7 +641,8 @@
 
 /* ── Hero & profile ────────────────────────────────────────────────────── */
 .mh-hero {
-  background: var(--chrome);
+  box-shadow: var(--shadow-float);
+  background: var(--chrome-gradient);
   color: var(--chrome-text);
   border-radius: var(--radius-hero);
   padding: 28px;
@@ -585,7 +682,7 @@
   min-height: 44px;
 }
 .mh-tile:hover {
-  border-color: var(--mint);
+  border-color: #ffffff;
 }
 .mh-tile .n {
   font-family: var(--font-mono);
@@ -600,11 +697,11 @@
   margin-top: 4px;
 }
 .mh-tile.alert {
-  background: #3a1d10;
-  border-color: #6b3215;
+  background: rgb(216 58 3 / 0.28);
+  border-color: rgb(255 138 92 / 0.55);
 }
 .mh-tile.alert .n {
-  color: #ffb48f;
+  color: #ffd9c9;
 }
 .mh-start {
   margin-top: 16px;
@@ -629,7 +726,7 @@
   flex: 1 1 260px;
 }
 .mh-start .sla {
-  color: #a33f0e;
+  color: #b33100;
   font-weight: 600;
   font-size: 13px;
 }
@@ -701,9 +798,11 @@
   font-weight: 600;
 }
 .mh-kpi .label {
-  font-size: 12.5px;
+  font-size: 0.75rem;
   font-weight: 600;
-  color: var(--text-muted);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-2);
   margin-bottom: 8px;
 }
 
@@ -717,9 +816,17 @@
   display: flex;
   gap: 12px;
   align-items: center;
-  padding: 12px 8px;
+  padding: 12px 10px;
   border-top: 1px solid var(--row-divider);
+  border-radius: 0.75rem;
   min-width: 0;
+  transition: background-color 0.15s;
+}
+.mh-row:hover {
+  background: var(--bg-subtle);
+}
+.mh-row.late:hover {
+  background: var(--danger-row);
 }
 .mh-row:first-child {
   border-top: 0;
@@ -831,6 +938,9 @@
   border-top: 1px solid var(--row-divider);
   vertical-align: middle;
 }
+.mh-table tbody tr:hover td {
+  background: var(--bg-subtle);
+}
 .mh-table tr.late td {
   background: var(--danger-row);
 }
@@ -923,7 +1033,7 @@
   width: 16px;
   height: 16px;
   border-radius: 4px;
-  background: var(--primary);
+  background: var(--success);
 }
 .mh-cells span.used {
   background: var(--used-cell);
@@ -1023,7 +1133,7 @@
   bottom: 28px;
   transform: translateX(-50%);
   z-index: 70;
-  background: var(--chrome);
+  background: #191b22;
   color: #fff;
   border-radius: var(--radius-pill);
   padding: 10px 18px 10px 12px;
@@ -1040,7 +1150,7 @@
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: var(--mint);
+  background: #ffffff;
   color: var(--chrome);
   display: grid;
   place-items: center;

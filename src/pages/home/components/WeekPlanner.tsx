@@ -1,3 +1,4 @@
+import { CalendarDays } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { toggleDay } from '@/redux/slices/myHomeSlice';
 import { keyToDate, scrollToSection, shortKey } from '@/lib/myHome';
@@ -13,7 +14,7 @@ export default function WeekPlanner() {
   const last = week.days[week.days.length - 1];
   return (
     <Card id="week" labelledBy="mh-week-title">
-      <CardHead id="mh-week-title" title={`This week · ${shortKey(first.date)} – ${keyToDate(last.date).getUTCDate()}`}>
+      <CardHead id="mh-week-title" icon={CalendarDays} title={`This week · ${shortKey(first.date)} – ${keyToDate(last.date).getUTCDate()}`}>
         <span className="mh-meta mono">
           {week.plannedTotal}h of {week.capacityTotal}h planned
         </span>

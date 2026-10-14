@@ -1,6 +1,6 @@
 import { useEffect, useRef, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { X } from 'lucide-react';
+import { X, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PRIORITY_LABEL } from '@/lib/myHome';
 import type { HomePriority } from '@/types/myHome.types';
@@ -13,14 +13,33 @@ export function Card({ id, className, children, labelledBy }: { id?: string; cla
   );
 }
 
-export function CardHead({ id, title, sub, children }: { id?: string; title: ReactNode; sub?: ReactNode; children?: ReactNode }) {
+export function CardHead({
+  id,
+  title,
+  sub,
+  icon: Icon,
+  children,
+}: {
+  id?: string;
+  title: ReactNode;
+  sub?: ReactNode;
+  icon?: LucideIcon;
+  children?: ReactNode;
+}) {
   return (
     <div className="mh-card-head">
-      <div style={{ minWidth: 0 }}>
-        <h2 className="mh-h2" id={id}>
-          {title}
-        </h2>
-        {sub && <p className="mh-sub">{sub}</p>}
+      <div className="mh-head-title">
+        {Icon && (
+          <span className="mh-head-icon" aria-hidden="true">
+            <Icon size={18} />
+          </span>
+        )}
+        <div style={{ minWidth: 0 }}>
+          <h2 className="mh-h2" id={id}>
+            {title}
+          </h2>
+          {sub && <p className="mh-sub">{sub}</p>}
+        </div>
       </div>
       {children}
     </div>
