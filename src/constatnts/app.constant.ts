@@ -104,13 +104,32 @@ const SERVICES_GROUP = {
   isGroup: true as const,
   children: [
     { name: "Tickets", path: "/tickets", icon: Ticket },
-    { name: "Internal", path: "/tickets/internal", icon: Home },
-    { name: "Internal Dashboard", path: "/dashboard/internal", icon: LayoutDashboard },
-    { name: "R&D Tickets", path: "/tickets/rnd", icon: FlaskConical, requiresRnd: true as const },
-    { name: "R&D Dashboard", path: "/dashboard/rnd", icon: LayoutDashboard, requiresRnd: true as const },
     { name: "Emails", path: "/tickets/emails", icon: Mail },
     { name: "Projects", path: "/projects", icon: FolderKanban },
     { name: "Meetings/Visit report", path: "/meetings", icon: CalendarDays },
+  ],
+};
+
+// Our own work, kept apart from the customer Services: internal tickets (Grow
+// Path's own requests) and R&D (only for the R&D department, see requiresRnd).
+const INTERNAL_GROUP: NavLink = {
+  name: "Internal",
+  icon: Home,
+  isSubGroup: true,
+  children: [
+    { name: "Internal Tickets", path: "/tickets/internal", icon: Home },
+    { name: "Internal Dashboard", path: "/dashboard/internal", icon: LayoutDashboard },
+  ],
+};
+
+const RND_GROUP: NavLink = {
+  name: "R&D",
+  icon: FlaskConical,
+  isSubGroup: true,
+  requiresRnd: true,
+  children: [
+    { name: "R&D Tickets", path: "/tickets/rnd", icon: FlaskConical },
+    { name: "R&D Dashboard", path: "/dashboard/rnd", icon: LayoutDashboard },
   ],
 };
 
@@ -225,6 +244,8 @@ const TICKETING_GROUP: NavLink = {
       ],
     },
     { ...SERVICES_GROUP, isGroup: undefined, isSubGroup: true },
+    INTERNAL_GROUP,
+    RND_GROUP,
     TICKETING_CONFIG_GROUP,
   ],
 };

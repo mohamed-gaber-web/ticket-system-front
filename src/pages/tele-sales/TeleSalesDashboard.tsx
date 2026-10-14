@@ -321,7 +321,7 @@ export default function TeleSalesDashboard() {
             <li><span className="font-medium text-on-surface">Revised Value</span> entered at Negotiation</li>
             <li><span className="font-medium text-on-surface">Final Deal Value</span> entered at Closed Won</li>
           </ol>
-          <p>The totals add those values per currency, only for the leads you can see{isCrossTeamReader(user) ? '' : ' (your teams)'}.</p>
+          <p>The totals add those values (all in US dollars), only for the leads you can see{isCrossTeamReader(user) ? '' : ' (your teams)'}.</p>
         </div>
       </motion.div>
 
