@@ -1,10 +1,9 @@
 import type { Product, ProductPrice } from '@/types/salesAssistant.types';
 
-/** "1,500 EGP (per user / month)" — same rule as the backend renderer. */
+/** "$1,500 (per user / month)" — same rule as the backend renderer (USD only). */
 export const formatPrice = (price?: ProductPrice): string => {
   if (!price || price.amount == null) return price?.note ?? '';
-  const amount = Number(price.amount).toLocaleString('en-US', { maximumFractionDigits: 2 });
-  const base = `${amount} ${price.currency || ''}`.trim();
+  const base = `$${Number(price.amount).toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
   return price.note ? `${base} (${price.note})` : base;
 };
 

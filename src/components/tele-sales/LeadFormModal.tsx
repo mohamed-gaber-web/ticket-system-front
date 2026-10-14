@@ -15,7 +15,7 @@ import type {
 } from '@/types/teleSales.types';
 import {
   ENTITY_TYPES, INDUSTRY_SECTORS, LEAD_SOURCE_DETAILS, isValidUrl, teamId,
-  VALUE_CURRENCIES, DEFAULT_VALUE_CURRENCY, type ValueCurrency,
+  DEFAULT_VALUE_CURRENCY,
 } from '@/types/teleSales.types';
 import { REQUIRED_LEAD_FIELDS, STAGE_META, stageOf, hasIdentity } from '@/lib/leadStages';
 import { needProductIds, refId, type NeedProductRef, type AccountRef, type AccountContact } from '@/types/teleSales.types';
@@ -544,15 +544,9 @@ export function LeadFormModal({ open, lead, stage, convert = false, onClose, onS
                 </Field>
               )}
               <Field label="Potential Value" hint="Your estimate. Replaced by the Quoted, Revised and Final Deal Value as the lead moves through the pipeline.">
-                <div className="flex gap-2">
-                  <Input type="number" min={0} value={form.potentialValue || ''} onChange={(e) => setForm(p => ({ ...p, potentialValue: e.target.value ? Number(e.target.value) : undefined }))} placeholder="0" className="flex-1" />
-                  <SelectField
-                    value={form.valueCurrency || DEFAULT_VALUE_CURRENCY}
-                    onChange={(e) => setForm(p => ({ ...p, valueCurrency: e.target.value as ValueCurrency }))}
-                    aria-label="Currency"
-                  >
-                    {VALUE_CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                  </SelectField>
+                <div className="relative">
+                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-on-surface-variant" aria-hidden="true">$</span>
+                  <Input type="number" min={0} value={form.potentialValue || ''} onChange={(e) => setForm(p => ({ ...p, potentialValue: e.target.value ? Number(e.target.value) : undefined, valueCurrency: DEFAULT_VALUE_CURRENCY }))} placeholder="0" className="pl-7" aria-label="Potential value in US dollars" />
                 </div>
               </Field>
               {/* Team first: the Agent list below depends on it. Moving a lead across

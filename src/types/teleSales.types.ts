@@ -305,7 +305,7 @@ export interface Lead {
   priority: LeadPriority;
   /** The lead's value — see LEAD_VALUE_SOURCES for where it comes from. */
   potentialValue?: number;
-  /** Unset on leads valued before currencies were recorded — read as EGP. */
+  /** Always USD when set. */
   valueCurrency?: ValueCurrency;
   valueSource?: LeadValueSource;
   valueUpdatedAt?: string;
@@ -499,10 +499,11 @@ export interface LeadStatsResponse {
 
 // ── Lead value ────────────────────────────────────────────────────────────────
 // Mirrors VALUE_CURRENCIES / VALUE_SOURCES in the backend's leadStatusWorkflow.js.
+// Tele-sales prices are in US dollars only.
 
-export const VALUE_CURRENCIES = ['EGP', 'SAR', 'AED', 'USD', 'EUR'] as const;
+export const VALUE_CURRENCIES = ['USD'] as const;
 export type ValueCurrency = (typeof VALUE_CURRENCIES)[number];
-export const DEFAULT_VALUE_CURRENCY: ValueCurrency = 'EGP';
+export const DEFAULT_VALUE_CURRENCY: ValueCurrency = 'USD';
 
 export type LeadValueSource = 'manual' | 'quoted' | 'revised' | 'final';
 
@@ -514,9 +515,10 @@ export const LEAD_VALUE_SOURCES: Record<LeadValueSource, { label: string; explai
   final: { label: 'Final Deal Value', explain: 'Signed contract amount, entered when the lead was Closed Won.' },
 };
 
-/** "50,000 EGP" */
-export const formatMoney = (amount: number, currency?: string): string =>
-  `${Math.round(amount).toLocaleString('en-US')} ${currency || DEFAULT_VALUE_CURRENCY}`;
+/** "$50,000" — every tele-sales amount is USD (older records were relabelled). */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export const formatMoney = (amount: number, _currency?: string): string =>
+  `$${Math.round(amount).toLocaleString('en-US')}`;
 
 // ── Status History ────────────────────────────────────────────────────────────
 

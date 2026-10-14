@@ -5,14 +5,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { MultiSelect } from '@/components/ui/multi-select';
-import { CustomSelect } from '@/components/ui/custom-select';
 import * as teleSalesApi from '@/api/teleSalesApi';
 import { StoredImage } from '@/components/tele-sales/assistant/StoredImage';
 import { linesToList, listToLines, apiErrorMessage } from '@/lib/salesAssistant';
 import type { FileRef, Product, ProductInput, ProductSpecification, SalesDocument } from '@/types/salesAssistant.types';
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
-const CURRENCIES = ['EGP', 'SAR', 'AED', 'USD', 'EUR'];
 
 interface ProductFormDialogProps {
   isOpen: boolean;
@@ -48,7 +46,7 @@ interface FormState {
 const emptyForm = (): FormState => ({
   name: '', sku: '', category: '', shortDescription: '', description: '',
   featuresText: '', benefitsText: '', specifications: [],
-  priceAmount: '', priceCurrency: 'EGP', priceNote: '', link: '',
+  priceAmount: '', priceCurrency: 'USD', priceNote: '', link: '',
   images: [], documents: [], relatedProducts: [], status: 'active',
 });
 
@@ -62,7 +60,7 @@ const fromProduct = (p: Product): FormState => ({
   benefitsText: listToLines(p.benefits),
   specifications: p.specifications ?? [],
   priceAmount: p.price?.amount != null ? String(p.price.amount) : '',
-  priceCurrency: p.price?.currency ?? 'EGP',
+  priceCurrency: 'USD',
   priceNote: p.price?.note ?? '',
   link: p.link ?? '',
   images: p.images ?? [],
@@ -233,12 +231,8 @@ export default function ProductFormDialog({
           {/* Labels sit above each control so the three inputs share one baseline. */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
             <div>
-              <label htmlFor="p-price" className="form-label">Price</label>
+              <label htmlFor="p-price" className="form-label">Price (USD)</label>
               <Input id="p-price" type="number" min={0} step="0.01" value={form.priceAmount} onChange={(e) => set('priceAmount', e.target.value)} placeholder="0.00" className={errors.price ? 'ring-[2px] ring-error/30' : ''} />
-            </div>
-            <div>
-              <span className="form-label">Currency</span>
-              <CustomSelect value={form.priceCurrency} onChange={(v) => set('priceCurrency', v)} options={CURRENCIES.map((c) => ({ value: c, label: c }))} />
             </div>
             <div className="md:col-span-2">
               <label htmlFor="p-note" className="form-label">Price note</label>

@@ -14,7 +14,6 @@ import {
   type LeadStatus, type StatusFieldDef,
 } from '@/config/leadStatusWorkflow';
 import type { Lead, ChangeLeadStatusError, LeadStatusHistoryEntry } from '@/types/teleSales.types';
-import { VALUE_CURRENCIES } from '@/types/teleSales.types';
 
 interface StatusUpdateFormProps {
   lead: Lead;
@@ -44,7 +43,6 @@ interface StatusUpdateFormProps {
   };
 }
 
-const MONEY_CURRENCIES = VALUE_CURRENCIES;
 
 /** Statuses that bump a lead counter when logged (mirrors `increments` on the backend). */
 const COUNTED_STATUSES: Partial<Record<LeadStatus, 'callAttempts' | 'meetingsCount'>> = {
@@ -92,7 +90,7 @@ const isFieldVisible = (field: StatusFieldDef, values: Record<string, any>, lead
 const isFieldNeeded = (field: StatusFieldDef, values: Record<string, any>, lead: Lead) => !!field.req || (field.reqIf ? field.reqIf(values, lead) : false);
 
 /**
- * Fresh values for a status: defaults, empty chips, unchecked toggles, EGP money,
+ * Fresh values for a status: defaults, empty chips, unchecked toggles, USD money,
  * and the lead's current owner (only a manager may hand it to someone else).
  */
 const initialValues = (status: LeadStatus, lead: Lead) => {
@@ -100,7 +98,7 @@ const initialValues = (status: LeadStatus, lead: Lead) => {
   LEAD_STATUS_WORKFLOW[status].fields.forEach((f) => {
     if (f.type === 'toggle') initial[f.k] = false;
     else if (f.type === 'chips') initial[f.k] = [];
-    else if (f.type === 'money') initial[`${f.k}__c`] = 'EGP';
+    else if (f.type === 'money') initial[`${f.k}__c`] = 'USD';
     else if (f.dynamic === 'agents') initial[f.k] = lead.assignedTo?._id ?? '';
     if (f.def) initial[f.k] = f.def();
   });
@@ -110,7 +108,7 @@ const initialValues = (status: LeadStatus, lead: Lead) => {
 /**
  * The form values a history entry was saved with. History stores them for display
  * (see buildFieldValueMap on the backend): chips as "a, b", money as
- * "50,000 EGP", a pasted link as { link }. This turns them back into inputs.
+ * "$50,000", a pasted link as { link }. This turns them back into inputs.
  */
 const valuesFromHistory = (status: LeadStatus, lead: Lead, entry: LeadStatusHistoryEntry) => {
   const out = initialValues(status, lead);
@@ -121,11 +119,9 @@ const valuesFromHistory = (status: LeadStatus, lead: Lead, entry: LeadStatusHist
     if (f.type === 'chips') {
       out[f.k] = Array.isArray(raw) ? raw : String(raw).split(',').map((s) => s.trim()).filter(Boolean);
     } else if (f.type === 'money') {
-      const m = String(raw).match(/^([\d,.]+)\s*([A-Z]{3})?$/);
-      if (m) {
-        out[f.k] = m[1].replace(/,/g, '');
-        if (m[2] && (MONEY_CURRENCIES as readonly string[]).includes(m[2])) out[`${f.k}__c`] = m[2];
-      }
+      // "$50,000" (older entries: "50,000 EGP" — every amount is USD now)
+      const m = String(raw).match(/^\$?\s*([\d,.]+)\s*(?:[A-Z]{3})?$/);
+      if (m) out[f.k] = m[1].replace(/,/g, '');
     } else if (f.type === 'attach') {
       out[f.k] = raw.fileId ? raw : raw.link ?? undefined;
     } else if (f.type === 'datetime') {
@@ -368,15 +364,9 @@ export function StatusUpdateForm({ lead, variant, onChanged, onCancel, bulk, his
         break;
       case 'money':
         control = (
-          <div className="flex gap-2">
-            <input type="number" min={0} step={1000} placeholder="0" className={baseInputCls} value={value ?? ''} onChange={(e) => setValue(field.k, e.target.value)} />
-            <select
-              className="w-24 rounded-xl border border-outline-variant bg-surface px-2 py-2 text-sm text-on-surface outline-none"
-              value={values[`${field.k}__c`] || 'EGP'}
-              onChange={(e) => setValue(`${field.k}__c`, e.target.value)}
-            >
-              {MONEY_CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
+          <div className="relative">
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-on-surface-variant" aria-hidden="true">$</span>
+            <input type="number" min={0} step={1000} placeholder="0" aria-label={`${field.label} in US dollars`} className={`${baseInputCls} pl-7`} value={value ?? ''} onChange={(e) => setValue(field.k, e.target.value)} />
           </div>
         );
         break;
