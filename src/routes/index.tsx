@@ -1,6 +1,6 @@
 import { lazy, Suspense, type ReactNode } from "react";
 import { useAppSelector } from "@/redux/hooks/hooks";
-import { Navigate, useParams } from "react-router-dom";
+import { Navigate, useParams, useSearchParams } from "react-router-dom";
 import type { RouteObject } from "react-router-dom";
 import Layout from "@/components/layout/layout";
 import ProtectedRoute, {
@@ -55,8 +55,26 @@ function CalendarRoute({ children }: { children: ReactNode }) {
   return <ProtectedRoute allowedUserTypes={['employee', 'customer']}>{children}</ProtectedRoute>;
 }
 
-// Routes to the right dashboard: customers get the portal, employees the first
-// module they can open (tickets → telesales → tasks → requests).
+// "/": customers get the portal; every employee lands on My Home.
+function RootRouter() {
+  const { userType } = useAppSelector((state) => state.auth);
+  if (!userType) return <PageLoader />;
+  if (userType === "customer") return <Lazy><CustomerDashboard /></Lazy>;
+  return <Navigate to="/home" replace />;
+}
+
+// "/profile": customers keep their profile page; employees edit theirs from My
+// Home. The ticketing "My Tasks" view (?view=tasks) still lives on the old page.
+function ProfileRoute() {
+  const { userType } = useAppSelector((state) => state.auth);
+  const [params] = useSearchParams();
+  if (!userType) return <PageLoader />;
+  if (userType === "customer" || params.get("view") === "tasks") return <Lazy><ProfilePage /></Lazy>;
+  return <Navigate to="/home" replace />;
+}
+
+// "/dashboard": customers get the portal, employees the first module dashboard
+// they can open (tickets → telesales → tasks → requests).
 function DashboardRouter() {
   const { userType } = useAppSelector((state) => state.auth);
   const access = useAccess();
@@ -64,7 +82,7 @@ function DashboardRouter() {
   if (userType === "customer") return <Lazy><CustomerDashboard /></Lazy>;
   if (access.hasModule("tickets")) return <Dashboard key="customer" ticketType="customer" />;
   const home = homePathFor(access.modules);
-  return <Navigate to={home === "/" ? "/employee-requests" : home} replace />;
+  return <Navigate to={home === "/" ? "/home" : home} replace />;
 }
 
 // Auth Module
@@ -74,6 +92,7 @@ const UnauthorizedPage = lazy(() => import("@/pages/auth/unauthorized"));
 const ForgotPasswordPage = lazy(() => import("@/pages/auth/forgot-password"));
 const ResetPasswordPage = lazy(() => import("@/pages/auth/reset-password"));
 const ProfilePage = lazy(() => import("@/pages/auth/profile"));
+const MyHome = lazy(() => import("@/pages/home/MyHome"));
 const ChangePasswordPage = lazy(() => import("@/pages/auth/change-password"));
 
 // Customer Dashboard (lazy)
@@ -242,14 +261,15 @@ export const routes: RouteObject[] = [
     ),
     children: [
       // Dashboard — CustomerDashboard for customers, consultant Dashboard for everyone else
-      { path: "/", element: <DashboardRouter /> },
+      { path: "/", element: <RootRouter /> },
+      { path: "/home", element: <EmployeeRoute><Lazy><MyHome /></Lazy></EmployeeRoute> },
       { path: "/dashboard", element: <DashboardRouter /> },
 
       // Meeting Book (calendar)
       { path: "/calendar", element: <CalendarRoute><Lazy><MeetingCalendar /></Lazy></CalendarRoute> },
 
       // Profile
-      { path: "/profile", element: <Lazy><ProfilePage /></Lazy> },
+      { path: "/profile", element: <ProfileRoute /> },
       { path: "/change-password", element: <Lazy><ChangePasswordPage /></Lazy> },
 
       // Customer Routes — ticketing module

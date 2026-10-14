@@ -53,7 +53,8 @@ export default function Header() {
   };
 
   const handleProfileClick = () => {
-    navigate('/profile');
+    // Employees manage their profile from My Home; customers keep the profile page.
+    navigate(access.isCustomer ? '/profile' : '/home');
     setShowUserMenu(false);
   };
 
@@ -204,7 +205,7 @@ export default function Header() {
                   className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-on-surface rounded-[0.5rem] hover:bg-surface-container-highest transition-colors"
                 >
                   <User className="h-4 w-4 text-on-surface-variant" aria-hidden="true" />
-                  <span>My Profile</span>
+                  <span>{access.isCustomer ? 'My Profile' : 'My Home'}</span>
                 </button>
                 <button
                   role="menuitem"
