@@ -1,0 +1,495 @@
+/* The printed proposal (PROPOSAL_BUILDER_SPEC.md §4.8). Fixed brand colors,
+   independent of the app theme and dark mode — it is a document, not app chrome.
+   Fonts (Exo 2 + Open Sans) are loaded in index.html. */
+.pp-doc {
+  --pp-navy: #0b2a5c;
+  --pp-orange-head: #e8590c;
+  --pp-orange: #f26a1b;
+  --pp-ink: #14213d;
+  color-scheme: light;
+}
+.pp-doc .pages {
+  transform-origin: top left;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 816px;
+}
+.pp-doc .page {
+  width: 816px;
+  height: 1056px;
+  background: #fff center / 100% 100% no-repeat;
+  color: var(--pp-navy);
+  position: relative;
+  overflow: hidden;
+  font-family: 'Open Sans', sans-serif;
+  box-shadow: 0 4px 18px rgba(10, 37, 88, 0.18);
+}
+.pp-doc.printing .page {
+  box-shadow: none;
+}
+.pp-doc .pc {
+  /* Set here, not only on .page: the off-screen measurer has no .page, and a
+     different font there makes the packer under-measure wrapped lines. */
+  font-family: 'Open Sans', sans-serif;
+  color: var(--pp-navy);
+  position: absolute;
+  left: 52px;
+  right: 52px;
+  top: 338px;
+  height: 640px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.pp-doc .blk {
+  width: 100%;
+}
+.pp-doc .cover-meta {
+  position: absolute;
+  left: 52px;
+  top: 712px;
+  color: #000;
+  line-height: 1.15;
+}
+.pp-doc .cover-meta small {
+  display: block;
+  font-size: 15.5px;
+  margin-top: 6px;
+}
+.pp-doc .cover-meta b {
+  display: block;
+  font-size: 27px;
+  font-weight: 800;
+  margin-bottom: 6px;
+  max-width: 300px;
+}
+
+/* tables in the template's style */
+.pp-doc .pt {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'Exo 2', sans-serif;
+  font-size: 12.5px;
+  color: var(--pp-navy);
+}
+.pp-doc .pt th {
+  background: var(--pp-navy);
+  color: #fff;
+  padding: 7px 8px;
+  font-weight: 700;
+  text-align: center;
+  font-size: 12.5px;
+  letter-spacing: 0.01em;
+}
+.pp-doc .pt th.o {
+  background: var(--pp-orange-head);
+}
+.pp-doc .pt th.l {
+  text-align: left;
+}
+.pp-doc .pt td {
+  border: 1px solid var(--pp-navy);
+  padding: 5px 8px;
+  font-weight: 600;
+}
+.pp-doc .pt td.c {
+  text-align: center;
+}
+.pp-doc .pt td.r {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.pp-doc .pt td.side {
+  position: relative;
+  width: 58px;
+  padding: 0;
+  overflow: hidden;
+}
+.pp-doc .pt td.side .rot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%) rotate(-90deg);
+  text-align: center;
+  font-weight: 800;
+  font-size: 13px;
+  line-height: 1.25;
+}
+.pp-doc .pt td.d {
+  font-family: 'Open Sans', sans-serif;
+  font-weight: 400;
+  font-size: 11.5px;
+  color: var(--pp-ink);
+}
+.pp-doc .pt tr.sum td {
+  background: #f2f2f2;
+  font-weight: 800;
+  text-align: center;
+}
+.pp-doc .pt tr.sum td.r {
+  text-align: right;
+}
+.pp-doc .pt tr.disc td {
+  color: #c53030;
+}
+.pp-doc .pt.lent th {
+  font-size: 15px;
+  padding: 12px;
+}
+.pp-doc .pt.lent td {
+  border: 0;
+  border-bottom: 1px solid var(--pp-navy);
+  padding: 14px 10px;
+  font-size: 15px;
+  text-align: center;
+}
+.pp-doc .pt.lent td:first-child {
+  text-align: left;
+  padding-left: 22px;
+}
+.pp-doc .pt.st {
+  font-size: 11px;
+}
+.pp-doc .pt.st th {
+  font-size: 11px;
+  padding: 5px 6px;
+}
+.pp-doc .pt.st td {
+  padding: 4px 6px;
+  font-weight: 500;
+  font-family: 'Open Sans', sans-serif;
+}
+.pp-doc .badge {
+  display: inline-block;
+  background: var(--pp-orange);
+  color: #fff;
+  font-family: 'Exo 2', sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  padding: 5px 30px;
+  border-radius: 7px 7px 0 0;
+  box-shadow: inset 0 -2px 0 #c9520f;
+  margin-bottom: -1px;
+}
+
+/* SOW section box */
+.pp-doc .sbox {
+  border: 1.5px solid var(--pp-navy);
+  padding: 20px 16px 12px;
+  position: relative;
+  margin-top: 12px;
+  background: #fff;
+}
+.pp-doc .sbox .lb {
+  position: absolute;
+  top: -12px;
+  left: 12px;
+  background: #fff;
+  border: 1.5px solid var(--pp-navy);
+  padding: 1px 10px;
+  color: var(--pp-orange-head);
+  font-weight: 700;
+  font-size: 12.5px;
+}
+.pp-doc .sbox p {
+  margin: 0 0 6px;
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--pp-ink);
+  padding-left: 14px;
+  position: relative;
+}
+.pp-doc .sbox p::before {
+  content: '\27A2';
+  position: absolute;
+  left: 0;
+  color: var(--pp-ink);
+  font-size: 10px;
+  top: 1px;
+}
+.pp-doc .sbox p.h {
+  font-weight: 700;
+  color: var(--pp-navy);
+  padding-left: 0;
+}
+.pp-doc .sbox p.h::before {
+  content: none;
+}
+.pp-doc .sbox ul {
+  margin: 0 0 8px;
+  padding-left: 30px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--pp-ink);
+  columns: 1;
+  list-style: disc;
+}
+.pp-doc .sbox ul.c3 {
+  columns: 3;
+  column-gap: 14px;
+}
+.pp-doc .sbox ul.c2 {
+  columns: 2;
+  column-gap: 14px;
+}
+.pp-doc .sbox ol {
+  margin: 0 0 8px;
+  padding-left: 20px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--pp-ink);
+  columns: 3;
+  column-gap: 16px;
+  list-style: decimal;
+}
+.pp-doc .sbox b {
+  color: var(--pp-navy);
+  font-weight: 700;
+}
+.pp-doc .satt {
+  margin: 10px 0 6px;
+}
+.pp-doc .satt .scap {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--pp-navy);
+  margin: 4px 0;
+}
+.pp-doc .satt img {
+  display: block;
+  margin: 0 auto;
+  border: 1px solid #d6deea;
+}
+.pp-doc .simg-missing {
+  margin: 0 auto;
+  display: grid;
+  place-items: center;
+  background: #f4f7fb;
+  border: 1px dashed #d6deea;
+  color: #5b6b86;
+  font-size: 12px;
+}
+
+/* notes, terms, tags */
+.pp-doc .note h4 {
+  margin: 0 0 4px;
+  color: var(--pp-orange-head);
+  text-decoration: underline;
+  font-size: 15px;
+  font-weight: 700;
+}
+.pp-doc .note ul {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 13.5px;
+  color: #0b3d91;
+  line-height: 1.5;
+  list-style: disc;
+}
+.pp-doc .tagpill {
+  display: flex;
+  align-items: center;
+  margin: 8px 0 6px;
+}
+.pp-doc .tagpill .n {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--pp-navy);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 13px;
+  z-index: 1;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px var(--pp-navy);
+}
+.pp-doc .tagpill .t {
+  background: var(--pp-navy);
+  color: #fff;
+  font-family: 'Exo 2', sans-serif;
+  font-weight: 600;
+  font-size: 15px;
+  padding: 7px 64px 7px 40px;
+  margin-left: -8px;
+}
+.pp-doc .terms {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--pp-ink);
+  padding-left: 18px;
+  margin: 6px 0 0;
+  list-style: disc;
+}
+.pp-doc .pay td {
+  font-family: 'Open Sans', sans-serif;
+}
+.pp-doc .pay td.ph {
+  font-weight: 700;
+  width: 150px;
+  text-align: center;
+}
+.pp-doc .pay td.it {
+  font-weight: 400;
+  padding: 0;
+}
+.pp-doc .pay td.it div {
+  padding: 2px 8px;
+  border-bottom: 1px solid var(--pp-navy);
+  font-size: 14px;
+}
+.pp-doc .pay td.it div:last-child {
+  border-bottom: 0;
+}
+.pp-doc .lbl-int {
+  position: absolute;
+  right: 16px;
+  top: 300px;
+  background: #c53030;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.04em;
+  z-index: 3;
+}
+.pp-doc.printing .lbl-int {
+  display: none;
+}
+
+/* portfolio page title */
+.pp-doc .ptitle2 {
+  position: absolute;
+  left: 48px;
+  top: 118px;
+  color: var(--pp-navy);
+  line-height: 1;
+}
+.pp-doc .ptitle2 .a {
+  display: block;
+  font-size: 52px;
+  font-weight: 400;
+}
+.pp-doc .ptitle2 .b {
+  display: block;
+  font-size: 66px;
+  font-weight: 800;
+  margin-top: 2px;
+}
+.pp-doc .ptag2 {
+  position: absolute;
+  left: 64px;
+  top: 268px;
+  display: flex;
+  align-items: center;
+}
+.pp-doc .ptag2 .n {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: var(--pp-navy);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 15px;
+  z-index: 1;
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 1.5px var(--pp-navy);
+}
+.pp-doc .ptag2 .t {
+  background: var(--pp-navy);
+  color: #fff;
+  font-family: 'Exo 2', sans-serif;
+  font-weight: 600;
+  font-size: 18px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 290px;
+  margin-left: -6px;
+}
+
+/* custom sections (rep-written title + description) on the plain branded page */
+.pp-doc .ctitle {
+  max-width: 440px;
+}
+.pp-doc .ctitle .a,
+.pp-doc .ctitle .b {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pp-doc .ctag .t {
+  width: auto;
+  min-width: 290px;
+  max-width: 420px;
+  padding: 0 24px 0 18px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+  line-height: 42px;
+  text-align: center;
+}
+.pp-doc .cbody p {
+  margin: 0 0 6px;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--pp-ink);
+  padding-left: 16px;
+  position: relative;
+}
+.pp-doc .cbody p::before {
+  content: '\27A2';
+  position: absolute;
+  left: 0;
+  color: var(--pp-ink);
+  font-size: 10.5px;
+  top: 1px;
+}
+.pp-doc .cbody p.h {
+  font-weight: 700;
+  color: var(--pp-navy);
+  padding-left: 0;
+  font-size: 14px;
+  margin-top: 6px;
+}
+.pp-doc .cbody p.h::before {
+  content: none;
+}
+.pp-doc .cbody ul {
+  margin: 0 0 8px;
+  padding-left: 30px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--pp-ink);
+  list-style: disc;
+}
+.pp-doc .cbody ul.c2 {
+  columns: 2;
+  column-gap: 14px;
+}
+.pp-doc .cbody ul.c3 {
+  columns: 3;
+  column-gap: 14px;
+}
+.pp-doc .cbody ol {
+  margin: 0 0 8px;
+  padding-left: 22px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--pp-ink);
+  columns: 3;
+  column-gap: 16px;
+  list-style: decimal;
+}
+.pp-doc .cbody b {
+  color: var(--pp-navy);
+  font-weight: 700;
+}

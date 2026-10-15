@@ -26,6 +26,8 @@ export interface Access {
   isCrossTeam: boolean;
   /** Admins and the marketing manager: run the marketing module's settings. */
   canManageMarketing: boolean;
+  /** Admins and sales managers: approve over-limit proposal discounts and edit the proposal price list. */
+  canManageProposals: boolean;
   /** Admins and the development manager: see and shape every development board. */
   seesAllBoards: boolean;
   /** Has the HR module (admins always do): sees and edits the confidential HR file. */
@@ -74,6 +76,7 @@ export const useAccess = (): Access => {
       isMarketing: families.includes('marketing'),
       isCrossTeam: isAdmin,
       canManageMarketing: isAdmin || roles.includes('marketing_manager'),
+      canManageProposals: isAdmin || roles.includes('sales_manager'),
       seesAllBoards: isAdmin || roles.includes('developer_manager'),
       isHr: resolved.includes('hr'),
       canManageEmployees: isAdmin || resolved.includes('hr'),

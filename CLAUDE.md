@@ -48,7 +48,7 @@ Mixed roles use this system: support agents triaging and resolving tickets, mana
 Two user types (`employee` | `customer`) and one flat employee role list —
 `admin`, `consultant`, `sales`, `sales_manager`, `marketing`, `marketing_manager`,
 `developer`, `developer_manager`.
-Roles unlock **modules** (`tickets`, `telesales`, `tasks`, `admin`, `development`, `hr`, `marketing`); an admin may
+Roles unlock **modules** (`tickets`, `telesales`, `tasks`, `admin`, `development`, `hr`, `marketing`, `proposals`); an admin may
 override the module list per employee. The API is the authority; the client only
 mirrors it so the sidebar, guards and buttons agree.
 
@@ -106,3 +106,15 @@ Sidebar group "Marketing" (`module: "marketing"`): `/marketing/csp` (`CustomerSu
 ## Ticketing menu
 
 Under Ticketing: Dashboard, Customers, **Services** (Tickets, Emails, Projects, Meetings), **Internal** (Internal Tickets, Internal Dashboard) and **R&D** (R&D Tickets, R&D Dashboard — `requiresRnd`), then Configuration. Internal and R&D are their own sub-groups (`INTERNAL_GROUP`, `RND_GROUP` in `app.constant.ts`), not part of Services.
+
+## Proposal Builder (module `proposals`)
+
+Sidebar group "Proposals": `/proposals` (`pages/proposals/ProposalsList.tsx` — list + "New proposal", which picks an Opportunity), `/proposals/:id` (`ProposalBuilder.tsx`), `/proposals/price-list` (`ProposalCatalogPage.tsx`, `useAccess().canManageProposals` = admin or sales manager). An Opportunity's lead page has a **Proposals** tab (`components/proposals/LeadProposalsTab.tsx`: versions, Create proposal, New version) and its form a **Proposal Details** card (`ProposalDetailsFields`: interests from `lib/proposalInterests.ts`, expected users, legal entities).
+
+- **State:** `redux/slices/proposalBuilderSlice.ts` — the working copy; every edit reducer calls `touch` (dirty + `rev`), `saveProposal` sends the whole document and only clears `dirty` if nothing changed in flight. Autosave every 30 s, on tab change and when leaving the page. API: `api/proposalApi.ts`; types `types/proposal.types.ts`.
+- **Pages:** `lib/proposalPages.ts` builds every PDF page as an HTML string (escape everything with `esc`) — SOW markup + placeholders, module/financial/terms tables, greedy packing with off-screen measuring, tables split into 18-row chunks with "(continued)". Styles: `pages/proposals/proposalDoc.css`, scoped to `.pp-doc`, fixed brand colours (not themed). Page art: `public/proposal-assets/pages/*.jpg`. Fonts Exo 2 + Open Sans (`index.html`).
+- **Sections (layout):** `proposal.layout` is the PDF's order after the cover — every built-in section once (`LAYOUT_KEYS` in `lib/proposalLayout.ts`, mirrored by the backend's `normalizeLayout`) plus the rep's own `custom` sections (title + description, same markup as the SOW, max 20). The builder's **Sections** step (`SectionsTab`) shows/hides, moves and adds a section above/below any other; `buildPages` walks `effectiveLayout(p)` (older proposals without a layout follow their `pages` flags). Custom sections print on the plain branded page (`portfolio.jpg` art) with a two-line title sized to fit, and continue onto more pages.
+- **Measuring:** the preview waits for the Open Sans / Exo 2 fonts before packing, and `.pc` carries the document font so the off-screen measurer matches the page — measure with another font and pages overflow.
+- **Money:** `lib/proposalMath.ts` mirrors the backend's `utils/proposalMath.js` — change both. USD only.
+- **PDF:** `utils/proposalPdf.ts` (html2canvas + jsPDF, US Letter 816×1056) from the same page strings as the preview; the builder calls `POST /proposals/:id/export` first (403 while a discount awaits approval).
+- **SOW paste zone:** `lib/proposalPaste.ts` (HTML table → TSV → image → text; images downscaled to 1400 px and uploaded). Images are behind auth, so `useProposalImages` fetches them as blobs → object URLs.

@@ -28,6 +28,8 @@ import { SalesAssistantPanel } from '@/components/tele-sales/assistant/SalesAssi
 import { mergeCallEntries, mergeFollowUpEntries } from '@/utils/leadActivityMerge';
 import { LEAD_STATUS_WORKFLOW } from '@/config/leadStatusWorkflow';
 import { LeadStatusBadge } from '@/components/tele-sales/LeadStatusBadge';
+import LeadProposalsTab from '@/components/proposals/LeadProposalsTab';
+import { useAccess } from '@/redux/hooks/useAccess';
 import type { CallLog, FollowUp, CreateCallLogData, LeadAttachment, LeadEmail, LeadEmailThreadSummary, LeadStatusHistoryEntry, LeadValueSource } from '@/types/teleSales.types';
 import { LEAD_SOURCE_DETAILS, LEAD_VALUE_SOURCES, formatMoney, type NeedProductRef, type AccountRef, type AccountContact } from '@/types/teleSales.types';
 
@@ -47,8 +49,8 @@ const PRIORITY_COLORS: Record<string, string> = {
   Low: 'bg-gray-100 text-gray-600',
 };
 
-type Tab = 'info' | 'assistant' | 'calls' | 'followups' | 'emails' | 'attachments' | 'update' | 'hist';
-const TABS: Tab[] = ['info', 'assistant', 'calls', 'followups', 'emails', 'attachments', 'update', 'hist'];
+type Tab = 'info' | 'assistant' | 'calls' | 'followups' | 'emails' | 'attachments' | 'proposals' | 'update' | 'hist';
+const TABS: Tab[] = ['info', 'assistant', 'calls', 'followups', 'emails', 'attachments', 'proposals', 'update', 'hist'];
 
 export default function LeadDetail() {
   const { id } = useParams<{ id: string }>();
@@ -58,6 +60,8 @@ export default function LeadDetail() {
   const { user } = useAppSelector((s) => s.auth);
   // Marketing may look at everything here but change nothing.
   const readOnly = isReadOnly(user);
+  // The Proposals tab needs the proposals module (sales roles have it by default).
+  const showProposals = useAccess().hasModule('proposals');
   // Lead mail goes out from the sales mailbox, not the agent's own address.
   const emailSender = useLeadEmailSender();
 
@@ -481,16 +485,17 @@ export default function LeadDetail() {
 
       {/* Tabs */}
       <div className="border-b border-outline-variant/20">
-        <div className="flex gap-1">
-          {TABS.filter((t) => t !== 'update' || canQuickUpdate).map((t) => (
+        <div className="flex gap-1 overflow-x-auto">
+          {TABS.filter((t) => (t !== 'update' || canQuickUpdate) && (t !== 'proposals' || showProposals)).map((t) => (
             <button key={t} onClick={() => setTab(t)}
-              className={`px-5 py-3 text-sm font-medium transition-colors border-b-2 -mb-px ${tab === t ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant hover:text-on-surface'}`}>
+              className={`shrink-0 whitespace-nowrap px-5 py-3 text-sm font-medium transition-colors border-b-2 -mb-px ${tab === t ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant hover:text-on-surface'}`}>
               {t === 'info' ? 'Info'
                 : t === 'assistant' ? 'Assistant'
                 : t === 'calls' ? `Calls (${mergeCallEntries(callLogs, statusHistory).length})`
                 : t === 'followups' ? `Follow-ups (${mergeFollowUpEntries(followUps).length})`
                 : t === 'emails' ? `Emails (${emails.length})`
                 : t === 'attachments' ? `Attachments (${attachments.length})`
+                : t === 'proposals' ? 'Proposals'
                 : t === 'update' ? 'Quick Update'
                 : `Status History (${statusHistory.length})`}
             </button>
@@ -871,6 +876,11 @@ export default function LeadDetail() {
           </div>
           <StatusUpdateForm lead={lead} variant="inline" history={statusHistory} onChanged={handleStatusChanged} />
         </div>
+      )}
+
+      {/* Tab: Proposals — the opportunity's proposal versions (Proposal Builder). */}
+      {tab === 'proposals' && showProposals && id && (
+        <LeadProposalsTab leadId={id} isOpportunity={stage === 'Opportunity'} canCreate={!readOnly} />
       )}
 
       {/* Tab: Status History */}

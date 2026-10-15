@@ -33,6 +33,8 @@ import {
   CalendarX2,
   MailOpen,
   type LucideIcon,
+  FileSignature,
+  BadgeCheck,
 } from 'lucide-react';
 import type { Notification, NotificationType } from '@/types/notification.types';
 
@@ -63,6 +65,8 @@ const TYPE_STYLES: Record<NotificationType, { icon: LucideIcon; className: strin
   meeting_reminder: { icon: BellRing, className: 'text-amber-600 bg-amber-500/10' },
   lead_email_reply: { icon: MailOpen, className: 'text-orange-600 bg-orange-500/10' },
   ticket_email_reply: { icon: MailOpen, className: 'text-orange-600 bg-orange-500/10' },
+  proposal_approval_request: { icon: FileSignature, className: 'text-amber-600 bg-amber-500/10' },
+  proposal_approved: { icon: BadgeCheck, className: 'text-green-600 bg-green-500/10' },
 };
 
 const DEFAULT_STYLE = { icon: Bell, className: 'text-on-surface-variant bg-surface-container-high' };
@@ -151,6 +155,7 @@ export function NotificationDropdown({ isOpen, onClose, excludeTypes = [] }: Not
       return `/tickets/view/${item.ticket._id}${tab}`;
     }
     if (item.meeting?._id) return `/calendar?meeting=${item.meeting._id}`;
+    if (item.proposal?._id) return `/proposals/${item.proposal._id}`;
     if (item.lead?._id) return `/tele-sales/leads/${item.lead._id}?tab=emails`;
     return null;
   };

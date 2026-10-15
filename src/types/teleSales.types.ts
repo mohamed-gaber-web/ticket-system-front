@@ -335,6 +335,11 @@ export interface Lead {
   accountContact?: AccountContact | string | null;
   budget?: string;
   isDecisionMaker?: boolean;
+  /** Proposal details on an Opportunity — read by the Proposal Builder. */
+  legalEntities?: { name: string; location: string; industry: string }[];
+  /** Keys of PROPOSAL_INTERESTS (src/lib/proposalInterests.ts). */
+  proposalInterests?: string[];
+  expectedUsers?: number | null;
   tags: string[];
   createdBy: TeleSalesAgent;
   callLogs?: CallLog[];
@@ -383,6 +388,11 @@ export interface CreateLeadData {
   accountContact?: string;
   budget?: string;
   isDecisionMaker?: boolean;
+  /** Proposal details on an Opportunity — read by the Proposal Builder. */
+  legalEntities?: { name: string; location: string; industry: string }[];
+  /** Keys of PROPOSAL_INTERESTS (src/lib/proposalInterests.ts). */
+  proposalInterests?: string[];
+  expectedUsers?: number | null;
   tags?: string[];
 }
 
