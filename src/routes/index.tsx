@@ -197,6 +197,11 @@ const CreateTaskCategory = lazy(() => import("@/pages/task-categories/createTask
 const DevelopmentBoards = lazy(() => import("@/pages/development/DevelopmentBoards"));
 const DevelopmentBoard = lazy(() => import("@/pages/development/DevelopmentBoard"));
 
+// Proposals Module
+const ProposalsList = lazy(() => import("@/pages/proposals/ProposalsList"));
+const ProposalBuilder = lazy(() => import("@/pages/proposals/ProposalBuilder"));
+const ProposalCatalogPage = lazy(() => import("@/pages/proposals/ProposalCatalogPage"));
+
 // Marketing Module
 const CustomerSurveys = lazy(() => import("@/pages/marketing/CustomerSurveys"));
 const EmailCampaign = lazy(() => import("@/pages/marketing/EmailCampaign"));
@@ -405,6 +410,9 @@ export const routes: RouteObject[] = [
       { path: "/development/boards/:id", element: <ModuleRoute module="development"><Lazy><DevelopmentBoard /></Lazy></ModuleRoute> },
 
       // Marketing Module — CSP surveys, email campaign, social media (coming soon)
+      { path: "/proposals", element: <ModuleRoute module="proposals"><Lazy><ProposalsList /></Lazy></ModuleRoute> },
+      { path: "/proposals/price-list", element: <ModuleRoute module="proposals"><Lazy><ProposalCatalogPage /></Lazy></ModuleRoute> },
+      { path: "/proposals/:id", element: <ModuleRoute module="proposals"><Lazy><ProposalBuilder /></Lazy></ModuleRoute> },
       { path: "/marketing", element: <Navigate to="/marketing/csp" replace /> },
       { path: "/marketing/csp", element: <ModuleRoute module="marketing"><Lazy><CustomerSurveys /></Lazy></ModuleRoute> },
       { path: "/marketing/email-campaign", element: <ModuleRoute module="marketing"><Lazy><EmailCampaign /></Lazy></ModuleRoute> },

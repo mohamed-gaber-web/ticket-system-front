@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import ProposalDetailsFields from '@/components/proposals/ProposalDetailsFields';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { createLead, updateLead, convertLead } from '@/redux/slices/teleSalesLeadsSlice';
 import { fetchTeams } from '@/redux/slices/teleSalesTeamsSlice';
@@ -8,7 +9,7 @@ import { fetchBusinessClassifications } from '@/redux/slices/businessClassificat
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { Building2, MapPin, Phone, ClipboardList, StickyNote, Tags, ChevronDown, X, UserCheck } from 'lucide-react';
+import { Building2, MapPin, Phone, ClipboardList, StickyNote, Tags, ChevronDown, X, UserCheck, FileSignature } from 'lucide-react';
 import { IMPORTED_LEAD_STATUS, PICKABLE_LEAD_STATUSES, type LeadStatus } from '@/config/leadStatusWorkflow';
 import type {
   Lead, LeadPriority, LeadSource, CreateLeadData, EntityType, IndustrySector, SalesType,
@@ -152,6 +153,9 @@ const buildFormFromLead = (lead: Lead): CreateLeadData => ({
   budget: lead.budget || '',
   isDecisionMaker: lead.isDecisionMaker,
   tags: lead.tags,
+  legalEntities: lead.legalEntities ?? [],
+  proposalInterests: lead.proposalInterests ?? [],
+  expectedUsers: lead.expectedUsers ?? null,
 });
 
 interface LeadFormModalProps {
@@ -604,6 +608,17 @@ export function LeadFormModal({ open, lead, stage, convert = false, onClose, onS
               </Field>
             </div>
           </SectionCard>
+
+          {formStage === 'Opportunity' && (
+            <SectionCard icon={<FileSignature className="w-5 h-5" />} title="Proposal Details" subtitle="Read by the Proposal Builder when you create a proposal.">
+              <ProposalDetailsFields
+                value={form}
+                country={form.country}
+                industry={form.industry}
+                onChange={(patch) => setForm((p) => ({ ...p, ...patch }))}
+              />
+            </SectionCard>
+          )}
 
           <SectionCard icon={<StickyNote className="w-5 h-5" />} title="Notes & Insights">
             <div className="space-y-4">

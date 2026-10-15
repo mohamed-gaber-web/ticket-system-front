@@ -45,6 +45,8 @@ import {
   Send,
   Share2,
   FlaskConical,
+  FileSignature,
+  Tags,
 } from "lucide-react";
 import type { Access } from "@/redux/hooks/useAccess";
 import type { ModuleKey } from "@/types/auth.types";
@@ -323,6 +325,18 @@ const MARKETING_GROUP: NavLink = {
   ],
 };
 
+// Proposals — business proposals built from tele-sales opportunities, and the
+// shared price list (sales managers and admins edit it; the API enforces that).
+const PROPOSALS_GROUP: NavLink = {
+  name: "Proposals",
+  icon: FileSignature,
+  isGroup: true,
+  children: [
+    { name: "Proposals", path: "/proposals", icon: FileSignature },
+    { name: "Price List", path: "/proposals/price-list", icon: Tags, minRole: "manager" },
+  ],
+};
+
 // HR menu — the employee directory (with the confidential HR file for HR and
 // admins), teams, leave approvals and balances, plus ticketing Performance.
 // Every link says who sees it; the group shows when any link survives, so a
@@ -357,6 +371,7 @@ const EMPLOYEE_NAV: NavEntry[] = [
   { module: "any", link: MEETING_BOOK_LINK },
   { module: "tickets", link: TICKETING_GROUP },
   { module: "telesales", link: TELE_SALES_GROUP },
+  { module: "proposals", link: PROPOSALS_GROUP },
   { module: "tasks", link: TASKS_GROUP },
   { module: "development", link: DEVELOPMENT_GROUP },
   { module: "marketing", link: MARKETING_GROUP },

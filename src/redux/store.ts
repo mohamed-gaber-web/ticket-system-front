@@ -37,6 +37,7 @@ import employeeBalancesReducer from './slices/employeeBalanceSlice';
 import aiReducer from './slices/aiSlice';
 import evaluationReducer from './slices/evaluationSlice';
 import salesAssistantReducer from './slices/salesAssistantSlice';
+import proposalBuilderReducer from './slices/proposalBuilderSlice';
 import ticketSettingsReducer from './slices/ticketSettingsSlice';
 import myHomeReducer from './slices/myHomeSlice';
 
@@ -80,6 +81,7 @@ export const store = configureStore({
     ai: aiReducer,
     evaluation: evaluationReducer,
     salesAssistant: salesAssistantReducer,
+    proposalBuilder: proposalBuilderReducer,
     ticketSettings: ticketSettingsReducer,
     myHome: myHomeReducer,
   },
