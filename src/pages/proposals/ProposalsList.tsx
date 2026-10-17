@@ -1,18 +1,34 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { FileSignature, Plus, Search, Settings2 } from 'lucide-react';
+import { FileSignature, FilterX, Plus, Search, Settings2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { getProposals } from '@/api/proposalApi';
+import { MultiSelect, type MultiSelectItem } from '@/components/ui/multi-select';
+import { getProposalFilterOptions, getProposals, type ProposalFilterOptions } from '@/api/proposalApi';
 import { formatUsd } from '@/lib/proposalMath';
 import { useAccess } from '@/redux/hooks/useAccess';
 import { personName, type ProposalStatus, type ProposalSummary } from '@/types/proposal.types';
 import ProposalStatusBadge, { NeedsYourApproval } from '@/components/proposals/ProposalStatusBadge';
 import NewProposalDialog from '@/components/proposals/NewProposalDialog';
-import { NativeSelect } from '@/components/proposals/builderUi';
 
 const STATUSES: ProposalStatus[] = ['Draft', 'Pending approval', 'Approved', 'Sent', 'Accepted', 'Rejected'];
+
+/** The multi-select filters, in display order; each lives in the URL as a comma list. */
+const FILTERS = [
+  { key: 'status', label: 'Status', all: 'All statuses' },
+  { key: 'owner', label: 'Owner (agent)', all: 'All owners' },
+  { key: 'preparedBy', label: 'Prepared by', all: 'Anyone' },
+  { key: 'leadSource', label: 'Lead source', all: 'All sources' },
+  { key: 'industry', label: 'Industry', all: 'All industries' },
+  { key: 'country', label: 'Country', all: 'All countries' },
+] as const;
+type FilterKey = (typeof FILTERS)[number]['key'];
+type FilterValues = Record<FilterKey, string[]>;
+
+const listFromUrl = (params: URLSearchParams, key: string) =>
+  (params.get(key) ?? '').split(',').map((v) => v.trim()).filter(Boolean);
+const named = (values: string[]): MultiSelectItem[] => values.map((v) => ({ _id: v, name: v }));
 const PAGE_SIZE = 20;
 const fmtDate = (d?: string) => (d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—');
 const apiError = (e: unknown, fallback: string) =>
@@ -23,15 +39,71 @@ export default function ProposalsList() {
   const [rows, setRows] = useState<ProposalSummary[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [q, setQ] = useState('');
-  const [status, setStatus] = useState<ProposalStatus | ''>('');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [q, setQ] = useState(() => searchParams.get('q') ?? '');
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [options, setOptions] = useState<ProposalFilterOptions | null>(null);
+
+  // Filters live in the URL so a filtered list can be bookmarked or shared.
+  const filters = useMemo(
+    () => Object.fromEntries(FILTERS.map(({ key }) => [key, listFromUrl(searchParams, key)])) as FilterValues,
+    [searchParams],
+  );
+  const activeCount = FILTERS.reduce((n, { key }) => n + (filters[key].length ? 1 : 0), 0);
+
+  const setFilter = (key: FilterKey, values: string[]) => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (values.length) next.set(key, values.join(','));
+        else next.delete(key);
+        return next;
+      },
+      { replace: true },
+    );
+    setPage(1);
+  };
+  const clearFilters = () => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        FILTERS.forEach(({ key }) => next.delete(key));
+        return next;
+      },
+      { replace: true },
+    );
+    setPage(1);
+  };
+
+  useEffect(() => {
+    getProposalFilterOptions()
+      .then((res) => setOptions(res.data))
+      .catch(() => setOptions(null));
+  }, []);
+
+  const items: Record<FilterKey, MultiSelectItem[]> = useMemo(
+    () => ({
+      status: named(options?.statuses ?? STATUSES),
+      owner: options?.owners ?? [],
+      preparedBy: options?.preparedBy ?? [],
+      leadSource: named(options?.leadSources ?? []),
+      industry: named(options?.industries ?? []),
+      country: named(options?.countries ?? []),
+    }),
+    [options],
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await getProposals({ q: q || undefined, status, page, limit: PAGE_SIZE });
+      const res = await getProposals({
+        q: q || undefined,
+        ...filters,
+        status: filters.status as ProposalStatus[],
+        page,
+        limit: PAGE_SIZE,
+      });
       setRows(res.data);
       setTotal(res.total);
     } catch (e) {
@@ -39,7 +111,7 @@ export default function ProposalsList() {
     } finally {
       setLoading(false);
     }
-  }, [q, status, page]);
+  }, [q, filters, page]);
 
   useEffect(() => {
     const t = window.setTimeout(load, 250);
@@ -69,8 +141,8 @@ export default function ProposalsList() {
         </div>
       </div>
 
-      <div className="flex flex-col gap-3 rounded-[1rem] bg-surface-container-lowest p-4 md:flex-row md:items-center">
-        <div className="relative flex-1">
+      <div className="space-y-3 rounded-[1rem] bg-surface-container-lowest p-4">
+        <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-on-surface-variant" />
           <Input
             value={q}
@@ -82,22 +154,32 @@ export default function ProposalsList() {
             className="pl-9"
           />
         </div>
-        <NativeSelect
-          className="md:w-56"
-          value={status}
-          ariaLabel="Filter by status"
-          onChange={(v) => {
-            setStatus(v as ProposalStatus | '');
-            setPage(1);
-          }}
-        >
-          <option value="">All statuses</option>
-          {STATUSES.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
+          {FILTERS.map(({ key, label, all }) => (
+            <div key={key} className="min-w-0 space-y-1">
+              <span className="text-xs font-medium text-on-surface-variant">{label}</span>
+              <MultiSelect
+                items={items[key]}
+                value={filters[key]}
+                onChange={(values) => setFilter(key, values)}
+                placeholder={all}
+                loading={!options && key !== 'status'}
+                searchPlaceholder={`Search ${label.toLowerCase()}…`}
+                emptyMessage="Nothing to filter by yet"
+              />
+            </div>
           ))}
-        </NativeSelect>
+        </div>
+        {activeCount > 0 && (
+          <div className="flex items-center justify-between gap-2 text-sm">
+            <span className="text-on-surface-variant">
+              {activeCount} filter{activeCount === 1 ? '' : 's'} applied · {total} proposal{total === 1 ? '' : 's'}
+            </span>
+            <Button type="button" variant="ghost" size="sm" onClick={clearFilters}>
+              <FilterX /> Clear filters
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="overflow-hidden rounded-[1rem] bg-surface-container-lowest">
@@ -112,7 +194,7 @@ export default function ProposalsList() {
             <span className="rounded-full bg-surface-container-high p-4 text-on-surface-variant">
               <FileSignature className="h-6 w-6" />
             </span>
-            <p className="font-semibold text-on-surface">{q || status ? 'No proposal matches these filters' : 'No proposals yet'}</p>
+            <p className="font-semibold text-on-surface">{q || activeCount ? 'No proposal matches these filters' : 'No proposals yet'}</p>
             <p className="max-w-sm text-sm text-on-surface-variant">Start one from an opportunity with “New proposal”, or from the Proposals tab of an opportunity.</p>
           </div>
         ) : (

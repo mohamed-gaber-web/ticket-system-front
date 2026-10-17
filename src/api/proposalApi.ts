@@ -28,15 +28,39 @@ export const saveProposalCatalog = async (payload: Pick<ProposalCatalog, 'settin
 
 // ── Proposals ────────────────────────────────────────────────────────────────
 
+/** Multi-select filters are sent as comma lists (`status=Draft,Approved`). */
 export interface ProposalListParams {
   q?: string;
-  status?: ProposalStatus | '';
+  status?: ProposalStatus[];
+  owner?: string[];
+  preparedBy?: string[];
+  leadSource?: string[];
+  industry?: string[];
+  country?: string[];
   page?: number;
   limit?: number;
 }
 
-export const getProposals = async (params: ProposalListParams) =>
-  (await api.get<ApiOne<ProposalSummary[]> & { total: number }>('/proposals', { params, ...noCache })).data;
+export interface ProposalFilterOptions {
+  statuses: ProposalStatus[];
+  countries: string[];
+  owners: { _id: string; name: string }[];
+  preparedBy: { _id: string; name: string }[];
+  leadSources: string[];
+  industries: string[];
+}
+
+export const getProposals = async ({ q, page, limit, ...lists }: ProposalListParams) => {
+  const params: Record<string, string | number> = {};
+  if (q) params.q = q;
+  if (page) params.page = page;
+  if (limit) params.limit = limit;
+  for (const [key, values] of Object.entries(lists)) if (values?.length) params[key] = values.join(',');
+  return (await api.get<ApiOne<ProposalSummary[]> & { total: number }>('/proposals', { params, ...noCache })).data;
+};
+
+export const getProposalFilterOptions = async () =>
+  (await api.get<ApiOne<ProposalFilterOptions>>('/proposals/filter-options', noCache)).data;
 
 export const getOpportunityProposals = async (leadId: string) =>
   (await api.get<ApiOne<ProposalSummary[]>>(`/opportunities/${leadId}/proposals`, noCache)).data;
