@@ -4,17 +4,27 @@
 
 export interface TaskListFilters {
   search: string;
-  status: string;
-  department: string;
-  category: string;
+  // Multi-select filters (older saved states hold a single string — see asList).
+  status: string[];
+  department: string[];
+  category: string[];
   startDate: string;
   endDate: string;
-  assignedTo: string;
+  assignedTo: string[];
+  responsible: string[];
   week: string;
   sortField: string;
   sortOrder: 'asc' | 'desc';
   page: number;
 }
+
+/** A saved filter as a list: older saves stored one value as a string. */
+export const asList = (value: unknown): string[] =>
+  Array.isArray(value)
+    ? value.filter((v): v is string => typeof v === 'string' && v !== '')
+    : typeof value === 'string' && value
+      ? [value]
+      : [];
 
 const filtersKey = (mine: boolean) => `tasks-list:${mine ? 'mine' : 'all'}`;
 const LIST_PATH_KEY = 'tasks-list:path';

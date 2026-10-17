@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { endOfMonth, endOfWeek, format, startOfMonth, startOfWeek } from 'date-fns';
 import { SearchSelect } from '@/components/ui/search-select';
+import { MultiSelect } from '@/components/ui/multi-select';
 import { weekRangeLabel } from '@/utils/weekUtils';
 import { useSearchParams } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
@@ -10,7 +11,7 @@ import { fetchDepartments } from '@/redux/slices/departmentSlice';
 import { fetchConsultants } from '@/redux/slices/consultantSlice';
 import { fetchTaskCategories } from '@/redux/slices/taskCategorySlice';
 import { getTasks } from '@/api/tasksApi';
-import { loadTaskListFilters, saveTaskListFilters } from './taskListState';
+import { asList, loadTaskListFilters, saveTaskListFilters } from './taskListState';
 import type { Task, TaskStatus, TaskSortField } from '@/types/task.types';
 import { Button } from '@/components/ui/button';
 import {
@@ -62,6 +63,26 @@ function getWeekDateRange(weekNum: number, year = new Date().getFullYear()) {
 // Total data columns (excluding the expand column) — used for subtask row colSpan.
 const DATA_COLSPAN = 13;
 
+/** A labelled multi-select filter, styled like the page's other filter fields. */
+function FilterMulti({ label, icon, items, value, onChange, placeholder }: {
+  label: string;
+  icon: React.ReactNode;
+  items: { _id: string; name: string }[];
+  value: string[];
+  onChange: (value: string[]) => void;
+  placeholder: string;
+}) {
+  return (
+    <div className="min-w-0">
+      <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
+        {icon} {label}
+      </span>
+      <MultiSelect items={items} value={value} onChange={onChange} placeholder={placeholder}
+        searchPlaceholder={`Search ${label.toLowerCase()}...`} emptyMessage="Nothing found" />
+    </div>
+  );
+}
+
 // `mine` renders the "My Tasks" page: only tasks the signed-in employee is
 // assigned to (the API filters with `mine=true`). Without it, the department list.
 export default function Tasks({ mine = false }: { mine?: boolean }) {
@@ -79,12 +100,13 @@ export default function Tasks({ mine = false }: { mine?: boolean }) {
   // task and back keeps them. A ?department= link still wins over the saved one.
   const [saved] = useState(() => loadTaskListFilters(mine));
   const [search, setSearch] = useState(saved.search ?? '');
-  const [statusFilter, setStatusFilter] = useState<TaskStatus | ''>((saved.status as TaskStatus) ?? '');
-  const [deptFilter, setDeptFilter] = useState(searchParams.get('department') || saved.department || '');
-  const [categoryFilter, setCategoryFilter] = useState(saved.category ?? '');
+  const [statusFilter, setStatusFilter] = useState<string[]>(() => asList(saved.status));
+  const [deptFilter, setDeptFilter] = useState<string[]>(() => asList(searchParams.get('department') || saved.department));
+  const [categoryFilter, setCategoryFilter] = useState<string[]>(() => asList(saved.category));
   const [startDateFilter, setStartDateFilter] = useState(saved.startDate ?? '');
   const [endDateFilter, setEndDateFilter] = useState(saved.endDate ?? '');
-  const [assignedToFilter, setAssignedToFilter] = useState(saved.assignedTo ?? '');
+  const [assignedToFilter, setAssignedToFilter] = useState<string[]>(() => asList(saved.assignedTo));
+  const [responsibleFilter, setResponsibleFilter] = useState<string[]>(() => asList(saved.responsible));
   const [weekFilter, setWeekFilter] = useState(saved.week ?? '');
   const [sortField, setSortField] = useState<TaskSortField>((saved.sortField as TaskSortField) ?? 'createdAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(saved.sortOrder ?? 'desc');
@@ -93,10 +115,10 @@ export default function Tasks({ mine = false }: { mine?: boolean }) {
   useEffect(() => {
     saveTaskListFilters(mine, {
       search, status: statusFilter, department: deptFilter, category: categoryFilter,
-      startDate: startDateFilter, endDate: endDateFilter, assignedTo: assignedToFilter,
+      startDate: startDateFilter, endDate: endDateFilter, assignedTo: assignedToFilter, responsible: responsibleFilter,
       week: weekFilter, sortField, sortOrder, page,
     });
-  }, [mine, search, statusFilter, deptFilter, categoryFilter, startDateFilter, endDateFilter, assignedToFilter, weekFilter, sortField, sortOrder, page]);
+  }, [mine, search, statusFilter, deptFilter, categoryFilter, startDateFilter, endDateFilter, assignedToFilter, responsibleFilter, weekFilter, sortField, sortOrder, page]);
   const [exporting, setExporting] = useState(false);
   const limit = 20;
 
@@ -114,24 +136,26 @@ export default function Tasks({ mine = false }: { mine?: boolean }) {
   const buildParams = useCallback((extra: Record<string, any> = {}) => {
     const params: any = { ...extra };
     if (search) params.search = search;
-    if (statusFilter) params.status = statusFilter;
-    if (isAdmin && deptFilter) params.department = deptFilter;
+    // Multi-select filters go as comma lists.
+    if (statusFilter.length) params.status = statusFilter.join(',');
+    if (isAdmin && deptFilter.length) params.department = deptFilter.join(',');
     if (mine) params.mine = 'true';
-    if (categoryFilter) params.category = categoryFilter;
+    if (categoryFilter.length) params.category = categoryFilter.join(',');
     if (startDateFilter) params.startDate = startDateFilter;
     if (endDateFilter) params.endDate = endDateFilter;
-    if (assignedToFilter) params.assignedTo = assignedToFilter;
+    if (assignedToFilter.length && !mine) params.assignedTo = assignedToFilter.join(',');
+    if (responsibleFilter.length) params.responsible = responsibleFilter.join(',');
     if (weekFilter) params.scheduledWeek = Number(weekFilter);
     params.sort = sortField;
     params.order = sortOrder;
     return params;
-  }, [search, statusFilter, deptFilter, categoryFilter, startDateFilter, endDateFilter, assignedToFilter, weekFilter, sortField, sortOrder, isAdmin, mine]);
+  }, [search, statusFilter, deptFilter, categoryFilter, startDateFilter, endDateFilter, assignedToFilter, responsibleFilter, weekFilter, sortField, sortOrder, isAdmin, mine]);
 
   const load = useCallback(() => {
     dispatch(fetchTasks(buildParams({ page, limit })));
   }, [buildParams, page]);
 
-  useEffect(() => { load(); }, [page, statusFilter, deptFilter, categoryFilter, startDateFilter, endDateFilter, assignedToFilter, weekFilter, sortField, sortOrder]);
+  useEffect(() => { load(); }, [page, statusFilter, deptFilter, categoryFilter, startDateFilter, endDateFilter, assignedToFilter, responsibleFilter, weekFilter, sortField, sortOrder]);
 
   // Live search: reload 350ms after the user stops typing (no Enter needed).
   // Skips the mount run — the effect above already loads the first page.
@@ -143,19 +167,23 @@ export default function Tasks({ mine = false }: { mine?: boolean }) {
   }, [search]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const resetFilters = () => {
-    setSearch(''); setStatusFilter(''); setDeptFilter(''); setCategoryFilter('');
+    setSearch(''); setStatusFilter([]); setDeptFilter([]); setCategoryFilter([]);
     setStartDateFilter(''); setEndDateFilter('');
-    setAssignedToFilter(''); setWeekFilter(''); setPage(1);
+    setAssignedToFilter([]); setResponsibleFilter([]); setWeekFilter(''); setPage(1);
   };
 
   // Chips summarising what is applied, each removable on its own.
   const activeChips = useMemo(() => {
     const chips: { key: string; label: string; clear: () => void }[] = [];
     if (search) chips.push({ key: 'search', label: `"${search}"`, clear: () => setSearch('') });
-    if (statusFilter) chips.push({ key: 'status', label: STATUS_LABELS[statusFilter], clear: () => setStatusFilter('') });
-    if (categoryFilter) chips.push({ key: 'category', label: taskCategories.find((c) => c._id === categoryFilter)?.name ?? 'Category', clear: () => setCategoryFilter('') });
-    if (deptFilter) chips.push({ key: 'dept', label: departments.find((d) => d._id === deptFilter)?.name ?? 'Department', clear: () => setDeptFilter('') });
-    if (assignedToFilter) chips.push({ key: 'assignee', label: consultants.find((c) => c._id === assignedToFilter)?.fullName ?? 'Assignee', clear: () => setAssignedToFilter('') });
+    // One chip per picked value, each removable on its own.
+    const multi = (key: string, values: string[], name: (v: string) => string, set: (next: string[]) => void) =>
+      values.forEach((v) => chips.push({ key: `${key}:${v}`, label: name(v), clear: () => set(values.filter((x) => x !== v)) }));
+    multi('status', statusFilter, (v) => STATUS_LABELS[v as TaskStatus] ?? v, setStatusFilter);
+    multi('category', categoryFilter, (v) => taskCategories.find((c) => c._id === v)?.name ?? 'Category', setCategoryFilter);
+    multi('dept', deptFilter, (v) => departments.find((d) => d._id === v)?.name ?? 'Department', setDeptFilter);
+    if (!mine) multi('assignee', assignedToFilter, (v) => consultants.find((c) => c._id === v)?.fullName ?? 'Assignee', setAssignedToFilter);
+    multi('responsible', responsibleFilter, (v) => `Responsible: ${consultants.find((c) => c._id === v)?.fullName ?? 'Employee'}`, setResponsibleFilter);
     if (weekFilter) chips.push({ key: 'week', label: `Week ${weekFilter}`, clear: () => setWeekFilter('') });
     if (startDateFilter || endDateFilter) {
       chips.push({
@@ -165,7 +193,7 @@ export default function Tasks({ mine = false }: { mine?: boolean }) {
       });
     }
     return chips;
-  }, [search, statusFilter, categoryFilter, deptFilter, assignedToFilter, weekFilter, startDateFilter, endDateFilter, taskCategories, departments, consultants]);
+  }, [search, statusFilter, categoryFilter, deptFilter, assignedToFilter, responsibleFilter, weekFilter, startDateFilter, endDateFilter, taskCategories, departments, consultants, mine]);
 
   const setDateRange = (from: Date, to: Date) => {
     setStartDateFilter(format(from, 'yyyy-MM-dd'));
@@ -183,11 +211,11 @@ export default function Tasks({ mine = false }: { mine?: boolean }) {
     () => Array.from({ length: 52 }, (_, i) => i + 1).map((w) => ({ value: String(w), label: `Week ${w}`, sub: getWeekDateRange(w) })),
     []
   );
-  const statusOptions = Object.entries(STATUS_LABELS).map(([value, label]) => ({ value, label }));
-  const categoryOptions = useMemo(() => taskCategories.map((c) => ({ value: c._id, label: c.name })), [taskCategories]);
-  const departmentOptions = useMemo(() => departments.map((d) => ({ value: d._id, label: d.name })), [departments]);
-  const assigneeOptions = useMemo(
-    () => consultants.map((c) => ({ value: c._id, label: c.fullName || `${c.firstName} ${c.lastName}`, sub: c.email })),
+  const statusItems = useMemo(() => Object.entries(STATUS_LABELS).map(([_id, name]) => ({ _id, name })), []);
+  const categoryItems = useMemo(() => taskCategories.map((c) => ({ _id: c._id, name: c.name })), [taskCategories]);
+  const departmentItems = useMemo(() => departments.map((d) => ({ _id: d._id, name: d.name })), [departments]);
+  const employeeItems = useMemo(
+    () => consultants.map((c) => ({ _id: c._id, name: c.fullName || `${c.firstName} ${c.lastName}` })),
     [consultants]
   );
 
@@ -555,7 +583,7 @@ export default function Tasks({ mine = false }: { mine?: boolean }) {
         </div>
 
         {/* Row 1: search + who/what */}
-        <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3 ${['xl:grid-cols-4', 'xl:grid-cols-5', 'xl:grid-cols-6'][Number(isAdmin) + Number(!mine)]}`}>
+        <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3 ${['xl:grid-cols-5', 'xl:grid-cols-6', 'xl:grid-cols-7'][Number(isAdmin) + Number(!mine)]}`}>
           <div className="sm:col-span-2">
             <label className="block text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant mb-1">Search</label>
             <div className="relative">
@@ -573,46 +601,25 @@ export default function Tasks({ mine = false }: { mine?: boolean }) {
               )}
             </div>
           </div>
-          <SearchSelect
-            label="Status"
-            icon={<CircleDot className="w-4 h-4" />}
-            value={statusFilter}
-            onChange={(v) => { setStatusFilter(v as TaskStatus | ''); setPage(1); }}
-            options={statusOptions}
-            allLabel="All statuses"
-            placeholder="All statuses"
-          />
-          <SearchSelect
-            label="Category"
-            icon={<FolderKanban className="w-4 h-4" />}
-            value={categoryFilter}
-            onChange={(v) => { setCategoryFilter(v); setPage(1); }}
-            options={categoryOptions}
-            allLabel="All categories"
-            placeholder="All categories"
-          />
+          <FilterMulti label="Status" icon={<CircleDot className="w-4 h-4" />}
+            items={statusItems} value={statusFilter} placeholder="All statuses"
+            onChange={(v) => { setStatusFilter(v); setPage(1); }} />
+          <FilterMulti label="Category" icon={<FolderKanban className="w-4 h-4" />}
+            items={categoryItems} value={categoryFilter} placeholder="All categories"
+            onChange={(v) => { setCategoryFilter(v); setPage(1); }} />
           {isAdmin && (
-            <SearchSelect
-              label="Department"
-              icon={<Building2 className="w-4 h-4" />}
-              value={deptFilter}
-              onChange={(v) => { setDeptFilter(v); setPage(1); }}
-              options={departmentOptions}
-              allLabel="All departments"
-              placeholder="All departments"
-            />
+            <FilterMulti label="Department" icon={<Building2 className="w-4 h-4" />}
+              items={departmentItems} value={deptFilter} placeholder="All departments"
+              onChange={(v) => { setDeptFilter(v); setPage(1); }} />
           )}
           {!mine && (
-            <SearchSelect
-              label="Assigned to"
-              icon={<UserCheck className="w-4 h-4" />}
-              value={assignedToFilter}
-              onChange={(v) => { setAssignedToFilter(v); setPage(1); }}
-              options={assigneeOptions}
-              allLabel="All assignees"
-              placeholder="All assignees"
-            />
+            <FilterMulti label="Assigned to" icon={<UserCheck className="w-4 h-4" />}
+              items={employeeItems} value={assignedToFilter} placeholder="All assignees"
+              onChange={(v) => { setAssignedToFilter(v); setPage(1); }} />
           )}
+          <FilterMulti label="Responsible" icon={<UserCheck className="w-4 h-4" />}
+            items={employeeItems} value={responsibleFilter} placeholder="Anyone"
+            onChange={(v) => { setResponsibleFilter(v); setPage(1); }} />
         </div>
 
         {/* Row 2: when */}

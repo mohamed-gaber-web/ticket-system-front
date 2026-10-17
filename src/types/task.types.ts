@@ -107,10 +107,13 @@ export type TaskSortField =
 export interface TaskQueryParams {
   page?: number;
   limit?: number;
+  /** One id, or a comma list for the multi-select filters. */
   department?: TaskDepartment;
   category?: string;
-  status?: TaskStatus;
+  /** One status, or a comma list ("pending,done"). */
+  status?: TaskStatus | string;
   assignedTo?: string;
+  responsible?: string;
   scheduledWeek?: number;
   startDate?: string;
   endDate?: string;
