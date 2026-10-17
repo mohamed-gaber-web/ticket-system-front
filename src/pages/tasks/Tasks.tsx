@@ -60,10 +60,10 @@ function getWeekDateRange(weekNum: number, year = new Date().getFullYear()) {
 }
 
 // Total data columns (excluding the expand column) — used for subtask row colSpan.
-const DATA_COLSPAN = 12;
+const DATA_COLSPAN = 13;
 
 // `mine` renders the "My Tasks" page: only tasks the signed-in employee is
-// assigned to, responsible for or created. Without it, the department list.
+// assigned to (the API filters with `mine=true`). Without it, the department list.
 export default function Tasks({ mine = false }: { mine?: boolean }) {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
@@ -430,6 +430,12 @@ export default function Tasks({ mine = false }: { mine?: boolean }) {
           </td>
 
           <td className="px-4 py-3">
+            {task.responsible && typeof task.responsible === 'object'
+              ? <span className="text-sm text-on-surface">{task.responsible.firstName} {task.responsible.lastName}</span>
+              : <span className="text-on-surface-variant/40">&mdash;</span>}
+          </td>
+
+          <td className="px-4 py-3">
             {task.scheduledWeek != null
               ? <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-md bg-brand-50 text-brand-700 text-xs font-bold whitespace-nowrap">{weekRangeLabel(task.scheduledWeek, task.endWeek)}</span>
               : <span className="text-on-surface-variant/40">&mdash;</span>}
@@ -707,6 +713,7 @@ export default function Tasks({ mine = false }: { mine?: boolean }) {
                   <SortHeader field="category" label="Category" />
                   <SortHeader field="department" label="Department" />
                   <SortHeader field="assignedTo" label="Assigned To" />
+                  <SortHeader field="responsible" label="Responsible" />
                   <SortHeader field="scheduledWeek" label="Weeks" />
                   <SortHeader field="duration" label="Duration" />
                   <SortHeader field="startDate" label="Start Date" />

@@ -94,6 +94,7 @@ export type TaskSortField =
   | 'department'
   | 'category'
   | 'assignedTo'
+  | 'responsible'
   | 'scheduledWeek'
   | 'endWeek'
   | 'duration'
