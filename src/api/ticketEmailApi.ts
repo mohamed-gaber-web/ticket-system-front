@@ -1,5 +1,5 @@
 import api from './axiosConfig';
-import type { LeadEmailResponse, SendLeadEmailData } from '@/types/teleSales.types';
+import type { EmailSenderInfo, LeadEmailResponse, SendLeadEmailData } from '@/types/teleSales.types';
 import type {
   TicketEmailsResponse,
   TicketEmailInboxFilter,
@@ -9,6 +9,10 @@ import type {
 // Email conversations with the customer, per ticket (staff only) — /api/ticket-emails.
 // Send / reply answer the same shape as the lead endpoints, so the shared
 // compose window (GmailCompose) takes these through its `submit` prop.
+
+/** Who ticket email can go out from: the support mailbox, and the employee's own. */
+export const getTicketEmailSender = (): Promise<{ success: boolean; data: EmailSenderInfo }> =>
+  api.get('/ticket-emails/sender').then((r) => r.data);
 
 export const getTicketEmails = (ticketId: string): Promise<TicketEmailsResponse> =>
   api.get(`/ticket-emails/ticket/${ticketId}`).then((r) => r.data);

@@ -3,13 +3,14 @@ import { createPortal } from 'react-dom';
 import {
   X, Minus, Maximize2, Minimize2, Paperclip, Trash2, Link2, Bold, Italic,
   Underline, Strikethrough, List, ListOrdered, RemoveFormatting, Type, Send,
-  Loader2, FileText, Image as ImageIcon, AlertCircle,
+  Loader2, FileText, Image as ImageIcon, AlertCircle, ChevronDown,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import * as teleSalesApi from '@/api/teleSalesApi';
 import { cn } from '@/lib/utils';
-import type { EmailAttachment, LeadEmail, LeadEmailResponse, SendLeadEmailData, ThreadEmail } from '@/types/teleSales.types';
+import { senderLabel, useEmailSender, type EmailSenderKind } from '@/hooks/useEmailSender';
+import type { EmailAttachment, EmailSendAs, LeadEmail, LeadEmailResponse, SendLeadEmailData, ThreadEmail } from '@/types/teleSales.types';
 
 // Mirrors the server-side cap in emailService.js — Microsoft Graph's simple
 // sendMail rejects anything much beyond this once base64 inflates it.
@@ -48,8 +49,9 @@ export interface GmailComposeProps {
   submit?: (payload: SendLeadEmailData) => Promise<LeadEmailResponse>;
   /** Company / contact name shown in the window header for context. */
   contextLabel?: string;
-  /** Address shown in the "From" row. Purely informational. */
-  fromLabel?: string;
+  /** The shared mailbox the "From" row offers next to the employee's own:
+   *  sales for lead mail (default), support for ticket mail. */
+  senderKind?: EmailSenderKind;
   /** Message being answered — sends through the reply endpoint so the lead
    *  sees a normal threaded conversation. Recipients / subject are prefilled. */
   replyTo?: ThreadEmail | null;
@@ -185,8 +187,10 @@ function ToolbarButton({
 
 export default function GmailCompose({
   leadId, open, onClose, defaultTo = [], defaultSubject = '', defaultBody = '', defaultAttachments = [],
-  contextLabel, fromLabel, replyTo = null, onSent, submit,
+  contextLabel, senderKind = 'sales', replyTo = null, onSent, submit,
 }: GmailComposeProps) {
+  const sender = useEmailSender(senderKind);
+  const [sendAs, setSendAs] = useState<EmailSendAs>('shared');
   const [windowState, setWindowState] = useState<WindowState>('normal');
   const [to, setTo] = useState<string[]>([]);
   const [cc, setCc] = useState<string[]>([]);
@@ -238,6 +242,8 @@ export default function GmailCompose({
     })));
     setShowLinkInput(false);
     setSending(false);
+    // Answering mail that came to my own mailbox: answer from it again.
+    setSendAs(replyTo?.mailbox && replyTo.mailbox === sender?.personal?.mailbox ? 'personal' : 'shared');
     if (editorRef.current) {
       editorRef.current.innerHTML = defaultBody;
       // With recipients already filled in, the cursor belongs in the message.
@@ -394,6 +400,7 @@ export default function GmailCompose({
         subject: subject.trim() || '(no subject)',
         message: editorRef.current?.innerHTML ?? '',
         attachments: ready,
+        sendAs: sender?.personal ? sendAs : 'shared',
       };
       const response = submit
         ? await submit(payload)
@@ -505,10 +512,25 @@ export default function GmailCompose({
       <div className={cn('flex flex-col flex-1 min-h-0', windowState === 'minimized' && 'hidden')}>
         {/* Header rows: From / To / Cc / Bcc / Subject */}
         <div className="shrink-0">
-          {fromLabel && (
+          {sender?.mailbox && (
             <div className="flex items-center gap-2 border-b border-outline-variant/40 px-4 py-2">
               <span className="text-sm text-on-surface-variant w-9 shrink-0">From</span>
-              <span className="text-sm text-on-surface truncate">{fromLabel}</span>
+              {sender.personal ? (
+                <div className="relative min-w-0 flex-1">
+                  <select
+                    value={sendAs}
+                    onChange={(e) => setSendAs(e.target.value as EmailSendAs)}
+                    aria-label="Send from"
+                    className="w-full min-w-0 cursor-pointer appearance-none truncate rounded-md bg-transparent py-0.5 pr-6 text-sm text-on-surface outline-none hover:bg-surface-container-high focus-visible:ring-2 focus-visible:ring-primary/40"
+                  >
+                    <option value="shared">{senderLabel(sender.mailbox, sender.name)}</option>
+                    <option value="personal">{senderLabel(sender.personal.mailbox, sender.personal.name)} (my email)</option>
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-1 top-1/2 h-4 w-4 -translate-y-1/2 text-on-surface-variant" />
+                </div>
+              ) : (
+                <span className="text-sm text-on-surface truncate">{senderLabel(sender.mailbox, sender.name)}</span>
+              )}
             </div>
           )}
 

@@ -150,6 +150,7 @@ export function TicketEmailsTab({
         defaultTo={customerEmail ? [customerEmail] : []}
         defaultSubject={ticketSubject ?? ''}
         submit={submit}
+        senderKind="support"
         contextLabel={[ticketNumber, customerName].filter(Boolean).join(' · ')}
         replyTo={replyTo}
         onSent={() => load()}

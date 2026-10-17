@@ -701,6 +701,8 @@ export interface LeadEmail {
   errorMessage?: string;
   messageId?: string;
   graphMessageId?: string;
+  /** The mailbox the message lives in (shared, or the employee's own). */
+  mailbox?: string;
   conversationId?: string;
   inReplyTo?: string | null;
   sentAt: string;
@@ -763,6 +765,17 @@ export interface SendLeadEmailData {
   /** HTML body from the compose editor. Sanitised server-side. */
   message: string;
   attachments?: EmailAttachment[];
+  /** Send from the shared mailbox (default) or the employee's own. */
+  sendAs?: EmailSendAs;
+}
+
+export type EmailSendAs = 'shared' | 'personal';
+
+/** Who a composer may send from: the shared mailbox, and the employee's own when allowed. */
+export interface EmailSenderInfo {
+  mailbox: string | null;
+  name?: string | null;
+  personal: { mailbox: string; name: string } | null;
 }
 
 export interface LeadEmailsResponse {

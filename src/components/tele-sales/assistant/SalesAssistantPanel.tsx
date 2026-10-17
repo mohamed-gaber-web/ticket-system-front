@@ -22,7 +22,6 @@ import { SALES_DOCUMENT_TYPE_LABELS, TEMPLATE_PURPOSE_LABELS } from '@/types/sal
 
 interface SalesAssistantPanelProps {
   lead: Lead;
-  agentEmail?: string;
   /** Let the lead page refresh its Emails tab after an assistant email goes out. */
   onEmailSent?: (email: LeadEmail) => void;
 }
@@ -58,7 +57,7 @@ const metaFor = (prepared: PreparedMessage | null, productId?: string): Communic
  * for while the customer is on the line. All sends go through the server's
  * `prepare` step so the message the agent previews is exactly what is sent.
  */
-export function SalesAssistantPanel({ lead, agentEmail, onEmailSent }: SalesAssistantPanelProps) {
+export function SalesAssistantPanel({ lead, onEmailSent }: SalesAssistantPanelProps) {
   const [overview, setOverview] = useState<AssistantOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -437,7 +436,6 @@ export function SalesAssistantPanel({ lead, agentEmail, onEmailSent }: SalesAssi
         defaultBody={prepared?.body ?? ''}
         defaultAttachments={prepared?.attachments ?? []}
         contextLabel={prepared?.template?.name ? `${lead.contactPersonName} · ${prepared.template.name}` : lead.contactPersonName}
-        fromLabel={agentEmail}
         submit={submitEmail}
         onSent={() => { setComposeOpen(false); setPrepared(null); }}
       />

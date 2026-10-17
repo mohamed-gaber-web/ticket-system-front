@@ -20,7 +20,6 @@ import GmailCompose from '@/components/tele-sales/GmailCompose';
 import { LeadEmailThread } from '@/components/tele-sales/LeadEmailThread';
 import { StatusChangeModal } from '@/components/tele-sales/StatusChangeModal';
 import { StatusUpdateForm } from '@/components/tele-sales/StatusUpdateForm';
-import { useLeadEmailSender } from '@/hooks/useLeadEmailSender';
 import { LeadFormModal } from '@/components/tele-sales/LeadFormModal';
 import { PipelineStepper } from '@/components/tele-sales/PipelineStepper';
 import { StatusHistoryTab } from '@/components/tele-sales/StatusHistoryTab';
@@ -63,7 +62,6 @@ export default function LeadDetail() {
   // The Proposals tab needs the proposals module (sales roles have it by default).
   const showProposals = useAccess().hasModule('proposals');
   // Lead mail goes out from the sales mailbox, not the agent's own address.
-  const emailSender = useLeadEmailSender();
 
   // Deep link: /tele-sales/leads/:id?tab=emails (used by reply notifications).
   const [searchParams] = useSearchParams();
@@ -774,7 +772,6 @@ export default function LeadDetail() {
       {tab === 'assistant' && (
         <SalesAssistantPanel
           lead={lead}
-          agentEmail={emailSender ?? undefined}
           onEmailSent={() => loadEmails()}
         />
       )}
@@ -913,7 +910,6 @@ export default function LeadDetail() {
         onClose={() => { setComposeOpen(false); setReplyTo(null); }}
         defaultTo={lead.email ? [lead.email] : []}
         contextLabel={lead.contactPersonName || recordName(lead)}
-        fromLabel={emailSender ?? undefined}
         replyTo={replyTo}
         onSent={() => { setReplyTo(null); loadEmails(); setTab('emails'); }}
       />

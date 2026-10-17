@@ -20,7 +20,6 @@ import { useTeamAgents } from '@/hooks/useTeamAgents';
 import GmailCompose from '@/components/tele-sales/GmailCompose';
 import { StatusRulesModal } from '@/components/tele-sales/StatusRulesModal';
 import { LeadFormModal } from '@/components/tele-sales/LeadFormModal';
-import { useLeadEmailSender } from '@/hooks/useLeadEmailSender';
 import { LEAD_STATUSES, STATUS_COLORS, type LeadStatus } from '@/config/leadStatusWorkflow';
 import type {
   Lead, LeadPriority, LeadSource, ImportLeadsResponse,
@@ -63,7 +62,6 @@ export default function Leads({ lockedStatus, stage = 'Lead' }: LeadsProps = {})
   const crossTeam = isCrossTeamReader(user);
   const readOnly = isReadOnly(user);
   // Lead mail goes out from the sales mailbox, not the agent's own address.
-  const emailSender = useLeadEmailSender();
   const canManage = canManageTeam(user);
   const myTeams = ownTeams(user);
   // A plain agent sees only the records assigned to them (the API enforces it),
@@ -986,7 +984,6 @@ export default function Leads({ lockedStatus, stage = 'Lead' }: LeadsProps = {})
           onClose={() => setEmailLead(null)}
           defaultTo={emailLead.email ? [emailLead.email] : []}
           contextLabel={emailLead.contactPersonName || recordName(emailLead)}
-          fromLabel={emailSender ?? undefined}
         />
       )}
 
@@ -995,7 +992,6 @@ export default function Leads({ lockedStatus, stage = 'Lead' }: LeadsProps = {})
         <GmailCompose
           open
           onClose={() => setComposeOpen(false)}
-          fromLabel={emailSender ?? undefined}
         />
       )}
 
