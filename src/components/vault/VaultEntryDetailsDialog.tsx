@@ -10,6 +10,7 @@ import type { VaultEntryDetail } from '@/types/vault.types';
 import { EntryChips, EntryStatusChips } from './VaultEntryCard';
 import { PasswordValue } from './PasswordValue';
 import { ErrorState, MonoText } from './VaultUi';
+import { VaultAttachmentList } from './VaultAttachments';
 
 function fieldValue(f: VaultFieldDef, e: VaultEntryDetail): ReactNode {
   if (f.key === 'password') return <PasswordValue entryId={e._id} platform={e.platform} />;
@@ -103,6 +104,11 @@ export function VaultEntryDetailsDialog({ entryId, canManage, onClose, onEdit }:
                 </section>
               );
             })}
+
+            <section className="space-y-1.5">
+              <h3 className="text-[11px] font-bold uppercase tracking-[0.08em] text-primary">Attachments ({entry.attachments?.length ?? 0})</h3>
+              <VaultAttachmentList entryId={entry._id} attachments={entry.attachments ?? []} />
+            </section>
 
             <section className="space-y-1.5">
               <h3 className="text-[11px] font-bold uppercase tracking-[0.08em] text-primary">Status</h3>

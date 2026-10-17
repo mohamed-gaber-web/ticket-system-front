@@ -7,12 +7,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { useAppDispatch } from '@/redux/hooks/hooks';
-import { saveVaultEntry } from '@/redux/slices/vaultEntriesSlice';
-import { generatePassword, toDateInput } from '@/lib/vault';
+import { fetchVaultEntry, saveVaultEntry } from '@/redux/slices/vaultEntriesSlice';
+import { draftsFrom, generatePassword, isUploading, toDateInput, type AttachmentDraft } from '@/lib/vault';
 import { OWNER_HELP, OWNER_LABELS, VAULT_FIELDS, VAULT_SECTIONS, fieldsFor, type VaultFieldDef } from '@/lib/vaultFields';
-import type { VaultEntry, VaultEntryInput, VaultFieldKey, VaultOwnerType } from '@/types/vault.types';
+import type { VaultEntry, VaultEntryDetail, VaultEntryInput, VaultFieldKey, VaultOwnerType } from '@/types/vault.types';
 import { FieldWithHelp, MissingBox } from './VaultUi';
 import { LookupSelect } from './LookupSelect';
+import { VaultAttachmentsEditor } from './VaultAttachments';
 
 type Values = Record<VaultFieldKey, string>;
 
@@ -53,6 +54,9 @@ export function VaultEntryFormDialog({ open, entry, onClose, onSaved }: Props) {
   const [missing, setMissing] = useState<string[]>([]);
   const [serverError, setServerError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [attachments, setAttachments] = useState<AttachmentDraft[]>([]);
+  const [attachmentsState, setAttachmentsState] = useState<'ready' | 'loading' | 'failed'>('ready');
+  const [attachmentsReload, setAttachmentsReload] = useState(0);
 
   // Fresh state every time the dialog opens.
   useEffect(() => {
@@ -63,6 +67,35 @@ export function VaultEntryFormDialog({ open, entry, onClose, onSaved }: Props) {
     setMissing([]);
     setServerError(null);
   }, [open, entry]);
+
+  // Stored files: the detail view carries them; a list card only has a count,
+  // so the detail is fetched. Until it loads, the save leaves them unchanged.
+  useEffect(() => {
+    if (!open) return;
+    const known = (entry as Partial<VaultEntryDetail> | null)?.attachments;
+    if (!entry || known || entry.attachmentCount === 0) {
+      setAttachments(draftsFrom(known ?? []));
+      setAttachmentsState('ready');
+      return;
+    }
+    let cancelled = false;
+    setAttachments([]);
+    setAttachmentsState('loading');
+    void dispatch(fetchVaultEntry(entry._id)).then((res) => {
+      if (cancelled) return;
+      if (fetchVaultEntry.fulfilled.match(res)) {
+        setAttachments(draftsFrom(res.payload.attachments ?? []));
+        setAttachmentsState('ready');
+      } else {
+        setAttachmentsState('failed');
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, entry, dispatch, attachmentsReload]);
+
+  const uploading = attachments.some(isUploading);
 
   // The generated / typed password leaves memory with the dialog.
   useEffect(() => {
@@ -80,6 +113,10 @@ export function VaultEntryFormDialog({ open, entry, onClose, onSaved }: Props) {
   const submit = async (ev: FormEvent) => {
     ev.preventDefault();
     setServerError(null);
+    if (uploading) {
+      setServerError('Wait for the files to finish uploading, then save.');
+      return;
+    }
     const miss = visible.filter((f) => isRequired(f) && !values[f.key].trim()).map((f) => f.label);
     setMissing(miss);
     if (miss.length) return;
@@ -94,6 +131,11 @@ export function VaultEntryFormDialog({ open, entry, onClose, onSaved }: Props) {
       else if (isEdit) body[key] = f.type === 'select' || f.type === 'date' ? null : '';
     }
     if (values.password) body.password = values.password;
+    // The full list to keep (failed uploads dropped). Not sent while the stored
+    // list couldn't be loaded, so nothing is removed by accident.
+    if (attachmentsState === 'ready') {
+      body.attachments = attachments.flatMap((a) => (a.fileId ? [{ fileId: a.fileId }] : []));
+    }
 
     setSaving(true);
     const res = await dispatch(saveVaultEntry({ id: entry?._id, body }));
@@ -232,14 +274,22 @@ export function VaultEntryFormDialog({ open, entry, onClose, onSaved }: Props) {
             </fieldset>
           ))}
 
+          <VaultAttachmentsEditor
+            items={attachments}
+            setItems={setAttachments}
+            loadState={attachmentsState}
+            onRetryLoad={() => setAttachmentsReload((n) => n + 1)}
+            disabled={saving}
+          />
+
           <MissingBox labels={missing} message={serverError} />
 
           <DialogFooter className="gap-2">
             <Button type="button" variant="outline" onClick={onClose} disabled={saving}>
               Cancel
             </Button>
-            <Button type="submit" disabled={saving}>
-              {saving ? <Loader2 className="animate-spin" /> : <Save />} Save
+            <Button type="submit" disabled={saving || uploading} title={uploading ? 'Files are still uploading' : undefined}>
+              {saving || uploading ? <Loader2 className="animate-spin" /> : <Save />} {uploading ? 'Uploading…' : 'Save'}
             </Button>
           </DialogFooter>
         </form>

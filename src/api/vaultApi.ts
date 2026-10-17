@@ -3,6 +3,7 @@ import type {
   VaultClient,
   VaultClientInput,
   VaultDashboard,
+  VaultDepartment,
   VaultEntry,
   VaultEntryDetail,
   VaultEntryInput,
@@ -16,6 +17,7 @@ import type {
   VaultSendInput,
   VaultSendPreview,
   VaultSendResult,
+  VaultUploadedFile,
   VaultUser,
 } from '@/types/vault.types';
 
@@ -62,6 +64,28 @@ export const deleteVaultClient = async (id: string) =>
 
 export const getVaultUsers = async () =>
   (await api.get<ApiOne<VaultUser[]>>('/vault/users', noCache)).data;
+
+// ── Departments (the company's real departments, read-only here) ────────────
+
+export const getVaultDepartments = async () =>
+  (await api.get<ApiOne<VaultDepartment[]>>('/vault/departments', noCache)).data;
+
+// ── Attachments ─────────────────────────────────────────────────────────────
+
+/** Uploads one file (admin) before it is attached; the entry save sends `{ fileId }`. */
+export const uploadVaultAttachment = async (file: File, onProgress?: (percent: number) => void) => {
+  const form = new FormData();
+  form.append('file', file);
+  return (
+    await api.post<ApiOne<VaultUploadedFile>>('/vault/attachments', form, {
+      onUploadProgress: (e) => onProgress?.(e.total ? Math.round((e.loaded / e.total) * 100) : 0),
+    })
+  ).data;
+};
+
+/** The decrypted file as a Blob (authed request, logged server-side) — never a plain link. */
+export const downloadVaultAttachment = async (entryId: string, fileId: string) =>
+  (await api.get<Blob>(`/vault/entries/${entryId}/attachments/${fileId}`, { responseType: 'blob' })).data;
 
 // ── Entries ──────────────────────────────────────────────────────────────────
 

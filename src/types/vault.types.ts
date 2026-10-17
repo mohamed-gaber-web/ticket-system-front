@@ -8,7 +8,6 @@ export type VaultLookupType =
   | 'accessLevel'
   | 'mfaMethod'
   | 'sensitivity'
-  | 'department'
   | 'sendPurpose';
 
 export type VaultOwnerType = 'client' | 'company';
@@ -72,6 +71,27 @@ export interface VaultRef {
   name: string;
 }
 
+/** GET /vault/departments — the company's real departments (HR), sorted by name. */
+export type VaultDepartment = VaultRef;
+
+/** A file kept with an account (detail view). Stored encrypted server-side. */
+export interface VaultAttachment {
+  fileId: string;
+  fileName: string;
+  fileType: string;
+  fileSize: number;
+  uploadedAt: string;
+  uploadedBy: VaultRef | null;
+}
+
+/** POST /vault/attachments response — uploaded, not yet attached to an entry. */
+export interface VaultUploadedFile {
+  fileId: string;
+  fileName: string;
+  fileType: string;
+  fileSize: number;
+}
+
 export type VaultDueKind = 'validUntil' | 'renewal';
 
 export interface VaultEntry {
@@ -106,6 +126,8 @@ export interface VaultEntry {
   dueInDays: number | null;
   requiresApproval: boolean;
   sendCount: number;
+  /** List view only — the detail view sends `attachments` instead. */
+  attachmentCount?: number;
 }
 
 export interface VaultSendHistoryRow {
@@ -117,16 +139,20 @@ export interface VaultSendHistoryRow {
 
 export interface VaultEntryDetail extends VaultEntry {
   sendHistory: VaultSendHistoryRow[];
+  attachments: VaultAttachment[];
 }
 
 /**
  * Body of POST/PATCH /entries — refs as ids, dates as yyyy-mm-dd, `password`
  * only when set. On PATCH a cleared ref/date is sent as null, a cleared text as ''.
+ * `attachments` is the full list to keep (the server rebuilds names/sizes and
+ * deletes files dropped from it); omitted = unchanged.
  */
 export type VaultEntryInput = {
   ownerType: VaultOwnerType;
   password?: string;
-} & Partial<Record<Exclude<VaultFieldKey, 'password'>, string | null>>;
+  attachments?: { fileId: string }[];
+} &Partial<Record<Exclude<VaultFieldKey, 'password'>, string | null>>;
 
 export type VaultFieldKey =
   | 'client'

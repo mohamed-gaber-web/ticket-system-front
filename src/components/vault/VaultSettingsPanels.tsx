@@ -373,6 +373,39 @@ function ClientDialog({ client, existing, onClose }: { client: VaultClient | 'ne
   );
 }
 
+// ── Departments (read-only) ─────────────────────────────────────────────────
+
+export function DepartmentsPanel() {
+  const departments = useAppSelector((s) => s.vaultLookups.departments);
+  return (
+    <SettingsPanel
+      title="Company departments"
+      count={departments.length}
+      description={
+        <>
+          Read-only. The department of a company account comes from the company&apos;s departments, managed in{' '}
+          <Link to="/departments" className="inline-flex items-center gap-0.5 text-primary hover:underline">
+            Ticketing &gt; Modules &gt; Departments <ExternalLink className="h-3 w-3" aria-hidden="true" />
+          </Link>
+          .
+        </>
+      }
+    >
+      {departments.length ? (
+        <ul>
+          {departments.map((d) => (
+            <li key={d._id} className="border-t border-outline-variant/20 py-2 text-sm font-semibold text-on-surface first:border-t-0">
+              {d.name}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <EmptyState title="No active departments" hint="Add them on the Departments page." />
+      )}
+    </SettingsPanel>
+  );
+}
+
 // ── Employees (read-only) ───────────────────────────────────────────────────
 
 export function EmployeesPanel() {

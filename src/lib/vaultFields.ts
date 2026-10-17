@@ -5,7 +5,8 @@ import type { VaultFieldKey, VaultLookupType, VaultOwnerType } from '@/types/vau
 // filtered by `only`. The backend mirrors the required/owner rules.
 
 export type VaultFieldType = 'text' | 'select' | 'password' | 'date' | 'textarea';
-export type VaultFieldSource = 'clients' | 'users' | VaultLookupType;
+/** `departments` = the company's real departments (GET /vault/departments), not a lookup. */
+export type VaultFieldSource = 'clients' | 'users' | 'departments' | VaultLookupType;
 export type VaultSection = 'basics' | 'credentials' | 'governance';
 
 export interface VaultFieldDef {
@@ -55,10 +56,10 @@ export const VAULT_FIELDS: VaultFieldDef[] = [
     key: 'department',
     label: 'Department',
     type: 'select',
-    source: 'department',
+    source: 'departments',
     only: 'company',
     section: 'basics',
-    help: 'The department inside the company that is responsible for this account.',
+    help: 'The department inside the company that is responsible for this account. The list comes from the company\'s Departments page.',
   },
   {
     key: 'accountOwner',

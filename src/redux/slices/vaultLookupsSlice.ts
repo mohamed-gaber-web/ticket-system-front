@@ -4,6 +4,7 @@ import { apiError } from '@/lib/vault';
 import type {
   VaultClient,
   VaultClientInput,
+  VaultDepartment,
   VaultLookupInput,
   VaultLookupPatch,
   VaultLookupsByType,
@@ -11,7 +12,7 @@ import type {
 } from '@/types/vault.types';
 
 // Credentials Vault setup lists: the lookups (grouped by type), the clients
-// (ticketing companies) and the employee roster. Every dropdown in the vault
+// (ticketing companies), the employee roster and the company departments. Every dropdown in the vault
 // reads from here; writes refetch the list so usage counts stay right.
 
 type Status = 'idle' | 'loading' | 'succeeded' | 'failed';
@@ -22,7 +23,6 @@ export const EMPTY_LOOKUPS: VaultLookupsByType = {
   accessLevel: [],
   mfaMethod: [],
   sensitivity: [],
-  department: [],
   sendPurpose: [],
 };
 
@@ -30,6 +30,8 @@ interface VaultLookupsState {
   byType: VaultLookupsByType;
   clients: VaultClient[];
   users: VaultUser[];
+  /** The company's real departments (managed in Departments, read-only here). */
+  departments: VaultDepartment[];
   status: Status;
   error: string | null;
 }
@@ -38,19 +40,33 @@ const initialState: VaultLookupsState = {
   byType: EMPTY_LOOKUPS,
   clients: [],
   users: [],
+  departments: [],
   status: 'idle',
   error: null,
 };
 
-/** Lookups + clients + employees in one go (they are always needed together). */
+/** Only the known lookup types — a leftover `department` lookup from the API is ignored. */
+const pickLookups = (data: Partial<VaultLookupsByType> | undefined): VaultLookupsByType => {
+  const out = { ...EMPTY_LOOKUPS };
+  for (const type of Object.keys(EMPTY_LOOKUPS) as (keyof VaultLookupsByType)[]) out[type] = data?.[type] ?? [];
+  return out;
+};
+
+/** Lookups + clients + employees + departments in one go (they are always needed together). */
 export const fetchVaultSetup = createAsyncThunk('vaultLookups/fetchAll', async (_: void, { rejectWithValue }) => {
   try {
-    const [lookups, clients, users] = await Promise.all([
+    const [lookups, clients, users, departments] = await Promise.all([
       vaultApi.getVaultLookups(),
       vaultApi.getVaultClients(),
       vaultApi.getVaultUsers(),
+      vaultApi.getVaultDepartments(),
     ]);
-    return { byType: { ...EMPTY_LOOKUPS, ...lookups.data }, clients: clients.data ?? [], users: users.data ?? [] };
+    return {
+      byType: pickLookups(lookups.data),
+      clients: clients.data ?? [],
+      users: users.data ?? [],
+      departments: departments.data ?? [],
+    };
   } catch (e) {
     return rejectWithValue(apiError(e, 'Could not load the vault settings'));
   }
@@ -58,7 +74,7 @@ export const fetchVaultSetup = createAsyncThunk('vaultLookups/fetchAll', async (
 
 export const refreshVaultLookups = createAsyncThunk('vaultLookups/refreshLookups', async (_: void, { rejectWithValue }) => {
   try {
-    return { ...EMPTY_LOOKUPS, ...(await vaultApi.getVaultLookups()).data };
+    return pickLookups((await vaultApi.getVaultLookups()).data);
   } catch (e) {
     return rejectWithValue(apiError(e, 'Could not load the lists'));
   }
@@ -159,6 +175,7 @@ const vaultLookupsSlice = createSlice({
         state.byType = action.payload.byType;
         state.clients = action.payload.clients;
         state.users = action.payload.users;
+        state.departments = action.payload.departments;
       })
       .addCase(fetchVaultSetup.rejected, (state, action) => {
         state.status = 'failed';

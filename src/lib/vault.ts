@@ -1,5 +1,5 @@
 import { toast } from 'sonner';
-import type { VaultDueKind, VaultEntry, VaultRef } from '@/types/vault.types';
+import type { VaultAttachment, VaultDueKind, VaultEntry, VaultRef } from '@/types/vault.types';
 
 // Small pure helpers shared by the Credentials Vault screens.
 
@@ -60,6 +60,81 @@ export const dueChip = (kind: VaultDueKind | null, dueInDays: number | null): { 
     return { tone: 'warn', text: dueInDays === 0 ? `${what} ends today` : `${what} ends in ${dueInDays} day${dueInDays === 1 ? '' : 's'}` };
   }
   return null;
+};
+
+// ── Attachments ─────────────────────────────────────────────────────────────
+// Mirrors the backend's upload rules (the server re-checks everything).
+
+export const ATTACHMENT_MAX_FILES = 10;
+export const ATTACHMENT_MAX_BYTES = 10 * 1024 * 1024;
+export const ATTACHMENT_BLOCKED_EXT = ['exe', 'bat', 'cmd', 'com', 'msi', 'scr', 'ps1', 'vbs', 'js', 'jar'];
+
+export const ATTACHMENTS_HELP =
+  'Files kept with this account (e.g. RDP or VPN file, certificate). Stored encrypted; only people with vault access can download them. Max 10 files, 10 MB each.';
+
+/** One row of the form's attachment list: a stored file, an upload in flight, or a failed one. */
+export interface AttachmentDraft {
+  key: string;
+  /** Set once the upload finished (or for a file already on the entry). */
+  fileId?: string;
+  fileName: string;
+  fileType: string;
+  fileSize: number;
+  uploadedAt?: string;
+  uploadedBy?: VaultRef | null;
+  /** 0–100 while uploading. */
+  progress?: number;
+  error?: string;
+}
+
+export const draftsFrom = (list: VaultAttachment[]): AttachmentDraft[] =>
+  list.map((a) => ({
+    key: a.fileId,
+    fileId: a.fileId,
+    fileName: a.fileName,
+    fileType: a.fileType,
+    fileSize: a.fileSize,
+    uploadedAt: a.uploadedAt,
+    uploadedBy: a.uploadedBy,
+  }));
+
+export const isUploading = (d: AttachmentDraft) => !d.fileId && !d.error;
+
+/** Why a file can't be uploaded, or null when it is fine. */
+export const attachmentProblem = (file: File): string | null => {
+  const ext = /\.([^.]+)$/.exec(file.name)?.[1]?.toLowerCase() ?? '';
+  if (ATTACHMENT_BLOCKED_EXT.includes(ext)) return `${file.name}: program and script files (.${ext}) can't be attached.`;
+  if (file.size > ATTACHMENT_MAX_BYTES) return `${file.name} is larger than 10 MB.`;
+  if (file.size === 0) return `${file.name} is empty.`;
+  return null;
+};
+
+/** Error message of a request made with responseType 'blob' (the JSON body arrives as a Blob). */
+export const blobApiError = async (e: unknown, fallback: string): Promise<string> => {
+  const data = (e as { response?: { data?: unknown } })?.response?.data;
+  if (data instanceof Blob) {
+    try {
+      const parsed: unknown = JSON.parse(await data.text());
+      const message = (parsed as { message?: unknown })?.message;
+      if (typeof message === 'string' && message) return message;
+    } catch {
+      /* not JSON */
+    }
+    return fallback;
+  }
+  return apiError(e, fallback);
+};
+
+/** Hands a downloaded Blob to the browser as a file save. */
+export const saveBlob = (blob: Blob, fileName: string) => {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
 };
 
 // ── Password generator ──────────────────────────────────────────────────────

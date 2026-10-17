@@ -5,6 +5,7 @@ import { dueChip, entrySubtitle, isHttpUrl, passwordAgeTone } from '@/lib/vault'
 import type { VaultEntry } from '@/types/vault.types';
 import { Chip, ConfirmButton, MonoText } from './VaultUi';
 import { CopyButton, PasswordValue } from './PasswordValue';
+import { AttachmentCountChip } from './VaultAttachments';
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -105,7 +106,10 @@ export function VaultEntryCard({ entry, canManage, onSend, onDetails, onEdit, on
         )}
       </dl>
 
-      <EntryStatusChips entry={entry} />
+      <div className="flex flex-wrap items-center gap-1">
+        <EntryStatusChips entry={entry} />
+        {(entry.attachmentCount ?? 0) > 0 && <AttachmentCountChip count={entry.attachmentCount ?? 0} />}
+      </div>
 
       <footer className="mt-auto flex flex-wrap items-center gap-1.5 border-t border-outline-variant/20 pt-3">
         <Button size="sm" onClick={onSend}>

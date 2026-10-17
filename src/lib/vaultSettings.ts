@@ -51,11 +51,6 @@ export const LOOKUP_PANELS: LookupPanelDef[] = [
     },
   },
   {
-    type: 'department',
-    title: 'Company departments',
-    description: 'The department responsible for one of the company\'s internal accounts.',
-  },
-  {
     type: 'sendPurpose',
     title: 'Send reasons',
     description: 'Offered on the Send screen and recorded with every send.',

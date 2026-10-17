@@ -17,16 +17,19 @@ interface Props extends Omit<SelectHTMLAttributes<HTMLSelectElement>, 'onChange'
  * employees. Inactive lookups are hidden unless they are the current value.
  */
 export function LookupSelect({ source, value, onChange, required, emptyLabel, ...rest }: Props) {
-  const { byType, clients, users } = useAppSelector((s) => s.vaultLookups);
+  const { byType, clients, users, departments } = useAppSelector((s) => s.vaultLookups);
 
+  // Departments: the API already lists the active ones plus any inactive one still in use.
   const options: { value: string; label: string }[] =
     source === 'clients'
       ? clients.filter((c) => c.isActive !== false || c._id === value).map((c) => ({ value: c._id, label: c.name }))
       : source === 'users'
         ? users.map((u) => ({ value: u._id, label: u.jobTitle ? `${u.name} — ${u.jobTitle}` : u.name }))
-        : (byType[source] ?? [])
-            .filter((l) => l.isActive !== false || l._id === value)
-            .map((l) => ({ value: l._id, label: l.name }));
+        : source === 'departments'
+          ? departments.map((d) => ({ value: d._id, label: d.name }))
+          : (byType[source] ?? [])
+              .filter((l) => l.isActive !== false || l._id === value)
+              .map((l) => ({ value: l._id, label: l.name }));
 
   return (
     <VaultSelect value={value} onChange={(e) => onChange(e.target.value)} required={required} {...rest}>
