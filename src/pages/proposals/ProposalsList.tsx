@@ -16,6 +16,7 @@ import { NativeSelect } from '@/components/proposals/builderUi';
 
 const STATUSES: ProposalStatus[] = ['Draft', 'Pending approval', 'Approved', 'Sent', 'Accepted', 'Rejected'];
 const PAGE_SIZE = 20;
+const PICKER_PAGE_SIZE = 50;
 const fmtDate = (d?: string) => (d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—');
 const apiError = (e: unknown, fallback: string) =>
   (e as { response?: { data?: { message?: string } } })?.response?.data?.message || fallback;
@@ -25,24 +26,31 @@ function NewProposalDialog({ open, onClose }: { open: boolean; onClose: () => vo
   const navigate = useNavigate();
   const [q, setQ] = useState('');
   const [rows, setRows] = useState<Lead[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState<string | null>(null);
 
+  // Every opportunity the caller may see, a page at a time ("Load more").
+  const loadPage = useCallback(async (nextPage: number, search: string) => {
+    setLoading(true);
+    try {
+      const res = await getLeads({ salesType: 'Opportunity', search: search || undefined, page: nextPage, limit: PICKER_PAGE_SIZE });
+      setRows((prev) => (nextPage === 1 ? res.data ?? [] : [...prev, ...(res.data ?? [])]));
+      setTotal(res.total ?? 0);
+      setPage(nextPage);
+    } catch (e) {
+      toast.error(apiError(e, 'Could not load opportunities'));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (!open) return;
-    const t = window.setTimeout(async () => {
-      setLoading(true);
-      try {
-        const res = await getLeads({ salesType: 'Opportunity', search: q || undefined, limit: 20 });
-        setRows(res.data ?? []);
-      } catch (e) {
-        toast.error(apiError(e, 'Could not load opportunities'));
-      } finally {
-        setLoading(false);
-      }
-    }, 250);
+    const t = window.setTimeout(() => loadPage(1, q), 250);
     return () => window.clearTimeout(t);
-  }, [open, q]);
+  }, [open, q, loadPage]);
 
   const start = async (lead: Lead) => {
     setCreating(lead._id);
@@ -96,7 +104,18 @@ function NewProposalDialog({ open, onClose }: { open: boolean; onClose: () => vo
               No opportunity found. Convert a lead to an Opportunity in Tele-sales first.
             </p>
           )}
+          {rows.length > 0 && rows.length < total && (
+            <Button type="button" variant="outline" className="w-full" disabled={loading} onClick={() => loadPage(page + 1, q)}>
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Load more
+            </Button>
+          )}
         </div>
+        {total > 0 && (
+          <p className="text-xs text-on-surface-variant">
+            Showing {rows.length} of {total} opportunit{total === 1 ? 'y' : 'ies'}
+          </p>
+        )}
       </DialogContent>
     </Dialog>
   );

@@ -10,6 +10,7 @@ import {
   Download,
   FileText,
   Loader2,
+  Mail,
   Save,
   Send,
   ShieldAlert,
@@ -27,7 +28,7 @@ import {
 import { recordProposalExport, setProposalStatus } from '@/api/proposalApi';
 import { discountOverLimit, formatUsd, milestonesComplete, needsApproval, proposalTotals } from '@/lib/proposalMath';
 import { pdfFileName } from '@/lib/proposalPages';
-import { buildProposalPdf } from '@/utils/proposalPdf';
+import { buildProposalPdf, type PdfQuality } from '@/utils/proposalPdf';
 import type { ProposalStatus } from '@/types/proposal.types';
 import ProposalPreview from '@/components/proposals/ProposalPreview';
 import { useProposalImages } from '@/components/proposals/useProposalImages';
@@ -38,6 +39,7 @@ import PricingTab from '@/components/proposals/PricingTab';
 import TermsTab from '@/components/proposals/TermsTab';
 import SectionsTab from '@/components/proposals/SectionsTab';
 import ProposalStatusBadge from '@/components/proposals/ProposalStatusBadge';
+import SendProposalEmail from '@/components/proposals/SendProposalEmail';
 import { cn } from '@/lib/utils';
 
 type Tab = 'opp' | 'scope' | 'sow' | 'pricing' | 'terms' | 'sections';
@@ -66,6 +68,7 @@ export default function ProposalBuilder() {
   const [tab, setTab] = useState<Tab>('opp');
   const [pdfProgress, setPdfProgress] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [emailOpen, setEmailOpen] = useState(false);
   const pagesRef = useRef<string[]>([]);
   const [pageCount, setPageCount] = useState(0);
   const images = useProposalImages(proposal);
@@ -125,26 +128,49 @@ export default function ProposalBuilder() {
   }, []);
 
   // ── actions ──
+  /** False (and says why) while an over-limit discount waits for approval. */
+  const exportAllowed = () => {
+    if (!waiting) return true;
+    toast.error(`The discount is above ${maxDiscount}%. A sales manager must approve it first.`);
+    setTab('pricing');
+    return false;
+  };
+
+  /** Save pending edits, pass the export gate and draw the PDF (shared by Download and Send by email). */
+  const makePdf = async (onProgress: (text: string) => void, quality: PdfQuality = 'normal') => {
+    if (!proposal) throw 'The proposal is not loaded yet.';
+    if (dirty && canEdit) await dispatch(saveProposal({ quiet: true })).unwrap();
+    await recordProposalExport(proposal._id);
+    // Let the preview rebuild with the latest edits before rasterising.
+    await new Promise((r) => setTimeout(r, 250));
+    return buildProposalPdf(pagesRef.current, (done, total) => onProgress(`Building PDF ${Math.min(done + 1, total)}/${total}…`), quality);
+  };
+
   const downloadPdf = async () => {
-    if (!proposal) return;
-    if (waiting) {
-      toast.error(`The discount is above ${maxDiscount}%. A sales manager must approve it first.`);
-      setTab('pricing');
-      return;
-    }
+    if (!proposal || !exportAllowed()) return;
     try {
       setPdfProgress('Preparing…');
-      if (dirty && canEdit) await dispatch(saveProposal({ quiet: true })).unwrap();
-      await recordProposalExport(proposal._id);
-      // Let the preview rebuild with the latest edits before rasterising.
-      await new Promise((r) => setTimeout(r, 250));
-      const blob = await buildProposalPdf(pagesRef.current, (done, total) => setPdfProgress(`Building PDF ${Math.min(done + 1, total)}/${total}…`));
+      const blob = await makePdf(setPdfProgress);
       saveAs(blob, pdfFileName(proposal));
       toast.success(`PDF ready: ${pdfFileName(proposal)}`);
     } catch (e) {
       toast.error(typeof e === 'string' ? e : apiError(e, 'The PDF could not be built. Try again.'));
     } finally {
       setPdfProgress(null);
+    }
+  };
+
+  // After the email goes out, a Draft / Approved proposal becomes Sent (what
+  // "Mark Sent" is for), as long as the payment milestones are complete.
+  const afterEmailSent = async () => {
+    setEmailOpen(false);
+    if (!proposal || !canEdit || !['Draft', 'Approved'].includes(proposal.status) || !milestonesComplete(proposal)) return;
+    try {
+      await setProposalStatus(proposal._id, 'Sent');
+      await dispatch(fetchProposal(proposal._id));
+      toast.success('Proposal marked Sent');
+    } catch (e) {
+      toast.error(apiError(e, 'The email went out, but the proposal could not be marked Sent'));
     }
   };
 
@@ -201,6 +227,9 @@ export default function ProposalBuilder() {
       </div>
     );
   }
+
+  const opportunity = typeof proposal.opportunity === 'object' ? proposal.opportunity : null;
+  const opportunityId = opportunity?._id ?? (typeof proposal.opportunity === 'string' ? proposal.opportunity : '');
 
   const statusMoves: ProposalStatus[] =
     proposal.status === 'Sent' ? ['Accepted', 'Rejected', 'Draft'] : ['Draft', 'Approved'].includes(proposal.status) ? ['Sent'] : [];
@@ -262,6 +291,17 @@ export default function ProposalBuilder() {
                 </div>
               )}
             </div>
+          )}
+          {canEdit && opportunityId && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => exportAllowed() && setEmailOpen(true)}
+              disabled={Boolean(pdfProgress)}
+              title={waiting ? 'Needs approval first' : 'Email the PDF to the customer'}
+            >
+              <Mail /> Send by email
+            </Button>
           )}
           <Button type="button" variant="secondary" onClick={downloadPdf} disabled={Boolean(pdfProgress)} title={waiting ? 'Needs approval first' : undefined}>
             {pdfProgress ? <Loader2 className="animate-spin" /> : <Download />} {pdfProgress ?? 'Download PDF'}
@@ -332,6 +372,20 @@ export default function ProposalBuilder() {
           <ProposalPreview proposal={proposal} catalog={catalog} images={images} onPages={onPages} />
         </section>
       </div>
+
+      {opportunityId && (
+        <SendProposalEmail
+          open={emailOpen}
+          onClose={() => setEmailOpen(false)}
+          leadId={opportunityId}
+          leadEmail={opportunity?.email}
+          contactName={opportunity?.contactPersonName || opportunity?.companyName || proposal.client}
+          proposalNumber={proposal.number}
+          fileName={pdfFileName(proposal)}
+          buildPdf={makePdf}
+          onSent={afterEmailSent}
+        />
+      )}
     </div>
   );
 }

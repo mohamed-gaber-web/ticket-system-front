@@ -6,10 +6,19 @@ import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import { PAGE_H, PAGE_W } from '@/lib/proposalPages';
 
+/** Rasterising quality. `compact` is lighter, for an email attachment that must stay under the 10 MB cap. */
+export type PdfQuality = 'normal' | 'compact';
+const QUALITY: Record<PdfQuality, { scale: number; jpeg: number }> = {
+  normal: { scale: 1.6, jpeg: 0.9 },
+  compact: { scale: 1.2, jpeg: 0.72 },
+};
+
 export const buildProposalPdf = async (
   pages: string[],
   onProgress?: (done: number, total: number) => void,
+  quality: PdfQuality = 'normal',
 ): Promise<Blob> => {
+  const { scale, jpeg } = QUALITY[quality];
   const holder = document.createElement('div');
   holder.className = 'pp-doc printing';
   holder.style.cssText = `position:fixed;left:-10000px;top:0;width:${PAGE_W}px`;
@@ -40,9 +49,9 @@ export const buildProposalPdf = async (
     const els = [...holder.querySelectorAll<HTMLElement>('.page')];
     for (let i = 0; i < els.length; i++) {
       onProgress?.(i, els.length);
-      const canvas = await html2canvas(els[i], { scale: 1.6, backgroundColor: '#ffffff', useCORS: true, logging: false });
+      const canvas = await html2canvas(els[i], { scale, backgroundColor: '#ffffff', useCORS: true, logging: false });
       if (i) pdf.addPage([PAGE_W, PAGE_H]);
-      pdf.addImage(canvas.toDataURL('image/jpeg', 0.9), 'JPEG', 0, 0, PAGE_W, PAGE_H);
+      pdf.addImage(canvas.toDataURL('image/jpeg', jpeg), 'JPEG', 0, 0, PAGE_W, PAGE_H);
     }
     onProgress?.(els.length, els.length);
     return pdf.output('blob');
