@@ -159,6 +159,14 @@ export default function VaultLog() {
                         <Chip tone="bad" title={l.deliveryError}>
                           Failed
                         </Chip>
+                      ) : l.deliveryStatus === 'partial' ? (
+                        <Chip tone="warn" title={l.deliveryError}>
+                          Partly sent
+                        </Chip>
+                      ) : l.deliveryStatus === 'pending' ? (
+                        <Chip tone="warn" title="The server stopped before confirming delivery.">
+                          Not confirmed
+                        </Chip>
                       ) : (
                         <Chip tone="ok">Sent</Chip>
                       )}
@@ -250,6 +258,10 @@ function LogDialog({ id, onClose }: { id: string | null; onClose: () => void }) 
                 <dd>
                   {log.deliveryStatus === 'failed' ? (
                     <span className="text-error">Failed{log.deliveryError ? ` — ${log.deliveryError}` : ''}</span>
+                  ) : log.deliveryStatus === 'partial' ? (
+                    <span className="text-amber-700 dark:text-amber-300">Partly sent — {log.deliveryError}</span>
+                  ) : log.deliveryStatus === 'pending' ? (
+                    <span className="text-amber-700 dark:text-amber-300">Not confirmed — the server stopped before delivery was confirmed.</span>
                   ) : (
                     <span className="text-on-surface">{log.includedPasswords ? 'Sent' : 'Sent (passwords in a separate email)'}</span>
                   )}

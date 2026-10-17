@@ -200,7 +200,8 @@ export interface VaultSendResult {
 
 // ── Log ──────────────────────────────────────────────────────────────────────
 
-export type VaultDeliveryStatus = 'sent' | 'failed';
+/** pending = recorded but never confirmed; partial = details delivered, passwords email failed. */
+export type VaultDeliveryStatus = 'pending' | 'sent' | 'partial' | 'failed';
 
 export interface VaultLogEntrySnapshot {
   entry: string;
