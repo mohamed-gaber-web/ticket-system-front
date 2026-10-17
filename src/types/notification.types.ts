@@ -21,7 +21,8 @@ export type NotificationType =
   | 'lead_email_reply'
   | 'ticket_email_reply'
   | 'proposal_approval_request'
-  | 'proposal_approved';
+  | 'proposal_approved'
+  | 'proposal_rejected';
 
 export interface Notification {
   _id: string;

@@ -1,4 +1,5 @@
 import type { ProposalStatus } from '@/types/proposal.types';
+import { ShieldAlert } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const TONE: Record<ProposalStatus, string> = {
@@ -9,6 +10,15 @@ const TONE: Record<ProposalStatus, string> = {
   Accepted: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
   Rejected: 'bg-error/10 text-error',
 };
+
+/** Admin hint on list rows waiting in Pending approval. */
+export function NeedsYourApproval({ overLimit }: { overLimit?: boolean }) {
+  return (
+    <span className="inline-flex items-center gap-1 whitespace-nowrap text-xs font-semibold text-amber-700 dark:text-amber-300">
+      <ShieldAlert className="h-3.5 w-3.5" aria-hidden="true" /> Needs your approval{overLimit ? ' · discount above limit' : ''}
+    </span>
+  );
+}
 
 export default function ProposalStatusBadge({ status, className }: { status: ProposalStatus; className?: string }) {
   return (

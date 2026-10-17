@@ -1,5 +1,8 @@
 import api from './axiosConfig';
+import type { Lead } from '@/types/teleSales.types';
 import type {
+  CustomerOpportunity,
+  FromCustomerBody,
   ImageAttachment,
   Proposal,
   ProposalCatalog,
@@ -56,14 +59,31 @@ export const requestProposalApproval = async (id: string) =>
 export const approveProposal = async (id: string) =>
   (await api.post<ApiOne<Proposal>>(`/proposals/${id}/approve`)).data;
 
+/** Admin only: back to Draft with the reason (required, max 1000 characters). */
+export const rejectProposal = async (id: string, reason: string) =>
+  (await api.post<ApiOne<Proposal>>(`/proposals/${id}/reject`, { reason })).data;
+
 export const setProposalStatus = async (id: string, status: ProposalStatus) =>
   (await api.patch<ApiOne<Proposal>>(`/proposals/${id}/status`, { status })).data;
 
 export const deleteProposal = async (id: string) => (await api.delete<ApiOne<null>>(`/proposals/${id}`)).data;
 
-/** Clears the export: 403 while a discount waits for approval. */
+/** Clears the export: 403 unless the proposal is Approved, Sent or Accepted. */
 export const recordProposalExport = async (id: string) =>
   (await api.post<ApiOne<{ generatedAt: string }>>(`/proposals/${id}/export`)).data;
+
+// ── Start from an existing customer ──────────────────────────────────────────
+
+/** The company's open opportunities the caller may see. */
+export const getCustomerOpportunities = async (accountId: string) =>
+  (await api.get<ApiOne<CustomerOpportunity[]>>(`/opportunities/by-customer/${accountId}`, noCache)).data;
+
+/**
+ * Creates an Opportunity for an existing customer's company + contact. Answers 400
+ * `{ message, missing: [{ field, label }] }` when mandatory lead fields are still empty.
+ */
+export const createOpportunityFromCustomer = async (body: FromCustomerBody) =>
+  (await api.post<ApiOne<Lead>>('/opportunities/from-customer', body)).data;
 
 // ── SOW images ───────────────────────────────────────────────────────────────
 

@@ -1,128 +1,25 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
-import { FileSignature, Loader2, Plus, Search, Settings2, ShieldAlert } from 'lucide-react';
+import { FileSignature, Plus, Search, Settings2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { createProposal, getProposals } from '@/api/proposalApi';
-import { getLeads } from '@/api/teleSalesApi';
+import { getProposals } from '@/api/proposalApi';
 import { formatUsd } from '@/lib/proposalMath';
 import { useAccess } from '@/redux/hooks/useAccess';
-import type { Lead } from '@/types/teleSales.types';
 import { personName, type ProposalStatus, type ProposalSummary } from '@/types/proposal.types';
-import ProposalStatusBadge from '@/components/proposals/ProposalStatusBadge';
+import ProposalStatusBadge, { NeedsYourApproval } from '@/components/proposals/ProposalStatusBadge';
+import NewProposalDialog from '@/components/proposals/NewProposalDialog';
 import { NativeSelect } from '@/components/proposals/builderUi';
 
 const STATUSES: ProposalStatus[] = ['Draft', 'Pending approval', 'Approved', 'Sent', 'Accepted', 'Rejected'];
 const PAGE_SIZE = 20;
-const PICKER_PAGE_SIZE = 50;
 const fmtDate = (d?: string) => (d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—');
 const apiError = (e: unknown, fallback: string) =>
   (e as { response?: { data?: { message?: string } } })?.response?.data?.message || fallback;
 
-/** Pick an opportunity to start a proposal from (proposals are always built from one). */
-function NewProposalDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const navigate = useNavigate();
-  const [q, setQ] = useState('');
-  const [rows, setRows] = useState<Lead[]>([]);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [creating, setCreating] = useState<string | null>(null);
-
-  // Every opportunity the caller may see, a page at a time ("Load more").
-  const loadPage = useCallback(async (nextPage: number, search: string) => {
-    setLoading(true);
-    try {
-      const res = await getLeads({ salesType: 'Opportunity', search: search || undefined, page: nextPage, limit: PICKER_PAGE_SIZE });
-      setRows((prev) => (nextPage === 1 ? res.data ?? [] : [...prev, ...(res.data ?? [])]));
-      setTotal(res.total ?? 0);
-      setPage(nextPage);
-    } catch (e) {
-      toast.error(apiError(e, 'Could not load opportunities'));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!open) return;
-    const t = window.setTimeout(() => loadPage(1, q), 250);
-    return () => window.clearTimeout(t);
-  }, [open, q, loadPage]);
-
-  const start = async (lead: Lead) => {
-    setCreating(lead._id);
-    try {
-      const res = await createProposal(lead._id);
-      toast.success(`Proposal ${res.data.number} created`);
-      navigate(`/proposals/${res.data._id}`);
-    } catch (e) {
-      toast.error(apiError(e, 'Could not create the proposal'));
-    } finally {
-      setCreating(null);
-    }
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>New proposal</DialogTitle>
-          <DialogDescription>Choose the opportunity. Client, entities, interests and users are read from it.</DialogDescription>
-        </DialogHeader>
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-on-surface-variant" />
-          <Input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search company, contact or phone" className="pl-9" />
-        </div>
-        <div className="max-h-80 space-y-1.5 overflow-y-auto">
-          {loading && !rows.length ? (
-            <p className="flex items-center gap-2 p-3 text-sm text-on-surface-variant">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading…
-            </p>
-          ) : rows.length ? (
-            rows.map((l) => (
-              <button
-                key={l._id}
-                type="button"
-                disabled={Boolean(creating)}
-                onClick={() => start(l)}
-                className="flex w-full items-center justify-between gap-3 rounded-xl border border-outline-variant/40 bg-surface-container-lowest p-3 text-left transition-colors hover:border-primary disabled:opacity-60"
-              >
-                <span className="min-w-0">
-                  <b className="block truncate text-sm text-on-surface">{l.companyName || l.contactPersonName}</b>
-                  <small className="block truncate text-xs text-on-surface-variant">
-                    {[l.contactPersonName, l.country, l.status].filter(Boolean).join(' · ')}
-                  </small>
-                </span>
-                {creating === l._id ? <Loader2 className="h-4 w-4 shrink-0 animate-spin" /> : <Plus className="h-4 w-4 shrink-0 text-primary" />}
-              </button>
-            ))
-          ) : (
-            <p className="rounded-xl border border-dashed border-outline-variant/60 p-4 text-center text-sm text-on-surface-variant">
-              No opportunity found. Convert a lead to an Opportunity in Tele-sales first.
-            </p>
-          )}
-          {rows.length > 0 && rows.length < total && (
-            <Button type="button" variant="outline" className="w-full" disabled={loading} onClick={() => loadPage(page + 1, q)}>
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              Load more
-            </Button>
-          )}
-        </div>
-        {total > 0 && (
-          <p className="text-xs text-on-surface-variant">
-            Showing {rows.length} of {total} opportunit{total === 1 ? 'y' : 'ies'}
-          </p>
-        )}
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 export default function ProposalsList() {
-  const { canManageProposals } = useAccess();
+  const { canManageProposals, isAdmin } = useAccess();
   const [rows, setRows] = useState<ProposalSummary[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -247,11 +144,7 @@ export default function ProposalsList() {
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap items-center gap-1.5">
                         <ProposalStatusBadge status={p.status} />
-                        {p.needsApproval && p.status !== 'Pending approval' && (
-                          <span title="Discount needs approval" className="text-amber-600">
-                            <ShieldAlert className="h-4 w-4" />
-                          </span>
-                        )}
+                        {isAdmin && p.status === 'Pending approval' && <NeedsYourApproval overLimit={p.discountOverLimit} />}
                       </div>
                     </td>
                   </tr>

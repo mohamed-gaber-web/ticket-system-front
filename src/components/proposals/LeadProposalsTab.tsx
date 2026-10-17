@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { createProposal, getOpportunityProposals } from '@/api/proposalApi';
 import { formatUsd } from '@/lib/proposalMath';
 import { personName, type ProposalSummary } from '@/types/proposal.types';
-import ProposalStatusBadge from './ProposalStatusBadge';
+import { useAccess } from '@/redux/hooks/useAccess';
+import ProposalStatusBadge, { NeedsYourApproval } from './ProposalStatusBadge';
 
 const fmtDate = (d?: string) => (d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—');
 const apiError = (e: unknown, fallback: string) =>
@@ -28,6 +29,7 @@ export default function LeadProposalsTab({
   onCount?: (n: number) => void;
 }) {
   const navigate = useNavigate();
+  const { isAdmin } = useAccess();
   const [rows, setRows] = useState<ProposalSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
@@ -102,6 +104,7 @@ export default function LeadProposalsTab({
               </div>
               <div className="flex items-center gap-2">
                 <ProposalStatusBadge status={p.status} />
+                {isAdmin && p.status === 'Pending approval' && <NeedsYourApproval overLimit={p.discountOverLimit} />}
                 {canCreate && isOpportunity && (
                   <Button variant="outline" size="sm" onClick={() => create(p._id)} disabled={Boolean(busy)} title="Copy this proposal into a new version">
                     {busy === p._id ? <Loader2 className="animate-spin" /> : <CopyPlus />} New version

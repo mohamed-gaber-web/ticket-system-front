@@ -158,6 +158,9 @@ export type LeadSource =
   | 'Partner'
   | 'Other';
 
+/** Every lead source, in picker order (lead form, bulk edit, Proposal Builder). */
+export const LEAD_SOURCES: LeadSource[] = ['LinkedIn', 'Website', 'Referral', 'Cold Call', 'Exhibition', 'Partner', 'Other'];
+
 /**
  * The one extra detail each lead source asks for. Sources missing from this map
  * ('Website', 'Other') take no detail — the field is hidden and cleared.

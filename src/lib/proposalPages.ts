@@ -4,7 +4,7 @@
 // scoped to `.pp-doc`.
 import type { LayoutItem, LayoutKey, Proposal, ProposalCatalog, SowAttachment, SowSection } from '@/types/proposal.types';
 import { effectiveLayout } from './proposalLayout';
-import { needsApproval, proposalTotals, licenseUnitPrice, type GroupTotals, type ProposalTotals } from './proposalMath';
+import { discountOverLimit, needsApproval, proposalTotals, licenseUnitPrice, type GroupTotals, type ProposalTotals } from './proposalMath';
 
 export const PAGE_W = 816;
 export const PAGE_H = 1056;
@@ -367,7 +367,7 @@ export const buildPages = (p: Proposal, { catalog, imageSrc, measure }: BuildCon
 
   const financialPages = () => {
     const t = proposalTotals(p);
-    const flag = needsApproval(p, catalog.settings.maxDiscount) ? '<span class="lbl-int">INTERNAL · DISCOUNT NEEDS APPROVAL</span>' : '';
+    const flag = needsApproval(p) && discountOverLimit(p, catalog.settings.maxDiscount) ?'<span class="lbl-int">INTERNAL · DISCOUNT NEEDS APPROVAL</span>' : '';
     const fin: string[] = [];
     p.implementation.groups.forEach((g, i) => {
       if (g.lines.length) fin.push(implTable(p, g, t.groups[i]));

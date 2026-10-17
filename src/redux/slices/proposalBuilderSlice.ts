@@ -130,7 +130,11 @@ export const saveProposal = createAsyncThunk(
     const rev = proposalBuilder.rev;
     try {
       const res = await proposalApi.saveProposal(p._id, forApi(p));
-      if (!quiet) toast.success(res.message || `Saved ${res.data.number}`);
+      // A content change on a Pending approval / Approved proposal sends it back to
+      // Draft; say so even on a quiet autosave (the API's message explains it).
+      const reopened = (p.status === 'Pending approval' || p.status === 'Approved') && res.data.status === 'Draft';
+      if (reopened) toast.info(res.message || 'Changes need approval again.');
+      else if (!quiet) toast.success(res.message || `Saved ${res.data.number}`);
       return { proposal: res.data, rev };
     } catch (error) {
       const message = apiMessage(error, 'Failed to save the proposal');
@@ -162,6 +166,23 @@ const workflowThunk = (type: string, call: (id: string) => Promise<{ data: Propo
 
 export const requestApproval = workflowThunk('requestApproval', proposalApi.requestProposalApproval, 'Sent for approval');
 export const approveProposal = workflowThunk('approveProposal', proposalApi.approveProposal, 'Proposal approved');
+/** Admin only: sends a Pending approval proposal back to Draft with the reason. */
+export const rejectProposal = createAsyncThunk(
+  'proposalBuilder/rejectProposal',
+  async ({ reason }: { reason: string }, { getState, rejectWithValue }) => {
+    const p = (getState() as { proposalBuilder: ProposalBuilderState }).proposalBuilder.proposal;
+    if (!p) return rejectWithValue('No proposal');
+    try {
+      const res = await proposalApi.rejectProposal(p._id, reason);
+      toast.success(res.message || 'Proposal sent back to Draft');
+      return res.data;
+    } catch (error) {
+      const message = apiMessage(error, 'Could not reject the proposal');
+      toast.error(message);
+      return rejectWithValue(message);
+    }
+  },
+);
 export const rebuildFromOpportunity = workflowThunk('rebuild', proposalApi.rebuildProposal, 'Proposal rebuilt from the opportunity');
 
 export const uploadAttachment = createAsyncThunk(
@@ -548,6 +569,7 @@ const slice = createSlice({
         cur.totals = saved.totals;
         cur.approvedBy = saved.approvedBy;
         cur.approvedAt = saved.approvedAt;
+        cur.rejection = saved.rejection;
         cur.updatedAt = saved.updatedAt;
         cur.permissions = saved.permissions;
         s.status = 'idle';
@@ -557,7 +579,7 @@ const slice = createSlice({
       .addCase(saveProposal.rejected, (s) => {
         s.status = 'idle';
       });
-    for (const thunk of [requestApproval, approveProposal, rebuildFromOpportunity]) {
+    for (const thunk of [requestApproval, approveProposal, rejectProposal, rebuildFromOpportunity]) {
       builder.addCase(thunk.fulfilled, (s, a) => {
         loaded(s, a.payload);
         s.lastSavedAt = new Date().toISOString();

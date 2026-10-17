@@ -37,7 +37,7 @@ export default function PricingTab({ proposal, catalog, canEdit }: { proposal: P
   const opp = typeof proposal.opportunity === 'object' ? (proposal.opportunity as ProposalOpportunity) : null;
   const users = opp?.expectedUsers || 1;
   const over = discountOverLimit(proposal, max);
-  const waiting = needsApproval(proposal, max);
+  const waiting = needsApproval(proposal);
 
   const addService = (g: number, code: string) => {
     if (!code) return;
@@ -177,18 +177,17 @@ export default function PricingTab({ proposal, catalog, canEdit }: { proposal: P
         />
       </RailSection>
 
-      <RailSection title="Discount approval">
-        {waiting ? (
-          <Pill tone="warn">Discount above {max}% needs a sales manager's approval</Pill>
+      <RailSection title="Discount">
+        {over && waiting ? (
+          <Pill tone="warn">Discount above the {max}% limit — shown to the approving admin</Pill>
         ) : over ? (
-          <Pill tone="ok">Discount approved by {personName(proposal.approvedBy)}</Pill>
+          <Pill tone="ok">Discount above the limit, approved by {personName(proposal.approvedBy)}</Pill>
         ) : (
           <Pill tone="ok">Discount within the {max}% limit</Pill>
         )}
         <p className="text-xs text-on-surface-variant">
-          {waiting
-            ? 'Saving sends it to your sales manager for approval (the team managers are notified). The PDF can be downloaded once it is approved.'
-            : 'Changing an approved discount above the limit asks for approval again.'}
+          Every proposal needs an admin's approval before the PDF can be downloaded or emailed. Saving a change to an approved
+          proposal sends it back to Draft, to be approved again.
         </p>
       </RailSection>
 

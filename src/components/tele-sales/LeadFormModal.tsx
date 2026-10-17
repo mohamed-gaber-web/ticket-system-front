@@ -9,13 +9,15 @@ import { fetchBusinessClassifications } from '@/redux/slices/businessClassificat
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { Building2, MapPin, Phone, ClipboardList, StickyNote, Tags, ChevronDown, X, UserCheck, FileSignature } from 'lucide-react';
+import { Building2, MapPin, Phone, ClipboardList, StickyNote, Tags, X, UserCheck, FileSignature } from 'lucide-react';
+import { Field, SelectField } from '@/components/tele-sales/LeadFieldControls';
+import { useLeadPickerOptions } from '@/hooks/useLeadPickerOptions';
 import { IMPORTED_LEAD_STATUS, PICKABLE_LEAD_STATUSES, type LeadStatus } from '@/config/leadStatusWorkflow';
 import type {
   Lead, LeadPriority, LeadSource, CreateLeadData, EntityType, IndustrySector, SalesType,
 } from '@/types/teleSales.types';
 import {
-  ENTITY_TYPES, INDUSTRY_SECTORS, LEAD_SOURCE_DETAILS, isValidUrl, teamId,
+  ENTITY_TYPES, LEAD_SOURCES, LEAD_SOURCE_DETAILS, isValidUrl, teamId,
   DEFAULT_VALUE_CURRENCY,
 } from '@/types/teleSales.types';
 import { REQUIRED_LEAD_FIELDS, STAGE_META, stageOf, hasIdentity } from '@/lib/leadStages';
@@ -26,13 +28,8 @@ import { useTeamAgents } from '@/hooks/useTeamAgents';
 import { dialCodeForCountry, isValidPhoneForCountry } from '@/utils/countryPhone';
 import { isSuperAdmin, canManageTeam, ownTeams, ownTeamId } from '@/lib/teleSalesRole';
 
-const LEAD_SOURCES: LeadSource[] = ['LinkedIn', 'Website', 'Referral', 'Cold Call', 'Exhibition', 'Partner', 'Other'];
-
 const EMAIL_REGEX = /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/;
 
-// Shared field styling so inputs, selects and textareas read as one system.
-const selectCls =
-  'h-10 w-full appearance-none cursor-pointer rounded-[0.5rem] bg-surface-container-high border-none pl-3 pr-9 text-sm text-on-surface outline-none transition-all focus-visible:ring-[2px] focus-visible:ring-primary/40';
 const textareaCls =
   'w-full rounded-[0.5rem] bg-surface-container-high border-none px-3 py-2.5 text-sm text-on-surface outline-none transition-all resize-none focus-visible:ring-[2px] focus-visible:ring-primary/40';
 
@@ -51,33 +48,6 @@ function SectionCard({
       </div>
       {children}
     </section>
-  );
-}
-
-/** A labelled form field with optional required marker and helper hint. */
-function Field({
-  label, required, hint, className = '', children,
-}: { label: string; required?: boolean; hint?: string; className?: string; children: React.ReactNode }) {
-  return (
-    <div className={className}>
-      <label className="text-sm font-medium text-on-surface mb-1.5 block">
-        {label}{required && <span className="text-error ml-0.5">*</span>}
-      </label>
-      {children}
-      {hint && <p className="text-xs text-on-surface-variant mt-1">{hint}</p>}
-    </div>
-  );
-}
-
-/** A native select wrapped with a chevron, styled to match the Input component. */
-function SelectField({
-  value, onChange, children, 'aria-label': ariaLabel,
-}: { value: string; onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void; children: React.ReactNode; 'aria-label'?: string }) {
-  return (
-    <div className="relative">
-      <select value={value} onChange={onChange} className={selectCls} aria-label={ariaLabel}>{children}</select>
-      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
-    </div>
   );
 }
 
@@ -177,9 +147,7 @@ interface LeadFormModalProps {
 /** Create/edit lead form, shared by the Leads table and the lead detail page. */
 export function LeadFormModal({ open, lead, stage, convert = false, onClose, onSaved }: LeadFormModalProps) {
   const dispatch = useAppDispatch();
-  const { industrySectors } = useAppSelector((s) => s.industrySectors);
-  const { countries } = useAppSelector((s) => s.countries);
-  const { businessClassifications } = useAppSelector((s) => s.businessClassifications);
+  const { sectorOptions, countryOptions, classificationOptions } = useLeadPickerOptions();
   const { teams } = useAppSelector((s) => s.teleSalesTeams);
   const { user } = useAppSelector((s) => s.auth);
 
@@ -198,16 +166,6 @@ export function LeadFormModal({ open, lead, stage, convert = false, onClose, onS
   const formStage: SalesType = lead ? stageOf(lead) : stage === 'Data' ? 'Data' : 'Lead';
   const raw = formStage === 'Data' && !convert;
   const strict = !raw;
-
-  const sectorOptions = industrySectors.length
-    ? industrySectors.filter((s) => s.isActive).map((s) => s.name)
-    : [...INDUSTRY_SECTORS];
-  const countryOptions = countries.length
-    ? countries.filter((c) => c.isActive).map((c) => c.name)
-    : ['Egypt'];
-  const classificationOptions = businessClassifications
-    .filter((c) => c.isActive)
-    .map((c) => c.name);
 
   const [form, setForm] = useState<CreateLeadData>(emptyForm);
   const [tagInput, setTagInput] = useState('');

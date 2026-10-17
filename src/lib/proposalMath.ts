@@ -67,8 +67,19 @@ export const discountOverLimit = (p: Partial<MoneyShape> | null | undefined, max
   return num(p?.implementation?.discountPct) > max || num(p?.licenses?.discountPct) > max;
 };
 
-export const needsApproval = (p: Partial<MoneyShape> | null | undefined, maxDiscount: number) =>
-  discountOverLimit(p, maxDiscount) && !p?.approvedBy;
+/**
+ * Every proposal needs an admin's approval before its PDF / email: true while it
+ * is a Draft or waiting in Pending approval. The discount limit is only shown to
+ * the approver (`discountOverLimit`), it no longer triggers approval.
+ */
+export const needsApproval = (p: Partial<Pick<Proposal, 'status'>> | null | undefined) => {
+  const status = p?.status || 'Draft'; // no status = Draft (mirrors the backend)
+  return status === 'Draft' || status === 'Pending approval';
+};
+
+/** Statuses whose PDF may be built / emailed (mirrors the backend's export gate). */
+export const EXPORTABLE_STATUSES: readonly Proposal['status'][] = ['Approved', 'Sent', 'Accepted'];
+export const canExport = (p: Partial<Pick<Proposal, 'status'>> | null | undefined) => Boolean(p?.status && EXPORTABLE_STATUSES.includes(p.status));
 
 export const milestonesTotal = (p: Pick<Proposal, 'payment'> | null | undefined) =>
   (p?.payment?.milestones ?? []).reduce((a, m) => a + num(m.pct), 0);

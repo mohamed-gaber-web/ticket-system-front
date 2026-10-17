@@ -1,5 +1,6 @@
 // Proposal Builder (PROPOSAL_BUILDER_SPEC.md). Proposals are built from a
 // tele-sales Opportunity and priced in USD only.
+import type { EntityType, IndustrySector, LeadSource } from './teleSales.types';
 
 export type ProposalStatus = 'Draft' | 'Pending approval' | 'Approved' | 'Sent' | 'Accepted' | 'Rejected';
 export type ModuleMode = 'I' | 'R' | 'B';
@@ -16,16 +17,24 @@ export interface PersonRef {
   _id: string;
   firstName?: string;
   lastName?: string;
+  /** Some endpoints send the full name ready-made (rejection.by, by-customer owners). */
+  name?: string;
   email?: string;
 }
 
 export const personName = (p?: PersonRef | string | null) =>
-  p && typeof p === 'object' ? [p.firstName, p.lastName].filter(Boolean).join(' ') || p.email || '—' : '—';
+  p && typeof p === 'object' ? [p.firstName, p.lastName].filter(Boolean).join(' ') || p.name || p.email || '—' : '—';
 
 export interface LegalEntity {
   name: string;
   location: string;
   industry: string;
+}
+
+export interface ProposalRejection {
+  reason: string;
+  by?: PersonRef | string | null;
+  at?: string | null;
 }
 
 export interface ProposalModule {
@@ -117,6 +126,8 @@ export interface Proposal {
   preparedBy?: PersonRef | string | null;
   approvedBy?: PersonRef | string | null;
   approvedAt?: string | null;
+  /** Set when an admin sends a Pending approval proposal back to Draft; cleared on the next request-approval. */
+  rejection?: ProposalRejection | null;
   currency: 'USD';
   vat: number;
   legalEntities: LegalEntity[];
@@ -201,5 +212,48 @@ export interface ProposalSummary {
   opportunity?: ProposalOpportunity | string;
   totals: { implementation: number; licenses: number; grand: number };
   needsApproval?: boolean;
+  /** A discount is above the price list's limit (information for the approving admin). */
+  discountOverLimit?: boolean;
   updatedAt?: string;
+}
+
+// ── Start from an existing customer ──────────────────────────────────────────
+
+/** Row of GET /opportunities/by-customer/:accountId — the customer's open opportunities. */
+export interface CustomerOpportunity {
+  _id: string;
+  companyName?: string;
+  contactPersonName?: string;
+  status?: string;
+  /** The owner (`{ _id, firstName, lastName, name }`), or null when unassigned. */
+  assignedTo?: PersonRef | null;
+  updatedAt?: string;
+}
+
+/** Fields POST /opportunities/from-customer accepts to fill gaps / override the contact's values. */
+export interface FromCustomerFields {
+  website?: string;
+  leadSource?: LeadSource;
+  leadSourceDetail?: string;
+  entityType?: EntityType;
+  industrySector?: IndustrySector;
+  businessClassification?: string;
+  companyName?: string;
+  contactPersonName?: string;
+  phonePrimary?: string;
+  email?: string;
+}
+
+export interface FromCustomerBody {
+  account: string;
+  accountContact: string;
+  team?: string;
+  assignedTo?: string;
+  fields: FromCustomerFields;
+}
+
+/** One entry of the 400 `missing` list from POST /opportunities/from-customer. */
+export interface MissingLeadField {
+  field: string;
+  label: string;
 }

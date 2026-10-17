@@ -35,6 +35,7 @@ import {
   type LucideIcon,
   FileSignature,
   BadgeCheck,
+  FileX2,
 } from 'lucide-react';
 import type { Notification, NotificationType } from '@/types/notification.types';
 
@@ -67,6 +68,7 @@ const TYPE_STYLES: Record<NotificationType, { icon: LucideIcon; className: strin
   ticket_email_reply: { icon: MailOpen, className: 'text-orange-600 bg-orange-500/10' },
   proposal_approval_request: { icon: FileSignature, className: 'text-amber-600 bg-amber-500/10' },
   proposal_approved: { icon: BadgeCheck, className: 'text-green-600 bg-green-500/10' },
+  proposal_rejected: { icon: FileX2, className: 'text-red-600 bg-red-500/10' },
 };
 
 const DEFAULT_STYLE = { icon: Bell, className: 'text-on-surface-variant bg-surface-container-high' };

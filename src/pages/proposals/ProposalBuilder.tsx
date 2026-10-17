@@ -5,7 +5,6 @@ import Swal from 'sweetalert2';
 import { saveAs } from 'file-saver';
 import {
   ArrowLeft,
-  BadgeCheck,
   ChevronDown,
   Download,
   FileText,
@@ -13,7 +12,7 @@ import {
   Mail,
   Save,
   Send,
-  ShieldAlert,
+  ShieldCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
@@ -21,15 +20,16 @@ import {
   approveProposal,
   fetchCatalog,
   fetchProposal,
+  rejectProposal,
   requestApproval,
   resetBuilder,
   saveProposal,
 } from '@/redux/slices/proposalBuilderSlice';
 import { recordProposalExport, setProposalStatus } from '@/api/proposalApi';
-import { discountOverLimit, formatUsd, milestonesComplete, needsApproval, proposalTotals } from '@/lib/proposalMath';
+import { canExport, discountOverLimit, formatUsd, milestonesComplete, milestonesTotal, proposalTotals } from '@/lib/proposalMath';
 import { pdfFileName } from '@/lib/proposalPages';
 import { buildProposalPdf, type PdfQuality } from '@/utils/proposalPdf';
-import type { ProposalStatus } from '@/types/proposal.types';
+import { personName, type ProposalStatus } from '@/types/proposal.types';
 import ProposalPreview from '@/components/proposals/ProposalPreview';
 import { useProposalImages } from '@/components/proposals/useProposalImages';
 import OpportunityTab from '@/components/proposals/OpportunityTab';
@@ -40,6 +40,7 @@ import TermsTab from '@/components/proposals/TermsTab';
 import SectionsTab from '@/components/proposals/SectionsTab';
 import ProposalStatusBadge from '@/components/proposals/ProposalStatusBadge';
 import SendProposalEmail from '@/components/proposals/SendProposalEmail';
+import { ProposalApprovalBanner, RejectProposalDialog } from '@/components/proposals/ProposalApproval';
 import { cn } from '@/lib/utils';
 
 type Tab = 'opp' | 'scope' | 'sow' | 'pricing' | 'terms' | 'sections';
@@ -69,6 +70,8 @@ export default function ProposalBuilder() {
   const [pdfProgress, setPdfProgress] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [emailOpen, setEmailOpen] = useState(false);
+  const [rejectOpen, setRejectOpen] = useState(false);
+  const [approvalBusy, setApprovalBusy] = useState(false);
   const pagesRef = useRef<string[]>([]);
   const [pageCount, setPageCount] = useState(0);
   const images = useProposalImages(proposal);
@@ -92,7 +95,8 @@ export default function ProposalBuilder() {
   const canApprove = Boolean(proposal?.permissions?.approve);
   const maxDiscount = catalog?.settings.maxDiscount ?? 10;
   const totals = useMemo(() => proposalTotals(proposal), [proposal]);
-  const waiting = proposal ? needsApproval(proposal, maxDiscount) : false;
+  // Every proposal needs an admin's approval before its PDF / email (the API's export gate agrees).
+  const exportable = canExport(proposal);
   const overLimit = proposal ? discountOverLimit(proposal, maxDiscount) : false;
 
   // ── saving ──
@@ -128,13 +132,32 @@ export default function ProposalBuilder() {
   }, []);
 
   // ── actions ──
-  /** False (and says why) while an over-limit discount waits for approval. */
+  /** False (and says why) until an admin has approved the proposal. */
   const exportAllowed = () => {
-    if (!waiting) return true;
-    toast.error(`The discount is above ${maxDiscount}%. A sales manager must approve it first.`);
-    setTab('pricing');
+    if (exportable) return true;
+    toast.error("This proposal needs an admin's approval first.");
     return false;
   };
+
+  /** Runs an approval action, keeping its buttons busy until the API answers (the thunks toast). */
+  const runApproval = async (action: () => Promise<unknown>) => {
+    setApprovalBusy(true);
+    try {
+      await action();
+    } finally {
+      setApprovalBusy(false);
+    }
+  };
+  const submitForApproval = () => {
+    if (!proposal) return;
+    if (!milestonesComplete(proposal)) {
+      toast.error('Payment milestones must add up to 100% before it can be submitted.');
+      setTab('terms');
+      return;
+    }
+    return runApproval(() => dispatch(requestApproval()));
+  };
+  const reject = async (reason: string) => rejectProposal.fulfilled.match(await dispatch(rejectProposal({ reason })));
 
   /** Save pending edits, pass the export gate and draw the PDF (shared by Download and Send by email). */
   const makePdf = async (onProgress: (text: string) => void, quality: PdfQuality = 'normal') => {
@@ -160,11 +183,11 @@ export default function ProposalBuilder() {
     }
   };
 
-  // After the email goes out, a Draft / Approved proposal becomes Sent (what
-  // "Mark Sent" is for), as long as the payment milestones are complete.
+  // After the email goes out, an Approved proposal becomes Sent (what "Mark Sent"
+  // is for), as long as the payment milestones are complete.
   const afterEmailSent = async () => {
     setEmailOpen(false);
-    if (!proposal || !canEdit || !['Draft', 'Approved'].includes(proposal.status) || !milestonesComplete(proposal)) return;
+    if (!proposal || !canEdit || proposal.status !== 'Approved' || !milestonesComplete(proposal)) return;
     try {
       await setProposalStatus(proposal._id, 'Sent');
       await dispatch(fetchProposal(proposal._id));
@@ -189,7 +212,7 @@ export default function ProposalBuilder() {
           ? 'An accepted or rejected proposal is locked. Create a new version to change it.'
           : next === 'Sent'
             ? 'Use this once the PDF has gone to the customer.'
-            : 'The proposal becomes editable again.',
+            : "The proposal becomes editable again and needs an admin's approval before it is sent again.",
       icon: 'question',
       showCancelButton: true,
       confirmButtonColor: '#003A8F',
@@ -231,8 +254,13 @@ export default function ProposalBuilder() {
   const opportunity = typeof proposal.opportunity === 'object' ? proposal.opportunity : null;
   const opportunityId = opportunity?._id ?? (typeof proposal.opportunity === 'string' ? proposal.opportunity : '');
 
+  // No manual "Approved" (only an admin's Approve); "Sent" only once approved.
   const statusMoves: ProposalStatus[] =
-    proposal.status === 'Sent' ? ['Accepted', 'Rejected', 'Draft'] : ['Draft', 'Approved'].includes(proposal.status) ? ['Sent'] : [];
+    proposal.status === 'Sent' ? ['Accepted', 'Rejected', 'Draft'] : proposal.status === 'Approved' ? ['Sent'] : [];
+  const milestonesOk = milestonesComplete(proposal);
+  // A Sent proposal is locked for editing (permissions.edit is false) but still
+  // moves on through the status menu and may be emailed again; the API decides who may.
+  const canWork = canEdit || proposal.status === 'Sent';
 
   return (
     <div className="p-6 space-y-5">
@@ -261,17 +289,18 @@ export default function ProposalBuilder() {
               {status === 'saving' ? <Loader2 className="animate-spin" /> : <Save />} Save
             </Button>
           )}
-          {waiting && canApprove && (
-            <Button type="button" variant="outline" onClick={() => dispatch(approveProposal())}>
-              <BadgeCheck /> Approve discount
+          {proposal.status === 'Draft' && canEdit && (
+            <Button
+              type="button"
+              onClick={submitForApproval}
+              disabled={!milestonesOk || approvalBusy || status === 'saving'}
+              title={milestonesOk ? 'Send it to an admin for approval' : 'Payment milestones must total 100% first'}
+              aria-describedby={milestonesOk ? undefined : 'submit-approval-hint'}
+            >
+              {approvalBusy ? <Loader2 className="animate-spin" /> : <ShieldCheck />} Submit for approval
             </Button>
           )}
-          {waiting && !canApprove && canEdit && !dirty && (
-            <Button type="button" variant="outline" onClick={() => dispatch(requestApproval())}>
-              <ShieldAlert /> {proposal.status === 'Pending approval' ? 'Remind manager' : 'Request approval'}
-            </Button>
-          )}
-          {statusMoves.length > 0 && canEdit && (
+          {statusMoves.length > 0 && canWork && (
             <div className="relative">
               <Button type="button" variant="outline" onClick={() => setMenuOpen((o) => !o)} aria-expanded={menuOpen}>
                 <Send /> Status <ChevronDown />
@@ -292,36 +321,49 @@ export default function ProposalBuilder() {
               )}
             </div>
           )}
-          {canEdit && opportunityId && (
+          {exportable && canWork && opportunityId && (
             <Button
               type="button"
               variant="outline"
               onClick={() => exportAllowed() && setEmailOpen(true)}
               disabled={Boolean(pdfProgress)}
-              title={waiting ? 'Needs approval first' : 'Email the PDF to the customer'}
+              title="Email the PDF to the customer"
             >
               <Mail /> Send by email
             </Button>
           )}
-          <Button type="button" variant="secondary" onClick={downloadPdf} disabled={Boolean(pdfProgress)} title={waiting ? 'Needs approval first' : undefined}>
-            {pdfProgress ? <Loader2 className="animate-spin" /> : <Download />} {pdfProgress ?? 'Download PDF'}
-          </Button>
+          {exportable && (
+            <Button type="button" variant="secondary" onClick={downloadPdf} disabled={Boolean(pdfProgress)}>
+              {pdfProgress ? <Loader2 className="animate-spin" /> : <Download />} {pdfProgress ?? 'Download PDF'}
+            </Button>
+          )}
         </div>
       </div>
 
-      {waiting && (
-        <div className="flex flex-wrap items-center gap-2 rounded-xl bg-amber-50 px-4 py-2.5 text-sm text-amber-800 dark:bg-amber-500/10 dark:text-amber-200">
-          <ShieldAlert className="h-4 w-4 shrink-0" />
-          {proposal.status === 'Pending approval'
-            ? `Your sales manager was asked to approve the discount above ${maxDiscount}%. The PDF unlocks once it is approved.`
-            : `A discount is above ${maxDiscount}%. Saving sends it to your sales manager for approval; the PDF unlocks once it is approved.`}
-        </div>
+      {proposal.status === 'Draft' && canEdit && !milestonesOk && (
+        <p id="submit-approval-hint" className="text-xs text-on-surface-variant">
+          Payment milestones add up to {Number(milestonesTotal(proposal).toFixed(2))}%. They must total 100% (Terms step) before the proposal can be submitted
+          for approval; the PDF and email unlock once an admin approves it.
+        </p>
       )}
+      <ProposalApprovalBanner
+        proposal={proposal}
+        canApprove={canApprove}
+        canEdit={canEdit}
+        overLimit={overLimit}
+        maxDiscount={maxDiscount}
+        busy={approvalBusy}
+        onRemind={() => runApproval(() => dispatch(requestApproval()))}
+        onApprove={() => runApproval(() => dispatch(approveProposal()))}
+        onReject={() => setRejectOpen(true)}
+      />
       {!canEdit && (
         <div className="rounded-xl bg-surface-container-low px-4 py-2.5 text-sm text-on-surface-variant">
           {['Accepted', 'Rejected'].includes(proposal.status)
             ? `This proposal is ${proposal.status.toLowerCase()} and locked. Create a new version from the opportunity to change it.`
-            : 'You can view this proposal but not edit it.'}
+            : proposal.status === 'Sent'
+              ? "This proposal was sent and is locked. Mark it Draft from Status to change it (it then needs an admin's approval again)."
+              : 'You can view this proposal but not edit it.'}
         </div>
       )}
 
@@ -367,11 +409,13 @@ export default function ProposalBuilder() {
         <section className="min-w-0 space-y-2 xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:overflow-y-auto xl:pr-1">
           <p className="text-xs text-on-surface-variant">
             <b className="text-on-surface">{pageCount} pages</b> · {proposal.number} · {formatUsd(totals.grand)} incl. VAT
-            {overLimit && !waiting && ' · discount approved'}
+            {exportable && proposal.approvedBy ? ` · approved by ${personName(proposal.approvedBy)}` : ''}
           </p>
           <ProposalPreview proposal={proposal} catalog={catalog} images={images} onPages={onPages} />
         </section>
       </div>
+
+      <RejectProposalDialog open={rejectOpen} onClose={() => setRejectOpen(false)} onReject={reject} />
 
       {opportunityId && (
         <SendProposalEmail
