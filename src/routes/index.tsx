@@ -202,6 +202,13 @@ const ProposalsList = lazy(() => import("@/pages/proposals/ProposalsList"));
 const ProposalBuilder = lazy(() => import("@/pages/proposals/ProposalBuilder"));
 const ProposalCatalogPage = lazy(() => import("@/pages/proposals/ProposalCatalogPage"));
 
+// Credentials Vault Module
+const VaultDashboard = lazy(() => import("@/pages/vault/VaultDashboard"));
+const VaultAccounts = lazy(() => import("@/pages/vault/VaultAccounts"));
+const VaultSend = lazy(() => import("@/pages/vault/VaultSend"));
+const VaultLog = lazy(() => import("@/pages/vault/VaultLog"));
+const VaultSettings = lazy(() => import("@/pages/vault/VaultSettings"));
+
 // Marketing Module
 const CustomerSurveys = lazy(() => import("@/pages/marketing/CustomerSurveys"));
 const EmailCampaign = lazy(() => import("@/pages/marketing/EmailCampaign"));
@@ -413,6 +420,13 @@ export const routes: RouteObject[] = [
       { path: "/proposals", element: <ModuleRoute module="proposals"><Lazy><ProposalsList /></Lazy></ModuleRoute> },
       { path: "/proposals/price-list", element: <ModuleRoute module="proposals"><Lazy><ProposalCatalogPage /></Lazy></ModuleRoute> },
       { path: "/proposals/:id", element: <ModuleRoute module="proposals"><Lazy><ProposalBuilder /></Lazy></ModuleRoute> },
+      // Credentials Vault — anyone with the vault module views, reveals, sends and
+      // reads the log; Settings and every create/edit/delete is admin-only.
+      { path: "/vault", element: <ModuleRoute module="vault"><Lazy><VaultDashboard /></Lazy></ModuleRoute> },
+      { path: "/vault/accounts", element: <ModuleRoute module="vault"><Lazy><VaultAccounts /></Lazy></ModuleRoute> },
+      { path: "/vault/send", element: <ModuleRoute module="vault"><Lazy><VaultSend /></Lazy></ModuleRoute> },
+      { path: "/vault/log", element: <ModuleRoute module="vault"><Lazy><VaultLog /></Lazy></ModuleRoute> },
+      { path: "/vault/settings", element: <ModuleRoute module="vault"><AdminRoute><Lazy><VaultSettings /></Lazy></AdminRoute></ModuleRoute> },
       { path: "/marketing", element: <Navigate to="/marketing/csp" replace /> },
       { path: "/marketing/csp", element: <ModuleRoute module="marketing"><Lazy><CustomerSurveys /></Lazy></ModuleRoute> },
       { path: "/marketing/email-campaign", element: <ModuleRoute module="marketing"><Lazy><EmailCampaign /></Lazy></ModuleRoute> },

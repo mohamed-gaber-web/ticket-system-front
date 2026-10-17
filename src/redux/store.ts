@@ -40,6 +40,10 @@ import salesAssistantReducer from './slices/salesAssistantSlice';
 import proposalBuilderReducer from './slices/proposalBuilderSlice';
 import ticketSettingsReducer from './slices/ticketSettingsSlice';
 import myHomeReducer from './slices/myHomeSlice';
+import vaultLookupsReducer from './slices/vaultLookupsSlice';
+import vaultEntriesReducer from './slices/vaultEntriesSlice';
+import vaultSendReducer from './slices/vaultSendSlice';
+import vaultReportsReducer from './slices/vaultReportsSlice';
 
 export const store = configureStore({
   reducer: {
@@ -84,6 +88,10 @@ export const store = configureStore({
     proposalBuilder: proposalBuilderReducer,
     ticketSettings: ticketSettingsReducer,
     myHome: myHomeReducer,
+    vaultLookups: vaultLookupsReducer,
+    vaultEntries: vaultEntriesReducer,
+    vaultSend: vaultSendReducer,
+    vaultReports: vaultReportsReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

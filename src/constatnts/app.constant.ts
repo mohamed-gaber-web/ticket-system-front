@@ -47,6 +47,9 @@ import {
   FlaskConical,
   FileSignature,
   Tags,
+  KeyRound,
+  ScrollText,
+  Settings2,
 } from "lucide-react";
 import type { Access } from "@/redux/hooks/useAccess";
 import type { ModuleKey } from "@/types/auth.types";
@@ -337,6 +340,22 @@ const PROPOSALS_GROUP: NavLink = {
   ],
 };
 
+// Credentials Vault — stored client and company sign-ins, sending them by email
+// (every send logged) and the setup lists. Settings is admin-only; the API
+// enforces it.
+const VAULT_GROUP: NavLink = {
+  name: "Credentials Vault",
+  icon: KeyRound,
+  isGroup: true,
+  children: [
+    { name: "Dashboard", path: "/vault", icon: LayoutDashboard },
+    { name: "Accounts", path: "/vault/accounts", icon: KeyRound },
+    { name: "Send Credentials", path: "/vault/send", icon: Send },
+    { name: "Send Log", path: "/vault/log", icon: ScrollText },
+    { name: "Settings", path: "/vault/settings", icon: Settings2, minRole: "admin" },
+  ],
+};
+
 // HR menu — the employee directory (with the confidential HR file for HR and
 // admins), teams, leave approvals and balances, plus ticketing Performance.
 // Every link says who sees it; the group shows when any link survives, so a
@@ -375,6 +394,7 @@ const EMPLOYEE_NAV: NavEntry[] = [
   { module: "tasks", link: TASKS_GROUP },
   { module: "development", link: DEVELOPMENT_GROUP },
   { module: "marketing", link: MARKETING_GROUP },
+  { module: "vault", link: VAULT_GROUP },
   { module: "any", link: HR_GROUP },
   { module: "any", link: MY_REQUESTS_GROUP },
 ];

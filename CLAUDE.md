@@ -48,7 +48,7 @@ Mixed roles use this system: support agents triaging and resolving tickets, mana
 Two user types (`employee` | `customer`) and one flat employee role list —
 `admin`, `consultant`, `sales`, `sales_manager`, `marketing`, `marketing_manager`,
 `developer`, `developer_manager`.
-Roles unlock **modules** (`tickets`, `telesales`, `tasks`, `admin`, `development`, `hr`, `marketing`, `proposals`); an admin may
+Roles unlock **modules** (`tickets`, `telesales`, `tasks`, `admin`, `development`, `hr`, `marketing`, `proposals`, `vault`); an admin may
 override the module list per employee. The API is the authority; the client only
 mirrors it so the sidebar, guards and buttons agree.
 
@@ -119,3 +119,12 @@ Sidebar group "Proposals": `/proposals` (`pages/proposals/ProposalsList.tsx` —
 - **Money:** `lib/proposalMath.ts` mirrors the backend's `utils/proposalMath.js` — change both. USD only.
 - **PDF:** `utils/proposalPdf.ts` (html2canvas + jsPDF, US Letter 816×1056) from the same page strings as the preview; the builder calls `POST /proposals/:id/export` first (403 while a discount awaits approval).
 - **SOW paste zone:** `lib/proposalPaste.ts` (HTML table → TSV → image → text; images downscaled to 1400 px and uploaded). Images are behind auth, so `useProposalImages` fetches them as blobs → object URLs.
+
+## Credentials Vault (module `vault`)
+
+Sidebar group "Credentials Vault" (`VAULT_GROUP`): `/vault` (dashboard), `/vault/accounts`, `/vault/send`, `/vault/log`, `/vault/settings` (admin only). No role has `vault` by default; an admin ticks it per employee, and holding it makes the account privileged (`holdsPrivilegedModule`). Everyone with the module views, reveals/copies, sends and reads the log; creating/editing/deleting accounts, lookups and clients is `useAccess().isAdmin` only (the API answers 403 too). Clients are the ticketing Companies; employees come from `GET /vault/users`.
+
+- **Passwords never enter Redux.** `useRevealedPassword` (`src/hooks`) holds a revealed password in component state, hides it after 30 s and on unmount; every reveal/copy goes through `POST /vault/entries/:id/reveal` (logged). Copy falls back to a toast when the clipboard is refused.
+- **Form config:** `src/lib/vaultFields.ts` (`VAULT_FIELDS`, spec §4 in English) drives the create/edit form (`components/vault/VaultEntryFormDialog.tsx`) and the details modal: grouped by section, filtered by owner type with `fieldsFor`. Hidden fields are not sent; on edit a cleared ref/date goes as `null`, the password only when typed. The backend mirrors the required/owner rules — change both.
+- **State:** `vaultLookupsSlice` (lookups by type + clients + employees, loaded by `useVaultSetup`), `vaultEntriesSlice` (Accounts page; filters live in the URL query), `vaultSendSlice` (send draft — `setSendDraftEntries` from a card's Send button — and the masked preview), `vaultReportsSlice` (send log + dashboard). API: `src/api/vaultApi.ts`; types `src/types/vault.types.ts`; helpers (password generator, due/age chips) `src/lib/vault.ts`.
+- **UI:** shared pieces in `components/vault/VaultUi.tsx` (`Chip`, `MonoText` — technical values LTR monospace, `FieldWithHelp`, `VaultSelect`, two-step `ConfirmButton`, `MissingBox`). Every vault screen is wrapped in `VaultLayout` (title + sub-tabs).
