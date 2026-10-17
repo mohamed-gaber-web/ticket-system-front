@@ -8,6 +8,8 @@ import type {
   LeadsListResponse,
   LeadResponse,
   LeadStatsResponse,
+  TeleSalesDashboardParams,
+  TeleSalesDashboardResponse,
   LeadQueryParams,
   CreateLeadData,
   UpdateLeadData,
@@ -91,6 +93,16 @@ export const getLeadById = (id: string): Promise<LeadResponse> =>
 
 export const getLeadStats = (): Promise<LeadStatsResponse> =>
   api.get('/leads/stats').then((r) => r.data);
+
+/**
+ * The dashboard payload: period KPIs (with the previous period), funnel,
+ * leaderboard, 12-week trend, action lists and the pipeline snapshot. Empty
+ * filters are left out so the API applies its defaults (month to date, caller's scope).
+ */
+export const getTeleSalesDashboard = (params: TeleSalesDashboardParams = {}): Promise<TeleSalesDashboardResponse> => {
+  const query = Object.fromEntries(Object.entries(params).filter(([, v]) => typeof v === 'string' && v !== ''));
+  return api.get('/leads/dashboard', { params: query }).then((r) => r.data);
+};
 
 /** Existing-customer lookups for the lead form: companies, then one company's contacts. */
 export const getLeadAccounts = (search?: string): Promise<{ success: boolean; data: AccountRef[] }> =>

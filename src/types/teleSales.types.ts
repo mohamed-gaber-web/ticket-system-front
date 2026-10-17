@@ -852,3 +852,123 @@ export interface ImportLeadsResponse {
 // ── Stats ─────────────────────────────────────────────────────────────────────
 
 export type LeadStats = LeadStatsResponse['data'];
+
+// ── Dashboard (GET /leads/dashboard) ─────────────────────────────────────────
+// Every period number follows the from/to/team/agent filters; `previous` is the
+// same number of days immediately before `from`. Snapshot figures are "right now"
+// (not period-bound) but still follow the team/agent filters.
+
+export interface TeleSalesDashboardParams {
+  /** Cairo calendar day, YYYY-MM-DD (inclusive). Omitted → month to date. */
+  from?: string;
+  to?: string;
+  team?: string;
+  agent?: string;
+}
+
+/** A period figure and the same figure for the previous period. Null = not computable (e.g. no closed deals). */
+export interface DashboardKpi {
+  value: number | null;
+  previous: number | null;
+}
+
+export type DashboardKpiKey =
+  | 'newRecords'
+  | 'calls'
+  | 'callsAnswered'
+  | 'followUpsDone'
+  | 'convertedToLead'
+  | 'convertedToOpportunity'
+  | 'proposalsSent'
+  | 'won'
+  | 'wonValue'
+  | 'lost'
+  | 'winRate'
+  | 'avgDealSize'
+  | 'avgDaysToClose';
+
+export interface DashboardRef {
+  _id: string;
+  name: string;
+}
+
+export type DashboardFunnelKey = 'data' | 'lead' | 'opportunity' | 'proposal' | 'won';
+
+export interface DashboardFunnelStep {
+  key: DashboardFunnelKey;
+  label: string;
+  count: number;
+}
+
+export interface DashboardLeaderboardRow {
+  agent: DashboardRef;
+  calls: number;
+  callsAnswered: number;
+  followUpsDone: number;
+  convertedToLead: number;
+  convertedToOpportunity: number;
+  proposalsSent: number;
+  won: number;
+  wonValue: number;
+  lost: number;
+  winRate: number | null;
+}
+
+export interface DashboardTrendWeek {
+  /** Sunday of the week (Cairo), YYYY-MM-DD. */
+  weekStart: string;
+  newRecords: number;
+  won: number;
+  wonValue: number;
+}
+
+export interface DashboardFollowUpItem {
+  _id: string;
+  reminderDate: string;
+  followUpType: FollowUpType;
+  lead: { _id: string; name: string; status: LeadStatus };
+  owner: DashboardRef | null;
+}
+
+export interface DashboardStaleLead {
+  _id: string;
+  name: string;
+  status: LeadStatus;
+  stage: SalesType;
+  assignedTo: DashboardRef | null;
+  lastActivityAt: string;
+  daysIdle: number;
+}
+
+export interface DashboardActionList<T> {
+  total: number;
+  items: T[];
+}
+
+export interface TeleSalesDashboardData {
+  period: { from: string; to: string; prevFrom: string; prevTo: string };
+  filters: { team: string | null; agent: string | null; canFilterAgent: boolean; teams: DashboardRef[] };
+  kpis: Record<DashboardKpiKey, DashboardKpi>;
+  snapshot: {
+    followUpsOverdue: number;
+    pipelineValue: number;
+    openOpportunities: number;
+    byStatus: { status: LeadStatus; count: number }[];
+    byStage: Record<SalesType, number>;
+  };
+  funnel: DashboardFunnelStep[];
+  /** Null for plain agents. Sorted by wonValue desc. */
+  leaderboard: DashboardLeaderboardRow[] | null;
+  /** 12 weeks ending with the week of `to`, zero-filled. */
+  trend: DashboardTrendWeek[];
+  actions: {
+    overdueFollowUps: DashboardActionList<DashboardFollowUpItem>;
+    todayFollowUps: DashboardActionList<DashboardFollowUpItem>;
+    staleLeads: DashboardActionList<DashboardStaleLead>;
+  };
+}
+
+export interface TeleSalesDashboardResponse {
+  success: boolean;
+  data: TeleSalesDashboardData;
+}

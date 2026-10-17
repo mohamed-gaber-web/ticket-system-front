@@ -26,6 +26,7 @@ import workingHoursReducer from './slices/workingHoursSlice';
 import teleSalesLeadsReducer from './slices/teleSalesLeadsSlice';
 import teleSalesAgentsReducer from './slices/teleSalesAgentsSlice';
 import teleSalesTeamsReducer from './slices/teleSalesTeamsSlice';
+import teleSalesDashboardReducer from './slices/teleSalesDashboardSlice';
 import tasksReducer from './slices/tasksSlice';
 import taskCategoriesReducer from './slices/taskCategorySlice';
 import taskAttachmentsReducer from './slices/taskAttachmentSlice';
@@ -74,6 +75,7 @@ export const store = configureStore({
     teleSalesLeads: teleSalesLeadsReducer,
     teleSalesAgents: teleSalesAgentsReducer,
     teleSalesTeams: teleSalesTeamsReducer,
+    teleSalesDashboard: teleSalesDashboardReducer,
     tasks: tasksReducer,
     taskCategories: taskCategoriesReducer,
     taskAttachments: taskAttachmentsReducer,
