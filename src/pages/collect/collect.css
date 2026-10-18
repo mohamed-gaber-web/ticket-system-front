@@ -1,0 +1,23 @@
+/* Grow Path Collect — Arabic UI. Manrope (the app font) has no Arabic glyphs,
+   so the module uses IBM Plex Sans Arabic for text and Readex Pro for headings
+   (loaded in index.html); Latin text and digits fall back to Manrope's metrics
+   via the shared fallback stack. Colours stay the app's tokens. */
+.gpc {
+  font-family: "IBM Plex Sans Arabic", "Manrope", system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+.gpc .gpc-h,
+.gpc h1,
+.gpc h2,
+.gpc h3 {
+  font-family: "Readex Pro", "IBM Plex Sans Arabic", "Manrope", sans-serif;
+}
+/* LTR tokens inside Arabic sentences: numbers with %, e-mails, tax numbers. */
+.gpc .ltr {
+  direction: ltr;
+  unicode-bidi: isolate;
+  display: inline-block;
+}
+.gpc .pre {
+  white-space: pre-wrap;
+}

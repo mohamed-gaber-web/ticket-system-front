@@ -213,6 +213,13 @@ const VaultSettings = lazy(() => import("@/pages/vault/VaultSettings"));
 const CustomerSurveys = lazy(() => import("@/pages/marketing/CustomerSurveys"));
 const EmailCampaign = lazy(() => import("@/pages/marketing/EmailCampaign"));
 const SocialMedia = lazy(() => import("@/pages/marketing/SocialMedia"));
+const CollectIndex = lazy(() => import("@/pages/collect/CollectIndex"));
+const CollectAnalytics = lazy(() => import("@/pages/collect/CollectAnalytics"));
+const CollectBacklog = lazy(() => import("@/pages/collect/CollectBacklog"));
+const CollectCollection = lazy(() => import("@/pages/collect/CollectCollection"));
+const CollectSignatures = lazy(() => import("@/pages/collect/CollectSignatures"));
+const CollectReminders = lazy(() => import("@/pages/collect/CollectReminders"));
+const CollectSettings = lazy(() => import("@/pages/collect/CollectSettings"));
 const EditTaskCategory = lazy(() => import("@/pages/task-categories/editTaskCategory"));
 
 // Employee Requests Module
@@ -316,6 +323,17 @@ export const routes: RouteObject[] = [
       { path: "/hr/employees/view/:id", element: <EmployeeViewRoute><Lazy><ViewConsultant /></Lazy></EmployeeViewRoute> },
       // Tele-sales teams are managed by HR (admins always hold the hr module)
       { path: "/hr/teams", element: <ModuleRoute module="hr"><Lazy><TeleSalesTeams /></Lazy></ModuleRoute> },
+
+      // Grow Path Collect (HR menu) — contracts, collections, cheques, reminders.
+      // Needs the `collect` module; admin-only settings are read-only for others (the API enforces it).
+      { path: "/hr/collect", element: <ModuleRoute module="collect"><Lazy><CollectIndex /></Lazy></ModuleRoute> },
+      { path: "/hr/collect/analytics", element: <ModuleRoute module="collect"><Lazy><CollectAnalytics /></Lazy></ModuleRoute> },
+      { path: "/hr/collect/backlog", element: <ModuleRoute module="collect"><Lazy><CollectBacklog /></Lazy></ModuleRoute> },
+      { path: "/hr/collect/collection", element: <ModuleRoute module="collect"><Lazy><CollectCollection /></Lazy></ModuleRoute> },
+      { path: "/hr/collect/signatures", element: <ModuleRoute module="collect"><Lazy><CollectSignatures /></Lazy></ModuleRoute> },
+      { path: "/hr/collect/reminders", element: <ModuleRoute module="collect"><Lazy><CollectReminders /></Lazy></ModuleRoute> },
+      { path: "/hr/collect/settings", element: <Navigate to="/hr/collect/settings/general" replace /> },
+      { path: "/hr/collect/settings/:section", element: <ModuleRoute module="collect"><Lazy><CollectSettings /></Lazy></ModuleRoute> },
       { path: "/consultants", element: <Navigate to="/hr/employees" replace /> },
       { path: "/consultants/create", element: <Navigate to="/hr/employees/create" replace /> },
       { path: "/consultants/edit/:id", element: <LegacyEmployeeRedirect to={(id) => `/hr/employees/edit/${id}`} /> },
