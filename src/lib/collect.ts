@@ -50,12 +50,13 @@ const toDays = (s: string) => {
   const [y, m, d] = s.split('-').map(Number);
   return Math.round(Date.UTC(y, m - 1, d) / 86_400_000);
 };
-const fromDays = (n: number) => new Date(n * 86_400_000).toISOString().slice(0, 10);
+const fromDays = (n: number) => (Number.isFinite(n) ? new Date(n * 86_400_000).toISOString().slice(0, 10) : '');
 
-export const addDays = (s: string, n: number) => fromDays(toDays(s) + n);
-/** a − b in whole days. */
-export const diffDays = (a: string, b: string) => toDays(a) - toDays(b);
 export const isDate = (s: unknown): s is string => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s);
+/** '' when `s` isn't a date yet (e.g. "today" before the data has loaded). */
+export const addDays = (s: string, n: number) => (isDate(s) ? fromDays(toDays(s) + n) : '');
+/** a − b in whole days (0 when either isn't a date). */
+export const diffDays = (a: string, b: string) => (isDate(a) && isDate(b) ? toDays(a) - toDays(b) : 0);
 
 /** "11 أكتوبر 2026" */
 export const arDate = (s?: string | null) => {

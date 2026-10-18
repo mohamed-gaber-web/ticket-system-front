@@ -39,6 +39,9 @@ describe('formatting', () => {
     assert.equal(addDays('2026-10-11', 7), '2026-10-18');
     assert.equal(diffDays('2026-10-11', '2026-10-01'), 10);
     assert.equal(relDays('2026-10-08', '2026-10-11'), 'منذ 3 يوم');
+    // "today" not loaded yet must not throw (Invalid time value)
+    assert.equal(addDays('', 7), '');
+    assert.equal(diffDays('2026-10-11', ''), 0);
   });
 });
 
