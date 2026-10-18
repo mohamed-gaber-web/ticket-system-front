@@ -50,6 +50,10 @@ import {
   KeyRound,
   ScrollText,
   Settings2,
+  HandCoins,
+  BellRing,
+  FileStack,
+  Landmark,
 } from "lucide-react";
 import type { Access } from "@/redux/hooks/useAccess";
 import type { ModuleKey } from "@/types/auth.types";
@@ -362,6 +366,23 @@ const VAULT_GROUP: NavLink = {
 // consultant without the HR module still finds Performance here. The directory
 // and everyone's balances are for admins and HR only; others use My Balance and
 // their profile.
+// Grow Path Collect — contracts, collections, cheques and reminders (Arabic UI).
+// No role has the `collect` module by default; an admin ticks it per employee.
+const COLLECT_GROUP: NavLink = {
+  name: "Grow Path Collect",
+  icon: Landmark,
+  isSubGroup: true,
+  module: "collect",
+  children: [
+    { name: "Monthly Analysis", path: "/hr/collect/analytics", icon: BarChart2 },
+    { name: "Backlog (Contracts)", path: "/hr/collect/backlog", icon: FileStack },
+    { name: "Collection", path: "/hr/collect/collection", icon: HandCoins },
+    { name: "Signatures & Cheques", path: "/hr/collect/signatures", icon: FileSignature },
+    { name: "Reminders", path: "/hr/collect/reminders", icon: BellRing },
+    { name: "Settings", path: "/hr/collect/settings/general", icon: Settings2 },
+  ],
+};
+
 const HR_GROUP: NavLink = {
   name: "HR",
   icon: Contact,
@@ -372,6 +393,7 @@ const HR_GROUP: NavLink = {
     { name: "Approvals", path: "/employee-requests/approvals", icon: ClipboardCheck, minRole: "manager" },
     { name: "Balances", path: "/employee-requests/balances", icon: Wallet, module: "hr" },
     PERFORMANCE_GROUP,
+    COLLECT_GROUP,
   ],
 };
 

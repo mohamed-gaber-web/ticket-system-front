@@ -1,0 +1,8 @@
+/* Grow Path Collect — small helpers on top of the app's design system
+   (Manrope, MD3 tokens). Numbers line up in tables and tiles. */
+.gpc {
+  font-variant-numeric: tabular-nums;
+}
+.gpc .pre {
+  white-space: pre-wrap;
+}

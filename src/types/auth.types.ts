@@ -24,7 +24,7 @@ export type EmployeeRole =
 
 export type RoleFamily = 'admin' | 'consultant' | 'sales' | 'marketing' | 'developer';
 
-export type ModuleKey = 'tickets' | 'telesales' | 'tasks' | 'admin' | 'development' | 'hr' | 'marketing' | 'proposals' | 'vault';
+export type ModuleKey = 'tickets' | 'telesales' | 'tasks' | 'admin' | 'development' | 'hr' | 'marketing' | 'proposals' | 'vault' | 'collect';
 
 // Base User Interface
 export interface User {

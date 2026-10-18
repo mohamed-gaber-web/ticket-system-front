@@ -17,7 +17,7 @@ export const ROLES: EmployeeRole[] = [
   'developer_manager',
 ];
 
-export const MODULES: ModuleKey[] = ['tickets', 'telesales', 'tasks', 'admin', 'development', 'hr', 'marketing', 'proposals', 'vault'];
+export const MODULES: ModuleKey[] = ['tickets', 'telesales', 'tasks', 'admin', 'development', 'hr', 'marketing', 'proposals', 'vault', 'collect'];
 
 export const ROLE_DEFAULT_MODULES: Record<EmployeeRole, ModuleKey[]> = {
   admin: MODULES,
@@ -51,6 +51,7 @@ export const MODULE_LABELS: Record<ModuleKey, string> = {
   marketing: 'Marketing',
   proposals: 'Proposals',
   vault: 'Credentials Vault',
+  collect: 'Collections (Grow Path Collect)',
 };
 
 export const isEmployeeRole = (role: unknown): role is EmployeeRole =>
@@ -100,7 +101,7 @@ export const effectiveModules = (
  * rule as the API's holdsPrivilegedModule.
  */
 export const holdsPrivilegedModule = (roles: string | readonly string[] | null | undefined, modules?: string[] | null): boolean =>
-  effectiveModules(roles, modules).some((m) => m === 'hr' || m === 'admin' || m === 'vault');
+  effectiveModules(roles, modules).some((m) => m === 'hr' || m === 'admin' || m === 'vault' || m === 'collect');
 
 /** Role labels for a list of roles, primary first: "Sales Manager, Developer". */
 export const rolesLabel = (roles: readonly string[]): string => roles.map(roleLabel).filter(Boolean).join(', ');

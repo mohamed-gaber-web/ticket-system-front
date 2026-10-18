@@ -138,3 +138,25 @@ Sidebar group "Credentials Vault" (`VAULT_GROUP`): `/vault` (dashboard), `/vault
 - **Attachments:** the form's Attachments section (`components/vault/VaultAttachments.tsx` — `VaultAttachmentsEditor`, after Governance) uploads each picked/dropped file at once to `POST /vault/attachments` (per-file progress, remove; max 10 files, 10 MB, no executables — `attachmentProblem` in `lib/vault.ts` mirrors the server) and the save sends the full list as `attachments: [{ fileId }]`. Save waits for uploads; when an edit can't load the stored files, `attachments` is left out so nothing is removed. The list sends `attachmentCount` (paperclip chip on the card), the detail sends `attachments`; a card's Edit fetches the detail for them. The details modal's Download is an authed blob fetch (`downloadVaultAttachment` → `saveBlob`, logged as `download`) — never a plain link. Attachments are never emailed by Send.
 - **State:** `vaultLookupsSlice` (lookups by type + clients + employees + departments, loaded by `useVaultSetup`), `vaultEntriesSlice` (Accounts page; filters live in the URL query), `vaultSendSlice` (send draft — `setSendDraftEntries` from a card's Send button — and the masked preview), `vaultReportsSlice` (send log + dashboard). API: `src/api/vaultApi.ts`; types `src/types/vault.types.ts`; helpers (password generator, due/age chips) `src/lib/vault.ts`.
 - **UI:** shared pieces in `components/vault/VaultUi.tsx` (`Chip`, `MonoText` — technical values LTR monospace, `FieldWithHelp`, `VaultSelect`, two-step `ConfirmButton`, `MissingBox`). Every vault screen is wrapped in `VaultLayout` (title + sub-tabs).
+
+## Grow Path Collect (module `collect`, HR menu)
+
+Contracts, installments, collections, cheques, signature tracking and payment reminders for Grow Path's own customer contracts (spec: `GROW_PATH_COLLECT_SPEC.md`; API `/api/collect`). The UI is English and left-to-right, in the app's design system (Manrope, MD3 tokens). Every screen is wrapped in `components/collect/CollectLayout` (the `.gpc` scope in `pages/collect/collect.css` only adds tabular numbers and a `.pre` helper).
+
+- **Access:** no role has `collect` by default; an admin ticks it per employee, and holding it makes the account privileged (`holdsPrivilegedModule`). The sidebar shows the "Grow Path Collect" sub-group under HR (`COLLECT_GROUP`). Settings, types, clauses, rules, templates and data are editable by admins only (`meta.canAdmin`); customers are editable by every module user.
+- **Routes:**
+  - `/hr/collect` reopens the last tab (`CollectIndex`, localStorage).
+  - Tabs: `/analytics`, `/backlog`, `/collection` (`?customer=`), `/signatures`, `/reminders`, `/settings/:section` (general, document, types, customers, rules, templates, data; components in `components/collect/settings/`).
+- **State:** `redux/slices/collectSlice.ts` holds `meta` (today, simulated flag, rates, types, tab badges, canAdmin), the shared filters (year, type, customer, segments), the open drawer `drawerId` and the editor `editorId` (`'new'` or an id). After every write dispatch `collectChanged()`: it refetches meta (badges) and bumps `dataVersion`, which every page and the drawer include in their load effects. Pages keep their own data in component state.
+- **Shared pieces:**
+  - `components/collect/CollectUi.tsx`: tone `Chip`, `Panel`, `Kpi`, `Seg`, `Field`/`INPUT`/`TEXTAREA`/`Select`, the two-click `ConfirmButton` ("Click to confirm", 3 s), the `Modal` on the app's Dialog.
+  - `CollectDialogs.tsx`: payment, renew, signature move, follow-up, cheque.
+  - `ContractDrawer.tsx`: slides from the inline-end side.
+  - `ContractEditor.tsx`.
+  - `ClauseEditorDialog.tsx`: per-contract clauses, versioned.
+  - `ContractPdfDialog.tsx`.
+- **Contract PDF:** printed by the browser, with no server PDF. `lib/collectDocument.ts` `buildContractHtml` builds the whole English contract (§7.3 structure: "Clause One: …", parties, preamble, scope, term, value with the amount in words and VAT table, payment schedule, special terms, general clauses, signatures; Open Sans) as an HTML string, escaping all user text. The letterhead is `position: fixed` so Chrome repeats it on every page; repeating table head/foot spacers keep the text clear of it; "Contract No. … · Page X of Y" is an `@page` margin box (Chrome 131+). The dialog previews it in an `iframe srcDoc` and prints it (the user picks "Save as PDF"). Default artwork is `public/collect/gp-logo.png` / `gp-mark.png`; Settings may override both.
+- **Pure helpers (tested by `npm test`):**
+  - `lib/collect.ts`: money `1,250,000 EGP`, compact `1.25M` / `350K`, dates `11 October 2026` (`fmtDate`, `fmtMonth`, `relDays`), labels, placeholder tokens (`{{customer}}`, `{{due_date}}`… shared with the backend).
+  - `lib/collectAmountWords.ts`: amounts in English words (`amountInWords` → "Four Million Two Hundred Thousand Egyptian Pounds only").
+  - `lib/collectCalc.ts`: the editor's live installment generation. It mirrors the backend's `utils/collect/calc.js`, so change both.

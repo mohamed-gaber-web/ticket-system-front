@@ -1,0 +1,163 @@
+import { useState } from 'react';
+import { toast } from 'sonner';
+import { ArrowDown, ArrowUp, Loader2, Plus, Save } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useAppDispatch } from '@/redux/hooks/hooks';
+import { collectChanged } from '@/redux/slices/collectSlice';
+import { putCollectSettings, resetCollectClauses } from '@/api/collectApi';
+import { DOC_PLACEHOLDERS, apiError } from '@/lib/collect';
+import { ConfirmButton, INPUT, Panel, TEXTAREA, TypeDot } from '@/components/collect/CollectUi';
+import type { Clause, CollectSettings, ContractType } from '@/types/collect.types';
+
+const isAll = (c: Clause) => !c.appliesTo?.length || c.appliesTo.includes('ALL');
+
+/** The general clause library (printed in every contract of the ticked types). */
+export function ClauseLibraryEditor({
+  initial,
+  types,
+  readOnly,
+  onSaved,
+}: {
+  initial: Clause[];
+  types: ContractType[];
+  readOnly: boolean;
+  onSaved: (s: CollectSettings) => void;
+}) {
+  const dispatch = useAppDispatch();
+  const [list, setList] = useState<Clause[]>(() => initial.map((c) => ({ ...c, appliesTo: c.appliesTo ?? ['ALL'] })));
+  const [saving, setSaving] = useState(false);
+  const [dirty, setDirty] = useState(false);
+
+  const update = (next: Clause[]) => {
+    setList(next);
+    setDirty(true);
+  };
+  const patch = (i: number, p: Partial<Clause>) => update(list.map((c, k) => (k === i ? { ...c, ...p } : c)));
+  const move = (i: number, d: number) => {
+    const j = i + d;
+    if (j < 0 || j >= list.length) return;
+    const next = [...list];
+    [next[i], next[j]] = [next[j], next[i]];
+    update(next);
+  };
+
+  const keysOf = (c: Clause) => (isAll(c) ? types.map((t) => t.key) : c.appliesTo ?? []);
+  const toggleType = (i: number, key: string) => {
+    const cur = new Set(keysOf(list[i]));
+    if (cur.has(key)) cur.delete(key);
+    else cur.add(key);
+    const all = types.every((t) => cur.has(t.key));
+    patch(i, { appliesTo: all ? ['ALL'] : [...cur] });
+  };
+
+  const save = async () => {
+    if (list.some((c) => !c.title.trim())) {
+      toast.error('Enter a title for every clause');
+      return;
+    }
+    if (list.some((c) => !isAll(c) && !(c.appliesTo ?? []).length)) {
+      toast.error('Every clause must apply to at least one contract type');
+      return;
+    }
+    setSaving(true);
+    try {
+      const r = await putCollectSettings({ clauses: list.map(({ title, body, appliesTo }) => ({ title, body, appliesTo })) });
+      onSaved(r.data);
+      setDirty(false);
+      toast.success('General clauses saved');
+      void dispatch(collectChanged());
+    } catch (e) {
+      toast.error(apiError(e, 'Could not save the clauses'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const reset = async () => {
+    try {
+      const r = await resetCollectClauses();
+      onSaved(r.data);
+      setList(r.data.clauses.map((c) => ({ ...c, appliesTo: c.appliesTo ?? ['ALL'] })));
+      setDirty(false);
+      toast.success(r.message ?? 'Default clauses restored');
+      void dispatch(collectChanged());
+    } catch (e) {
+      toast.error(apiError(e, 'Could not restore the clauses'));
+    }
+  };
+
+  return (
+    <Panel
+      title={`General clauses (${list.length})`}
+      hint={
+        <>
+          Printed, in order, in every contract of the selected types. A multi-line clause is numbered as sub-items. Available placeholders:{' '}
+          {[...DOC_PLACEHOLDERS, 'customer', 'contract_no', 'contract', 'contract_value'].map((p) => `{{${p}}}`).join(' · ')}. Editing
+          the general clauses never changes contracts with customized clauses.
+        </>
+      }
+      action={
+        !readOnly && (
+          <>
+            <ConfirmButton onConfirm={reset} label="Restore default clauses" icon={false} variant="outline" />
+            <Button onClick={() => void save()} disabled={saving || !dirty}>
+              {saving ? <Loader2 className="animate-spin" /> : <Save />} Save clauses
+            </Button>
+          </>
+        )
+      }
+    >
+      <ol className="space-y-3">
+        {list.map((c, i) => (
+          <li key={c._id ?? `new-${i}`} className="space-y-2 rounded-[0.75rem] bg-surface-container-low p-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="w-7 shrink-0 text-center text-sm font-bold tabular-nums text-on-surface-variant">{i + 1}</span>
+              <input
+                aria-label={`Clause ${i + 1} title`}
+                className={`${INPUT} flex-1 basis-56 font-semibold`}
+                value={c.title}
+                disabled={readOnly}
+                onChange={(e) => patch(i, { title: e.target.value })}
+              />
+              {!readOnly && (
+                <div className="flex gap-1">
+                  <Button type="button" size="icon-sm" variant="ghost" aria-label="Move up" disabled={i === 0} onClick={() => move(i, -1)}>
+                    <ArrowUp />
+                  </Button>
+                  <Button type="button" size="icon-sm" variant="ghost" aria-label="Move down" disabled={i === list.length - 1} onClick={() => move(i, 1)}>
+                    <ArrowDown />
+                  </Button>
+                  <ConfirmButton onConfirm={() => update(list.filter((_, k) => k !== i))} />
+                </div>
+              )}
+            </div>
+            <textarea
+              aria-label={`Clause ${i + 1} text`}
+              rows={Math.min(10, Math.max(3, c.body.split('\n').length + 1))}
+              className={TEXTAREA}
+              value={c.body}
+              disabled={readOnly}
+              onChange={(e) => patch(i, { body: e.target.value })}
+            />
+            <fieldset disabled={readOnly} className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px]">
+              <legend className="sr-only">Applies to</legend>
+              <span className="text-xs font-semibold text-on-surface-variant">Applies to:</span>
+              {types.map((t) => (
+                <label key={t.key} className="inline-flex cursor-pointer items-center gap-1.5">
+                  <input type="checkbox" className="accent-primary" checked={keysOf(c).includes(t.key)} onChange={() => toggleType(i, t.key)} />
+                  <TypeDot color={t.color} /> {t.name}
+                </label>
+              ))}
+              {isAll(c) && <span className="text-[11px] text-on-surface-variant">(all types)</span>}
+            </fieldset>
+          </li>
+        ))}
+      </ol>
+      {!readOnly && (
+        <Button type="button" variant="outline" onClick={() => update([...list, { title: 'New clause', body: '', appliesTo: ['ALL'] }])}>
+          <Plus /> New clause
+        </Button>
+      )}
+    </Panel>
+  );
+}
