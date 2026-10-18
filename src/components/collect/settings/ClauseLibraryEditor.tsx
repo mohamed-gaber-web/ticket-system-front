@@ -109,7 +109,7 @@ export function ClauseLibraryEditor({
     >
       <ol className="space-y-3">
         {list.map((c, i) => (
-          <li key={i} className="space-y-2 rounded-[0.75rem] bg-surface-container-low p-3">
+          <li key={c._id ?? `new-${i}`} className="space-y-2 rounded-[0.75rem] bg-surface-container-low p-3">
             <div className="flex flex-wrap items-center gap-2">
               <span className="w-7 shrink-0 text-center text-sm font-bold tabular-nums text-on-surface-variant">{i + 1}</span>
               <input

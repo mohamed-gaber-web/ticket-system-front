@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Loader2, Pencil, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useAppDispatch } from '@/redux/hooks/hooks';
+import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { collectChanged } from '@/redux/slices/collectSlice';
 import { createCollectCustomer, getCollectCustomers, removeCollectCustomer, updateCollectCustomer } from '@/api/collectApi';
 import { CURRENCIES, CURRENCY_LABELS, apiError } from '@/lib/collect';
@@ -58,6 +58,9 @@ const FIELDS: { key: keyof CustomerInput; label: string; ltr?: boolean; wide?: b
 function CustomerDialog({ open, customer, onClose, onSaved }: { open: boolean; customer: Customer | null; onClose: () => void; onSaved: () => void }) {
   const [f, setF] = useState<CustomerInput>(blank);
   const [saving, setSaving] = useState(false);
+  // The name is the ticketing company's own; only admins rename it (the API enforces it).
+  const canAdmin = useAppSelector((s) => s.collect.meta?.canAdmin ?? false);
+  const nameLocked = !!customer && !canAdmin;
 
   useEffect(() => {
     if (open) setF(customer ? inputOf(customer) : blank());
@@ -103,8 +106,13 @@ function CustomerDialog({ open, customer, onClose, onSaved }: { open: boolean; c
       }
     >
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="اسم العميل" htmlFor="cu-name" required hint="لو الشركة موجودة في نظام التذاكر بنفس الاسم تُضاف لقائمة التحصيل">
-          <input id="cu-name" className={INPUT} value={f.name} onChange={(e) => set('name', e.target.value)} />
+        <Field
+          label="اسم العميل"
+          htmlFor="cu-name"
+          required
+          hint={nameLocked ? 'تغيير اسم الشركة متاح للمدير فقط' : 'لو الشركة موجودة في نظام التذاكر بنفس الاسم تُضاف لقائمة التحصيل'}
+        >
+          <input id="cu-name" className={INPUT} value={f.name} disabled={nameLocked} onChange={(e) => set('name', e.target.value)} />
         </Field>
         <Field label="العملة" htmlFor="cu-cur">
           <Select id="cu-cur" value={f.currency} onChange={(e) => set('currency', e.target.value as Currency)}>

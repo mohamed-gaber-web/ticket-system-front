@@ -140,6 +140,9 @@ export function ContractDrawer() {
   const [pdf, setPdf] = useState(false);
   const [cheque, setCheque] = useState<{ open: boolean; cheque: Cheque | null; kind?: 'guarantee' | 'payment' }>({ open: false, cheque: null });
   const panelRef = useRef<HTMLDivElement>(null);
+  // Set when the drawer itself just loaded the fresh contract and then bumped
+  // dataVersion: the reload that bump would trigger is skipped once.
+  const skipReload = useRef(false);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -157,6 +160,10 @@ export function ContractDrawer() {
       return;
     }
     if (c && c.id !== id) setC(null);
+    if (skipReload.current && c?.id === id) {
+      skipReload.current = false;
+      return;
+    }
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reload on id / external writes only
   }, [id, dataVersion]);
@@ -178,6 +185,7 @@ export function ContractDrawer() {
   const updated = (d: ContractDetail) => {
     setC(d);
     if (d.id !== id) dispatch(openDrawer(d.id));
+    else skipReload.current = true;
     void dispatch(collectChanged());
   };
   const today = c?.today ?? '';
@@ -219,6 +227,7 @@ export function ContractDrawer() {
       if (res.returned) toast.warning(res.message ?? 'شيك مرتجع');
       else toast.success(res.message ?? 'تم');
       await load();
+      skipReload.current = true;
       void dispatch(collectChanged());
     } catch (e) {
       toast.error(apiError(e, 'تعذر تحديث الشيك'));

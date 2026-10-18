@@ -89,9 +89,15 @@ export function ContractPdfDialog({ contractId, open, onClose }: { contractId: s
       ) : !html ? (
         <Loading rows={6} />
       ) : (
+        // srcDoc documents are same-origin with the app (they could read the
+        // token in localStorage), so the frame never runs scripts: the document
+        // has none, and `sandbox` without allow-scripts guarantees it even if
+        // escaping were ever missed. allow-same-origin lets us wait for its
+        // fonts/images; allow-modals lets us call print() on it.
         <iframe
           ref={frame}
           title="معاينة العقد"
+          sandbox="allow-same-origin allow-modals"
           srcDoc={html}
           className="h-[70vh] w-full rounded-[0.75rem] border border-outline-variant/40 bg-[#E6E9EE]"
         />
