@@ -46,6 +46,7 @@ import vaultEntriesReducer from './slices/vaultEntriesSlice';
 import vaultSendReducer from './slices/vaultSendSlice';
 import vaultReportsReducer from './slices/vaultReportsSlice';
 import collectReducer from './slices/collectSlice';
+import socialReducer from './slices/socialSlice';
 
 export const store = configureStore({
   reducer: {
@@ -96,6 +97,7 @@ export const store = configureStore({
     vaultSend: vaultSendReducer,
     vaultReports: vaultReportsReducer,
     collect: collectReducer,
+    social: socialReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

@@ -320,7 +320,7 @@ const DEVELOPMENT_GROUP: NavLink = {
 };
 
 // Marketing — customer satisfaction surveys (CSP), the email campaign and
-// (coming soon) social media.
+// Social Media (Social Pulse: results per post, pulled monthly).
 const MARKETING_GROUP: NavLink = {
   name: "Marketing",
   icon: Megaphone,
