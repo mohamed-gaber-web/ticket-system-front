@@ -110,14 +110,15 @@ export default function SocialPostForm() {
 
   // Existing post: fill the form once per post (later refetches keep the user's edits).
   useEffect(() => {
-    if (!detail || loadedFor.current === detail.post.id) return;
+    // Wait for meta too: the default pull month is the office (Cairo) month, not the browser's UTC one.
+    if (!detail || !meta || loadedFor.current === detail.post.id) return;
     loadedFor.current = detail.post.id;
     const p = detail.post;
     setForm(metaFrom(p));
     const m = p.latestMonth && p.latestMonth > currentMonth ? p.latestMonth : currentMonth;
     setMonthValue(m);
     setInputs(inputsFrom(snapshotAt(p.snapshots, m) ?? latestUpTo(p.snapshots, m)));
-  }, [detail, currentMonth]);
+  }, [detail, meta, currentMonth]);
 
   const snaps = detail?.post.snapshots ?? [];
   const existingMonth = !isNew && !!month && snaps.some((s) => s.month === month);

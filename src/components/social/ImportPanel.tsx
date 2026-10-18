@@ -38,6 +38,7 @@ import {
 import type { ImportMode, ImportPreview, ImportRow } from '@/types/social.types';
 
 const MAX_ROWS = 5000;
+const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const PREVIEW_LIMIT = 300;
 const CHUNK = 250;
 
@@ -124,6 +125,12 @@ export function ImportPanel({ month, onImported }: { month: string; onImported: 
   const onFile = async (file: File | undefined) => {
     if (!file) return;
     setLastMessage(null);
+    // Parsing happens in the browser: refuse files big enough to freeze the tab.
+    if (file.size > MAX_FILE_BYTES) {
+      reset();
+      setReadError(`This file is ${(file.size / 1024 / 1024).toFixed(1)} MB. Upload a file of up to ${MAX_FILE_BYTES / 1024 / 1024} MB.`);
+      return;
+    }
     try {
       const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array', cellDates: true });
       if (workbook.SheetNames.length === 0) throw new Error('empty');

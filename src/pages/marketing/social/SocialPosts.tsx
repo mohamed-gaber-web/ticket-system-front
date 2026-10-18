@@ -14,7 +14,7 @@ import { SOCIAL_BASE, SocialLayout } from '@/components/social/SocialLayout';
 import { BAD_TEXT, FilterBar, GOOD_TEXT, Pill, PlatformPill, TableBox, TD, TD_NUM, TH, ViewBar } from '@/components/social/SocialUi';
 import { ConfirmButton, EmptyState, ErrorState } from '@/components/vault/VaultUi';
 import { saveBlob } from '@/lib/vault';
-import { apiError, fmtDay, fmtNumber, fmtPercent, MAX_COMPARE, monthLabel } from '@/lib/socialPulse';
+import { apiError, fmtDay, fmtNumber, fmtPercent, MAX_COMPARE, monthLabel, safeHref } from '@/lib/socialPulse';
 import type { SocialPostRow } from '@/types/social.types';
 
 const COLUMNS: { key: string; label: string; num?: boolean }[] = [
@@ -209,9 +209,9 @@ export default function SocialPosts() {
                     </td>
                     <td className={cn(TD, 'whitespace-nowrap tabular-nums text-on-surface-variant')}>{fmtDay(r.publishDate)}</td>
                     <td className={cn(TD, 'min-w-[16rem] max-w-[24rem]')}>
-                      {r.link ? (
+                      {safeHref(r.link) ? (
                         <a
-                          href={r.link}
+                          href={safeHref(r.link)!}
                           target="_blank"
                           rel="noopener noreferrer"
                           dir="auto"

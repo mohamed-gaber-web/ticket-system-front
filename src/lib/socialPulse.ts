@@ -158,5 +158,8 @@ export const monthOf = (date?: string | null) => String(date ?? '').slice(0, 7);
 
 export const categoryLabel = (c: string) => (c ? c : '—');
 
+/** The link as an href only when it is http(s) — never javascript:/data: from an import. */
+export const safeHref = (link?: string | null) => (link && /^https?:\/\//i.test(link.trim()) ? link.trim() : null);
+
 export const apiError = (e: unknown, fallback: string): string =>
   (e as { response?: { data?: { message?: string } } })?.response?.data?.message || fallback;
