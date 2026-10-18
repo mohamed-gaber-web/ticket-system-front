@@ -26,6 +26,8 @@ export interface Access {
   isCrossTeam: boolean;
   /** Admins and the marketing manager: run the marketing module's settings. */
   canManageMarketing: boolean;
+  /** Admins and the marketing roles: record Social Pulse results (others with the module only read). */
+  canWriteSocial: boolean;
   /** Admins and sales managers: approve over-limit proposal discounts and edit the proposal price list. */
   canManageProposals: boolean;
   /** Admins and the development manager: see and shape every development board. */
@@ -76,6 +78,7 @@ export const useAccess = (): Access => {
       isMarketing: families.includes('marketing'),
       isCrossTeam: isAdmin,
       canManageMarketing: isAdmin || roles.includes('marketing_manager'),
+      canWriteSocial: isAdmin || families.includes('marketing'),
       canManageProposals: isAdmin || roles.includes('sales_manager'),
       seesAllBoards: isAdmin || roles.includes('developer_manager'),
       isHr: resolved.includes('hr'),

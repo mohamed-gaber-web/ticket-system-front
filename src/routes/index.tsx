@@ -212,7 +212,11 @@ const VaultSettings = lazy(() => import("@/pages/vault/VaultSettings"));
 // Marketing Module
 const CustomerSurveys = lazy(() => import("@/pages/marketing/CustomerSurveys"));
 const EmailCampaign = lazy(() => import("@/pages/marketing/EmailCampaign"));
-const SocialMedia = lazy(() => import("@/pages/marketing/SocialMedia"));
+const SocialDashboard = lazy(() => import("@/pages/marketing/social/SocialDashboard"));
+const SocialPosts = lazy(() => import("@/pages/marketing/social/SocialPosts"));
+const SocialMonthly = lazy(() => import("@/pages/marketing/social/SocialMonthly"));
+const SocialPostForm = lazy(() => import("@/pages/marketing/social/SocialPostForm"));
+const SocialCompare = lazy(() => import("@/pages/marketing/social/SocialCompare"));
 const EditTaskCategory = lazy(() => import("@/pages/task-categories/editTaskCategory"));
 
 // Employee Requests Module
@@ -430,7 +434,14 @@ export const routes: RouteObject[] = [
       { path: "/marketing", element: <Navigate to="/marketing/csp" replace /> },
       { path: "/marketing/csp", element: <ModuleRoute module="marketing"><Lazy><CustomerSurveys /></Lazy></ModuleRoute> },
       { path: "/marketing/email-campaign", element: <ModuleRoute module="marketing"><Lazy><EmailCampaign /></Lazy></ModuleRoute> },
-      { path: "/marketing/social-media", element: <ModuleRoute module="marketing"><Lazy><SocialMedia /></Lazy></ModuleRoute> },
+      // Social Pulse — everyone with the module reads; the write screens send
+      // read-only users back (useAccess().canWriteSocial), and the API answers 403.
+      { path: "/marketing/social-media", element: <ModuleRoute module="marketing"><Lazy><SocialDashboard /></Lazy></ModuleRoute> },
+      { path: "/marketing/social-media/posts", element: <ModuleRoute module="marketing"><Lazy><SocialPosts /></Lazy></ModuleRoute> },
+      { path: "/marketing/social-media/posts/new", element: <ModuleRoute module="marketing"><Lazy><SocialPostForm /></Lazy></ModuleRoute> },
+      { path: "/marketing/social-media/posts/:id", element: <ModuleRoute module="marketing"><Lazy><SocialPostForm /></Lazy></ModuleRoute> },
+      { path: "/marketing/social-media/monthly", element: <ModuleRoute module="marketing"><Lazy><SocialMonthly /></Lazy></ModuleRoute> },
+      { path: "/marketing/social-media/compare", element: <ModuleRoute module="marketing"><Lazy><SocialCompare /></Lazy></ModuleRoute> },
       { path: "/task-categories/edit/:id", element: <ManagerRoute><Lazy><EditTaskCategory /></Lazy></ManagerRoute> },
 
       // Employee Requests Module — every employee submits; managers and admins review
