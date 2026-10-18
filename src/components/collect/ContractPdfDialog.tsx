@@ -9,7 +9,7 @@ import { ErrorState, Loading, Modal } from '@/components/collect/CollectUi';
 
 /**
  * Contract PDF (§7): a preview of the printable contract in an iframe, and
- * "تنزيل PDF", which prints that iframe — the user picks "Save as PDF" in
+ * "Download PDF", which prints that iframe — the user picks "Save as PDF" in
  * Chrome's print dialog (no server-side PDF; Chrome does the page breaks).
  */
 export function ContractPdfDialog({ contractId, open, onClose }: { contractId: string | null; open: boolean; onClose: () => void }) {
@@ -31,7 +31,7 @@ export function ContractPdfDialog({ contractId, open, onClose }: { contractId: s
         setFileName(contractPdfFileName(c));
         setHtml(buildContractHtml(c, s, c.today, window.location.origin));
       })
-      .catch((e) => alive && setError(apiError(e, 'تعذر تجهيز العقد للطباعة')));
+      .catch((e) => alive && setError(apiError(e, 'Could not prepare the contract for printing')));
     return () => {
       alive = false;
     };
@@ -61,7 +61,7 @@ export function ContractPdfDialog({ contractId, open, onClose }: { contractId: s
       w.focus();
       w.print();
     } catch {
-      toast.error('تعذر فتح نافذة الطباعة');
+      toast.error('Could not open the print dialog');
     } finally {
       document.title = prevTitle;
       setPrinting(false);
@@ -73,14 +73,14 @@ export function ContractPdfDialog({ contractId, open, onClose }: { contractId: s
       open={open}
       onClose={onClose}
       xwide
-      title="PDF العقد للطباعة"
+      title="Contract PDF"
       description={fileName || undefined}
       footer={
         <>
           <Button type="button" onClick={() => void print()} disabled={!html || printing}>
-            {printing ? <Loader2 className="animate-spin" /> : <FileDown />} تنزيل PDF
+            {printing ? <Loader2 className="animate-spin" /> : <FileDown />} Download PDF
           </Button>
-          <span className="text-xs text-on-surface-variant">اختر «حفظ بتنسيق PDF» في نافذة الطباعة</span>
+          <span className="text-xs text-on-surface-variant">Choose “Save as PDF” in the print dialog</span>
         </>
       }
     >
@@ -96,7 +96,7 @@ export function ContractPdfDialog({ contractId, open, onClose }: { contractId: s
         // fonts/images; allow-modals lets us call print() on it.
         <iframe
           ref={frame}
-          title="معاينة العقد"
+          title="Contract preview"
           sandbox="allow-same-origin allow-modals"
           srcDoc={html}
           className="h-[70vh] w-full rounded-[0.75rem] border border-outline-variant/40 bg-[#E6E9EE]"

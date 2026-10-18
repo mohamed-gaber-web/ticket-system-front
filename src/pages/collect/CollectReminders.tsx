@@ -6,47 +6,47 @@ import { Button } from '@/components/ui/button';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { collectChanged, openDrawer } from '@/redux/slices/collectSlice';
 import { getOutbox, getReminderLog, markRemindersSent } from '@/api/collectApi';
-import { RECIPIENT_LABELS, TRIGGER_LABELS, apiError, arDate } from '@/lib/collect';
+import { RECIPIENT_LABELS, TRIGGER_LABELS, apiError, fmtDate, days } from '@/lib/collect';
 import { COLLECT_BASE, CollectLayout } from '@/components/collect/CollectLayout';
 import { Chip, ConfirmButton, EmptyState, ErrorState, Loading, Panel, Warning } from '@/components/collect/CollectUi';
 import type { Mail, Outbox, SentLog } from '@/types/collect.types';
 
-// Grow Path Collect — التذكيرات (§6, §9.8): today's outbox as mail cards, the
+// Grow Path Collect — reminders (§6, §9.8): today's outbox as mail cards, the
 // mails scheduled within 30 days, and the send log.
 
 function MailCard({ m, onSent, onOpen }: { m: Mail; onSent: (m: Mail) => void; onOpen: (id: string) => void }) {
   const copy = async () => {
-    const text = `إلى: ${m.toText}\nالموضوع: ${m.subject}\n\n${m.body}`;
+    const text = `To: ${m.toText}\nSubject: ${m.subject}\n\n${m.body}`;
     try {
       await navigator.clipboard.writeText(text);
-      toast.success('تم نسخ النص');
+      toast.success('Text copied');
     } catch {
-      toast.error('تعذر النسخ — انسخ النص يدويًا من البطاقة');
+      toast.error('Could not copy — copy the text from the card by hand');
     }
   };
   return (
     <article className="flex min-w-0 flex-col gap-2 rounded-[0.75rem] bg-surface-container-low p-3">
       <div className="flex flex-wrap gap-1">
         <Chip tone={m.trigger === 'overdue' ? 'crit' : m.trigger === 'renewal' ? 'info' : 'warn'}>
-          {TRIGGER_LABELS[m.trigger]} · {m.days} يوم
+          {TRIGGER_LABELS[m.trigger]} · {days(m.days)}
         </Chip>
         <Chip>{RECIPIENT_LABELS[m.recipient]}</Chip>
-        <Chip>{arDate(m.triggerDate)}</Chip>
+        <Chip>{fmtDate(m.triggerDate)}</Chip>
       </div>
       <p className="text-xs text-on-surface-variant">
-        إلى: <span className={m.missingEmail ? 'font-semibold text-error' : 'text-on-surface'}>{m.toText}</span>
+        To: <span className={m.missingEmail ? 'font-semibold text-error' : 'text-on-surface'}>{m.toText}</span>
       </p>
       <p className="font-semibold text-on-surface">{m.subject}</p>
       <p className="pre max-h-44 overflow-y-auto rounded-md bg-surface-container-lowest p-2 text-[13px] leading-relaxed text-on-surface">{m.body}</p>
       <div className="mt-auto flex flex-wrap gap-2">
         <Button size="sm" onClick={() => onSent(m)}>
-          <Check /> تم الإرسال
+          <Check /> Mark as sent
         </Button>
         <Button size="sm" variant="outline" onClick={() => void copy()}>
-          <Copy /> نسخ النص
+          <Copy /> Copy text
         </Button>
         <Button size="sm" variant="ghost" onClick={() => onOpen(m.contractId)}>
-          <ExternalLink /> فتح العقد
+          <ExternalLink /> Open contract
         </Button>
       </div>
     </article>
@@ -67,7 +67,7 @@ export default function CollectReminders() {
       setBox(o);
       setLog(l);
     } catch (e) {
-      setError(apiError(e, 'تعذر تحميل التذكيرات'));
+      setError(apiError(e, 'Could not load the reminders'));
     }
   }, []);
 
@@ -78,10 +78,10 @@ export default function CollectReminders() {
   const mark = async (keys: string[]) => {
     try {
       const res = await markRemindersSent(keys);
-      toast.success(res.message ?? 'تم');
+      toast.success(res.message ?? 'Done');
       void dispatch(collectChanged());
     } catch (e) {
-      toast.error(apiError(e, 'تعذر تسجيل الإرسال'));
+      toast.error(apiError(e, 'Could not mark as sent'));
     }
   };
 
@@ -93,13 +93,13 @@ export default function CollectReminders() {
         <Loading rows={6} />
       ) : (
         <>
-          {box.mode === 'auto' && !box.smtpConfigured && <Warning>الإرسال التلقائي مفعّل لكن البريد غير مُعد على الخادم — التذكيرات تعمل يدويًا من صندوق الصادر.</Warning>}
+          {box.mode === 'auto' && !box.smtpConfigured && <Warning>Auto mode is on, but e-mail isn’t configured on the server — reminders work manually from the outbox.</Warning>}
           {!box.internalEmailSet && (
             <Warning>
-              البريد الداخلي غير محدد — التذكيرات الداخلية ستظهر بدون عنوان.{' '}
+              The internal e-mail address isn’t set — internal reminders will show without an address.{' '}
               {meta?.canAdmin && (
                 <Link className="font-semibold underline" to={`${COLLECT_BASE}/settings/general`}>
-                  ضبط الإعدادات
+                  Open settings
                 </Link>
               )}
             </Warning>
@@ -107,19 +107,19 @@ export default function CollectReminders() {
           <Panel
             title={
               <>
-                صندوق الصادر — {arDate(box.today)} <span className="text-on-surface-variant">({box.outbox.length})</span>
+                Outbox — {fmtDate(box.today)} <span className="text-on-surface-variant">({box.outbox.length})</span>
               </>
             }
             hint={
               box.mode === 'auto'
-                ? 'الإرسال التلقائي يعمل يوميًا الساعة 8 صباحًا بتوقيت القاهرة؛ الرسائل بدون بريد تبقى هنا لإرسالها يدويًا.'
-                : 'أرسل كل رسالة من بريدك (انسخ النص) ثم اضغط «تم الإرسال» لتسجيلها حتى لا تظهر مرة أخرى.'
+                ? 'Auto-send runs daily at 08:00 Cairo time; mails without an address stay here to send by hand.'
+                : 'Send each mail from your mailbox (copy the text), then press “Mark as sent” so it doesn’t come back.'
             }
             action={
               box.outbox.length > 1 ? (
                 <ConfirmButton
                   onConfirm={() => mark(box.outbox.map((m) => m.dedupeKey))}
-                  label="تحديد الكل كمُرسل"
+                  label="Mark all as sent"
                   icon={false}
                   variant="outline"
                 />
@@ -127,7 +127,7 @@ export default function CollectReminders() {
             }
           >
             {box.outbox.length === 0 ? (
-              <EmptyState title="لا توجد رسائل مستحقة اليوم" />
+              <EmptyState title="No mails due today" />
             ) : (
               <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,320px),1fr))] gap-3">
                 {box.outbox.map((m) => (
@@ -138,14 +138,14 @@ export default function CollectReminders() {
           </Panel>
 
           <div className="grid gap-4 lg:grid-cols-2">
-            <Panel title={`مجدولة خلال 30 يوم (${box.upcoming.length})`}>
+            <Panel title={`Scheduled in the next 30 days (${box.upcoming.length})`}>
               {box.upcoming.length === 0 ? (
-                <p className="text-sm text-on-surface-variant">لا توجد رسائل مجدولة.</p>
+                <p className="text-sm text-on-surface-variant">No scheduled mails.</p>
               ) : (
                 <ul className="divide-y divide-outline-variant/30">
                   {box.upcoming.map((m) => (
                     <li key={m.dedupeKey} className="flex flex-wrap items-center gap-2 py-2 text-sm">
-                      <span className="w-24 shrink-0 tabular-nums text-on-surface-variant">{arDate(m.triggerDate)}</span>
+                      <span className="w-24 shrink-0 tabular-nums text-on-surface-variant">{fmtDate(m.triggerDate)}</span>
                       <button type="button" className="min-w-0 flex-1 text-start hover:underline" onClick={() => dispatch(openDrawer(m.contractId))}>
                         <span className="text-on-surface">{m.subject}</span>
                         <span className="block text-xs text-on-surface-variant">
@@ -157,16 +157,16 @@ export default function CollectReminders() {
                 </ul>
               )}
             </Panel>
-            <Panel title="سجل الإرسال">
+            <Panel title="Send log">
               {log.length === 0 ? (
-                <p className="text-sm text-on-surface-variant">لم يُسجَّل إرسال بعد.</p>
+                <p className="text-sm text-on-surface-variant">Nothing has been sent yet.</p>
               ) : (
                 <ul className="divide-y divide-outline-variant/30">
                   {log.map((l) => (
                     <li key={l.id} className="py-2 text-sm">
                       <p className="text-on-surface">{l.subject}</p>
                       <p className="text-xs text-on-surface-variant">
-                        {arDate(l.sentAt.slice(0, 10))} · إلى: {l.to} · {l.channel === 'smtp' ? 'إرسال تلقائي' : `يدوي — ${l.by}`}
+                        {fmtDate(l.sentAt.slice(0, 10))} · To: {l.to} · {l.channel === 'smtp' ? 'Sent automatically' : `Manual — ${l.by}`}
                         {l.error && <span className="text-error"> · {l.error}</span>}
                       </p>
                     </li>

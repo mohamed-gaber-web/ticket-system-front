@@ -141,7 +141,7 @@ Sidebar group "Credentials Vault" (`VAULT_GROUP`): `/vault` (dashboard), `/vault
 
 ## Grow Path Collect (module `collect`, HR menu)
 
-Contracts, installments, collections, cheques, signature tracking and payment reminders for Grow Path's own customer contracts (spec: `GROW_PATH_COLLECT_SPEC.md`; API `/api/collect`). **The UI is Arabic and RTL**: every screen is wrapped in `components/collect/CollectLayout` (`dir="rtl"`, the `.gpc` scope in `pages/collect/collect.css`). That scope uses IBM Plex Sans Arabic for text and Readex Pro for headings, both loaded in `index.html`, because Manrope has no Arabic glyphs. Colours are still the app's tokens.
+Contracts, installments, collections, cheques, signature tracking and payment reminders for Grow Path's own customer contracts (spec: `GROW_PATH_COLLECT_SPEC.md`; API `/api/collect`). The UI is English and left-to-right, in the app's design system (Manrope, MD3 tokens). Every screen is wrapped in `components/collect/CollectLayout` (the `.gpc` scope in `pages/collect/collect.css` only adds tabular numbers and a `.pre` helper).
 
 - **Access:** no role has `collect` by default; an admin ticks it per employee, and holding it makes the account privileged (`holdsPrivilegedModule`). The sidebar shows the "Grow Path Collect" sub-group under HR (`COLLECT_GROUP`). Settings, types, clauses, rules, templates and data are editable by admins only (`meta.canAdmin`); customers are editable by every module user.
 - **Routes:**
@@ -149,14 +149,14 @@ Contracts, installments, collections, cheques, signature tracking and payment re
   - Tabs: `/analytics`, `/backlog`, `/collection` (`?customer=`), `/signatures`, `/reminders`, `/settings/:section` (general, document, types, customers, rules, templates, data; components in `components/collect/settings/`).
 - **State:** `redux/slices/collectSlice.ts` holds `meta` (today, simulated flag, rates, types, tab badges, canAdmin), the shared filters (year, type, customer, segments), the open drawer `drawerId` and the editor `editorId` (`'new'` or an id). After every write dispatch `collectChanged()`: it refetches meta (badges) and bumps `dataVersion`, which every page and the drawer include in their load effects. Pages keep their own data in component state.
 - **Shared pieces:**
-  - `components/collect/CollectUi.tsx`: tone `Chip`, `Panel`, `Kpi`, `Seg`, `Field`/`INPUT`/`TEXTAREA`/`Select`, the two-click `ConfirmButton` ("اضغط للتأكيد", 3 s), the RTL `Modal` on the app's Dialog.
+  - `components/collect/CollectUi.tsx`: tone `Chip`, `Panel`, `Kpi`, `Seg`, `Field`/`INPUT`/`TEXTAREA`/`Select`, the two-click `ConfirmButton` ("Click to confirm", 3 s), the `Modal` on the app's Dialog.
   - `CollectDialogs.tsx`: payment, renew, signature move, follow-up, cheque.
   - `ContractDrawer.tsx`: slides from the inline-end side.
   - `ContractEditor.tsx`.
   - `ClauseEditorDialog.tsx`: per-contract clauses, versioned.
   - `ContractPdfDialog.tsx`.
-- **Contract PDF:** printed by the browser, with no server PDF. `lib/collectDocument.ts` `buildContractHtml` builds the whole Arabic contract (§7.3 wording) as an HTML string, escaping all user text. The letterhead is `position: fixed` so Chrome repeats it on every page; repeating table head/foot spacers keep the text clear of it; "صفحة X من Y" is an `@page` margin box (Chrome 131+). The dialog previews it in an `iframe srcDoc` and prints it (the user picks "Save as PDF"). Default artwork is `public/collect/gp-logo.png` / `gp-mark.png`; Settings may override both.
+- **Contract PDF:** printed by the browser, with no server PDF. `lib/collectDocument.ts` `buildContractHtml` builds the whole English contract (§7.3 structure: "Clause One: …", parties, preamble, scope, term, value with the amount in words and VAT table, payment schedule, special terms, general clauses, signatures; Open Sans) as an HTML string, escaping all user text. The letterhead is `position: fixed` so Chrome repeats it on every page; repeating table head/foot spacers keep the text clear of it; "Contract No. … · Page X of Y" is an `@page` margin box (Chrome 131+). The dialog previews it in an `iframe srcDoc` and prints it (the user picks "Save as PDF"). Default artwork is `public/collect/gp-logo.png` / `gp-mark.png`; Settings may override both.
 - **Pure helpers (tested by `npm test`):**
-  - `lib/collect.ts`: money `1,250,000 ج.م`, compact `1.25 م` / `350 ألف`, Arabic dates, labels.
-  - `lib/collectTafqeet.ts`: amounts in Arabic words.
+  - `lib/collect.ts`: money `1,250,000 EGP`, compact `1.25M` / `350K`, dates `11 October 2026` (`fmtDate`, `fmtMonth`, `relDays`), labels, placeholder tokens (`{{customer}}`, `{{due_date}}`… shared with the backend).
+  - `lib/collectAmountWords.ts`: amounts in English words (`amountInWords` → "Four Million Two Hundred Thousand Egyptian Pounds only").
   - `lib/collectCalc.ts`: the editor's live installment generation. It mirrors the backend's `utils/collect/calc.js`, so change both.

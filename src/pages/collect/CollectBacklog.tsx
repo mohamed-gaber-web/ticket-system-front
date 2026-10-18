@@ -5,12 +5,12 @@ import { Button } from '@/components/ui/button';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { openDrawer, openEditor, setCollectUi } from '@/redux/slices/collectSlice';
 import { getContracts } from '@/api/collectApi';
-import { CONTRACT_STATUS_LABELS, apiError, arDate, money, n0 } from '@/lib/collect';
+import { CONTRACT_STATUS_LABELS, apiError, days, fmtDate, money, n0 } from '@/lib/collect';
 import { CollectLayout } from '@/components/collect/CollectLayout';
 import { Chip, EmptyState, ErrorState, INPUT, Loading, Panel, Progress, Seg, Select, TableBox, TD, TDN, TH, TypeDot } from '@/components/collect/CollectUi';
 import type { ContractStatus, ContractSummary, Tone, Totals } from '@/types/collect.types';
 
-// Grow Path Collect — الـBacklog (العقود) (§9.3). Row click opens the drawer.
+// Grow Path Collect — the backlog of contracts (§9.3). Row click opens the drawer.
 
 const STATUS_TONE: Record<ContractStatus, Tone> = { active: 'ok', closed: 'neutral', renewed: 'info', cancelled: 'crit' };
 
@@ -37,7 +37,7 @@ export default function CollectBacklog() {
       setRows(res.data);
       setTotals(res.totals);
     } catch (e) {
-      setError(apiError(e, 'تعذر تحميل العقود'));
+      setError(apiError(e, 'Could not load the contracts'));
     }
   }, [ui.backlogStatus, ui.type, search]);
 
@@ -50,14 +50,14 @@ export default function CollectBacklog() {
       <Panel>
         <div className="flex flex-wrap items-center gap-2">
           <Button onClick={() => dispatch(openEditor('new'))}>
-            <Plus /> عقد جديد
+            <Plus /> New contract
           </Button>
           <div className="relative min-w-0 flex-1 basis-52">
-            <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-on-surface-variant" aria-hidden="true" />
-            <input className={cn(INPUT, 'pr-9')} value={q} onChange={(e) => setQ(e.target.value)} placeholder="بحث بالعميل أو رقم العقد أو الاسم" aria-label="بحث" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-on-surface-variant" aria-hidden="true" />
+            <input className={cn(INPUT, 'pl-9')} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search customer, contract no. or name" aria-label="Search" />
           </div>
-          <Select aria-label="نوع العقد" className="w-44" value={ui.type} onChange={(e) => dispatch(setCollectUi({ type: e.target.value }))}>
-            <option value="all">كل الأنواع</option>
+          <Select aria-label="Contract type" className="w-44" value={ui.type} onChange={(e) => dispatch(setCollectUi({ type: e.target.value }))}>
+            <option value="all">All types</option>
             {types.map((t) => (
               <option key={t.key} value={t.key}>
                 {t.name}
@@ -65,13 +65,13 @@ export default function CollectBacklog() {
             ))}
           </Select>
           <Seg
-            label="حالة العقود"
+            label="Contract status"
             value={ui.backlogStatus}
             onChange={(v) => dispatch(setCollectUi({ backlogStatus: v }))}
             options={[
-              { value: 'active', label: 'السارية' },
-              { value: 'ended', label: 'المنتهية' },
-              { value: 'all', label: 'الكل' },
+              { value: 'active', label: 'Active' },
+              { value: 'ended', label: 'Ended' },
+              { value: 'all', label: 'All' },
             ]}
           />
         </div>
@@ -84,11 +84,11 @@ export default function CollectBacklog() {
       ) : rows.length === 0 ? (
         <Panel>
           <EmptyState
-            title="لا توجد عقود"
-            hint="أضف أول عقد، أو استورد بياناتك من الإعدادات › البيانات."
+            title="No contracts"
+            hint="Add your first contract, or import your data from Settings › Data."
             action={
               <Button className="mt-2" onClick={() => dispatch(openEditor('new'))}>
-                <Plus /> عقد جديد
+                <Plus /> New contract
               </Button>
             }
           />
@@ -99,15 +99,15 @@ export default function CollectBacklog() {
             <table className="w-full min-w-[1100px] text-sm">
               <thead>
                 <tr className="border-b border-outline-variant/40">
-                  <th className={TH}>العقد</th>
-                  <th className={TH}>العميل</th>
-                  <th className={TH}>النوع</th>
-                  <th className={TH}>المدة</th>
-                  <th className={TH}>القيمة</th>
-                  <th className={TH}>المحصل</th>
-                  <th className={TH}>المتبقي</th>
-                  <th className={TH}>متأخر</th>
-                  <th className={TH}>الحالة</th>
+                  <th className={TH}>Contract</th>
+                  <th className={TH}>Customer</th>
+                  <th className={TH}>Type</th>
+                  <th className={TH}>Term</th>
+                  <th className={TH}>Value</th>
+                  <th className={TH}>Collected</th>
+                  <th className={TH}>Remaining</th>
+                  <th className={TH}>Overdue</th>
+                  <th className={TH}>Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/30">
@@ -124,7 +124,7 @@ export default function CollectBacklog() {
                       <td className={cn(TD, 'min-w-[14rem]')}>
                         <p className="font-semibold text-on-surface">{r.name}</p>
                         <p className="text-xs text-on-surface-variant">
-                          <span dir="ltr" className="ltr">{r.no}</span> · {r.instCount} دفعات
+                          {r.no} · {r.instCount} installments
                         </p>
                       </td>
                       <td className={TD}>{r.customer.name}</td>
@@ -135,9 +135,9 @@ export default function CollectBacklog() {
                         </span>
                       </td>
                       <td className={cn(TD, 'whitespace-nowrap text-xs text-on-surface-variant')}>
-                        {arDate(r.startDate)}
+                        {fmtDate(r.startDate)}
                         <br />
-                        {arDate(r.endDate)}
+                        {fmtDate(r.endDate)}
                       </td>
                       <td className={TDN}>{money(r.value, r.currency)}</td>
                       <td className={cn(TDN, 'min-w-[8rem]')}>
@@ -149,10 +149,10 @@ export default function CollectBacklog() {
                       <td className={TD}>
                         <div className="flex max-w-[16rem] flex-wrap gap-1">
                           <Chip tone={STATUS_TONE[r.status]}>{CONTRACT_STATUS_LABELS[r.status]}</Chip>
-                          {r.customized && <Chip tone="info">بنود مخصصة</Chip>}
-                          {r.unsigned && <Chip tone="warn">{r.signatureStatus === 'signed' ? 'الأصل لم يُستلم' : 'غير موقّع'}</Chip>}
-                          {r.needsGuarantee && <Chip tone="crit">بدون شيك ضمان</Chip>}
-                          {r.renewInDays != null && r.renewInDays >= 0 && r.renewInDays <= 90 && <Chip tone="warn">تجديد خلال {r.renewInDays} يوم</Chip>}
+                          {r.customized && <Chip tone="info">Customized clauses</Chip>}
+                          {r.unsigned && <Chip tone="warn">{r.signatureStatus === 'signed' ? 'Original not received' : 'Not signed'}</Chip>}
+                          {r.needsGuarantee && <Chip tone="crit">No guarantee cheque</Chip>}
+                          {r.renewInDays != null && r.renewInDays >= 0 && r.renewInDays <= 90 && <Chip tone="warn">Renewal in {days(r.renewInDays)}</Chip>}
                         </div>
                       </td>
                     </tr>
@@ -163,7 +163,7 @@ export default function CollectBacklog() {
                 <tfoot>
                   <tr className="border-t-2 border-outline-variant/60 font-bold">
                     <td className={TD} colSpan={4}>
-                      الإجمالي ({rows.length} عقد) — بالجنيه المصري
+                      Total ({rows.length} contracts) — in EGP
                     </td>
                     <td className={TDN}>{n0(totals.value)}</td>
                     <td className={TDN}>{n0(totals.collected)}</td>

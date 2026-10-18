@@ -43,18 +43,18 @@ function TemplateDialog({ open, template, onClose, onSaved }: { open: boolean; t
 
   const save = async () => {
     if (!d.name.trim()) {
-      toast.error('اكتب اسم القالب');
+      toast.error('Enter the template name');
       return;
     }
     setSaving(true);
     try {
       if (template) await updateEmailTemplate(template.id, d);
       else await createEmailTemplate(d);
-      toast.success('تم حفظ القالب');
+      toast.success('Template saved');
       onSaved();
       onClose();
     } catch (e) {
-      toast.error(apiError(e, 'تعذر حفظ القالب'));
+      toast.error(apiError(e, 'Could not save the template'));
     } finally {
       setSaving(false);
     }
@@ -65,22 +65,22 @@ function TemplateDialog({ open, template, onClose, onSaved }: { open: boolean; t
       open={open}
       onClose={onClose}
       wide
-      title={template ? `تعديل القالب — ${template.name}` : 'قالب بريد جديد'}
+      title={template ? `Edit template — ${template.name}` : 'New e-mail template'}
       footer={
         <>
           <Button onClick={() => void save()} disabled={saving}>
-            {saving && <Loader2 className="animate-spin" />} حفظ
+            {saving && <Loader2 className="animate-spin" />} Save
           </Button>
           <Button variant="ghost" onClick={onClose}>
-            إلغاء
+            Cancel
           </Button>
         </>
       }
     >
-      <Field label="اسم القالب" htmlFor="tp-name" required>
+      <Field label="Template name" htmlFor="tp-name" required>
         <input id="tp-name" className={INPUT} value={d.name} onChange={(e) => setD((x) => ({ ...x, name: e.target.value }))} />
       </Field>
-      <Field label="الموضوع" htmlFor="tp-subject">
+      <Field label="Subject" htmlFor="tp-subject">
         <input
           id="tp-subject"
           ref={subjectRef}
@@ -90,7 +90,7 @@ function TemplateDialog({ open, template, onClose, onSaved }: { open: boolean; t
           onChange={(e) => setD((x) => ({ ...x, subject: e.target.value }))}
         />
       </Field>
-      <Field label="نص الرسالة" htmlFor="tp-body">
+      <Field label="Message body" htmlFor="tp-body">
         <textarea
           id="tp-body"
           ref={bodyRef}
@@ -102,7 +102,7 @@ function TemplateDialog({ open, template, onClose, onSaved }: { open: boolean; t
         />
       </Field>
       <div className="space-y-1.5">
-        <p className="text-xs font-semibold text-on-surface-variant">اضغط على متغير لإدراجه في مكان المؤشر:</p>
+        <p className="text-xs font-semibold text-on-surface-variant">Click a placeholder to insert it at the cursor:</p>
         <div className="flex flex-wrap gap-1.5">
           {PLACEHOLDERS.map((p) => (
             <button
@@ -121,7 +121,7 @@ function TemplateDialog({ open, template, onClose, onSaved }: { open: boolean; t
   );
 }
 
-/** الإعدادات › قوالب البريد */
+/** Settings › E-mail templates */
 export function TemplatesSettings() {
   const dispatch = useAppDispatch();
   const canAdmin = useAppSelector((s) => !!s.collect.meta?.canAdmin);
@@ -134,7 +134,7 @@ export function TemplatesSettings() {
     try {
       setRows(await getEmailTemplates());
     } catch (e) {
-      setError(apiError(e, 'تعذر تحميل القوالب'));
+      setError(apiError(e, 'Could not load the templates'));
     }
   }, []);
 
@@ -150,21 +150,21 @@ export function TemplatesSettings() {
   const remove = async (t: EmailTemplate) => {
     try {
       await deleteEmailTemplate(t.id);
-      toast.success('تم حذف القالب');
+      toast.success('Template deleted');
       changed();
     } catch (e) {
-      toast.error(apiError(e, 'تعذر حذف القالب'));
+      toast.error(apiError(e, 'Could not delete the template'));
     }
   };
 
   return (
     <Panel
-      title="قوالب البريد"
-      hint="المتغيرات بين {{ }} تُستبدل ببيانات العقد والعميل عند تجهيز التذكير."
+      title="E-mail templates"
+      hint="Placeholders between {{ }} are replaced with the contract and customer details when the reminder is prepared."
       action={
         canAdmin ? (
           <Button onClick={() => setEditing('new')}>
-            <Plus /> قالب جديد
+            <Plus /> New template
           </Button>
         ) : undefined
       }
@@ -175,7 +175,7 @@ export function TemplatesSettings() {
       ) : !rows ? (
         <Loading />
       ) : rows.length === 0 ? (
-        <EmptyState title="لا توجد قوالب" />
+        <EmptyState title="No templates" />
       ) : (
         <ul className="grid gap-3 lg:grid-cols-2">
           {rows.map((t) => (
@@ -190,14 +190,14 @@ export function TemplatesSettings() {
                 {canAdmin && (
                   <div className="flex gap-1">
                     <Button size="sm" variant="outline" onClick={() => setEditing(t)}>
-                      <Pencil /> تعديل
+                      <Pencil /> Edit
                     </Button>
                     <ConfirmButton onConfirm={() => remove(t)} />
                   </div>
                 )}
                 {!canAdmin && (
                   <Button size="sm" variant="ghost" onClick={() => setEditing(t)}>
-                    عرض
+                    View
                   </Button>
                 )}
               </div>

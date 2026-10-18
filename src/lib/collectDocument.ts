@@ -1,8 +1,8 @@
-import { arDate, CURRENCY_LABELS, money, n0, weekdayOf } from '@/lib/collect';
-import { tafqeet } from '@/lib/collectTafqeet';
+import { CURRENCY_LABELS, fmtDate, money, n0, weekdayOf } from '@/lib/collect';
+import { amountInWords } from '@/lib/collectAmountWords';
 import type { Clause, CollectSettings, ContractDetail } from '@/types/collect.types';
 
-// Grow Path Collect — the printable Arabic contract (GROW_PATH_COLLECT_SPEC.md
+// Grow Path Collect — the printable contract (GROW_PATH_COLLECT_SPEC.md
 // §7). Built as one self-contained HTML document that the browser prints
 // (Chrome → "Save as PDF"); Chrome does the page breaks. Pure: no DOM access;
 // `assetBase` (the app origin) makes the bundled letterhead images absolute,
@@ -12,26 +12,24 @@ import type { Clause, CollectSettings, ContractDetail } from '@/types/collect.ty
 // (Chrome repeats them on every printed page) for the logo, watermark, the
 // initials row and the navy band; a table whose <thead>/<tfoot> spacer rows
 // repeat on every page reserves their room so the text never runs under them.
-// "عقد رقم … · صفحة X من Y" lives in an @page margin box, the only place
+// "Contract No. … · Page X of Y" lives in an @page margin box, the only place
 // where counter(page) / counter(pages) work.
 
 const DOTS = '..............................';
 
-const BN = [
-  'الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس', 'السادس', 'السابع', 'الثامن', 'التاسع', 'العاشر',
-  'الحادي عشر', 'الثاني عشر', 'الثالث عشر', 'الرابع عشر', 'الخامس عشر', 'السادس عشر', 'السابع عشر', 'الثامن عشر', 'التاسع عشر', 'العشرون',
-  'الحادي والعشرون', 'الثاني والعشرون', 'الثالث والعشرون', 'الرابع والعشرون', 'الخامس والعشرون', 'السادس والعشرون', 'السابع والعشرون', 'الثامن والعشرون', 'التاسع والعشرون', 'الثلاثون',
+/** "Clause One" … "Clause Thirty". */
+const ORDINALS = [
+  'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten',
+  'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen', 'Twenty',
+  'Twenty-One', 'Twenty-Two', 'Twenty-Three', 'Twenty-Four', 'Twenty-Five', 'Twenty-Six', 'Twenty-Seven', 'Twenty-Eight', 'Twenty-Nine', 'Thirty',
 ];
 
 /** HTML-escape user text. */
 export const esc = (s: unknown) =>
   String(s ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch] as string);
 
-/** Escaped text with percentages and e-mails isolated LTR. */
-const bd = (s: unknown) =>
-  esc(s)
-    .replace(/(\d[\d.,]*\s?%)/g, '<span class="ltr">$1</span>')
-    .replace(/([\w.+-]+@[\w-]+\.[\w.-]+)/g, '<span class="ltr">$1</span>');
+/** Escaped body text. */
+const bd = (s: unknown) => esc(s);
 
 const lines = (s: unknown) =>
   String(s ?? '')
@@ -49,7 +47,7 @@ const fill = (text: string, vars: Record<string, string | number | undefined>) =
 /** A string safe inside a CSS `content: "…"` (and inside <style>). */
 const cssStr = (s: string) => s.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/</g, '\\3c ').replace(/[\r\n]+/g, ' ');
 
-export const isSaudi = (c: ContractDetail) => c.currency === 'SAR' || /سعود/.test(c.customerDetail?.country ?? '');
+export const isSaudi = (c: ContractDetail) => c.currency === 'SAR' || /saudi|ksa|سعود/i.test(c.customerDetail?.country ?? '');
 
 export const contractPdfFileName = (c: Pick<ContractDetail, 'no' | 'customer'>) => `${c.no} - ${c.customer.name}`;
 
@@ -57,10 +55,10 @@ const payDesc = (c: ContractDetail) => {
   const t = c.type;
   const n = c.installments.length;
   if (t?.billingMode === 'recurring') {
-    return `${n} دفعات متساوية كل ${t.periodMonths} شهور، ${t.payInAdvance === false ? 'في نهاية كل فترة' : 'مقدمًا في بداية كل فترة'}`;
+    return `${n} equal installments every ${t.periodMonths} months, ${t.payInAdvance === false ? 'at the end of each period' : 'in advance at the start of each period'}`;
   }
-  if (t?.billingMode === 'renewal') return 'دفعة واحدة مقدمًا عن كامل الفترة';
-  return `${n} دفعات مرتبطة بمراحل التنفيذ وفق جدول الدفعات`;
+  if (t?.billingMode === 'renewal') return 'one payment in advance for the whole period';
+  return `${n} installments linked to the project phases as per the payment schedule`;
 };
 
 const ICON = {
@@ -84,26 +82,26 @@ export function buildContractHtml(c: ContractDetail, s: CollectSettings, today: 
   const paper = p.paper || 'designed';
 
   const vars: Record<string, string | number | undefined> = {
-    'الطرف_الأول': p.legalName,
-    'القانون_الحاكم': sa ? p.lawSA : p.lawEG,
-    'جهة_النزاع': sa ? p.courtSA : p.courtEG,
-    'كل_شهور': t?.periodMonths,
-    'نسبة_الزيادة': t?.renewalUpliftPct,
-    'رقم_العقد': c.no,
-    'العقد': c.name,
-    'العميل': c.customer.name,
-    'قيمة_العقد': money(c.value, c.currency),
-    'تاريخ_البداية': arDate(c.startDate),
-    'تاريخ_الانتهاء': arDate(c.endDate),
-    'الشركة': s.company,
-    'جهة_الاتصال': k?.contactName,
-    'مدير_الحساب': k?.accountManager,
+    first_party: p.legalName,
+    governing_law: sa ? p.lawSA : p.lawEG,
+    dispute_venue: sa ? p.courtSA : p.courtEG,
+    period_months: t?.periodMonths,
+    uplift_pct: t?.renewalUpliftPct,
+    contract_no: c.no,
+    contract: c.name,
+    customer: c.customer.name,
+    contract_value: money(c.value, c.currency),
+    start_date: fmtDate(c.startDate),
+    end_date: fmtDate(c.endDate),
+    company: s.company,
+    contact: k?.contactName,
+    account_manager: k?.accountManager,
   };
   const F = (x: string) => fill(x, vars);
 
   const blocks: string[] = [];
   let n = 0;
-  const head = (title: string) => `<h2>البند ${BN[n] ?? n + 1}: ${esc(title)}</h2>`;
+  const head = (title: string) => `<h2>Clause ${ORDINALS[n] ?? n + 1}: ${esc(title)}</h2>`;
 
   /** A numbered clause: multi-line → n.1, n.2 … sub-items; one line → a paragraph. */
   const clause = (title: string, items: string[], extra = '') => {
@@ -127,16 +125,16 @@ export function buildContractHtml(c: ContractDetail, s: CollectSettings, today: 
   // Plain paper: a simple text letterhead on the first page.
   if (paper === 'plain') {
     blocks.push(
-      `<div class="lh"><b>${esc(s.company)}</b><div>${esc(p.legalName)}<br>${esc(p.address)}${p.cr ? `<br>سجل تجاري: ${esc(p.cr)}` : ''}${
-        p.taxNo ? `<br>رقم ضريبي: <span class="ltr">${esc(p.taxNo)}</span>` : ''
+      `<div class="lh"><b>${esc(s.company)}</b><div>${esc(p.legalName)}<br>${esc(p.address)}${p.cr ? `<br>Commercial Registration: ${esc(p.cr)}` : ''}${
+        p.taxNo ? `<br>Tax ID: ${esc(p.taxNo)}` : ''
       }</div></div>`,
     );
   }
 
   // 1. Title block
   blocks.push(
-    `<header class="tb"><h1>${esc(doc?.title || p.title)}</h1><div class="st">${bd(c.name)}</div><div class="meta"><span>رقم العقد: <b>${esc(c.no)}</b></span><span>تاريخ التحرير: <b>${arDate(today)}</b></span><span>نوع العقد: <b>${esc(t?.name ?? '')}</b></span>${
-      doc ? `<span>الإصدار: <b>${doc.version ?? 1}</b></span>` : ''
+    `<header class="tb"><h1>${esc(doc?.title || p.title)}</h1><div class="st">${bd(c.name)}</div><div class="meta"><span>Contract No.: <b>${esc(c.no)}</b></span><span>Issue date: <b>${fmtDate(today)}</b></span><span>Contract type: <b>${esc(t?.name ?? '')}</b></span>${
+      doc ? `<span>Version: <b>${doc.version ?? 1}</b></span>` : ''
     }</div></header>`,
   );
 
@@ -147,19 +145,19 @@ export function buildContractHtml(c: ContractDetail, s: CollectSettings, today: 
     role: string,
     alias: string,
   ) =>
-    `<p><b>${ord}: ${esc(o.name || DOTS)}</b>، ويُشار إليها في هذا العقد بـ«${role}» أو «${alias}»، وهي ${esc(o.legalForm || `شركة ${DOTS}`)}، بموجب سجل تجاري رقم (${esc(
+    `<p><b>${ord}: ${esc(o.name || DOTS)}</b>, hereinafter referred to as the "${role}" or the "${alias}", a ${esc(o.legalForm || `company ${DOTS}`)}, registered under Commercial Registration No. (${esc(
       o.cr || DOTS,
-    )}) صادر من ${esc(o.crOffice || DOTS)}، وبطاقة ضريبية رقم ${o.taxNo ? `<span class="ltr">${esc(o.taxNo)}</span>` : DOTS}، ومقرها ${esc(o.address || DOTS)}${
-      o.email ? `، وبريدها الإلكتروني المعتمد <span class="ltr">${esc(o.email)}</span>` : ''
-    }، ويمثلها في هذا العقد الأستاذ/ ${esc(o.signer || DOTS)} بصفته ${esc(o.signerTitle || DOTS)}.</p>`;
+    )}) issued by ${esc(o.crOffice || DOTS)}, Tax ID ${esc(o.taxNo || DOTS)}, having its registered office at ${esc(o.address || DOTS)}${
+      o.email ? `, with the official e-mail address ${esc(o.email)}` : ''
+    }, represented herein by Mr. ${esc(o.signer || DOTS)} in his capacity as ${esc(o.signerTitle || DOTS)}.</p>`;
   blocks.push(
-    `<section class="parties"><p>إنه في يوم ${weekdayOf(today)} الموافق ${arDate(today)} تحرر هذا العقد بين كل من:</p>${party(
-      'أولًا',
+    `<section class="parties"><p>This Agreement is made on ${weekdayOf(today)}, ${fmtDate(today)} between:</p>${party(
+      'First',
       { name: p.legalName, legalForm: p.legalForm, cr: p.cr, crOffice: p.crOffice, taxNo: p.taxNo, address: p.address, signer: p.signer, signerTitle: p.signerTitle },
-      'الطرف الأول',
-      'مقدم الخدمة',
+      'First Party',
+      'Service Provider',
     )}${party(
-      'ثانيًا',
+      'Second',
       {
         name: k?.name ?? c.customer.name,
         legalForm: k?.legalForm,
@@ -171,49 +169,49 @@ export function buildContractHtml(c: ContractDetail, s: CollectSettings, today: 
         signer: k?.signer || k?.contactName,
         signerTitle: k?.signerTitle,
       },
-      'الطرف الثاني',
-      'متلقي الخدمة',
+      'Second Party',
+      'Client',
     )}</section>`,
   );
 
   // 3. Preamble
   const pre = lines(F(doc ? doc.preamble : p.preamble));
-  if (pre.length) blocks.push(`<section class="cl"><h2>تمهيد</h2>${pre.map((x) => `<p>${bd(x)}</p>`).join('')}</section>`);
+  if (pre.length) blocks.push(`<section class="cl"><h2>Preamble</h2>${pre.map((x) => `<p>${bd(x)}</p>`).join('')}</section>`);
 
   // 4. Preamble & annexes
-  clause('التمهيد والملاحق', [
-    'يُعتبر التمهيد السابق وجدول الدفعات الوارد في هذا العقد وأي ملاحق أو عروض فنية ومالية موقعة من الطرفين جزءًا لا يتجزأ من هذا العقد ومكملًا له.',
+  clause('Preamble and Annexes', [
+    'The above preamble, the payment schedule in this Agreement and any annexes or technical and financial proposals signed by both parties form an integral part of this Agreement.',
   ]);
 
   // 5. Subject & scope
   const scope = lines(c.scope || t?.defaultScope);
-  clause('موضوع العقد ونطاق العمل', [
-    `يلتزم الطرف الأول بتنفيذ: ${c.name}${scope.length ? '، ويشمل نطاق العمل ما يلي:' : '.'}`,
+  clause('Subject Matter and Scope of Work', [
+    `The First Party shall deliver: ${c.name}${scope.length ? ', and the scope of work includes the following:' : '.'}`,
     ...scope,
-    'أي أعمال أو متطلبات لم ترد صراحة في نطاق العمل تُعتبر خارجه، وتتم بموجب طلب تعديل (Change Request) مستقل يُتفق على تكلفته ومدته كتابيًا.',
+    'Any work or requirement not expressly stated in the scope of work is out of scope and shall be handled through a separate Change Request whose cost and duration are agreed in writing.',
   ]);
 
   // 6. Duration
-  clause('مدة العقد', [
-    `مدة هذا العقد من ${arDate(c.startDate)} حتى ${arDate(c.endDate)}.`,
+  clause('Term', [
+    `This Agreement is effective from ${fmtDate(c.startDate)} until ${fmtDate(c.endDate)}.`,
     ...(c.deliveryDate && t?.billingMode === 'phases'
-      ? [`التاريخ المتوقع للتسليم ${arDate(c.deliveryDate)}، ويرتبط هذا التاريخ بالتزام الطرف الثاني بمسؤولياته الواردة في هذا العقد.`]
+      ? [`The expected delivery date is ${fmtDate(c.deliveryDate)}, subject to the Second Party fulfilling its responsibilities under this Agreement.`]
       : []),
-    ...(t?.renewable ? ['يجوز تجديد العقد لمدة مماثلة باتفاق الطرفين وفقًا لما ورد في بند السداد.'] : []),
+    ...(t?.renewable ? ['This Agreement may be renewed for a similar term by agreement of both parties, as set out in the payment clause.'] : []),
   ]);
 
-  // 7. Value (+ tafqeet, + optional VAT table)
+  // 7. Value (+ amount in words, + optional VAT table)
   const vr = Number(sa ? p.vatSA : p.vatEG) || 0;
   const vat = Math.round(c.value * vr) / 100;
   clause(
-    'قيمة العقد',
+    'Contract Value',
     [],
-    `<p>القيمة الإجمالية للعقد: <b>${money(c.value, c.currency)}</b> (${esc(tafqeet(c.value, c.currency))})، غير شاملة ضريبة القيمة المضافة.</p>${
+    `<p>The total contract value is <b>${money(c.value, c.currency)}</b> (${esc(amountInWords(c.value, c.currency))}), exclusive of value added tax.</p>${
       p.showVat && vr
-        ? `<table class="kv"><tbody><tr><td>القيمة قبل الضريبة</td><td class="nv">${money(c.value, c.currency)}</td></tr><tr><td>ضريبة القيمة المضافة (<span class="ltr">${vr}%</span>)</td><td class="nv">${money(
+        ? `<table class="kv"><tbody><tr><td>Value before VAT</td><td class="nv">${money(c.value, c.currency)}</td></tr><tr><td>VAT (${vr}%)</td><td class="nv">${money(
             vat,
             c.currency,
-          )}</td></tr><tr><td><b>الإجمالي شامل الضريبة</b></td><td class="nv"><b>${money(c.value + vat, c.currency)}</b></td></tr></tbody></table>`
+          )}</td></tr><tr><td><b>Total including VAT</b></td><td class="nv"><b>${money(c.value + vat, c.currency)}</b></td></tr></tbody></table>`
         : ''
     }`,
   );
@@ -222,14 +220,14 @@ export function buildContractHtml(c: ContractDetail, s: CollectSettings, today: 
   const rows = [...c.installments].sort((a, b) => a.dueDate.localeCompare(b.dueDate));
   const sum = rows.reduce((a, i) => a + i.amount, 0);
   const payNo = n + 1;
-  const payHead = head('جدول الدفعات وشروط السداد');
+  const payHead = head('Payment Schedule and Terms');
   n++;
   const share = (amount: number) => (c.value ? `${Math.round((amount / c.value) * 1000) / 10}%` : '—');
-  const table = `<table class="sch"><colgroup><col style="width:7%"><col style="width:41%"><col style="width:20%"><col style="width:10%"><col style="width:22%"></colgroup><thead><tr><th>#</th><th>البيان</th><th>تاريخ الاستحقاق</th><th>النسبة</th><th>المبلغ (${esc(
+  const table = `<table class="sch"><colgroup><col style="width:7%"><col style="width:41%"><col style="width:20%"><col style="width:10%"><col style="width:22%"></colgroup><thead><tr><th>#</th><th>Description</th><th>Due date</th><th>Percentage</th><th>Amount (${esc(
     CURRENCY_LABELS[c.currency] ?? c.currency,
   )})</th></tr></thead><tbody>${rows
-    .map((i, m) => `<tr><td class="n">${m + 1}</td><td>${bd(i.name)}</td><td>${arDate(i.dueDate)}</td><td class="n"><span class="ltr">${share(i.amount)}</span></td><td class="n">${n0(i.amount)}</td></tr>`)
-    .join('')}<tr class="tot"><td colspan="3">الإجمالي</td><td class="n"><span class="ltr">${c.value ? `${Math.round((sum / c.value) * 100)}%` : ''}</span></td><td class="n">${n0(sum)}</td></tr></tbody></table>`;
+    .map((i, m) => `<tr><td class="n">${m + 1}</td><td>${bd(i.name)}</td><td>${fmtDate(i.dueDate)}</td><td class="n">${share(i.amount)}</td><td class="n">${n0(i.amount)}</td></tr>`)
+    .join('')}<tr class="tot"><td colspan="3">Total</td><td class="n">${c.value ? `${Math.round((sum / c.value) * 100)}%` : ''}</td><td class="n">${n0(sum)}</td></tr></tbody></table>`;
   const payTerms = [
     ...lines(F((doc ? doc.typeTerms : t?.paymentTerms) || '')),
     ...lines(F(doc ? doc.payTerms : p.payTerms)),
@@ -239,16 +237,16 @@ export function buildContractHtml(c: ContractDetail, s: CollectSettings, today: 
   const payItems = payTerms.map((x, j) => `<div class="term"><span class="num">${payNo}.${j + 1}</span><span>${bd(x)}</span></div>`);
   if (bank.length) {
     payItems.push(
-      `<div class="term"><span class="num">${payNo}.${payTerms.length + 1}</span><span>بيانات الحساب البنكي للطرف الأول:<br>${bank.map(bd).join('<br>')}</span></div>`,
+      `<div class="term"><span class="num">${payNo}.${payTerms.length + 1}</span><span>First Party bank account details:<br>${bank.map(bd).join('<br>')}</span></div>`,
     );
   }
   blocks.push(
-    `<section class="cl">${payHead}<p>تُسدد قيمة العقد (${esc(payDesc(c))}) وفقًا للجدول التالي:</p>${table}${payItems.length ? `<div class="after-table">${payItems.join('')}</div>` : ''}</section>`,
+    `<section class="cl">${payHead}<p>The contract value shall be paid (${esc(payDesc(c))}) according to the following schedule:</p>${table}${payItems.length ? `<div class="after-table">${payItems.join('')}</div>` : ''}</section>`,
   );
 
   // 9. Special terms
   const notes = lines(c.notes);
-  if (notes.length) clause('شروط خاصة بهذا العقد', notes);
+  if (notes.length) clause('Special Terms for This Contract', notes);
 
   // 10. General clauses — the contract's own copy, else the library for its type
   const general: Clause[] = doc
@@ -261,20 +259,20 @@ export function buildContractHtml(c: ContractDetail, s: CollectSettings, today: 
 
   // 11. Closing + signatures (kept together)
   const sig = (who: string, org: string | undefined, name: string | undefined, title: string | undefined) =>
-    `<div><b>${who}</b><p>${esc(org || DOTS)}</p><p>الاسم: ${esc(name || DOTS)}</p><p>الصفة: ${esc(title || DOTS)}</p><p>التوقيع: ${DOTS}</p><p>الختم:</p></div>`;
+    `<div><b>${who}</b><p>${esc(org || DOTS)}</p><p>Name: ${esc(name || DOTS)}</p><p>Title: ${esc(title || DOTS)}</p><p>Signature: ${DOTS}</p><p>Stamp:</p></div>`;
   blocks.push(
-    `<section class="end"><p class="closing">وبعد اطلاع الطرفين على كافة بنود هذا العقد وقبولها، وقّعا عليه.</p><div class="sig">${sig(
-      'الطرف الأول',
+    `<section class="end"><p class="closing">Having reviewed and accepted all the terms of this Agreement, both parties have signed it.</p><div class="sig">${sig(
+      'First Party',
       p.legalName,
       p.signer,
       p.signerTitle,
-    )}${sig('الطرف الثاني', k?.name ?? c.customer.name, k?.signer || k?.contactName, k?.signerTitle)}</div></section>`,
+    )}${sig('Second Party', k?.name ?? c.customer.name, k?.signer || k?.contactName, k?.signerTitle)}</div></section>`,
   );
 
   // ── Page frame per paper mode ──────────────────────────────────────────────
   const logo = p.logo || `${assetBase}/collect/gp-logo.png`;
   const mark = p.mark || `${assetBase}/collect/gp-mark.png`;
-  const pageText = cssStr(`عقد رقم ${c.no} — ${c.customer.name} · صفحة `);
+  const pageText = cssStr(`Contract No. ${c.no} — ${c.customer.name} · Page `);
   const designed = paper === 'designed';
   const topMm = paper === 'preprinted' ? Number(p.topMm) || 0 : paper === 'plain' ? 16 : 0;
   const botMm = paper === 'preprinted' ? Math.max(Number(p.bottomMm) || 0, 8) : paper === 'plain' ? 14 : 9;
@@ -286,44 +284,42 @@ export function buildContractHtml(c: ContractDetail, s: CollectSettings, today: 
         p.web ? `<div class="row">${ICON.web}<span>${esc(p.web)}</span></div>` : ''
       }</div>${lines(p.footAddr).length ? `<div class="addr">${ICON.pin}<span>${lines(p.footAddr).map(esc).join('<br>')}</span></div>` : ''}</div></div>`
     : '';
-  const initials = `<div class="ini fx"><span>توقيع الطرفين بالأحرف الأولى</span><i></i><i></i></div>`;
+  const initials = `<div class="ini fx"><span>Initials of both parties</span><i></i><i></i></div>`;
 
   const css = `
 @page {
   size: A4;
   margin: ${topMm}mm 0 ${botMm}mm 0;
   @bottom-center {
-    content: "${pageText}" counter(page) " من " counter(pages);
-    font-family: "IBM Plex Sans Arabic", Tahoma, sans-serif;
+    content: "${pageText}" counter(page) " of " counter(pages);
+    font-family: "Open Sans", Arial, sans-serif;
     font-size: 8.5pt;
     color: #8A97A8;
-    direction: rtl;
     ${designed ? 'background: #0F1B2D;' : ''}
   }
 }
 * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 html, body { margin: 0; padding: 0; }
-body { direction: rtl; font-family: "IBM Plex Sans Arabic", Tahoma, sans-serif; font-size: 12.5px; line-height: 1.75; color: #1B2430; background: #fff; }
-h1, h2 { font-family: "Readex Pro", "IBM Plex Sans Arabic", Tahoma, sans-serif; font-weight: 600; color: #0F1B2D; }
+body { font-family: "Open Sans", Arial, sans-serif; font-size: 12px; line-height: 1.65; color: #1B2430; background: #fff; }
+h1, h2 { font-family: "Open Sans", Arial, sans-serif; font-weight: 700; color: #0F1B2D; }
 h1 { text-align: center; font-size: 21px; margin: 0 0 2px; }
 h2 { font-size: 13.5px; margin: 14px 0 6px; padding-bottom: 3px; border-bottom: 1.5px solid #EF5A24; display: inline-block; break-after: avoid; page-break-after: avoid; }
 p { margin: 0 0 6px; orphans: 2; widows: 2; text-align: justify; }
 b { font-weight: 600; }
-.ltr { direction: ltr; unicode-bidi: isolate; display: inline-block; }
 .tb { margin-bottom: 10px; }
 .st { text-align: center; font-size: 14px; margin: 2px 0 4px; }
 .meta { display: flex; justify-content: center; flex-wrap: wrap; gap: 6px 28px; font-size: 11.5px; color: #4A524E; margin-bottom: 14px; }
 .lh { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #0F1B2D; padding-bottom: 10px; margin-bottom: 16px; }
-.lh b { font-family: "Readex Pro", Tahoma, sans-serif; font-size: 20px; color: #0F1B2D; }
-.lh div { font-size: 10.5px; color: #4A524E; text-align: left; }
+.lh b { font-size: 20px; color: #0F1B2D; font-weight: 700; }
+.lh div { font-size: 10.5px; color: #4A524E; text-align: right; }
 .term { display: grid; grid-template-columns: 36px 1fr; gap: 4px; margin-bottom: 4px; orphans: 2; widows: 2; }
-.term .num { direction: ltr; text-align: right; color: #4A524E; font-variant-numeric: tabular-nums; }
+.term .num { text-align: left; color: #4A524E; font-variant-numeric: tabular-nums; }
 table { width: 100%; border-collapse: collapse; margin: 6px 0 10px; font-size: 12px; }
 thead { display: table-header-group; }
 tr { break-inside: avoid; page-break-inside: avoid; }
-th, td { border: 1px solid #C9CFCB; padding: 5px 8px; text-align: right; vertical-align: top; }
+th, td { border: 1px solid #C9CFCB; padding: 5px 8px; text-align: left; vertical-align: top; }
 th { background: #EEF2F7; color: #0F1B2D; font-weight: 600; }
-td.n, td.nv { font-variant-numeric: tabular-nums; white-space: nowrap; }
+td.n, td.nv { font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
 .kv td:first-child { width: 40%; background: #F6F8FB; color: #4A524E; }
 .tot td { font-weight: 600; background: #EEF2F7; }
 .after-table { margin-top: 8px; }
@@ -343,9 +339,9 @@ td.n, td.nv { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .lgo { position: fixed; top: 9mm; left: 0; right: 0; text-align: center; }
 .lgo img { height: 14mm; width: auto; }
 .wm { position: fixed; left: -30mm; bottom: 42mm; width: 125mm; opacity: .045; pointer-events: none; z-index: 0; }
-.ini { position: fixed; left: 17mm; bottom: ${designed ? 29 : 2}mm; display: flex; align-items: center; gap: 8px; font-size: 9.5px; color: #4A524E; direction: rtl; }
+.ini { position: fixed; right: 17mm; bottom: ${designed ? 29 : 2}mm; display: flex; align-items: center; gap: 8px; font-size: 9.5px; color: #4A524E; }
 .ini i { display: inline-block; width: 18mm; height: 6mm; border: 1px solid #B9BFBB; border-radius: 3px; }
-.band { position: fixed; left: 0; right: 0; bottom: 0; height: 26mm; background: #0F1B2D; direction: ltr; }
+.band { position: fixed; left: 0; right: 0; bottom: 0; height: 26mm; background: #0F1B2D; }
 .band .gl { height: 4px; background: linear-gradient(90deg, #2B8FD6 0%, #2B8FD6 35%, #EF5A24 100%); }
 .band .bi { display: flex; justify-content: space-between; align-items: flex-start; padding: 4mm 19mm 0; color: #E3E9F0; font-size: 10.5px; line-height: 1.55; }
 .band .row { display: flex; align-items: center; gap: 9px; margin-bottom: 3px; }
@@ -358,19 +354,19 @@ td.n, td.nv { font-variant-numeric: tabular-nums; white-space: nowrap; }
   .fx { position: static; }
   .lgo { padding-top: 9mm; }
   .wm { position: absolute; bottom: 60mm; }
-  .ini { justify-content: flex-start; padding: 6mm 17mm 3mm; }
+  .ini { justify-content: flex-end; padding: 6mm 17mm 3mm; }
   .sp-top, .sp-bot { height: 6mm; }
   .frame > tbody > tr > td { padding-top: ${paper === 'designed' ? 0 : 12}mm; }
 }`;
 
   return `<!doctype html>
-<html lang="ar" dir="rtl">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <title>${esc(contractPdfFileName(c))}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600&family=Readex+Pro:wght@600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap">
 <style>${css}</style>
 </head>
 <body>

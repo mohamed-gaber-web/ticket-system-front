@@ -13,7 +13,8 @@ import {
   SIGNATURE_LABELS,
   addDays,
   apiError,
-  arDate,
+  days,
+  fmtDate,
   compact,
   diffDays,
   money,
@@ -23,7 +24,7 @@ import { Chip, EmptyState, ErrorState, KPI_GRID, Kpi, Loading, Panel, Seg, Selec
 import { ChequeDialog, FollowUpDialog } from '@/components/collect/CollectDialogs';
 import type { Cheque, ContractDetail, SignaturesData } from '@/types/collect.types';
 
-// Grow Path Collect — التوقيع والشيكات (§9.7): unsigned contracts and their
+// Grow Path Collect — signatures & cheques (§9.7): unsigned contracts and their
 // follow-ups, contracts missing a guarantee cheque, and every cheque.
 
 type ChequeFilter = CollectUi['chequeFilter'];
@@ -44,7 +45,7 @@ export default function CollectSignatures() {
       setData(res.data);
       setToday(res.today);
     } catch (e) {
-      setError(apiError(e, 'تعذر تحميل البيانات'));
+      setError(apiError(e, 'Could not load data'));
     }
   }, []);
 
@@ -57,11 +58,11 @@ export default function CollectSignatures() {
   const chequeStatus = async (q: Cheque, status: Cheque['status']) => {
     try {
       const res = await setChequeStatus(q.id, status);
-      if (res.returned) toast.warning(res.message ?? 'شيك مرتجع');
-      else toast.success(res.message ?? 'تم');
+      if (res.returned) toast.warning(res.message ?? 'Cheque returned');
+      else toast.success(res.message ?? 'Done');
       changed();
     } catch (e) {
-      toast.error(apiError(e, 'تعذر تحديث الشيك'));
+      toast.error(apiError(e, 'Could not update the cheque'));
     }
   };
 
@@ -69,7 +70,7 @@ export default function CollectSignatures() {
     try {
       setFollow(await getContract(id));
     } catch (e) {
-      toast.error(apiError(e, 'تعذر تحميل العقد'));
+      toast.error(apiError(e, 'Could not load the contract'));
     }
   };
 
@@ -98,28 +99,28 @@ export default function CollectSignatures() {
       ) : (
         <>
           <div className={KPI_GRID}>
-            <Kpi label="عقود لم يكتمل توقيعها" value={k.unsignedCount} sub={`بقيمة ${compact(k.unsignedValue)} ج.م`} />
-            <Kpi label="متابعات مستحقة اليوم أو متأخرة" value={k.followUpsDue} tone={k.followUpsDue ? 'crit' : undefined} />
-            <Kpi label="شيكات ضمان في الخزنة" value={compact(k.guaranteeValue)} sub={`${k.guaranteeCount} شيك · ج.م`} />
-            <Kpi label="شيكات سداد تستحق خلال 30 يوم" value={k.paymentDue30} tone={k.paymentDue30 ? 'warn' : undefined} />
-            <Kpi label="شيكات مرتجعة" value={k.returned} tone={k.returned ? 'crit' : undefined} />
+            <Kpi label="Contracts not fully signed" value={k.unsignedCount} sub={`Worth ${compact(k.unsignedValue)} EGP`} />
+            <Kpi label="Follow-ups due today or late" value={k.followUpsDue} tone={k.followUpsDue ? 'crit' : undefined} />
+            <Kpi label="Guarantee cheques in safe" value={compact(k.guaranteeValue)} sub={`${k.guaranteeCount} cheques · EGP`} />
+            <Kpi label="Payment cheques due in 30 days" value={k.paymentDue30} tone={k.paymentDue30 ? 'warn' : undefined} />
+            <Kpi label="Returned cheques" value={k.returned} tone={k.returned ? 'crit' : undefined} />
           </div>
 
-          <Panel title="متابعة توقيع العقود" hint="العقود التي لم تُوقَّع أو لم يُستلم أصلها، مرتبة بتاريخ المتابعة.">
+          <Panel title="Contract signature follow-up" hint="Contracts not yet signed or whose original hasn’t been received, ordered by follow-up date.">
             {data.followups.length === 0 ? (
-              <EmptyState title="كل العقود موقّعة والأصول مستلمة" />
+              <EmptyState title="All contracts are signed and originals received" />
             ) : (
               <TableBox>
                 <table className="w-full min-w-[900px] text-sm">
                   <thead>
                     <tr className="border-b border-outline-variant/40">
-                      <th className={TH}>العقد</th>
-                      <th className={TH}>الحالة</th>
-                      <th className={TH}>أُرسل</th>
-                      <th className={TH}>المتابعة القادمة</th>
-                      <th className={TH}>آخر ملاحظة</th>
+                      <th className={TH}>Contract</th>
+                      <th className={TH}>Status</th>
+                      <th className={TH}>Sent</th>
+                      <th className={TH}>Next follow-up</th>
+                      <th className={TH}>Last note</th>
                       <th className={TH}>
-                        <span className="sr-only">إجراءات</span>
+                        <span className="sr-only">Actions</span>
                       </th>
                     </tr>
                   </thead>
@@ -130,31 +131,31 @@ export default function CollectSignatures() {
                         <tr key={f.id}>
                           <td className={cn(TD, 'min-w-[13rem]')}>
                             <p className="font-semibold text-on-surface">
-                              {f.name} {f.version && <Chip tone="info">إصدار {f.version}</Chip>}
+                              {f.name} {f.version && <Chip tone="info">v{f.version}</Chip>}
                             </p>
                             <p className="text-xs text-on-surface-variant">
-                              <span dir="ltr" className="ltr">{f.no}</span> · {f.customer.name}
+                              <span>{f.no}</span> · {f.customer.name}
                             </p>
                           </td>
                           <td className={TD}>
                             <Chip tone={f.signatureStatus === 'review' ? 'warn' : f.signatureStatus === 'signed' ? 'info' : 'neutral'}>{SIGNATURE_LABELS[f.signatureStatus]}</Chip>
                           </td>
                           <td className={cn(TD, 'whitespace-nowrap')}>
-                            {arDate(f.sentAt)}
-                            {f.sinceSent != null && <p className="text-xs text-on-surface-variant">منذ {f.sinceSent} يوم</p>}
+                            {fmtDate(f.sentAt)}
+                            {f.sinceSent != null && <p className="text-xs text-on-surface-variant">{days(f.sinceSent)} ago</p>}
                           </td>
                           <td className={cn(TD, 'whitespace-nowrap', late != null && late > 0 && 'font-semibold text-error')}>
-                            {arDate(f.followUpDate)}
-                            {late != null && late > 0 && <p className="text-xs">متأخرة {late} يوم</p>}
-                            {late === 0 && <p className="text-xs text-amber-700 dark:text-amber-300">اليوم</p>}
+                            {fmtDate(f.followUpDate)}
+                            {late != null && late > 0 && <p className="text-xs">{days(late)} late</p>}
+                            {late === 0 && <p className="text-xs text-amber-700 dark:text-amber-300">Today</p>}
                           </td>
                           <td className={cn(TD, 'max-w-[18rem] text-xs text-on-surface-variant')}>{f.lastNote || '—'}</td>
                           <td className={cn(TD, 'whitespace-nowrap text-end')}>
                             <Button size="sm" variant="outline" onClick={() => void openFollowUp(f.id)}>
-                              متابعة
+                              Follow up
                             </Button>{' '}
                             <Button size="sm" variant="ghost" onClick={() => dispatch(openDrawer(f.id))}>
-                              فتح
+                              Open
                             </Button>
                           </td>
                         </tr>
@@ -167,18 +168,18 @@ export default function CollectSignatures() {
           </Panel>
 
           {data.missingGuarantee.length > 0 && (
-            <Panel title="عقود تتطلب شيك ضمان ولم يُستلم">
+            <Panel title="Contracts that need a guarantee cheque">
               <ul className="divide-y divide-outline-variant/30">
                 {data.missingGuarantee.map((c) => (
                   <li key={c.id} className="flex flex-wrap items-center gap-2 py-2">
                     <button type="button" className="min-w-0 flex-1 text-start" onClick={() => dispatch(openDrawer(c.id))}>
                       <p className="font-semibold text-on-surface hover:underline">{c.name}</p>
                       <p className="text-xs text-on-surface-variant">
-                        <span dir="ltr" className="ltr">{c.no}</span> · {c.customer.name} · {money(c.value, c.currency)}
+                        <span>{c.no}</span> · {c.customer.name} · {money(c.value, c.currency)}
                       </p>
                     </button>
                     <Button size="sm" onClick={() => setChq({ open: true, cheque: null, contractId: c.id, kind: 'guarantee' })}>
-                      تسجيل شيك ضمان
+                      Record guarantee cheque
                     </Button>
                   </li>
                 ))}
@@ -187,41 +188,41 @@ export default function CollectSignatures() {
           )}
 
           <Panel
-            title="الشيكات"
+            title="Cheques"
             action={
               <Button size="sm" onClick={() => setChq({ open: true, cheque: null })}>
-                <Plus /> شيك جديد
+                <Plus /> New cheque
               </Button>
             }
           >
             <Seg<ChequeFilter>
-              label="عرض الشيكات"
+              label="Cheque view"
               value={ui.chequeFilter}
               onChange={(v) => dispatch(setCollectUi({ chequeFilter: v }))}
               options={[
-                { value: 'open', label: 'المفتوحة' },
-                { value: 'due30', label: 'تستحق خلال 30 يوم' },
-                { value: 'guarantee', label: 'شيكات الضمان' },
-                { value: 'returned', label: 'المرتجعة' },
-                { value: 'closed', label: 'المنتهية' },
-                { value: 'all', label: 'الكل' },
+                { value: 'open', label: 'Open' },
+                { value: 'due30', label: 'Due in 30 days' },
+                { value: 'guarantee', label: 'Guarantee cheques' },
+                { value: 'returned', label: 'Returned' },
+                { value: 'closed', label: 'Closed' },
+                { value: 'all', label: 'All' },
               ]}
             />
             {cheques.length === 0 ? (
-              <EmptyState title="لا توجد شيكات في هذا العرض" />
+              <EmptyState title="No cheques in this view" />
             ) : (
               <TableBox>
                 <table className="w-full min-w-[860px] text-sm">
                   <thead>
                     <tr className="border-b border-outline-variant/40">
-                      <th className={TH}>الشيك</th>
-                      <th className={TH}>العميل / العقد</th>
-                      <th className={TH}>النوع</th>
-                      <th className={TH}>المبلغ</th>
-                      <th className={TH}>الاستحقاق</th>
-                      <th className={TH}>الحالة</th>
+                      <th className={TH}>Cheque</th>
+                      <th className={TH}>Customer / contract</th>
+                      <th className={TH}>Type</th>
+                      <th className={TH}>Amount</th>
+                      <th className={TH}>Due</th>
+                      <th className={TH}>Status</th>
                       <th className={TH}>
-                        <span className="sr-only">تعديل</span>
+                        <span className="sr-only">Edit</span>
                       </th>
                     </tr>
                   </thead>
@@ -231,7 +232,7 @@ export default function CollectSignatures() {
                       return (
                         <tr key={q.id}>
                           <td className={TD}>
-                            <p dir="ltr" className="ltr font-semibold tabular-nums text-on-surface">
+                            <p className="font-semibold tabular-nums text-on-surface">
                               {q.number}
                             </p>
                             <p className="text-xs text-on-surface-variant">{q.bank || '—'}</p>
@@ -239,7 +240,7 @@ export default function CollectSignatures() {
                           <td className={cn(TD, 'min-w-[12rem]')}>
                             <p className="text-on-surface">{q.customer.name}</p>
                             <button type="button" className="text-start text-xs text-primary hover:underline" onClick={() => dispatch(openDrawer(q.contract.id))}>
-                              <span dir="ltr" className="ltr">{q.contract.no}</span> · {q.contract.name}
+                              <span>{q.contract.no}</span> · {q.contract.name}
                             </button>
                           </td>
                           <td className={TD}>
@@ -247,15 +248,15 @@ export default function CollectSignatures() {
                           </td>
                           <td className={TDN}>{money(q.amount, q.currency)}</td>
                           <td className={cn(TD, 'whitespace-nowrap')}>
-                            {arDate(q.dueDate)}
+                            {fmtDate(q.dueDate)}
                             {d != null && (q.status === 'held' || q.status === 'deposited') && (
                               <p className={cn('text-xs', d < 0 ? 'text-error' : d <= 7 ? 'text-amber-700 dark:text-amber-300' : 'text-on-surface-variant')}>
-                                {d < 0 ? `مستحق منذ ${-d} يوم` : d === 0 ? 'يستحق اليوم' : `بعد ${d} يوم`}
+                                {d < 0 ? `Due ${days(-d)} ago` : d === 0 ? 'Due today' : `In ${days(d)}`}
                               </p>
                             )}
                           </td>
                           <td className={TD}>
-                            <Select aria-label="حالة الشيك" className="w-36" value={q.status} onChange={(e) => void chequeStatus(q, e.target.value as Cheque['status'])}>
+                            <Select aria-label="Cheque status" className="w-36" value={q.status} onChange={(e) => void chequeStatus(q, e.target.value as Cheque['status'])}>
                               {CHEQUE_STATUSES.map((s) => (
                                 <option key={s} value={s}>
                                   {CHEQUE_STATUS_LABELS[s]}
@@ -265,7 +266,7 @@ export default function CollectSignatures() {
                           </td>
                           <td className={cn(TD, 'text-end')}>
                             <Button size="sm" variant="ghost" onClick={() => setChq({ open: true, cheque: q })}>
-                              تعديل
+                              Edit
                             </Button>
                           </td>
                         </tr>

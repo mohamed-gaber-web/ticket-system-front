@@ -1,5 +1,5 @@
 import type { ContractType } from '../types/collect.types';
-import { AR_MONTHS, addDays } from './collect.ts';
+import { MONTHS, addDays } from './collect.ts';
 
 // Grow Path Collect — installment generation for the contract editor's live
 // table. Mirrors the backend's utils/collect/calc.js generateInstallments
@@ -17,9 +17,9 @@ export const addMonths = (s: string, n: number) => {
   return `${ny}-${pad(nm + 1)}-${pad(Math.min(d, last))}`;
 };
 
-const arMonthYear = (s: string) => {
+const monthYear = (s: string) => {
   const [y, m] = s.split('-').map(Number);
-  return `${AR_MONTHS[m - 1]} ${y}`;
+  return `${MONTHS[m - 1]} ${y}`;
 };
 
 export interface DraftInstallment {
@@ -55,13 +55,13 @@ export const generateInstallments = (
     out = starts.map((s, k) => {
       const periodEnd = addDays(addMonths(start, period * (k + 1)), -1);
       return {
-        name: `الفترة ${k + 1} (${arMonthYear(s)} – ${arMonthYear(periodEnd)})`,
+        name: `Period ${k + 1} (${monthYear(s)} – ${monthYear(periodEnd)})`,
         dueDate: type.payInAdvance === false ? periodEnd : s,
         amount: Math.round(value / n),
       };
     });
   } else {
-    out = [{ name: 'قيمة الفترة', dueDate: start, amount: Math.round(value) }];
+    out = [{ name: 'Period value', dueDate: start, amount: Math.round(value) }];
   }
   if (out.length) out[out.length - 1].amount += Math.round(value) - out.reduce((a, i) => a + i.amount, 0);
   return out;
@@ -70,8 +70,8 @@ export const generateInstallments = (
 export const billingSummary = (type?: Pick<ContractType, 'billingMode' | 'phases' | 'periodMonths' | 'payInAdvance'> | null) => {
   if (!type) return '';
   if (type.billingMode === 'recurring') {
-    return `دفعات متساوية كل ${type.periodMonths} شهور، ${type.payInAdvance === false ? 'في نهاية كل فترة' : 'مقدمًا في بداية كل فترة'}`;
+    return `Equal installments every ${type.periodMonths} months, ${type.payInAdvance === false ? 'at the end of each period' : 'in advance at the start of each period'}`;
   }
-  if (type.billingMode === 'renewal') return 'دفعة واحدة مقدمًا عن كامل الفترة';
-  return `${type.phases.length} دفعات مرتبطة بمراحل التنفيذ: ${type.phases.map((p) => `${p.pct}%`).join(' · ')}`;
+  if (type.billingMode === 'renewal') return 'One payment in advance for the whole period';
+  return `${type.phases.length} installments linked to the project phases: ${type.phases.map((p) => `${p.pct}%`).join(' · ')}`;
 };

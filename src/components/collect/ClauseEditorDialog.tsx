@@ -63,7 +63,7 @@ export function ClauseEditorDialog({
       setClauses((r.draft.clauses ?? []).map((c) => ({ key: nextKey(), title: c.title, body: c.body })));
       setPhase('edit');
     } catch (e) {
-      setError(apiError(e, 'تعذر تجهيز بنود العقد'));
+      setError(apiError(e, 'Could not prepare the contract clauses'));
       setPhase('error');
     }
   };
@@ -100,10 +100,10 @@ export function ClauseEditorDialog({
         scope,
         notes,
       });
-      toast.success(res.message ?? 'تم حفظ بنود العقد');
+      toast.success(res.message ?? 'Contract clauses saved');
       onSaved(res.data, openPdf);
     } catch (e) {
-      toast.error(apiError(e, 'تعذر حفظ بنود العقد'));
+      toast.error(apiError(e, 'Could not save the contract clauses'));
     } finally {
       setSaving(null);
     }
@@ -112,25 +112,25 @@ export function ClauseEditorDialog({
   const reset = async () => {
     try {
       const res = await resetContractDocument(contract.id);
-      toast.success(res.message ?? 'تم الرجوع للنموذج العام');
+      toast.success(res.message ?? 'Reverted to the general template');
       onSaved(res.data, false);
     } catch (e) {
-      toast.error(apiError(e, 'تعذر الرجوع للنموذج العام'));
+      toast.error(apiError(e, 'Could not revert to the general template'));
     }
   };
 
-  const heading = contract.document ? `تعديل بنود العقد ${contract.no}` : `تخصيص بنود العقد ${contract.no}`;
+  const heading = contract.document ? `Edit contract clauses — ${contract.no}` : `Customize contract clauses — ${contract.no}`;
 
   if (phase === 'choose') {
     return (
-      <Modal open={open} onClose={onClose} title={heading} description="لهذا العميل عقود أخرى ببنود مخصصة. من أين تبدأ؟">
+      <Modal open={open} onClose={onClose} title={heading} description="This customer has other contracts with customized clauses. Where do you want to start?">
         <div className="space-y-2">
           <Button type="button" variant="outline" className="w-full justify-start" onClick={() => void load()}>
-            النموذج العام
+            Start from the general template
           </Button>
           {contract.customizedSiblings.map((s) => (
             <Button key={s.id} type="button" variant="outline" className="h-auto w-full justify-start whitespace-normal py-2 text-start" onClick={() => void load(s.id)}>
-              انسخ بنود {s.no} — {s.name} (إصدار {s.version})
+              Copy clauses from {s.no} — {s.name} (v{s.version})
             </Button>
           ))}
         </div>
@@ -147,21 +147,21 @@ export function ClauseEditorDialog({
       description={
         <>
           {contract.customer.name} · {contract.name}
-          {contract.document ? ` · الإصدار الحالي ${contract.document.version ?? 1}` : ''}
-          {copiedFrom ? ` · منسوخ من ${copiedFrom}` : ''}
+          {contract.document ? ` · current version ${contract.document.version ?? 1}` : ''}
+          {copiedFrom ? ` · copied from ${copiedFrom}` : ''}
         </>
       }
       footer={
         phase === 'edit' ? (
           <>
             <Button type="button" onClick={() => void save(false)} disabled={!!saving}>
-              {saving === 'save' ? <Loader2 className="animate-spin" /> : <Save />} حفظ
+              {saving === 'save' ? <Loader2 className="animate-spin" /> : <Save />} Save
             </Button>
             <Button type="button" variant="outline" onClick={() => void save(true)} disabled={!!saving}>
-              {saving === 'pdf' ? <Loader2 className="animate-spin" /> : <FileDown />} حفظ وإنشاء PDF
+              {saving === 'pdf' ? <Loader2 className="animate-spin" /> : <FileDown />} Save & create PDF
             </Button>
             <span className="flex-1" />
-            {contract.document && <ConfirmButton onConfirm={reset} label="الرجوع للنموذج العام" icon={false} variant="outline" />}
+            {contract.document && <ConfirmButton onConfirm={reset} label="Revert to general template" icon={false} variant="outline" />}
           </>
         ) : undefined
       }
@@ -169,36 +169,36 @@ export function ClauseEditorDialog({
       {phase === 'loading' ? (
         <Loading rows={6} />
       ) : phase === 'error' ? (
-        <ErrorState message={error ?? 'تعذر تجهيز بنود العقد'} onRetry={() => void load()} />
+        <ErrorState message={error ?? 'Could not prepare the contract clauses'} onRetry={() => void load()} />
       ) : (
         <div className="space-y-4">
           <div className="grid gap-3 md:grid-cols-2">
-            <Field label="عنوان العقد" htmlFor="ce-title">
+            <Field label="Contract title" htmlFor="ce-title">
               <input id="ce-title" className={INPUT} value={title} onChange={(e) => setTitle(e.target.value)} />
             </Field>
           </div>
-          <Field label="التمهيد (فقرة في كل سطر)" htmlFor="ce-pre">
+          <Field label="Preamble (one paragraph per line)" htmlFor="ce-pre">
             <textarea id="ce-pre" rows={4} className={TEXTAREA} value={preamble} onChange={(e) => setPreamble(e.target.value)} />
           </Field>
-          <Field label="نطاق العمل والمخرجات (بند في كل سطر)" htmlFor="ce-scope">
+          <Field label="Scope of work & deliverables (one item per line)" htmlFor="ce-scope">
             <textarea id="ce-scope" rows={5} className={TEXTAREA} value={scope} onChange={(e) => setScope(e.target.value)} />
           </Field>
           <div className="grid gap-3 md:grid-cols-2">
-            <Field label="شروط السداد الخاصة بنوع العقد" htmlFor="ce-type">
+            <Field label="Payment terms for this contract type" htmlFor="ce-type">
               <textarea id="ce-type" rows={5} className={TEXTAREA} value={typeTerms} onChange={(e) => setTypeTerms(e.target.value)} />
             </Field>
-            <Field label="شروط السداد العامة" htmlFor="ce-pay">
+            <Field label="General payment terms" htmlFor="ce-pay">
               <textarea id="ce-pay" rows={5} className={TEXTAREA} value={payTerms} onChange={(e) => setPayTerms(e.target.value)} />
             </Field>
           </div>
-          <Field label="شروط خاصة بهذا العقد" htmlFor="ce-notes">
+          <Field label="Special terms for this contract" htmlFor="ce-notes">
             <textarea id="ce-notes" rows={3} className={TEXTAREA} value={notes} onChange={(e) => setNotes(e.target.value)} />
           </Field>
 
           <div className="space-y-2">
-            <h3 className="gpc-h text-sm font-semibold text-on-surface">البنود العامة ({clauses.length})</h3>
+            <h3 className="gpc-h text-sm font-semibold text-on-surface">General clauses ({clauses.length})</h3>
             <p className="text-[11px] text-on-surface-variant">
-              يمكن استخدام {'{{القانون_الحاكم}}'} و{'{{جهة_النزاع}}'} و{'{{الطرف_الأول}}'} داخل النصوص.
+              You can use {'{{governing_law}}'}, {'{{dispute_venue}}'} and {'{{first_party}}'} in the text.
             </p>
             {clauses.map((cl, i) => {
               const original = globalByTitle.get(cl.title.trim());
@@ -209,28 +209,28 @@ export function ClauseEditorDialog({
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="w-6 shrink-0 text-xs font-bold tabular-nums text-on-surface-variant">{i + 1}</span>
                     <input
-                      aria-label={`عنوان البند ${i + 1}`}
+                      aria-label={`Clause ${i + 1} title`}
                       className={`${INPUT} min-w-[12rem] flex-1 font-semibold`}
                       value={cl.title}
                       onChange={(e) => patch(cl.key, { title: e.target.value })}
                     />
-                    {isNew && <Chip tone="info">جديد</Chip>}
-                    {changed && <Chip tone="warn">معدّل</Chip>}
+                    {isNew && <Chip tone="info">New</Chip>}
+                    {changed && <Chip tone="warn">Modified</Chip>}
                     {changed && (
                       <Button type="button" size="sm" variant="ghost" onClick={() => patch(cl.key, { body: original ?? '' })}>
-                        <RotateCcw /> النص الأصلي
+                        <RotateCcw /> Original text
                       </Button>
                     )}
-                    <Button type="button" size="icon-sm" variant="ghost" aria-label="تحريك لأعلى" disabled={i === 0} onClick={() => move(i, -1)}>
+                    <Button type="button" size="icon-sm" variant="ghost" aria-label="Move up" disabled={i === 0} onClick={() => move(i, -1)}>
                       <ArrowUp />
                     </Button>
-                    <Button type="button" size="icon-sm" variant="ghost" aria-label="تحريك لأسفل" disabled={i === clauses.length - 1} onClick={() => move(i, 1)}>
+                    <Button type="button" size="icon-sm" variant="ghost" aria-label="Move down" disabled={i === clauses.length - 1} onClick={() => move(i, 1)}>
                       <ArrowDown />
                     </Button>
                     <ConfirmButton onConfirm={() => setClauses((list) => list.filter((c) => c.key !== cl.key))} />
                   </div>
                   <textarea
-                    aria-label={`نص البند ${i + 1}`}
+                    aria-label={`Clause ${i + 1} text`}
                     rows={Math.min(10, Math.max(3, cl.body.split('\n').length + 1))}
                     className={TEXTAREA}
                     value={cl.body}
@@ -239,8 +239,8 @@ export function ClauseEditorDialog({
                 </div>
               );
             })}
-            <Button type="button" variant="outline" onClick={() => setClauses((list) => [...list, { key: nextKey(), title: 'بند جديد', body: '' }])}>
-              <Plus /> بند جديد لهذا العقد
+            <Button type="button" variant="outline" onClick={() => setClauses((list) => [...list, { key: nextKey(), title: 'New clause', body: '' }])}>
+              <Plus /> New clause for this contract
             </Button>
           </div>
         </div>

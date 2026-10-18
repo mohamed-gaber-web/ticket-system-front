@@ -94,7 +94,7 @@ export function ContractEditor() {
           setRows(d.installments.map((i) => ({ _id: i.id, key: i.id, name: i.name, dueDate: i.dueDate, amount: String(i.amount), paid: i.paid })));
         }
       } catch (e) {
-        toast.error(apiError(e, 'تعذر تحميل العقد'));
+        toast.error(apiError(e, 'Could not load the contract'));
         dispatch(openEditor(null));
       } finally {
         if (live) setLoading(false);
@@ -133,13 +133,13 @@ export function ContractEditor() {
   const diff = Math.round((value - sum) * 100) / 100;
 
   const missing = useMemo(() => {
-    if (!form.customer) return 'اختر العميل';
-    if (!form.type) return 'اختر نوع العقد';
-    if (!form.name.trim()) return 'اكتب اسم العقد';
-    if (!(value > 0)) return 'اكتب قيمة العقد';
-    if (!form.startDate) return 'اختر تاريخ البداية';
-    if (form.endDate && form.endDate < form.startDate) return 'تاريخ النهاية قبل تاريخ البداية';
-    if (rows.some((r) => !r.name.trim() || !r.dueDate || !(Number(r.amount) >= 0))) return 'أكمل بيانات الدفعات';
+    if (!form.customer) return 'Choose the customer';
+    if (!form.type) return 'Choose the contract type';
+    if (!form.name.trim()) return 'Enter the contract name';
+    if (!(value > 0)) return 'Enter the contract value';
+    if (!form.startDate) return 'Choose the start date';
+    if (form.endDate && form.endDate < form.startDate) return 'The end date is before the start date';
+    if (rows.some((r) => !r.name.trim() || !r.dueDate || !(Number(r.amount) >= 0))) return 'Complete the installment details';
     return null;
   }, [form, value, rows]);
 
@@ -153,13 +153,13 @@ export function ContractEditor() {
     };
     try {
       const res = isNew ? await createContract(body) : await updateContract(editorId!, body);
-      toast.success(res.message ?? 'تم الحفظ');
+      toast.success(res.message ?? 'Saved');
       void dispatch(collectChanged());
       dispatch(openEditor(null));
       dispatch(openDrawer(res.data.id));
       if (isNew) setPdfFor(res.data.id);
     } catch (e) {
-      toast.error(apiError(e, 'تعذر حفظ العقد'));
+      toast.error(apiError(e, 'Could not save the contract'));
     } finally {
       setSaving(false);
     }
@@ -173,14 +173,14 @@ export function ContractEditor() {
         open={open}
         onClose={close}
         xwide
-        title={isNew ? 'عقد جديد' : `تعديل العقد ${form.no}`}
+        title={isNew ? 'New contract' : `Edit contract ${form.no}`}
         footer={
           <>
             <Button onClick={() => void save()} disabled={saving || loading || !!missing} title={missing ?? undefined}>
-              {saving && <Loader2 className="animate-spin" />} {isNew ? 'إنشاء العقد' : 'حفظ التعديلات'}
+              {saving && <Loader2 className="animate-spin" />} {isNew ? 'Create contract' : 'Save changes'}
             </Button>
             <Button variant="ghost" onClick={close}>
-              إلغاء
+              Cancel
             </Button>
             {missing && !loading && <span className="text-xs text-on-surface-variant">{missing}</span>}
           </>
@@ -191,12 +191,12 @@ export function ContractEditor() {
         ) : (
           <>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              <Field label="رقم العقد" htmlFor="ce-no">
-                <input id="ce-no" dir="ltr" className={`${INPUT} text-end`} value={form.no} onChange={(e) => set('no', e.target.value)} />
+              <Field label="Contract number" htmlFor="ce-no">
+                <input id="ce-no" className={INPUT} value={form.no} onChange={(e) => set('no', e.target.value)} />
               </Field>
-              <Field label="العميل" htmlFor="ce-customer" required>
+              <Field label="Customer" htmlFor="ce-customer" required>
                 <Select id="ce-customer" value={form.customer} onChange={(e) => changeCustomer(e.target.value)}>
-                  <option value="">اختر العميل</option>
+                  <option value="">Choose the customer</option>
                   {customers.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
@@ -204,9 +204,9 @@ export function ContractEditor() {
                   ))}
                 </Select>
               </Field>
-              <Field label="نوع العقد" htmlFor="ce-type" required>
+              <Field label="Contract type" htmlFor="ce-type" required>
                 <Select id="ce-type" value={form.type} onChange={(e) => changeType(e.target.value)}>
-                  <option value="">اختر النوع</option>
+                  <option value="">Choose the type</option>
                   {types
                     .filter((t) => t.active || t.id === form.type)
                     .map((t) => (
@@ -216,69 +216,69 @@ export function ContractEditor() {
                     ))}
                 </Select>
               </Field>
-              <Field label="اسم العقد" htmlFor="ce-name" required className="sm:col-span-2 lg:col-span-3">
-                <input id="ce-name" className={INPUT} value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="مثال: تنفيذ D365 F&O — المالية" />
+              <Field label="Contract name" htmlFor="ce-name" required className="sm:col-span-2 lg:col-span-3">
+                <input id="ce-name" className={INPUT} value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="e.g. D365 F&O implementation — Finance" />
               </Field>
-              <Field label="القيمة الإجمالية" htmlFor="ce-value" required>
+              <Field label="Total value" htmlFor="ce-value" required>
                 <input id="ce-value" type="number" min={0} step="any" className={INPUT} value={form.value} onChange={(e) => set('value', e.target.value)} />
               </Field>
-              <Field label="العملة" htmlFor="ce-cur" hint={currencyLocked ? 'لا يمكن تغيير العملة بعد تسجيل تحصيلات' : undefined}>
+              <Field label="Currency" htmlFor="ce-cur" hint={currencyLocked ? 'The currency can’t change once payments are recorded' : undefined}>
                 <Select id="ce-cur" value={form.currency} disabled={currencyLocked} onChange={(e) => set('currency', e.target.value as Currency)}>
                   {CURRENCIES.map((c) => (
                     <option key={c}>{c}</option>
                   ))}
                 </Select>
               </Field>
-              <Field label="تاريخ البداية" htmlFor="ce-start" required>
+              <Field label="Start date" htmlFor="ce-start" required>
                 <input id="ce-start" type="date" className={INPUT} value={form.startDate} onChange={(e) => set('startDate', e.target.value)} />
               </Field>
-              <Field label="تاريخ النهاية" htmlFor="ce-end" hint={type?.billingMode === 'recurring' && !form.endDate ? 'بدون تاريخ = 12 شهرًا' : undefined}>
+              <Field label="End date" htmlFor="ce-end" hint={type?.billingMode === 'recurring' && !form.endDate ? 'Empty = 12 months' : undefined}>
                 <input id="ce-end" type="date" className={INPUT} value={form.endDate} min={form.startDate || undefined} onChange={(e) => set('endDate', e.target.value)} />
               </Field>
               {type?.billingMode === 'phases' && (
-                <Field label="تاريخ التسليم المتوقع" htmlFor="ce-delivery">
+                <Field label="Expected delivery date" htmlFor="ce-delivery">
                   <input id="ce-delivery" type="date" className={INPUT} value={form.deliveryDate} onChange={(e) => set('deliveryDate', e.target.value)} />
                 </Field>
               )}
             </div>
-            {type && <p className="text-xs text-on-surface-variant">طريقة الفوترة: {billingSummary(type)}</p>}
+            {type && <p className="text-xs text-on-surface-variant">Billing: {billingSummary(type)}</p>}
 
             <section className="space-y-2 rounded-[0.75rem] bg-surface-container-low p-3">
               <div className="flex flex-wrap items-center gap-2">
-                <h3 className="gpc-h me-auto text-sm font-semibold text-on-surface">الدفعات</h3>
+                <h3 className="gpc-h me-auto text-sm font-semibold text-on-surface">Installments</h3>
                 <Button
                   size="sm"
                   variant="outline"
                   disabled={!type || hasPayments || !form.startDate || !(value > 0)}
-                  title={hasPayments ? 'يوجد تحصيلات مسجلة' : undefined}
+                  title={hasPayments ? 'Payments are already recorded' : undefined}
                   onClick={() => regenerate()}
                 >
-                  <RefreshCw /> توليد الدفعات من نوع العقد
+                  <RefreshCw /> Generate from contract type
                 </Button>
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => setRows((r) => [...r, { key: `r${++rowSeq}`, name: `دفعة ${r.length + 1}`, dueDate: form.startDate, amount: String(Math.max(0, diff)), paid: 0 }])}
+                  onClick={() => setRows((r) => [...r, { key: `r${++rowSeq}`, name: `Installment ${r.length + 1}`, dueDate: form.startDate, amount: String(Math.max(0, diff)), paid: 0 }])}
                 >
-                  <Plus /> دفعة يدوية
+                  <Plus /> Manual installment
                 </Button>
               </div>
               <p className={cn('text-xs font-semibold tabular-nums', Math.abs(diff) > 0.5 ? 'text-error' : 'text-emerald-700 dark:text-emerald-300')}>
-                مجموع الدفعات {money(sum, form.currency)} من {money(value, form.currency)}
-                {Math.abs(diff) > 0.5 ? ` · فرق ${n0(diff)}` : ' ✓'}
+                Installments total {money(sum, form.currency)} of {money(value, form.currency)}
+                {Math.abs(diff) > 0.5 ? ` · difference ${n0(diff)}` : ' ✓'}
               </p>
               {rows.length === 0 ? (
-                <p className="py-3 text-center text-sm text-on-surface-variant">لا توجد دفعات بعد — اختر النوع والقيمة والتاريخ ثم «توليد الدفعات»، أو احفظ وسيتم توليدها تلقائيًا.</p>
+                <p className="py-3 text-center text-sm text-on-surface-variant">No installments yet — choose the type, value and dates, then “Generate”, or save and they are generated automatically.</p>
               ) : (
                 <TableBox>
                   <table className="w-full min-w-[560px] text-sm">
                     <thead>
                       <tr className="border-b border-outline-variant/40">
-                        <th className={TH}>البيان</th>
-                        <th className={TH}>تاريخ الاستحقاق</th>
-                        <th className={TH}>المبلغ</th>
+                        <th className={TH}>Description</th>
+                        <th className={TH}>Due date</th>
+                        <th className={TH}>Amount</th>
                         <th className={TH}>
-                          <span className="sr-only">حذف</span>
+                          <span className="sr-only">Delete</span>
                         </th>
                       </tr>
                     </thead>
@@ -288,20 +288,20 @@ export function ContractEditor() {
                         return (
                           <tr key={r.key}>
                             <td className="px-1 py-1">
-                              <input aria-label="البيان" className={INPUT} value={r.name} onChange={(e) => upd({ name: e.target.value })} />
+                              <input aria-label="Description" className={INPUT} value={r.name} onChange={(e) => upd({ name: e.target.value })} />
                             </td>
                             <td className="w-44 px-1 py-1">
-                              <input aria-label="تاريخ الاستحقاق" type="date" className={INPUT} value={r.dueDate} onChange={(e) => upd({ dueDate: e.target.value })} />
+                              <input aria-label="Due date" type="date" className={INPUT} value={r.dueDate} onChange={(e) => upd({ dueDate: e.target.value })} />
                             </td>
                             <td className="w-40 px-1 py-1">
-                              <input aria-label="المبلغ" type="number" min={0} step="any" className={INPUT} value={r.amount} onChange={(e) => upd({ amount: e.target.value })} />
+                              <input aria-label="Amount" type="number" min={0} step="any" className={INPUT} value={r.amount} onChange={(e) => upd({ amount: e.target.value })} />
                             </td>
                             <td className={cn(TD, 'w-10 px-1')}>
                               <Button
                                 size="icon-sm"
                                 variant="ghost"
-                                aria-label="حذف الدفعة"
-                                title={r.paid > 0 ? 'عليها تحصيلات مسجلة' : 'حذف الدفعة'}
+                                aria-label="Delete installment"
+                                title={r.paid > 0 ? 'It has recorded payments' : 'Delete installment'}
                                 disabled={r.paid > 0}
                                 onClick={() => setRows((list) => list.filter((_, k) => k !== idx))}
                               >
@@ -315,14 +315,14 @@ export function ContractEditor() {
                   </table>
                 </TableBox>
               )}
-              {hasPayments && <Warning>بعض الدفعات عليها تحصيلات: لا يمكن حذفها أو إعادة توليد الجدول.</Warning>}
+              {hasPayments && <Warning>Some installments have payments: they can’t be deleted and the schedule can’t be regenerated.</Warning>}
             </section>
 
             <div className="grid gap-3 lg:grid-cols-2">
-              <Field label="نطاق العمل والمخرجات" htmlFor="ce-scope" hint="سطر لكل بند — يُطبع في بند «موضوع العقد ونطاق العمل»">
+              <Field label="Scope of work & deliverables" htmlFor="ce-scope" hint="One item per line — printed in the “Subject Matter and Scope of Work” clause">
                 <textarea id="ce-scope" rows={6} className={TEXTAREA} value={form.scope} onChange={(e) => set('scope', e.target.value)} />
               </Field>
-              <Field label="شروط خاصة بهذا العقد" htmlFor="ce-notes" hint="تُطبع كبند مستقل">
+              <Field label="Special terms for this contract" htmlFor="ce-notes" hint="Printed as a clause of its own">
                 <textarea id="ce-notes" rows={6} className={TEXTAREA} value={form.notes} onChange={(e) => set('notes', e.target.value)} />
               </Field>
             </div>

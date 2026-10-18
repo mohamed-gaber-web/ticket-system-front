@@ -15,11 +15,11 @@ type Draft = Omit<ReminderRule, 'id' | 'key'>;
 const blank = (templateKey = ''): Draft => ({ active: true, trigger: 'due', days: 7, recipient: 'client', templateKey, contractTypes: [] });
 
 const TRIGGER_HINT: Record<Trigger, string> = {
-  due: 'عدد الأيام قبل تاريخ استحقاق الدفعة',
-  overdue: 'عدد الأيام بعد تاريخ استحقاق الدفعة غير المسددة',
-  renewal: 'عدد الأيام قبل نهاية العقد (للأنواع القابلة للتجديد)',
-  sign: 'عدد الأيام بعد إرسال العقد للعميل دون توقيع',
-  cheque: 'عدد الأيام قبل تاريخ الشيك المحفوظ في الخزنة',
+  due: 'Days before the installment due date',
+  overdue: 'Days after the due date of an unpaid installment',
+  renewal: 'Days before the contract end (renewable types)',
+  sign: 'Days after the contract was sent and is still unsigned',
+  cheque: 'Days before the date of a cheque held in the safe',
 };
 
 function RuleDialog({
@@ -50,18 +50,18 @@ function RuleDialog({
 
   const save = async () => {
     if (!d.templateKey) {
-      toast.error('اختر قالب البريد');
+      toast.error('Choose an e-mail template');
       return;
     }
     setSaving(true);
     try {
       if (rule) await updateReminderRule(rule.id, d);
       else await createReminderRule(d);
-      toast.success('تم حفظ القاعدة');
+      toast.success('Rule saved');
       onSaved();
       onClose();
     } catch (e) {
-      toast.error(apiError(e, 'تعذر حفظ القاعدة'));
+      toast.error(apiError(e, 'Could not save the rule'));
     } finally {
       setSaving(false);
     }
@@ -71,20 +71,20 @@ function RuleDialog({
     <Modal
       open={open}
       onClose={onClose}
-      title={rule ? 'تعديل قاعدة التذكير' : 'قاعدة تذكير جديدة'}
+      title={rule ? 'Edit reminder rule' : 'New reminder rule'}
       footer={
         <>
           <Button onClick={() => void save()} disabled={saving}>
-            {saving && <Loader2 className="animate-spin" />} حفظ
+            {saving && <Loader2 className="animate-spin" />} Save
           </Button>
           <Button variant="ghost" onClick={onClose}>
-            إلغاء
+            Cancel
           </Button>
         </>
       }
     >
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="التذكير" htmlFor="ru-trigger">
+        <Field label="Reminder" htmlFor="ru-trigger">
           <Select id="ru-trigger" value={d.trigger} onChange={(e) => set('trigger', e.target.value as Trigger)}>
             {(Object.keys(TRIGGER_LABELS) as Trigger[]).map((t) => (
               <option key={t} value={t}>
@@ -93,10 +93,10 @@ function RuleDialog({
             ))}
           </Select>
         </Field>
-        <Field label="عدد الأيام" htmlFor="ru-days" hint={TRIGGER_HINT[d.trigger]}>
+        <Field label="Days" htmlFor="ru-days" hint={TRIGGER_HINT[d.trigger]}>
           <input id="ru-days" type="number" min={0} className={INPUT} value={d.days} onChange={(e) => set('days', Math.max(0, Math.round(Number(e.target.value))))} />
         </Field>
-        <Field label="المستلم" htmlFor="ru-rec">
+        <Field label="Recipient" htmlFor="ru-rec">
           <Select id="ru-rec" value={d.recipient} onChange={(e) => set('recipient', e.target.value as Recipient)}>
             {(Object.keys(RECIPIENT_LABELS) as Recipient[]).map((r) => (
               <option key={r} value={r}>
@@ -105,9 +105,9 @@ function RuleDialog({
             ))}
           </Select>
         </Field>
-        <Field label="قالب البريد" htmlFor="ru-tpl">
+        <Field label="E-mail template" htmlFor="ru-tpl">
           <Select id="ru-tpl" value={d.templateKey} onChange={(e) => set('templateKey', e.target.value)}>
-            {!d.templateKey && <option value="">اختر القالب</option>}
+            {!d.templateKey && <option value="">Choose a template</option>}
             {templates.map((t) => (
               <option key={t.key} value={t.key}>
                 {t.name}
@@ -117,7 +117,7 @@ function RuleDialog({
         </Field>
       </div>
       <fieldset className="space-y-1">
-        <legend className="text-xs font-semibold text-on-surface-variant">أنواع العقود (بدون تحديد = كل الأنواع)</legend>
+        <legend className="text-xs font-semibold text-on-surface-variant">Contract types (none selected = all types)</legend>
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
           {types.map((t) => (
             <label key={t.key} className="inline-flex cursor-pointer items-center gap-1.5">
@@ -129,13 +129,13 @@ function RuleDialog({
       </fieldset>
       <label className="inline-flex cursor-pointer items-center gap-2 text-sm">
         <input type="checkbox" className="accent-primary" checked={d.active} onChange={(e) => set('active', e.target.checked)} />
-        القاعدة مفعّلة
+        Rule active
       </label>
     </Modal>
   );
 }
 
-/** الإعدادات › قواعد التذكير */
+/** Settings › Reminder rules */
 export function RulesSettings() {
   const dispatch = useAppDispatch();
   const canAdmin = useAppSelector((s) => !!s.collect.meta?.canAdmin);
@@ -152,7 +152,7 @@ export function RulesSettings() {
       setRules(r);
       setTemplates(t);
     } catch (e) {
-      setError(apiError(e, 'تعذر تحميل القواعد'));
+      setError(apiError(e, 'Could not load the rules'));
     }
   }, []);
 
@@ -178,7 +178,7 @@ export function RulesSettings() {
       });
       void dispatch(collectChanged());
     } catch (e) {
-      toast.error(apiError(e, 'تعذر حفظ القاعدة'));
+      toast.error(apiError(e, 'Could not save the rule'));
       void load();
     }
   };
@@ -186,10 +186,10 @@ export function RulesSettings() {
   const remove = async (r: ReminderRule) => {
     try {
       await deleteReminderRule(r.id);
-      toast.success('تم حذف القاعدة');
+      toast.success('Rule deleted');
       changed();
     } catch (e) {
-      toast.error(apiError(e, 'تعذر حذف القاعدة'));
+      toast.error(apiError(e, 'Could not delete the rule'));
     }
   };
 
@@ -198,12 +198,12 @@ export function RulesSettings() {
 
   return (
     <Panel
-      title="قواعد التذكير"
-      hint="كل قاعدة ترسل قالب بريد لعدد من الأيام قبل أو بعد حدث. لو انطبقت أكثر من قاعدة على نفس الدفعة يظهر التذكير الأحدث فقط."
+      title="Reminder rules"
+      hint="Each rule sends an e-mail template a number of days before or after an event. When several rules match the same installment, only the latest one shows."
       action={
         canAdmin ? (
           <Button onClick={() => setEditing('new')} disabled={!templates.length}>
-            <Plus /> قاعدة جديدة
+            <Plus /> New rule
           </Button>
         ) : undefined
       }
@@ -214,21 +214,21 @@ export function RulesSettings() {
       ) : !rules ? (
         <Loading />
       ) : rules.length === 0 ? (
-        <EmptyState title="لا توجد قواعد تذكير" />
+        <EmptyState title="No reminder rules" />
       ) : (
         <TableBox>
           <table className="w-full min-w-[760px] text-sm">
             <thead className="border-b border-outline-variant/40">
               <tr>
-                <th className={TH}>مفعّلة</th>
-                <th className={TH}>التذكير</th>
-                <th className={TH}>الأيام</th>
-                <th className={TH}>المستلم</th>
-                <th className={TH}>القالب</th>
-                <th className={TH}>الأنواع</th>
+                <th className={TH}>Active</th>
+                <th className={TH}>Reminder</th>
+                <th className={TH}>Days</th>
+                <th className={TH}>Recipient</th>
+                <th className={TH}>Template</th>
+                <th className={TH}>Types</th>
                 {canAdmin && (
                   <th className={TH}>
-                    <span className="sr-only">إجراءات</span>
+                    <span className="sr-only">Actions</span>
                   </th>
                 )}
               </tr>
@@ -240,14 +240,14 @@ export function RulesSettings() {
                     <input
                       type="checkbox"
                       className="accent-primary"
-                      aria-label="القاعدة مفعّلة"
+                      aria-label="Rule active"
                       checked={r.active}
                       disabled={!canAdmin}
                       onChange={() => void toggleActive(r)}
                     />
                   </td>
                   <td className={TD}>{TRIGGER_LABELS[r.trigger]}</td>
-                  <td className={TDN}>{r.days} يوم</td>
+                  <td className={TDN}>{r.days} {r.days === 1 ? 'day' : 'days'}</td>
                   <td className={TD}>{RECIPIENT_LABELS[r.recipient]}</td>
                   <td className={TD}>{tplName(r.templateKey)}</td>
                   <td className={TD}>
@@ -260,14 +260,14 @@ export function RulesSettings() {
                         ))}
                       </div>
                     ) : (
-                      <span className="text-on-surface-variant">كل الأنواع</span>
+                      <span className="text-on-surface-variant">All types</span>
                     )}
                   </td>
                   {canAdmin && (
                     <td className={TD}>
                       <div className="flex justify-end gap-1">
                         <Button size="sm" variant="outline" onClick={() => setEditing(r)}>
-                          <Pencil /> تعديل
+                          <Pencil /> Edit
                         </Button>
                         <ConfirmButton onConfirm={() => remove(r)} />
                       </div>

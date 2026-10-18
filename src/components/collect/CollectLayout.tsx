@@ -4,7 +4,7 @@ import { CalendarClock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchCollectMeta } from '@/redux/slices/collectSlice';
-import { arDate } from '@/lib/collect';
+import { fmtDate } from '@/lib/collect';
 import { ContractDrawer } from '@/components/collect/ContractDrawer';
 import { ContractEditor } from '@/components/collect/ContractEditor';
 import { ErrorState } from '@/components/collect/CollectUi';
@@ -14,16 +14,16 @@ export const COLLECT_BASE = '/hr/collect';
 export const LAST_TAB_KEY = 'collect.lastTab';
 
 const TABS = [
-  { to: 'analytics', label: 'التحليل الشهري' },
-  { to: 'backlog', label: 'الـBacklog (العقود)' },
-  { to: 'collection', label: 'التحصيل', badge: 'collection' as const },
-  { to: 'signatures', label: 'التوقيع والشيكات', badge: 'signatures' as const },
-  { to: 'reminders', label: 'التذكيرات', badge: 'reminders' as const },
-  { to: 'settings/general', label: 'الإعدادات', match: 'settings' },
+  { to: 'analytics', label: 'Monthly Analysis' },
+  { to: 'backlog', label: 'Backlog (Contracts)' },
+  { to: 'collection', label: 'Collection', badge: 'collection' as const },
+  { to: 'signatures', label: 'Signatures & Cheques', badge: 'signatures' as const },
+  { to: 'reminders', label: 'Reminders', badge: 'reminders' as const },
+  { to: 'settings/general', label: 'Settings', match: 'settings' },
 ];
 
 /**
- * Frame of every Grow Path Collect screen (Arabic, RTL): header with the
+ * Frame of every Grow Path Collect screen: header with the
  * system's "today", tabs with red count badges, then the screen. The contract
  * drawer and editor live here so any screen can open them.
  */
@@ -49,16 +49,16 @@ export function CollectLayout({ children, actions }: { children: ReactNode; acti
   }, [location.pathname]);
 
   return (
-    <div dir="rtl" lang="ar" className="gpc min-w-0 space-y-4 p-4 text-start sm:p-6">
+    <div className="gpc min-w-0 space-y-4 p-4 sm:p-6">
       <header className="sticky top-0 z-20 -mx-4 space-y-2 bg-background/95 px-4 pt-1 backdrop-blur sm:-mx-6 sm:px-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
             <img src="/collect/gp-mark.png" alt="" aria-hidden="true" className="h-9 w-9 shrink-0 rounded-lg bg-white object-contain p-1" />
             <div className="min-w-0">
-              <h1 className="gpc-h text-[19px] font-semibold leading-tight text-on-surface" dir="ltr" style={{ textAlign: 'right' }}>
+              <h1 className="gpc-h text-[19px] font-semibold leading-tight text-on-surface">
                 Grow Path Collect
               </h1>
-              <p className="text-xs text-on-surface-variant">نظام التحصيل وتحليل الـBacklog</p>
+              <p className="text-xs text-on-surface-variant">Collections &amp; backlog analysis</p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -66,18 +66,18 @@ export function CollectLayout({ children, actions }: { children: ReactNode; acti
             {meta && (
               <p className="flex items-center gap-1.5 rounded-full bg-surface-container-high px-3 py-1 text-xs text-on-surface-variant">
                 <CalendarClock className="h-3.5 w-3.5" aria-hidden="true" />
-                تاريخ اليوم في النظام <b className={cn('text-on-surface', meta.simulated && 'text-amber-700 dark:text-amber-300')}>{arDate(meta.today)}</b>
-                {meta.simulated && <span className="text-amber-700 dark:text-amber-300">(محاكاة)</span>}
+                System date <b className={cn('text-on-surface', meta.simulated && 'text-amber-700 dark:text-amber-300')}>{fmtDate(meta.today)}</b>
+                {meta.simulated && <span className="text-amber-700 dark:text-amber-300">(simulated)</span>}
                 {meta.canAdmin && (
                   <Link to={`${COLLECT_BASE}/settings/general`} className="font-semibold text-primary hover:underline">
-                    تغيير
+                    Change
                   </Link>
                 )}
               </p>
             )}
           </div>
         </div>
-        <nav aria-label="أقسام Grow Path Collect" className="-mx-1 overflow-x-auto">
+        <nav aria-label="Grow Path Collect sections" className="-mx-1 overflow-x-auto">
           <ul className="flex min-w-max gap-1 border-b border-outline-variant/40 px-1">
             {TABS.map((t) => {
               const count = t.badge ? meta?.badges[t.badge] ?? 0 : 0;
@@ -102,7 +102,7 @@ export function CollectLayout({ children, actions }: { children: ReactNode; acti
           </ul>
         </nav>
       </header>
-      {metaStatus === 'failed' && !meta ? <ErrorState message={metaError ?? 'تعذر تحميل البيانات'} onRetry={() => void dispatch(fetchCollectMeta())} /> : children}
+      {metaStatus === 'failed' && !meta ? <ErrorState message={metaError ?? 'Could not load data'} onRetry={() => void dispatch(fetchCollectMeta())} /> : children}
       <ContractDrawer />
       <ContractEditor />
     </div>

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { collectChanged } from '@/redux/slices/collectSlice';
 import { getCollectSettings, putCollectSettings } from '@/api/collectApi';
-import { apiError, arDate } from '@/lib/collect';
+import { apiError, fmtDate } from '@/lib/collect';
 import { Chip, ErrorState, Field, INPUT, Loading, Panel, Select, Warning } from '@/components/collect/CollectUi';
 import { ReadOnlyNote } from './ReadOnlyNote';
 import type { CollectSettings } from '@/types/collect.types';
@@ -32,7 +32,7 @@ const formOf = (s: CollectSettings): Form => ({
   reminderMode: s.reminderMode ?? 'manual',
 });
 
-/** الإعدادات › عام */
+/** Settings › General */
 export function GeneralSettings() {
   const dispatch = useAppDispatch();
   const canAdmin = useAppSelector((s) => !!s.collect.meta?.canAdmin);
@@ -49,7 +49,7 @@ export function GeneralSettings() {
       setSettings(s);
       setForm(formOf(s));
     } catch (e) {
-      setError(apiError(e, 'تعذر تحميل الإعدادات'));
+      setError(apiError(e, 'Could not load the settings'));
     }
   }, []);
 
@@ -77,10 +77,10 @@ export function GeneralSettings() {
       });
       setSettings(r.data);
       setForm(formOf(r.data));
-      toast.success(r.message ?? 'تم حفظ الإعدادات');
+      toast.success(r.message ?? 'Settings saved');
       void dispatch(collectChanged());
     } catch (e) {
-      toast.error(apiError(e, 'تعذر حفظ الإعدادات'));
+      toast.error(apiError(e, 'Could not save the settings'));
     } finally {
       setSaving(false);
     }
@@ -88,64 +88,64 @@ export function GeneralSettings() {
 
   return (
     <Panel
-      title="عام"
+      title="General"
       action={
         canAdmin ? (
           <Button onClick={() => void save()} disabled={saving}>
-            {saving ? <Loader2 className="animate-spin" /> : <Save />} حفظ
+            {saving ? <Loader2 className="animate-spin" /> : <Save />} Save
           </Button>
         ) : undefined
       }
     >
       {ro && <ReadOnlyNote />}
       <fieldset disabled={ro} className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <Field label="اسم الشركة" htmlFor="gs-company" hint="يُستخدم في القوالب {{الشركة}}">
+        <Field label="Company name" htmlFor="gs-company" hint="Used in templates as {{company}}">
           <input id="gs-company" className={INPUT} value={form.company} onChange={(e) => set('company', e.target.value)} />
         </Field>
-        <Field label="بريد المرسل" htmlFor="gs-sender" hint="عنوان الإرسال في وضع الإرسال التلقائي">
-          <input id="gs-sender" dir="ltr" type="email" className={INPUT} value={form.senderEmail} onChange={(e) => set('senderEmail', e.target.value)} />
+        <Field label="Sender e-mail" htmlFor="gs-sender" hint="From address in auto mode">
+          <input id="gs-sender" type="email" className={INPUT} value={form.senderEmail} onChange={(e) => set('senderEmail', e.target.value)} />
         </Field>
-        <Field label="البريد الداخلي" htmlFor="gs-internal" hint="تصل إليه التذكيرات الداخلية">
-          <input id="gs-internal" dir="ltr" type="email" className={INPUT} value={form.internalEmail} onChange={(e) => set('internalEmail', e.target.value)} />
+        <Field label="Internal e-mail" htmlFor="gs-internal" hint="Where internal reminders go">
+          <input id="gs-internal" type="email" className={INPUT} value={form.internalEmail} onChange={(e) => set('internalEmail', e.target.value)} />
         </Field>
-        <Field label="بادئة رقم العقد" htmlFor="gs-prefix" hint={`العقد القادم: ${form.contractPrefix}${String(settings.nextContractNo).padStart(4, '0')}`}>
-          <input id="gs-prefix" dir="ltr" className={INPUT} value={form.contractPrefix} onChange={(e) => set('contractPrefix', e.target.value)} />
+        <Field label="Contract number prefix" htmlFor="gs-prefix" hint={`Next contract: ${form.contractPrefix}${String(settings.nextContractNo).padStart(4, '0')}`}>
+          <input id="gs-prefix" className={INPUT} value={form.contractPrefix} onChange={(e) => set('contractPrefix', e.target.value)} />
         </Field>
-        <Field label="سعر الريال السعودي (ج.م)" htmlFor="gs-sar">
+        <Field label="Saudi riyal rate (EGP)" htmlFor="gs-sar">
           <input id="gs-sar" type="number" min={0} step="any" className={INPUT} value={form.sar} onChange={(e) => set('sar', e.target.value)} />
         </Field>
-        <Field label="سعر الدولار الأمريكي (ج.م)" htmlFor="gs-usd">
+        <Field label="US dollar rate (EGP)" htmlFor="gs-usd">
           <input id="gs-usd" type="number" min={0} step="any" className={INPUT} value={form.usd} onChange={(e) => set('usd', e.target.value)} />
         </Field>
         <Field
-          label="تاريخ اليوم في النظام"
+          label="System date"
           htmlFor="gs-today"
-          hint={form.simulatedToday ? 'تاريخ محاكاة — لمعاينة التذكيرات والتأخيرات في أي يوم' : `فارغ = تاريخ اليوم الفعلي${realToday ? ` (${arDate(realToday)})` : ''}`}
+          hint={form.simulatedToday ? 'Simulated date — preview reminders and delays for any day' : `Empty = today’s real date${realToday ? ` (${fmtDate(realToday)})` : ''}`}
         >
           <div className="flex gap-2">
             <input id="gs-today" type="date" className={INPUT} value={form.simulatedToday} onChange={(e) => set('simulatedToday', e.target.value)} />
             {form.simulatedToday && !ro && (
               <Button type="button" variant="outline" onClick={() => set('simulatedToday', '')}>
-                استخدام تاريخ اليوم الفعلي
+                Use today’s real date
               </Button>
             )}
           </div>
         </Field>
-        <Field label="وضع التذكيرات" htmlFor="gs-mode">
+        <Field label="Reminder mode" htmlFor="gs-mode">
           <Select id="gs-mode" value={form.reminderMode} onChange={(e) => set('reminderMode', e.target.value as Form['reminderMode'])}>
-            <option value="manual">يدوي — صندوق الصادر فقط</option>
-            <option value="auto">تلقائي — إرسال يومي الساعة 8 صباحًا</option>
+            <option value="manual">Manual — outbox only</option>
+            <option value="auto">Automatic — daily send at 08:00</option>
           </Select>
         </Field>
-        <Field label="حالة البريد (SMTP)">
+        <Field label="Mail status (SMTP)">
           <div className="flex h-10 items-center">
-            {settings.smtpConfigured ? <Chip tone="ok">البريد مُعد للإرسال</Chip> : <Chip tone="warn">البريد غير مُعد</Chip>}
+            {settings.smtpConfigured ? <Chip tone="ok">Mail is configured</Chip> : <Chip tone="warn">Mail is not configured</Chip>}
           </div>
         </Field>
       </fieldset>
-      {!form.internalEmail && <Warning>(البريد الداخلي غير محدد) — التذكيرات الداخلية لن تصل لأحد حتى تحدد بريدًا.</Warning>}
+      {!form.internalEmail && <Warning>(Internal e-mail not set) — internal reminders reach no one until you set an address.</Warning>}
       {form.reminderMode === 'auto' && !settings.smtpConfigured && (
-        <Warning>الإرسال التلقائي غير متاح لأن البريد غير مُعد على الخادم — ستبقى التذكيرات في صندوق الصادر للإرسال اليدوي.</Warning>
+        <Warning>Auto-send isn’t available because e-mail isn’t configured on the server — reminders stay in the outbox for manual sending.</Warning>
       )}
     </Panel>
   );

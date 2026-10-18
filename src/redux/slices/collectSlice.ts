@@ -50,7 +50,7 @@ export const fetchCollectMeta = createAsyncThunk('collect/meta', async (_: void,
   try {
     return await getCollectMeta();
   } catch (e) {
-    return rejectWithValue(apiError(e, 'تعذر تحميل البيانات'));
+    return rejectWithValue(apiError(e, 'Could not load data'));
   }
 });
 
@@ -89,7 +89,7 @@ const collectSlice = createSlice({
       })
       .addCase(fetchCollectMeta.rejected, (state, action) => {
         state.metaStatus = 'failed';
-        state.metaError = (action.payload as string) ?? 'تعذر تحميل البيانات';
+        state.metaError = (action.payload as string) ?? 'Could not load data';
       });
   },
 });

@@ -11,18 +11,18 @@ import { DataSettings } from '@/components/collect/settings/DataSettings';
 import { useAppSelector } from '@/redux/hooks/hooks';
 
 const SECTIONS = [
-  { key: 'general', label: 'عام' },
-  { key: 'document', label: 'نموذج العقد PDF' },
-  { key: 'types', label: 'أنواع العقود' },
-  { key: 'customers', label: 'العملاء' },
-  { key: 'rules', label: 'قواعد التذكير' },
-  { key: 'templates', label: 'قوالب البريد' },
-  { key: 'data', label: 'البيانات', adminOnly: true },
+  { key: 'general', label: 'General' },
+  { key: 'document', label: 'Contract PDF template' },
+  { key: 'types', label: 'Contract types' },
+  { key: 'customers', label: 'Customers' },
+  { key: 'rules', label: 'Reminder rules' },
+  { key: 'templates', label: 'Email templates' },
+  { key: 'data', label: 'Data', adminOnly: true },
 ] as const;
 
 type SectionKey = (typeof SECTIONS)[number]['key'];
 
-/** الإعدادات (§9.9): `/hr/collect/settings/:section`. */
+/** Settings (§9.9): `/hr/collect/settings/:section`. */
 export default function CollectSettings() {
   const { section } = useParams<{ section: string }>();
   const navigate = useNavigate();
@@ -32,7 +32,7 @@ export default function CollectSettings() {
 
   return (
     <CollectLayout>
-      <nav aria-label="أقسام الإعدادات" className="-mx-1 overflow-x-auto">
+      <nav aria-label="Settings sections" className="-mx-1 overflow-x-auto">
         <div className="flex min-w-max gap-1.5 px-1">
           {visible.map((s) => (
             <button

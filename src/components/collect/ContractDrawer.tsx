@@ -17,7 +17,8 @@ import {
   SIGNATURE_STEPS,
   TRIGGER_LABELS,
   apiError,
-  arDate,
+  days,
+  fmtDate,
   diffDays,
   money,
   relDays,
@@ -31,7 +32,7 @@ import type { Cheque, ContractDetail, ContractStatus, SignatureStatus, Tone } fr
 // Grow Path Collect — the contract drawer (§9.4): header + mini stats,
 // actions, signature tracking, cheques, the installment schedule with its
 // payments, sent reminders and notes. Opened from any screen through
-// `openDrawer(id)`; slides in from the inline-end side (left in RTL).
+// `openDrawer(id)`; slides in from the right.
 
 const STATUS_TONE: Record<ContractStatus, Tone> = { active: 'ok', closed: 'neutral', renewed: 'info', cancelled: 'crit' };
 
@@ -61,8 +62,8 @@ function SignaturePanel({ c, today, onMove, onFollow, onEditClauses }: { c: Cont
   const step = SIGNATURE_STEPS.indexOf(s.status);
   const late = s.followUpDate ? diffDays(today, s.followUpDate) : null;
   return (
-    <Section title="التوقيع">
-      <ol className="grid grid-cols-5 gap-1" aria-label="مراحل التوقيع">
+    <Section title="Signature">
+      <ol className="grid grid-cols-5 gap-1" aria-label="Signature steps">
         {SIGNATURE_STEPS.map((st, i) => (
           <li key={st} className="min-w-0 text-center">
             <span
@@ -78,22 +79,22 @@ function SignaturePanel({ c, today, onMove, onFollow, onEditClauses }: { c: Cont
       <p className="text-sm font-semibold text-on-surface">{SIGNATURE_LABELS[s.status]}</p>
       <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-on-surface-variant sm:grid-cols-4">
         <div>
-          <dt>أُرسل</dt>
-          <dd className="text-on-surface">{arDate(s.sentAt)}</dd>
+          <dt>Sent</dt>
+          <dd className="text-on-surface">{fmtDate(s.sentAt)}</dd>
         </div>
         <div>
-          <dt>وقّع العميل</dt>
-          <dd className="text-on-surface">{arDate(s.signedAt)}</dd>
+          <dt>Customer signed</dt>
+          <dd className="text-on-surface">{fmtDate(s.signedAt)}</dd>
         </div>
         <div>
-          <dt>استلام الأصل</dt>
-          <dd className="text-on-surface">{arDate(s.originalAt)}</dd>
+          <dt>Original received</dt>
+          <dd className="text-on-surface">{fmtDate(s.originalAt)}</dd>
         </div>
         <div>
-          <dt>المتابعة القادمة</dt>
+          <dt>Next follow-up</dt>
           <dd className={cn(late != null && late > 0 ? 'font-bold text-error' : 'text-on-surface')}>
-            {arDate(s.followUpDate)}
-            {late != null && late > 0 && ` · متأخرة ${late} يوم`}
+            {fmtDate(s.followUpDate)}
+            {late != null && late > 0 && ` · ${days(late)} late`}
           </dd>
         </div>
       </dl>
@@ -105,7 +106,7 @@ function SignaturePanel({ c, today, onMove, onFollow, onEditClauses }: { c: Cont
         ))}
         {s.status !== 'original' && (
           <Button size="sm" variant="outline" onClick={onFollow}>
-            تسجيل متابعة
+            Log follow-up
           </Button>
         )}
       </div>
@@ -116,7 +117,7 @@ function SignaturePanel({ c, today, onMove, onFollow, onEditClauses }: { c: Cont
             .slice(0, 8)
             .map((l, i) => (
               <li key={i} className="flex gap-2">
-                <span className="shrink-0 tabular-nums text-on-surface-variant">{arDate(l.date)}</span>
+                <span className="shrink-0 tabular-nums text-on-surface-variant">{fmtDate(l.date)}</span>
                 <span className="text-on-surface">{l.text}</span>
               </li>
             ))}
@@ -150,7 +151,7 @@ export function ContractDrawer() {
     try {
       setC(await getContract(id));
     } catch (e) {
-      setError(apiError(e, 'تعذر تحميل العقد'));
+      setError(apiError(e, 'Could not load the contract'));
     }
   }, [id]);
 
@@ -193,44 +194,44 @@ export function ContractDrawer() {
   const status = async (s: ContractStatus) => {
     try {
       const res = await setContractStatus(c!.id, s);
-      toast.success(res.message ?? 'تم');
+      toast.success(res.message ?? 'Done');
       updated(res.data);
     } catch (e) {
-      toast.error(apiError(e, 'تعذر تغيير الحالة'));
+      toast.error(apiError(e, 'Could not change the status'));
     }
   };
 
   const removePayment = async (instId: string, payId: string) => {
     try {
       const res = await deletePayment(c!.id, instId, payId);
-      toast.success(res.message ?? 'تم حذف التحصيل');
+      toast.success(res.message ?? 'Payment deleted');
       updated(res.data);
     } catch (e) {
-      toast.error(apiError(e, 'تعذر حذف التحصيل'));
+      toast.error(apiError(e, 'Could not delete the payment'));
     }
   };
 
   const remove = async () => {
     try {
       const res = await deleteContract(c!.id);
-      toast.success(res.message ?? 'تم الحذف');
+      toast.success(res.message ?? 'Deleted');
       close();
       void dispatch(collectChanged());
     } catch (e) {
-      toast.error(apiError(e, 'تعذر حذف العقد'));
+      toast.error(apiError(e, 'Could not delete the contract'));
     }
   };
 
   const chequeStatus = async (q: Cheque, s: Cheque['status']) => {
     try {
       const res = await setChequeStatus(q.id, s);
-      if (res.returned) toast.warning(res.message ?? 'شيك مرتجع');
-      else toast.success(res.message ?? 'تم');
+      if (res.returned) toast.warning(res.message ?? 'Cheque returned');
+      else toast.success(res.message ?? 'Done');
       await load();
       skipReload.current = true;
       void dispatch(collectChanged());
     } catch (e) {
-      toast.error(apiError(e, 'تعذر تحديث الشيك'));
+      toast.error(apiError(e, 'Could not update the cheque'));
     }
   };
 
@@ -244,9 +245,8 @@ export function ContractDrawer() {
         tabIndex={-1}
         role="dialog"
         aria-modal="true"
-        aria-label={c ? `العقد ${c.no}` : 'العقد'}
-        dir="rtl"
-        className="gpc fixed inset-y-0 left-0 z-50 flex w-full max-w-[640px] flex-col bg-surface-container-lowest shadow-2xl outline-none"
+        aria-label={c ? `Contract ${c.no}` : 'Contract'}
+        className="gpc fixed inset-y-0 right-0 z-50 flex w-full max-w-[640px] flex-col bg-surface-container-lowest shadow-2xl outline-none"
       >
         {!c ? (
           <div className="p-5">{error ? <ErrorState message={error} onRetry={() => void load()} /> : <Loading rows={6} />}</div>
@@ -255,7 +255,7 @@ export function ContractDrawer() {
             <header className="space-y-2 border-b border-outline-variant/40 p-4">
               <div className="flex items-start gap-2">
                 <div className="min-w-0 flex-1">
-                  <p dir="ltr" className="text-end text-xs font-semibold tabular-nums text-on-surface-variant">
+                  <p className="text-xs font-semibold tabular-nums text-on-surface-variant">
                     {c.no}
                   </p>
                   <h2 className="gpc-h text-[17px] font-semibold leading-snug text-on-surface">{c.name}</h2>
@@ -265,11 +265,11 @@ export function ContractDrawer() {
                       <TypeDot color={c.type?.color} />
                       {c.type?.name}
                     </span>
-                    · {arDate(c.startDate)} – {arDate(c.endDate)}
-                    {c.deliveryDate && ` · التسليم ${arDate(c.deliveryDate)}`}
+                    · {fmtDate(c.startDate)} – {fmtDate(c.endDate)}
+                    {c.deliveryDate && ` · delivery ${fmtDate(c.deliveryDate)}`}
                   </p>
                 </div>
-                <Button size="icon-sm" variant="ghost" aria-label="إغلاق" onClick={close}>
+                <Button size="icon-sm" variant="ghost" aria-label="Close" onClick={close}>
                   <X />
                 </Button>
               </div>
@@ -277,50 +277,50 @@ export function ContractDrawer() {
                 <Chip tone={STATUS_TONE[c.status]}>{CONTRACT_STATUS_LABELS[c.status]}</Chip>
                 {c.status === 'active' && daysToEnd != null && (
                   <Chip tone={daysToEnd < 0 ? 'crit' : daysToEnd <= 90 ? 'warn' : 'neutral'}>
-                    {daysToEnd < 0 ? `انتهى منذ ${-daysToEnd} يوم` : `ينتهي بعد ${daysToEnd} يوم`}
+                    {daysToEnd < 0 ? `Ended ${days(-daysToEnd)} ago` : `Ends in ${days(daysToEnd)}`}
                   </Chip>
                 )}
-                {c.customized && <Chip tone="info">بنود مخصصة · إصدار {c.customized.version}</Chip>}
-                {c.unsigned && <Chip tone="warn">{c.signatureStatus === 'signed' ? 'الأصل لم يُستلم' : 'غير موقّع'}</Chip>}
-                {c.needsGuarantee && <Chip tone="crit">بدون شيك ضمان</Chip>}
+                {c.customized && <Chip tone="info">Customized clauses · v{c.customized.version}</Chip>}
+                {c.unsigned && <Chip tone="warn">{c.signatureStatus === 'signed' ? 'Original not received' : 'Not signed'}</Chip>}
+                {c.needsGuarantee && <Chip tone="crit">No guarantee cheque</Chip>}
               </div>
             </header>
 
             <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                <Stat label="القيمة" value={money(c.value, c.currency)} />
-                <Stat label="المحصل" value={money(c.collected, c.currency)} />
-                <Stat label="المتبقي" value={money(c.remaining, c.currency)} />
-                <Stat label="متأخر" value={money(c.overdue, c.currency)} tone={c.overdue > 0.5 ? 'crit' : undefined} />
+                <Stat label="Value" value={money(c.value, c.currency)} />
+                <Stat label="Collected" value={money(c.collected, c.currency)} />
+                <Stat label="Remaining" value={money(c.remaining, c.currency)} />
+                <Stat label="Overdue" value={money(c.overdue, c.currency)} tone={c.overdue > 0.5 ? 'crit' : undefined} />
               </div>
               {Math.abs(c.instSum - c.value) > 0.5 && (
                 <Warning>
-                  مجموع الدفعات ({money(c.instSum, c.currency)}) لا يساوي قيمة العقد ({money(c.value, c.currency)}).
+                  The installments total ({money(c.instSum, c.currency)}) does not equal the contract value ({money(c.value, c.currency)}).
                 </Warning>
               )}
 
               <div className="flex flex-wrap gap-2">
                 <Button onClick={() => setPdf(true)}>
-                  <FileText /> PDF العقد للطباعة
+                  <FileText /> Contract PDF
                 </Button>
                 <Button variant="outline" onClick={() => setClauses(true)}>
-                  <ScrollText /> {c.customized ? 'تعديل بنود هذا العقد' : 'تخصيص بنود هذا العقد'}
+                  <ScrollText /> {c.customized ? 'Edit contract clauses' : 'Customize contract clauses'}
                 </Button>
                 <Button variant="outline" onClick={() => dispatch(openEditor(c.id))}>
-                  <Pencil /> تعديل العقد والدفعات
+                  <Pencil /> Edit contract & installments
                 </Button>
                 {c.renewal && c.status === 'active' && (
                   <Button variant="outline" onClick={() => setRenew(true)}>
-                    <RefreshCw /> تجديد العقد
+                    <RefreshCw /> Renew contract
                   </Button>
                 )}
                 {c.status === 'active' ? (
                   <Button variant="outline" onClick={() => void status('closed')}>
-                    <Check /> إغلاق كمكتمل
+                    <Check /> Close as completed
                   </Button>
                 ) : (
                   <Button variant="outline" onClick={() => void status('active')}>
-                    إعادة تفعيل
+                    Reactivate
                   </Button>
                 )}
               </div>
@@ -328,30 +328,30 @@ export function ContractDrawer() {
               <SignaturePanel c={c} today={today} onMove={setSigTo} onFollow={() => setFollow(true)} onEditClauses={() => setClauses(true)} />
 
               <Section
-                title="الشيكات"
+                title="Cheques"
                 action={
                   <Button size="sm" variant="outline" onClick={() => setCheque({ open: true, cheque: null, kind: c.needsGuarantee ? 'guarantee' : 'payment' })}>
-                    <Plus /> شيك
+                    <Plus /> Cheque
                   </Button>
                 }
               >
-                {c.needsGuarantee && <Warning>هذا العقد يتطلب شيك ضمان ولم يُسجَّل شيك ضمان في الخزنة.</Warning>}
+                {c.needsGuarantee && <Warning>This contract requires a guarantee cheque and none is held in the safe.</Warning>}
                 {c.cheques.length === 0 ? (
-                  <p className="text-xs text-on-surface-variant">لا توجد شيكات.</p>
+                  <p className="text-xs text-on-surface-variant">No cheques.</p>
                 ) : (
                   <ul className="divide-y divide-outline-variant/30">
                     {c.cheques.map((q) => (
                       <li key={q.id} className="flex flex-wrap items-center gap-2 py-2 text-sm">
                         <div className="min-w-0 flex-1">
                           <p className="font-semibold text-on-surface">
-                            {CHEQUE_KIND_LABELS[q.kind]} <span dir="ltr" className="ltr tabular-nums">{q.number}</span>
+                            {CHEQUE_KIND_LABELS[q.kind]} <span className="tabular-nums">{q.number}</span>
                             {q.bank && <span className="font-normal text-on-surface-variant"> · {q.bank}</span>}
                           </p>
                           <p className="text-xs tabular-nums text-on-surface-variant">
-                            {money(q.amount, q.currency)} · {q.dueDate ? `${arDate(q.dueDate)} (${relDays(q.dueDate, today)})` : 'بدون تاريخ'}
+                            {money(q.amount, q.currency)} · {q.dueDate ? `${fmtDate(q.dueDate)} (${relDays(q.dueDate, today)})` : 'No date'}
                           </p>
                         </div>
-                        <Select aria-label="حالة الشيك" className="w-36" value={q.status} onChange={(e) => void chequeStatus(q, e.target.value as Cheque['status'])}>
+                        <Select aria-label="Cheque status" className="w-36" value={q.status} onChange={(e) => void chequeStatus(q, e.target.value as Cheque['status'])}>
                           {CHEQUE_STATUSES.map((s) => (
                             <option key={s} value={s}>
                               {CHEQUE_STATUS_LABELS[s]}
@@ -359,7 +359,7 @@ export function ContractDrawer() {
                           ))}
                         </Select>
                         <Button size="sm" variant="ghost" onClick={() => setCheque({ open: true, cheque: q })}>
-                          تعديل
+                          Edit
                         </Button>
                       </li>
                     ))}
@@ -367,7 +367,7 @@ export function ContractDrawer() {
                 )}
               </Section>
 
-              <Section title="جدول الدفعات">
+              <Section title="Payment schedule">
                 <ul className="space-y-2">
                   {c.installments.map((i) => (
                     <li key={i.id} className="rounded-[0.6rem] bg-surface-container-lowest p-2.5">
@@ -375,9 +375,9 @@ export function ContractDrawer() {
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-semibold text-on-surface">{i.name}</p>
                           <p className="text-xs tabular-nums text-on-surface-variant">
-                            {arDate(i.dueDate)} · {money(i.amount, c.currency)}
-                            {i.paid > 0 && ` · محصل ${money(i.paid, c.currency)}`}
-                            {i.remaining > 0.5 && i.paid > 0 && ` · متبقي ${money(i.remaining, c.currency)}`}
+                            {fmtDate(i.dueDate)} · {money(i.amount, c.currency)}
+                            {i.paid > 0 && ` · collected ${money(i.paid, c.currency)}`}
+                            {i.remaining > 0.5 && i.paid > 0 && ` · remaining ${money(i.remaining, c.currency)}`}
                           </p>
                         </div>
                         <Chip tone={i.status.tone}>{i.status.label}</Chip>
@@ -396,7 +396,7 @@ export function ContractDrawer() {
                               })
                             }
                           >
-                            تحصيل
+                            Collect
                           </Button>
                         )}
                       </div>
@@ -404,11 +404,11 @@ export function ContractDrawer() {
                         <ul className="mt-1.5 space-y-1 border-t border-outline-variant/30 pt-1.5">
                           {i.payments.map((p) => (
                             <li key={p.id} className="flex flex-wrap items-center gap-2 text-xs">
-                              <span className="tabular-nums text-on-surface-variant">{arDate(p.date)}</span>
+                              <span className="tabular-nums text-on-surface-variant">{fmtDate(p.date)}</span>
                               <span className="font-semibold tabular-nums text-emerald-700 dark:text-emerald-300">{money(p.amount, c.currency)}</span>
                               <span className="text-on-surface-variant">{p.method}</span>
                               <span className="flex-1" />
-                              <ConfirmButton onConfirm={() => removePayment(i.id, p.id)} label="حذف" icon={false} />
+                              <ConfirmButton onConfirm={() => removePayment(i.id, p.id)} label="Delete" icon={false} />
                             </li>
                           ))}
                         </ul>
@@ -418,18 +418,18 @@ export function ContractDrawer() {
                 </ul>
               </Section>
 
-              <Section title="تذكيرات مُرسلة">
+              <Section title="Sent reminders">
                 {c.reminderLog.length === 0 ? (
-                  <p className="text-xs text-on-surface-variant">لم تُرسل تذكيرات لهذا العقد.</p>
+                  <p className="text-xs text-on-surface-variant">No reminders have been sent for this contract.</p>
                 ) : (
                   <ul className="space-y-1.5 text-xs">
                     {c.reminderLog.map((l) => (
                       <li key={l.id} className="space-y-0.5">
                         <p className="text-on-surface">
-                          <span className="tabular-nums text-on-surface-variant">{arDate(l.sentAt.slice(0, 10))}</span> · {l.subject}
+                          <span className="tabular-nums text-on-surface-variant">{fmtDate(l.sentAt.slice(0, 10))}</span> · {l.subject}
                         </p>
                         <p className="text-on-surface-variant">
-                          {TRIGGER_LABELS[l.trigger] ?? l.trigger} · إلى: {l.to} · {l.channel === 'smtp' ? 'إرسال تلقائي' : 'يدوي'}
+                          {TRIGGER_LABELS[l.trigger] ?? l.trigger} · To: {l.to} · {l.channel === 'smtp' ? 'Sent automatically' : 'Manual'}
                           {l.error && <span className="text-error"> · {l.error}</span>}
                         </p>
                       </li>
@@ -438,19 +438,19 @@ export function ContractDrawer() {
                 )}
               </Section>
 
-              <Section title="ملاحظات">
-                {c.notes.trim() ? <p className="pre text-sm text-on-surface">{c.notes}</p> : <p className="text-xs text-on-surface-variant">لا توجد شروط خاصة لهذا العقد.</p>}
+              <Section title="Notes">
+                {c.notes.trim() ? <p className="pre text-sm text-on-surface">{c.notes}</p> : <p className="text-xs text-on-surface-variant">No special terms for this contract.</p>}
               </Section>
             </div>
 
             <footer className="flex flex-wrap items-center gap-2 border-t border-outline-variant/40 p-3">
-              {c.status !== 'cancelled' && <ConfirmButton onConfirm={() => status('cancelled')} label="إلغاء العقد" icon={false} variant="outline" />}
+              {c.status !== 'cancelled' && <ConfirmButton onConfirm={() => status('cancelled')} label="Cancel contract" icon={false} variant="outline" />}
               <span className="flex-1" />
               <ConfirmButton
                 onConfirm={remove}
-                label="حذف نهائي"
+                label="Delete permanently"
                 disabled={c.hasPayments}
-                title={c.hasPayments ? 'العقد عليه تحصيلات — يمكنك إلغاؤه بدلًا من الحذف' : undefined}
+                title={c.hasPayments ? 'This contract has payments — cancel it instead of deleting' : undefined}
               />
             </footer>
 

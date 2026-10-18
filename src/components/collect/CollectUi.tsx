@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/compone
 import type { Tone } from '@/types/collect.types';
 import { TONE_TEXT } from '@/lib/collect';
 
-// Building blocks shared by every Grow Path Collect screen (Arabic, RTL), in
+// Building blocks shared by every Grow Path Collect screen, in
 // the app's MD3 tokens with the semantic tones of the spec (ok / crit / info /
 // warn / neutral). Numbers are always tabular.
 
@@ -115,19 +115,19 @@ export const TEXTAREA =
 export function Select({ className, children, ...props }: SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <div className={cn('relative min-w-0', className)}>
-      <select {...props} className={cn(INPUT, 'cursor-pointer appearance-none pe-3 ps-8')}>
+      <select {...props} className={cn(INPUT, 'cursor-pointer appearance-none pl-3 pr-8')}>
         {children}
       </select>
-      <ChevronDown className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-on-surface-variant" aria-hidden="true" />
+      <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-on-surface-variant" aria-hidden="true" />
     </div>
   );
 }
 
-/** Two-click destructive button: the first click arms it ("اضغط للتأكيد", 3 s). */
+/** Two-click destructive button: the first click arms it ("Click to confirm", 3 s). */
 export function ConfirmButton({
   onConfirm,
-  label = 'حذف',
-  confirmLabel = 'اضغط للتأكيد',
+  label = 'Delete',
+  confirmLabel = 'Click to confirm',
   size = 'sm',
   variant = 'ghost',
   disabled,
@@ -187,7 +187,7 @@ export function ConfirmButton({
   );
 }
 
-/** RTL modal on the app's Dialog (the close button moves to the inline end). */
+/** Modal on the app's Dialog with a scrolling body and a footer bar. */
 export function Modal({
   open,
   onClose,
@@ -210,13 +210,12 @@ export function Modal({
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent
-        dir="rtl"
         className={cn(
-          'gpc flex max-h-[92vh] w-[calc(100vw-1.5rem)] flex-col gap-0 overflow-hidden p-0 [&>button:last-child]:left-4 [&>button:last-child]:right-auto',
+          'gpc flex max-h-[92vh] w-[calc(100vw-1.5rem)] flex-col gap-0 overflow-hidden p-0',
           xwide ? 'max-w-5xl' : wide ? 'max-w-3xl' : 'max-w-lg',
         )}
       >
-        <div className="border-b border-outline-variant/40 px-5 pb-3 pt-5 pe-5 ps-12">
+        <div className="border-b border-outline-variant/40 pb-3 pl-5 pr-12 pt-5">
           <DialogTitle className="gpc-h text-[17px] font-semibold text-on-surface">{title}</DialogTitle>
           {description ? (
             <DialogDescription className="mt-1 text-xs">{description}</DialogDescription>
@@ -248,7 +247,7 @@ export function ErrorState({ message, onRetry }: { message: string; onRetry?: ()
       <p className="text-sm font-semibold text-error">{message}</p>
       {onRetry && (
         <Button variant="outline" size="sm" onClick={onRetry}>
-          <RefreshCw /> إعادة المحاولة
+          <RefreshCw /> Try again
         </Button>
       )}
     </div>
@@ -257,7 +256,7 @@ export function ErrorState({ message, onRetry }: { message: string; onRetry?: ()
 
 export function Loading({ rows = 4 }: { rows?: number }) {
   return (
-    <div className="space-y-2" aria-busy="true" aria-label="جارٍ التحميل">
+    <div className="space-y-2" aria-busy="true" aria-label="Loading">
       {Array.from({ length: rows }).map((_, i) => (
         <div key={i} className="h-12 animate-pulse rounded-[0.75rem] bg-surface-container-low" />
       ))}
@@ -274,7 +273,7 @@ export function Warning({ children }: { children: ReactNode }) {
   );
 }
 
-/** Thin collected-share bar under the "المحصل" column. */
+/** Thin collected-share bar under the "Collected" column. */
 export function Progress({ value, max, color }: { value: number; max: number; color?: string }) {
   const w = max > 0 ? Math.min(100, Math.max(0, (value / max) * 100)) : 0;
   return (

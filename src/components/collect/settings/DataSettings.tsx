@@ -20,7 +20,7 @@ const saveBlob = (blob: Blob, name: string) => {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 };
 
-/** الإعدادات › البيانات — admin only. */
+/** Settings › Data — admin only. */
 export function DataSettings() {
   const dispatch = useAppDispatch();
   const canAdmin = useAppSelector((s) => !!s.collect.meta?.canAdmin);
@@ -30,7 +30,7 @@ export function DataSettings() {
 
   if (!canAdmin) {
     return (
-      <Panel title="البيانات">
+      <Panel title="Data">
         <ReadOnlyNote />
       </Panel>
     );
@@ -47,7 +47,7 @@ export function DataSettings() {
     try {
       saveBlob(await exportCollect(), `grow-path-collect-${new Date().toISOString().slice(0, 10)}.json`);
     } catch (e) {
-      toast.error(apiError(e, 'تعذر تصدير البيانات'));
+      toast.error(apiError(e, 'Could not export the data'));
     } finally {
       setBusy(null);
     }
@@ -63,12 +63,12 @@ export function DataSettings() {
       try {
         payload = JSON.parse(await file.text());
       } catch {
-        throw new Error('الملف ليس JSON صالحًا');
+        throw new Error('The file is not valid JSON');
       }
       const r = (await importCollect(payload)) as { message?: string };
-      done(r.message ?? 'تم الاستيراد');
+      done(r.message ?? 'Import complete');
     } catch (err) {
-      toast.error(err instanceof Error && !('response' in err) ? err.message : apiError(err, 'تعذر استيراد الملف'));
+      toast.error(err instanceof Error && !('response' in err) ? err.message : apiError(err, 'Could not import the file'));
     } finally {
       setBusy(null);
     }
@@ -78,9 +78,9 @@ export function DataSettings() {
     setBusy('demo');
     try {
       const r = (await seedCollectDemo()) as { message?: string };
-      done(r.message ?? 'تمت إضافة البيانات التجريبية');
+      done(r.message ?? 'Demo data added');
     } catch (e) {
-      toast.error(apiError(e, 'تعذر إضافة البيانات التجريبية'));
+      toast.error(apiError(e, 'Could not add the demo data'));
     } finally {
       setBusy(null);
     }
@@ -89,41 +89,41 @@ export function DataSettings() {
   const doWipe = async () => {
     try {
       const r = (await wipeCollect()) as { message?: string };
-      done(r.message ?? 'تم مسح البيانات');
+      done(r.message ?? 'Data wiped');
     } catch (e) {
-      toast.error(apiError(e, 'تعذر مسح البيانات'));
+      toast.error(apiError(e, 'Could not wipe the data'));
     }
   };
 
   return (
-    <Panel title="البيانات" hint="تصدير واستيراد كل بيانات التحصيل كملف JSON، والبيانات التجريبية، والمسح.">
+    <Panel title="Data" hint="Export and import all Collect data as a JSON file, demo data, and wipe.">
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-2 rounded-[0.75rem] bg-surface-container-low p-3">
-          <p className="font-semibold text-on-surface">تصدير</p>
-          <p className="text-xs text-on-surface-variant">الإعدادات والأنواع والقوالب والقواعد والعملاء والعقود والشيكات.</p>
+          <p className="font-semibold text-on-surface">Export</p>
+          <p className="text-xs text-on-surface-variant">Settings, types, templates, rules, customers, contracts and cheques.</p>
           <Button variant="outline" onClick={() => void doExport()} disabled={!!busy}>
-            {busy === 'export' ? <Loader2 className="animate-spin" /> : <Download />} تصدير JSON
+            {busy === 'export' ? <Loader2 className="animate-spin" /> : <Download />} Export JSON
           </Button>
         </div>
         <div className="space-y-2 rounded-[0.75rem] bg-surface-container-low p-3">
-          <p className="font-semibold text-on-surface">استيراد</p>
-          <p className="text-xs text-on-surface-variant">ملف تصدير من Grow Path Collect. يستبدل العقود والشيكات وسجل التذكيرات الحالية.</p>
+          <p className="font-semibold text-on-surface">Import</p>
+          <p className="text-xs text-on-surface-variant">A Grow Path Collect export file. Replaces the current contracts, cheques and reminder log.</p>
           <Button variant="outline" onClick={() => fileRef.current?.click()} disabled={!!busy}>
-            {busy === 'import' ? <Loader2 className="animate-spin" /> : <Upload />} استيراد JSON
+            {busy === 'import' ? <Loader2 className="animate-spin" /> : <Upload />} Import JSON
           </Button>
-          <input ref={fileRef} type="file" accept="application/json,.json" className="sr-only" onChange={(e) => void doImport(e)} aria-label="ملف الاستيراد" />
+          <input ref={fileRef} type="file" accept="application/json,.json" className="sr-only" onChange={(e) => void doImport(e)} aria-label="Import file" />
         </div>
         <div className="space-y-2 rounded-[0.75rem] bg-surface-container-low p-3">
-          <p className="font-semibold text-on-surface">البيانات التجريبية</p>
-          <p className="text-xs text-on-surface-variant">عملاء وعقود تجريبية حول تاريخ اليوم (غير متاحة على النظام الفعلي).</p>
+          <p className="font-semibold text-on-surface">Demo data</p>
+          <p className="text-xs text-on-surface-variant">Demo customers and contracts around today’s date (not available in production).</p>
           <Button variant="outline" onClick={() => void doDemo()} disabled={!!busy}>
-            {busy === 'demo' ? <Loader2 className="animate-spin" /> : <Database />} استعادة البيانات التجريبية
+            {busy === 'demo' ? <Loader2 className="animate-spin" /> : <Database />} Restore demo data
           </Button>
         </div>
         <div className="space-y-2 rounded-[0.75rem] bg-error/5 p-3">
-          <p className="font-semibold text-error">مسح البيانات</p>
-          <p className="text-xs text-on-surface-variant">يحذف كل العقود والشيكات وسجل التذكيرات ويزيل العملاء من قائمة التحصيل (الشركات نفسها تبقى).</p>
-          <ConfirmButton onConfirm={doWipe} label="مسح العقود والعملاء والشيكات" variant="outline" size="default" />
+          <p className="font-semibold text-error">Wipe data</p>
+          <p className="text-xs text-on-surface-variant">Deletes all contracts, cheques and the reminder log and removes customers from the Collect list (the companies themselves stay).</p>
+          <ConfirmButton onConfirm={doWipe} label="Wipe contracts, customers and cheques" variant="outline" size="default" />
         </div>
       </div>
       {result && (

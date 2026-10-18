@@ -6,22 +6,22 @@ import { Button } from '@/components/ui/button';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { collectChanged, openDrawer, setCollectUi } from '@/redux/slices/collectSlice';
 import { getCollection } from '@/api/collectApi';
-import { apiError, arDate, money, n0 } from '@/lib/collect';
+import { apiError, fmtDate, money, n0 } from '@/lib/collect';
 import { CollectLayout } from '@/components/collect/CollectLayout';
 import { Chip, EmptyState, ErrorState, INPUT, Loading, Panel, Seg, TableBox, TD, TDN, TH } from '@/components/collect/CollectUi';
 import { PaymentDialog, type PaymentTarget } from '@/components/collect/CollectDialogs';
 import type { CollectionFilter, CollectionResult } from '@/types/collect.types';
 
-// Grow Path Collect — التحصيل (§5, §9.6): installments to collect, with
-// "تسجيل تحصيل". `?customer=` narrows to one customer (from the analysis).
+// Grow Path Collect — collection (§5, §9.6): installments to collect, with
+// "Record payment". `?customer=` narrows to one customer (from the analysis).
 
 const FILTERS: { value: CollectionFilter; label: string }[] = [
-  { value: 'overdue', label: 'المتأخر' },
-  { value: 'month', label: 'هذا الشهر' },
-  { value: 'next30', label: 'القادم 30 يوم' },
-  { value: 'next90', label: 'القادم 90 يوم' },
-  { value: 'paid', label: 'المسدد' },
-  { value: 'all', label: 'الكل' },
+  { value: 'overdue', label: 'Overdue' },
+  { value: 'month', label: 'This month' },
+  { value: 'next30', label: 'Next 30 days' },
+  { value: 'next90', label: 'Next 90 days' },
+  { value: 'paid', label: 'Paid' },
+  { value: 'all', label: 'All' },
 ];
 
 export default function CollectCollection() {
@@ -48,7 +48,7 @@ export default function CollectCollection() {
     try {
       setRes(await getCollection({ filter, q: search, customer }));
     } catch (e) {
-      setError(apiError(e, 'تعذر تحميل التحصيل'));
+      setError(apiError(e, 'Could not load the collection list'));
     } finally {
       setLoading(false);
     }
@@ -65,21 +65,21 @@ export default function CollectCollection() {
       <Panel>
         <div className="flex flex-wrap items-center gap-2">
           <Seg<CollectionFilter>
-            label="عرض"
+            label="Show"
             value={filter}
             onChange={(v) => dispatch(setCollectUi({ collectionFilter: v }))}
             options={FILTERS.map((f) => ({ ...f, count: res?.counts[f.value] }))}
           />
           <div className="relative min-w-0 flex-1 basis-52">
-            <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-on-surface-variant" aria-hidden="true" />
-            <input className={cn(INPUT, 'pr-9')} value={q} onChange={(e) => setQ(e.target.value)} placeholder="بحث بالعميل أو رقم العقد أو الاسم" aria-label="بحث" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-on-surface-variant" aria-hidden="true" />
+            <input className={cn(INPUT, 'pl-9')} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search customer, contract no. or name" aria-label="Search" />
           </div>
         </div>
         {customer && (
           <div className="flex items-center gap-2 text-sm">
-            <Chip tone="info">العميل: {customerName ?? 'محدد'}</Chip>
+            <Chip tone="info">Customer: {customerName ?? 'selected'}</Chip>
             <Button size="sm" variant="ghost" onClick={() => setParams({})}>
-              <X /> كل العملاء
+              <X /> All customers
             </Button>
           </div>
         )}
@@ -91,7 +91,7 @@ export default function CollectCollection() {
         <Loading rows={6} />
       ) : res.data.length === 0 ? (
         <Panel>
-          <EmptyState title={filter === 'overdue' ? 'لا توجد دفعات متأخرة 🎉' : 'لا توجد دفعات في هذا العرض'} />
+          <EmptyState title={filter === 'overdue' ? 'No overdue installments 🎉' : 'No installments in this view'} />
         </Panel>
       ) : (
         <Panel className={cn('p-0', loading && 'opacity-60')}>
@@ -99,15 +99,15 @@ export default function CollectCollection() {
             <table className="w-full min-w-[960px] text-sm">
               <thead>
                 <tr className="border-b border-outline-variant/40">
-                  <th className={TH}>العميل / العقد</th>
-                  <th className={TH}>الدفعة</th>
-                  <th className={TH}>الاستحقاق</th>
-                  <th className={TH}>القيمة</th>
-                  <th className={TH}>المحصل</th>
-                  <th className={TH}>المتبقي</th>
-                  <th className={TH}>الحالة</th>
+                  <th className={TH}>Customer / contract</th>
+                  <th className={TH}>Installment</th>
+                  <th className={TH}>Due</th>
+                  <th className={TH}>Amount</th>
+                  <th className={TH}>Collected</th>
+                  <th className={TH}>Remaining</th>
+                  <th className={TH}>Status</th>
                   <th className={TH}>
-                    <span className="sr-only">إجراء</span>
+                    <span className="sr-only">Action</span>
                   </th>
                 </tr>
               </thead>
@@ -117,11 +117,11 @@ export default function CollectCollection() {
                     <td className={cn(TD, 'min-w-[13rem]')}>
                       <p className="font-semibold text-on-surface">{r.customer.name}</p>
                       <button type="button" onClick={() => dispatch(openDrawer(r.contractId))} className="text-start text-xs text-primary hover:underline">
-                        <span dir="ltr" className="ltr">{r.contractNo}</span> · {r.contractName}
+                        <span>{r.contractNo}</span> · {r.contractName}
                       </button>
                     </td>
                     <td className={cn(TD, 'max-w-[16rem]')}>{r.name}</td>
-                    <td className={cn(TD, 'whitespace-nowrap')}>{arDate(r.dueDate)}</td>
+                    <td className={cn(TD, 'whitespace-nowrap')}>{fmtDate(r.dueDate)}</td>
                     <td className={TDN}>{money(r.amount, r.currency)}</td>
                     <td className={TDN}>{r.paid > 0 ? money(r.paid, r.currency) : '—'}</td>
                     <td className={cn(TDN, 'font-bold', r.late > 0 && r.remaining > 0.5 ? 'text-error' : 'text-on-surface')}>{money(r.remaining, r.currency)}</td>
@@ -144,7 +144,7 @@ export default function CollectCollection() {
                             })
                           }
                         >
-                          تسجيل تحصيل
+                          Record payment
                         </Button>
                       )}
                     </td>
@@ -155,7 +155,7 @@ export default function CollectCollection() {
                 <tfoot>
                   <tr className="border-t-2 border-outline-variant/60 font-bold">
                     <td className={TD} colSpan={5}>
-                      إجمالي المتبقي ({res.data.length} دفعة) — بالجنيه المصري
+                      Total remaining ({res.data.length} installments) — in EGP
                     </td>
                     <td className={TDN}>{n0(res.totalRemainingEGP)}</td>
                     <td className={TD} colSpan={2} />

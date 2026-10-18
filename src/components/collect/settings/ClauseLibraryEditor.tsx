@@ -52,11 +52,11 @@ export function ClauseLibraryEditor({
 
   const save = async () => {
     if (list.some((c) => !c.title.trim())) {
-      toast.error('اكتب عنوان كل بند');
+      toast.error('Enter a title for every clause');
       return;
     }
     if (list.some((c) => !isAll(c) && !(c.appliesTo ?? []).length)) {
-      toast.error('كل بند لازم يظهر في نوع عقد واحد على الأقل');
+      toast.error('Every clause must apply to at least one contract type');
       return;
     }
     setSaving(true);
@@ -64,10 +64,10 @@ export function ClauseLibraryEditor({
       const r = await putCollectSettings({ clauses: list.map(({ title, body, appliesTo }) => ({ title, body, appliesTo })) });
       onSaved(r.data);
       setDirty(false);
-      toast.success('تم حفظ البنود العامة');
+      toast.success('General clauses saved');
       void dispatch(collectChanged());
     } catch (e) {
-      toast.error(apiError(e, 'تعذر حفظ البنود'));
+      toast.error(apiError(e, 'Could not save the clauses'));
     } finally {
       setSaving(false);
     }
@@ -79,29 +79,29 @@ export function ClauseLibraryEditor({
       onSaved(r.data);
       setList(r.data.clauses.map((c) => ({ ...c, appliesTo: c.appliesTo ?? ['ALL'] })));
       setDirty(false);
-      toast.success(r.message ?? 'تم استرجاع البنود الافتراضية');
+      toast.success(r.message ?? 'Default clauses restored');
       void dispatch(collectChanged());
     } catch (e) {
-      toast.error(apiError(e, 'تعذر استرجاع البنود'));
+      toast.error(apiError(e, 'Could not restore the clauses'));
     }
   };
 
   return (
     <Panel
-      title={`البنود العامة (${list.length})`}
+      title={`General clauses (${list.length})`}
       hint={
         <>
-          تُطبع في كل عقد من الأنواع المحددة، بالترتيب. البند متعدد السطور يُرقّم كبنود فرعية. المتغيرات المتاحة:{' '}
-          {[...DOC_PLACEHOLDERS, 'العميل', 'رقم_العقد', 'العقد', 'قيمة_العقد'].map((p) => `{{${p}}}`).join(' · ')}. تعديل
-          البنود العامة لا يغيّر العقود ذات البنود المخصصة.
+          Printed, in order, in every contract of the selected types. A multi-line clause is numbered as sub-items. Available placeholders:{' '}
+          {[...DOC_PLACEHOLDERS, 'customer', 'contract_no', 'contract', 'contract_value'].map((p) => `{{${p}}}`).join(' · ')}. Editing
+          the general clauses never changes contracts with customized clauses.
         </>
       }
       action={
         !readOnly && (
           <>
-            <ConfirmButton onConfirm={reset} label="استرجاع البنود الافتراضية" icon={false} variant="outline" />
+            <ConfirmButton onConfirm={reset} label="Restore default clauses" icon={false} variant="outline" />
             <Button onClick={() => void save()} disabled={saving || !dirty}>
-              {saving ? <Loader2 className="animate-spin" /> : <Save />} حفظ البنود
+              {saving ? <Loader2 className="animate-spin" /> : <Save />} Save clauses
             </Button>
           </>
         )
@@ -113,7 +113,7 @@ export function ClauseLibraryEditor({
             <div className="flex flex-wrap items-center gap-2">
               <span className="w-7 shrink-0 text-center text-sm font-bold tabular-nums text-on-surface-variant">{i + 1}</span>
               <input
-                aria-label={`عنوان البند ${i + 1}`}
+                aria-label={`Clause ${i + 1} title`}
                 className={`${INPUT} flex-1 basis-56 font-semibold`}
                 value={c.title}
                 disabled={readOnly}
@@ -121,10 +121,10 @@ export function ClauseLibraryEditor({
               />
               {!readOnly && (
                 <div className="flex gap-1">
-                  <Button type="button" size="icon-sm" variant="ghost" aria-label="تحريك لأعلى" disabled={i === 0} onClick={() => move(i, -1)}>
+                  <Button type="button" size="icon-sm" variant="ghost" aria-label="Move up" disabled={i === 0} onClick={() => move(i, -1)}>
                     <ArrowUp />
                   </Button>
-                  <Button type="button" size="icon-sm" variant="ghost" aria-label="تحريك لأسفل" disabled={i === list.length - 1} onClick={() => move(i, 1)}>
+                  <Button type="button" size="icon-sm" variant="ghost" aria-label="Move down" disabled={i === list.length - 1} onClick={() => move(i, 1)}>
                     <ArrowDown />
                   </Button>
                   <ConfirmButton onConfirm={() => update(list.filter((_, k) => k !== i))} />
@@ -132,7 +132,7 @@ export function ClauseLibraryEditor({
               )}
             </div>
             <textarea
-              aria-label={`نص البند ${i + 1}`}
+              aria-label={`Clause ${i + 1} text`}
               rows={Math.min(10, Math.max(3, c.body.split('\n').length + 1))}
               className={TEXTAREA}
               value={c.body}
@@ -140,22 +140,22 @@ export function ClauseLibraryEditor({
               onChange={(e) => patch(i, { body: e.target.value })}
             />
             <fieldset disabled={readOnly} className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px]">
-              <legend className="sr-only">يظهر في</legend>
-              <span className="text-xs font-semibold text-on-surface-variant">يظهر في:</span>
+              <legend className="sr-only">Applies to</legend>
+              <span className="text-xs font-semibold text-on-surface-variant">Applies to:</span>
               {types.map((t) => (
                 <label key={t.key} className="inline-flex cursor-pointer items-center gap-1.5">
                   <input type="checkbox" className="accent-primary" checked={keysOf(c).includes(t.key)} onChange={() => toggleType(i, t.key)} />
                   <TypeDot color={t.color} /> {t.name}
                 </label>
               ))}
-              {isAll(c) && <span className="text-[11px] text-on-surface-variant">(كل الأنواع)</span>}
+              {isAll(c) && <span className="text-[11px] text-on-surface-variant">(all types)</span>}
             </fieldset>
           </li>
         ))}
       </ol>
       {!readOnly && (
-        <Button type="button" variant="outline" onClick={() => update([...list, { title: 'بند جديد', body: '', appliesTo: ['ALL'] }])}>
-          <Plus /> بند جديد
+        <Button type="button" variant="outline" onClick={() => update([...list, { title: 'New clause', body: '', appliesTo: ['ALL'] }])}>
+          <Plus /> New clause
         </Button>
       )}
     </Panel>

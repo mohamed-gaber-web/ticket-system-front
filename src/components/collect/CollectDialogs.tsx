@@ -22,7 +22,7 @@ import {
   SIGNATURE_LABELS,
   addDays,
   apiError,
-  arDate,
+  fmtDate,
   money,
 } from '@/lib/collect';
 import { ConfirmButton, Field, INPUT, Modal, Select, TEXTAREA, Warning } from '@/components/collect/CollectUi';
@@ -39,7 +39,7 @@ import type {
 // contract, move the signature state, log a follow-up, add/edit a cheque.
 // Each calls the API, toasts the server's message and hands back the result.
 
-// ── تسجيل تحصيل ──────────────────────────────────────────────────────────────
+// ── Record payment ──────────────────────────────────────────────────────────────
 
 export interface PaymentTarget {
   contractId: string;
@@ -65,18 +65,18 @@ export function PaymentDialog({ target, today, onClose, onDone }: { target: Paym
   }, [target, today]);
 
   const n = Number(amount);
-  const invalid = !(n > 0) ? 'المبلغ لازم يكون أكبر من صفر' : target && n > target.remaining + 0.5 ? 'المبلغ أكبر من المتبقي' : null;
+  const invalid = !(n > 0) ? 'The amount must be greater than zero' : target && n > target.remaining + 0.5 ? 'The amount is more than what is left' : null;
 
   const save = async () => {
     if (!target || invalid) return;
     setBusy(true);
     try {
       const res = await addPayment(target.contractId, target.installmentId, { amount: n, date, method });
-      toast.success(res.message ?? 'تم تسجيل التحصيل');
+      toast.success(res.message ?? 'Payment recorded');
       onDone(res.data);
       onClose();
     } catch (e) {
-      toast.error(apiError(e, 'تعذر تسجيل التحصيل'));
+      toast.error(apiError(e, 'Could not record the payment'));
     } finally {
       setBusy(false);
     }
@@ -86,32 +86,32 @@ export function PaymentDialog({ target, today, onClose, onDone }: { target: Paym
     <Modal
       open={!!target}
       onClose={onClose}
-      title="تسجيل تحصيل"
+      title="Record payment"
       description={target ? `${target.contractNo} · ${target.customerName} · ${target.installmentName}` : undefined}
       footer={
         <>
           <Button onClick={() => void save()} disabled={busy || !!invalid}>
-            {busy && <Loader2 className="animate-spin" />} حفظ التحصيل
+            {busy && <Loader2 className="animate-spin" />} Save payment
           </Button>
           <Button variant="ghost" onClick={onClose}>
-            إلغاء
+            Cancel
           </Button>
         </>
       }
     >
       {target && (
         <p className="text-sm text-on-surface-variant">
-          المتبقي على الدفعة: <b className="text-on-surface tabular-nums">{money(target.remaining, target.currency)}</b>
+          Left on this installment: <b className="text-on-surface tabular-nums">{money(target.remaining, target.currency)}</b>
         </p>
       )}
       <div className="grid gap-3 sm:grid-cols-3">
-        <Field label="المبلغ" htmlFor="pay-amount" required hint={invalid ?? 'يمكن تسجيل تحصيل جزئي'}>
+        <Field label="Amount" htmlFor="pay-amount" required hint={invalid ?? 'Partial payments are allowed'}>
           <input id="pay-amount" type="number" min={0} step="any" inputMode="decimal" className={INPUT} value={amount} onChange={(e) => setAmount(e.target.value)} aria-invalid={!!invalid} />
         </Field>
-        <Field label="التاريخ" htmlFor="pay-date">
+        <Field label="Date" htmlFor="pay-date">
           <input id="pay-date" type="date" className={INPUT} value={date} onChange={(e) => setDate(e.target.value)} />
         </Field>
-        <Field label="طريقة السداد" htmlFor="pay-method">
+        <Field label="Payment method" htmlFor="pay-method">
           <Select id="pay-method" value={method} onChange={(e) => setMethod(e.target.value)}>
             {PAY_METHODS.map((m) => (
               <option key={m}>{m}</option>
@@ -123,7 +123,7 @@ export function PaymentDialog({ target, today, onClose, onDone }: { target: Paym
   );
 }
 
-// ── تجديد العقد ──────────────────────────────────────────────────────────────
+// ── Renew contract ──────────────────────────────────────────────────────────────
 
 export function RenewDialog({ contract, open, onClose, onDone }: { contract: ContractDetail; open: boolean; onClose: () => void; onDone: (d: ContractDetail) => void }) {
   const def = contract.renewal;
@@ -145,11 +145,11 @@ export function RenewDialog({ contract, open, onClose, onDone }: { contract: Con
     setBusy(true);
     try {
       const res = await renewContract(contract.id, { upliftPct: Number(uplift) || 0, startDate: start, endDate: end });
-      toast.success(res.message ?? 'تم التجديد');
+      toast.success(res.message ?? 'Contract renewed');
       onDone(res.data);
       onClose();
     } catch (e) {
-      toast.error(apiError(e, 'تعذر تجديد العقد'));
+      toast.error(apiError(e, 'Could not renew the contract'));
     } finally {
       setBusy(false);
     }
@@ -159,44 +159,44 @@ export function RenewDialog({ contract, open, onClose, onDone }: { contract: Con
     <Modal
       open={open}
       onClose={onClose}
-      title="تجديد العقد"
+      title="Renew contract"
       description={`${contract.no} · ${contract.name}`}
       footer={
         <>
           <Button onClick={() => void save()} disabled={busy || !start || !end || end < start}>
-            {busy && <Loader2 className="animate-spin" />} إنشاء عقد التجديد
+            {busy && <Loader2 className="animate-spin" />} Create renewal contract
           </Button>
           <Button variant="ghost" onClick={onClose}>
-            إلغاء
+            Cancel
           </Button>
         </>
       }
     >
       <div className="grid gap-3 sm:grid-cols-3">
-        <Field label="نسبة الزيادة %" htmlFor="ren-up">
+        <Field label="Uplift %" htmlFor="ren-up">
           <input id="ren-up" type="number" min={0} step="any" className={INPUT} value={uplift} onChange={(e) => setUplift(e.target.value)} />
         </Field>
-        <Field label="بداية الفترة الجديدة" htmlFor="ren-start">
+        <Field label="New period start" htmlFor="ren-start">
           <input id="ren-start" type="date" className={INPUT} value={start} onChange={(e) => setStart(e.target.value)} />
         </Field>
-        <Field label="نهاية الفترة الجديدة" htmlFor="ren-end">
+        <Field label="New period end" htmlFor="ren-end">
           <input id="ren-end" type="date" className={INPUT} value={end} min={start} onChange={(e) => setEnd(e.target.value)} />
         </Field>
       </div>
       <p className="text-sm text-on-surface">
-        قيمة العقد الجديد: <b className="tabular-nums">{money(newValue, contract.currency)}</b>{' '}
-        <span className="text-on-surface-variant">(الحالي {money(contract.value, contract.currency)})</span>
+        New contract value: <b className="tabular-nums">{money(newValue, contract.currency)}</b>{' '}
+        <span className="text-on-surface-variant">(current {money(contract.value, contract.currency)})</span>
       </p>
       <p className="text-xs text-on-surface-variant">
-        سيُنشأ عقد جديد برقم جديد ودفعات جديدة، ويبدأ التوقيع كمسودة. {contract.customized && 'تُنسخ البنود المخصصة للعقد الجديد كإصدار 1. '}
-        يصبح العقد الحالي «تم تجديده».
+        A new contract is created with a new number and a new schedule; its signature starts as a draft. {contract.customized && 'The customized clauses are copied to the new contract as version 1. '}
+        The current contract becomes “Renewed”.
       </p>
-      {contract.remaining > 0.5 && <Warning>يوجد متبقي {money(contract.remaining, contract.currency)} على العقد الحالي ولن يتأثر بالتجديد.</Warning>}
+      {contract.remaining > 0.5 && <Warning>{money(contract.remaining, contract.currency)} is still outstanding on the current contract; renewal does not change it.</Warning>}
     </Modal>
   );
 }
 
-// ── التوقيع: انتقال الحالة / متابعة ──────────────────────────────────────────
+// ── Signature: status move / follow-up ──────────────────────────────────────────
 
 export function SignatureDialog({
   contract,
@@ -229,11 +229,11 @@ export function SignatureDialog({
     setBusy(true);
     try {
       const res = await moveSignature(contract.id, { status: to, date, followUpDate: needsFollow ? follow || null : null, note });
-      toast.success(res.message ?? 'تم التحديث');
+      toast.success(res.message ?? 'Updated');
       onDone(res.data);
       onClose();
     } catch (e) {
-      toast.error(apiError(e, 'تعذر تحديث حالة التوقيع'));
+      toast.error(apiError(e, 'Could not update the signature status'));
     } finally {
       setBusy(false);
     }
@@ -248,27 +248,27 @@ export function SignatureDialog({
       footer={
         <>
           <Button onClick={() => void save()} disabled={busy || !date}>
-            {busy && <Loader2 className="animate-spin" />} حفظ
+            {busy && <Loader2 className="animate-spin" />} Save
           </Button>
           <Button variant="ghost" onClick={onClose}>
-            إلغاء
+            Cancel
           </Button>
         </>
       }
     >
-      {to === 'draft' && <Warning>سيتم مسح تواريخ الإرسال والتوقيع واستلام الأصل.</Warning>}
+      {to === 'draft' && <Warning>The sent, signed and original-received dates will be cleared.</Warning>}
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="التاريخ" htmlFor="sig-date">
+        <Field label="Date" htmlFor="sig-date">
           <input id="sig-date" type="date" className={INPUT} value={date} onChange={(e) => setDate(e.target.value)} />
         </Field>
         {needsFollow && (
-          <Field label="المتابعة القادمة" htmlFor="sig-follow">
+          <Field label="Next follow-up" htmlFor="sig-follow">
             <input id="sig-follow" type="date" className={INPUT} value={follow} onChange={(e) => setFollow(e.target.value)} />
           </Field>
         )}
       </div>
-      <Field label="ملاحظة" htmlFor="sig-note">
-        <textarea id="sig-note" rows={3} className={TEXTAREA} value={note} onChange={(e) => setNote(e.target.value)} placeholder="مثال: عن طريق البريد" />
+      <Field label="Note" htmlFor="sig-note">
+        <textarea id="sig-note" rows={3} className={TEXTAREA} value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. by e-mail" />
       </Field>
     </Modal>
   );
@@ -289,11 +289,11 @@ export function FollowUpDialog({ contract, open, today, onClose, onDone }: { con
     setBusy(true);
     try {
       const res = await addSignatureFollowUp(contract.id, { note, followUpDate: follow || null });
-      toast.success(res.message ?? 'تم تسجيل المتابعة');
+      toast.success(res.message ?? 'Follow-up logged');
       onDone(res.data);
       onClose();
     } catch (e) {
-      toast.error(apiError(e, 'تعذر تسجيل المتابعة'));
+      toast.error(apiError(e, 'Could not log the follow-up'));
     } finally {
       setBusy(false);
     }
@@ -303,30 +303,30 @@ export function FollowUpDialog({ contract, open, today, onClose, onDone }: { con
     <Modal
       open={open && !!contract}
       onClose={onClose}
-      title="تسجيل متابعة"
+      title="Log follow-up"
       description={contract ? `${contract.no} · ${contract.customer.name}` : undefined}
       footer={
         <>
           <Button onClick={() => void save()} disabled={busy || !note.trim()}>
-            {busy && <Loader2 className="animate-spin" />} حفظ المتابعة
+            {busy && <Loader2 className="animate-spin" />} Save follow-up
           </Button>
           <Button variant="ghost" onClick={onClose}>
-            إلغاء
+            Cancel
           </Button>
         </>
       }
     >
-      <Field label="ملاحظة المتابعة" htmlFor="fu-note" required>
+      <Field label="Follow-up note" htmlFor="fu-note" required>
         <textarea id="fu-note" rows={3} className={TEXTAREA} value={note} onChange={(e) => setNote(e.target.value)} />
       </Field>
-      <Field label="المتابعة القادمة" htmlFor="fu-date">
+      <Field label="Next follow-up" htmlFor="fu-date">
         <input id="fu-date" type="date" className={INPUT} value={follow} onChange={(e) => setFollow(e.target.value)} />
       </Field>
     </Modal>
   );
 }
 
-// ── الشيكات ──────────────────────────────────────────────────────────────────
+// ── Cheques ──────────────────────────────────────────────────────────────────
 
 const emptyCheque = (contractId = '', kind: ChequeInput['kind'] = 'payment', currency: ChequeInput['currency'] = 'EGP', today = ''): ChequeInput => ({
   contract: contractId,
@@ -414,7 +414,7 @@ export function ChequeDialog({
   }, [open, form.contract, cheque]);
 
   const set = <K extends keyof ChequeInput>(k: K, v: ChequeInput[K]) => setForm((f) => ({ ...f, [k]: v }));
-  const missing = !form.contract ? 'اختر العقد' : !form.number.trim() ? 'اكتب رقم الشيك' : !(Number(form.amount) > 0) ? 'اكتب مبلغ الشيك' : null;
+  const missing = !form.contract ? 'Choose the contract' : !form.number.trim() ? 'Enter the cheque number' : !(Number(form.amount) > 0) ? 'Enter the cheque amount' : null;
   const contractOptions = useMemo(() => [...contracts].sort((a, b) => a.no.localeCompare(b.no)), [contracts]);
 
   const save = async () => {
@@ -422,11 +422,11 @@ export function ChequeDialog({
     setBusy(true);
     try {
       const res = cheque ? await updateCheque(cheque.id, form) : await createCheque(form);
-      toast.success(res.message ?? 'تم حفظ الشيك');
+      toast.success(res.message ?? 'Cheque saved');
       onDone();
       onClose();
     } catch (e) {
-      toast.error(apiError(e, 'تعذر حفظ الشيك'));
+      toast.error(apiError(e, 'Could not save the cheque'));
     } finally {
       setBusy(false);
     }
@@ -436,11 +436,11 @@ export function ChequeDialog({
     if (!cheque) return;
     try {
       await deleteCheque(cheque.id);
-      toast.success('تم حذف الشيك');
+      toast.success('Cheque deleted');
       onDone();
       onClose();
     } catch (e) {
-      toast.error(apiError(e, 'تعذر حذف الشيك'));
+      toast.error(apiError(e, 'Could not delete the cheque'));
     }
   };
 
@@ -449,25 +449,25 @@ export function ChequeDialog({
       open={open}
       onClose={onClose}
       wide
-      title={cheque ? `شيك ${cheque.number}` : form.kind === 'guarantee' ? 'تسجيل شيك ضمان' : 'شيك جديد'}
+      title={cheque ? `Cheque ${cheque.number}` : form.kind === 'guarantee' ? 'Record guarantee cheque' : 'New cheque'}
       footer={
         <>
           <Button onClick={() => void save()} disabled={busy || !!missing} title={missing ?? undefined}>
-            {busy && <Loader2 className="animate-spin" />} حفظ
+            {busy && <Loader2 className="animate-spin" />} Save
           </Button>
           <Button variant="ghost" onClick={onClose}>
-            إلغاء
+            Cancel
           </Button>
           <span className="flex-1" />
-          {cheque && <ConfirmButton onConfirm={remove} label="حذف الشيك" />}
+          {cheque && <ConfirmButton onConfirm={remove} label="Delete cheque" />}
         </>
       }
     >
       <div className="grid gap-3 sm:grid-cols-2">
         {!contractId && !cheque && (
-          <Field label="العقد" htmlFor="cq-contract" required className="sm:col-span-2">
+          <Field label="Contract" htmlFor="cq-contract" required className="sm:col-span-2">
             <Select id="cq-contract" value={form.contract} onChange={(e) => set('contract', e.target.value)}>
-              <option value="">اختر العقد</option>
+              <option value="">Choose the contract</option>
               {contractOptions.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.no} — {c.customer.name} — {c.name}
@@ -476,7 +476,7 @@ export function ChequeDialog({
             </Select>
           </Field>
         )}
-        <Field label="النوع" htmlFor="cq-kind">
+        <Field label="Type" htmlFor="cq-kind">
           <Select id="cq-kind" value={form.kind} onChange={(e) => set('kind', e.target.value as ChequeInput['kind'])}>
             {(['payment', 'guarantee'] as const).map((k) => (
               <option key={k} value={k}>
@@ -485,17 +485,17 @@ export function ChequeDialog({
             ))}
           </Select>
         </Field>
-        <Field label="رقم الشيك" htmlFor="cq-no" required>
-          <input id="cq-no" dir="ltr" className={`${INPUT} text-end`} value={form.number} onChange={(e) => set('number', e.target.value)} />
+        <Field label="Cheque number" htmlFor="cq-no" required>
+          <input id="cq-no" className={INPUT} value={form.number} onChange={(e) => set('number', e.target.value)} />
         </Field>
-        <Field label="البنك" htmlFor="cq-bank">
+        <Field label="Bank" htmlFor="cq-bank">
           <input id="cq-bank" className={INPUT} value={form.bank} onChange={(e) => set('bank', e.target.value)} />
         </Field>
         <div className="grid grid-cols-[1fr_auto] gap-2">
-          <Field label="المبلغ" htmlFor="cq-amount" required>
+          <Field label="Amount" htmlFor="cq-amount" required>
             <input id="cq-amount" type="number" min={0} step="any" className={INPUT} value={form.amount} onChange={(e) => set('amount', e.target.value)} />
           </Field>
-          <Field label="العملة" htmlFor="cq-cur">
+          <Field label="Currency" htmlFor="cq-cur">
             <Select id="cq-cur" value={form.currency} onChange={(e) => set('currency', e.target.value as ChequeInput['currency'])}>
               {CURRENCIES.map((c) => (
                 <option key={c}>{c}</option>
@@ -503,13 +503,13 @@ export function ChequeDialog({
             </Select>
           </Field>
         </div>
-        <Field label="تاريخ الاستحقاق" htmlFor="cq-due">
+        <Field label="Due date" htmlFor="cq-due">
           <input id="cq-due" type="date" className={INPUT} value={form.dueDate} onChange={(e) => set('dueDate', e.target.value)} />
         </Field>
-        <Field label="تاريخ الاستلام" htmlFor="cq-rec">
+        <Field label="Received date" htmlFor="cq-rec">
           <input id="cq-rec" type="date" className={INPUT} value={form.receivedDate} onChange={(e) => set('receivedDate', e.target.value)} />
         </Field>
-        <Field label="الحالة" htmlFor="cq-status">
+        <Field label="Status" htmlFor="cq-status">
           <Select id="cq-status" value={form.status} onChange={(e) => set('status', e.target.value as ChequeInput['status'])}>
             {CHEQUE_STATUSES.map((s) => (
               <option key={s} value={s}>
@@ -519,18 +519,18 @@ export function ChequeDialog({
           </Select>
         </Field>
         {form.kind === 'payment' && (
-          <Field label="مقابل دفعة" htmlFor="cq-inst" hint="عند تحصيل الشيك يُسجَّل تلقائيًا على هذه الدفعة">
+          <Field label="For installment" htmlFor="cq-inst" hint="When the cheque clears, it is recorded on this installment automatically">
             <Select id="cq-inst" value={form.installmentId} onChange={(e) => set('installmentId', e.target.value)}>
-              <option value="">— بدون —</option>
+              <option value="">— None —</option>
               {installments.map((i) => (
                 <option key={i.id} value={i.id}>
-                  {i.name} — {arDate(i.dueDate)} — متبقي {money(i.remaining, form.currency)}
+                  {i.name} — {fmtDate(i.dueDate)} — {money(i.remaining, form.currency)} left
                 </option>
               ))}
             </Select>
           </Field>
         )}
-        <Field label="ملاحظات" htmlFor="cq-notes" className="sm:col-span-2">
+        <Field label="Notes" htmlFor="cq-notes" className="sm:col-span-2">
           <textarea id="cq-notes" rows={2} className={TEXTAREA} value={form.notes} onChange={(e) => set('notes', e.target.value)} />
         </Field>
       </div>
