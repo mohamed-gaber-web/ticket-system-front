@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { CopyPlus, FileSignature, Loader2, Plus } from 'lucide-react';
+import Swal from 'sweetalert2';
+import { CopyPlus, FileSignature, Loader2, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { createProposal, getOpportunityProposals } from '@/api/proposalApi';
+import { createProposal, deleteProposal, getOpportunityProposals } from '@/api/proposalApi';
 import { formatUsd } from '@/lib/proposalMath';
 import { personName, type ProposalSummary } from '@/types/proposal.types';
 import { useAccess } from '@/redux/hooks/useAccess';
@@ -33,6 +34,7 @@ export default function LeadProposalsTab({
   const [rows, setRows] = useState<ProposalSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
+  const [removing, setRemoving] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -61,6 +63,34 @@ export default function LeadProposalsTab({
       toast.error(apiError(e, 'Could not create the proposal'));
     } finally {
       setBusy(null);
+    }
+  };
+
+  // Only draft proposals the caller authored (or manages) can be deleted — the
+  // API decides and sends `permissions.delete`.
+  const remove = async (p: ProposalSummary) => {
+    const confirmed = await Swal.fire({
+      title: `Delete proposal ${p.number}?`,
+      text: 'This permanently deletes this draft proposal. This cannot be undone.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Delete',
+      confirmButtonColor: '#ef4444',
+    });
+    if (!confirmed.isConfirmed) return;
+    setRemoving(p._id);
+    try {
+      await deleteProposal(p._id);
+      toast.success(`Deleted ${p.number}`);
+      setRows((cur) => {
+        const next = cur.filter((r) => r._id !== p._id);
+        onCount?.(next.length);
+        return next;
+      });
+    } catch (e) {
+      toast.error(apiError(e, 'Could not delete the proposal'));
+    } finally {
+      setRemoving(null);
     }
   };
 
@@ -108,6 +138,19 @@ export default function LeadProposalsTab({
                 {canCreate && isOpportunity && (
                   <Button variant="outline" size="sm" onClick={() => create(p._id)} disabled={Boolean(busy)} title="Copy this proposal into a new version">
                     {busy === p._id ? <Loader2 className="animate-spin" /> : <CopyPlus />} New version
+                  </Button>
+                )}
+                {p.permissions?.delete && (
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="text-on-surface-variant hover:text-error"
+                    aria-label={`Delete proposal ${p.number}`}
+                    title="Delete this draft proposal"
+                    disabled={removing === p._id}
+                    onClick={() => remove(p)}
+                  >
+                    {removing === p._id ? <Loader2 className="animate-spin" /> : <Trash2 />}
                   </Button>
                 )}
               </div>
