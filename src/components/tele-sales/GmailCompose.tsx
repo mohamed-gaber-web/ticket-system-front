@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import {
   X, Minus, Maximize2, Minimize2, Paperclip, Trash2, Link2, Bold, Italic,
   Underline, Strikethrough, List, ListOrdered, RemoveFormatting, Type, Send,
-  Loader2, FileText, Image as ImageIcon, AlertCircle, ChevronDown,
+  Loader2, FileText, Image as ImageIcon, AlertCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
@@ -214,6 +214,10 @@ export default function GmailCompose({
   const attachmentsRef = useRef<PendingAttachment[]>([]);
   useEffect(() => { attachmentsRef.current = attachments; }, [attachments]);
 
+  // The sender info loads after the window opens; the moment the employee's own
+  // mailbox is known, lock the "From" to it (there is no shared-mailbox choice).
+  useEffect(() => { if (sender?.personal) setSendAs('personal'); }, [sender]);
+
   // Reset to a clean sheet every time the window is opened.
   useEffect(() => {
     if (!open) return;
@@ -242,8 +246,10 @@ export default function GmailCompose({
     })));
     setShowLinkInput(false);
     setSending(false);
-    // Answering mail that came to my own mailbox: answer from it again.
-    setSendAs(replyTo?.mailbox && replyTo.mailbox === sender?.personal?.mailbox ? 'personal' : 'shared');
+    // Every message must go out from the current employee's own mailbox when it
+    // is available; the shared mailbox is only a fallback for an address we
+    // cannot send as.
+    setSendAs(sender?.personal ? 'personal' : 'shared');
     if (editorRef.current) {
       editorRef.current.innerHTML = defaultBody;
       // With recipients already filled in, the cursor belongs in the message.
@@ -515,19 +521,12 @@ export default function GmailCompose({
           {sender?.mailbox && (
             <div className="flex items-center gap-2 border-b border-outline-variant/40 px-4 py-2">
               <span className="text-sm text-on-surface-variant w-9 shrink-0">From</span>
+              {/* Mail always goes out from the current employee's own address.
+                  The shared mailbox is only shown when their address cannot send. */}
               {sender.personal ? (
-                <div className="relative min-w-0 flex-1">
-                  <select
-                    value={sendAs}
-                    onChange={(e) => setSendAs(e.target.value as EmailSendAs)}
-                    aria-label="Send from"
-                    className="w-full min-w-0 cursor-pointer appearance-none truncate rounded-md bg-transparent py-0.5 pr-6 text-sm text-on-surface outline-none hover:bg-surface-container-high focus-visible:ring-2 focus-visible:ring-primary/40"
-                  >
-                    <option value="shared">{senderLabel(sender.mailbox, sender.name)}</option>
-                    <option value="personal">{senderLabel(sender.personal.mailbox, sender.personal.name)} (my email)</option>
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-1 top-1/2 h-4 w-4 -translate-y-1/2 text-on-surface-variant" />
-                </div>
+                <span className="text-sm text-on-surface truncate">
+                  {senderLabel(sender.personal.mailbox, sender.personal.name)} (my email)
+                </span>
               ) : (
                 <span className="text-sm text-on-surface truncate">{senderLabel(sender.mailbox, sender.name)}</span>
               )}
