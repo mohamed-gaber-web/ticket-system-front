@@ -459,16 +459,18 @@ export interface UpdateLeadData extends Partial<CreateLeadData> {}
 
 export interface LeadQueryParams {
   search?: string;
-  status?: LeadStatus;
-  priority?: LeadPriority;
-  /** An agent id, or the literal 'unassigned' for the team's unclaimed pool. */
+  // status, priority, assignedTo, team, entityType, industrySector and country
+  // take one value or a comma list ("High,Medium"), matching any of them.
+  status?: LeadStatus | string;
+  priority?: LeadPriority | string;
+  /** Agent ids, and/or the literal 'unassigned' for the team's unclaimed pool. */
   assignedTo?: string;
-  /** Honoured for super admins only; everyone else is pinned to their own team. */
+  /** Any teams for cross-team readers; everyone else only among their own teams. */
   team?: string;
   tags?: string;
   salesType?: SalesType;
-  entityType?: EntityType;
-  industrySector?: IndustrySector;
+  entityType?: EntityType | string;
+  industrySector?: IndustrySector | string;
   country?: string;
   from?: string;
   to?: string;
