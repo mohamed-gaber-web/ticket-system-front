@@ -140,13 +140,13 @@ export default function LeadProposalsTab({
                     {busy === p._id ? <Loader2 className="animate-spin" /> : <CopyPlus />} New version
                   </Button>
                 )}
-                {p.permissions?.delete && (
+                {(p.permissions?.delete || isAdmin) && (
                   <Button
                     variant="ghost"
                     size="icon-sm"
                     className="text-on-surface-variant hover:text-error"
                     aria-label={`Delete proposal ${p.number}`}
-                    title="Delete this draft proposal"
+                    title="Delete this proposal"
                     disabled={removing === p._id}
                     onClick={() => remove(p)}
                   >

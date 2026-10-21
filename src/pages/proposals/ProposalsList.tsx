@@ -258,13 +258,15 @@ export default function ProposalsList() {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      {p.permissions?.delete && (
+                      {/* Admins may always delete (the API enforces it); the
+                          permissions flag covers sales managers / draft authors. */}
+                      {(p.permissions?.delete || isAdmin) && (
                         <Button
                           variant="ghost"
                           size="icon-sm"
                           className="text-on-surface-variant hover:text-error"
                           aria-label={`Delete proposal ${p.number}`}
-                          title="Delete this draft proposal"
+                          title="Delete this proposal"
                           disabled={deletingId === p._id}
                           onClick={() => remove(p)}
                         >
