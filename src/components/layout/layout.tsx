@@ -8,6 +8,7 @@ import { useAppDispatch, useAppSelector } from "@/redux/hooks/hooks";
 import { getProfile } from "@/redux/slices/authSlice";
 import { useSessionTimeout } from "@/hooks/useSessionTimeout";
 import { useNotificationSocket } from "@/redux/hooks/useNotificationSocket";
+import { TicketChatProvider } from "@/components/ticket-chat/TicketChatProvider";
 
 export default function Layout() {
   const dispatch = useAppDispatch();
@@ -30,7 +31,9 @@ export default function Layout() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header />
         <main className="flex-1 overflow-y-auto overflow-x-hidden bg-surface">
-          <Outlet />
+          <TicketChatProvider>
+            <Outlet />
+          </TicketChatProvider>
           <Toaster position="top-right" />
         </main>
       </div>

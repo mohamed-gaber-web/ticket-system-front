@@ -21,8 +21,8 @@ import {
   X,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
+import { useTicketChat } from '@/components/ticket-chat/ticketChatContext';
 import { fetchTickets } from '@/redux/slices/ticketSlice';
 import { activityDate, activityMs, buildRange, isInRange, DATE_BASIS } from '@/lib/ticketActivity';
 import { Input } from '@/components/ui/input';
@@ -235,7 +235,7 @@ function BreakdownList({ items, total, loading }: { items: BreakdownItem[]; tota
    Customer Dashboard
 ───────────────────────────────────────────────────────────── */
 export default function CustomerDashboard() {
-  const navigate = useNavigate();
+  const { openTicketChat } = useTicketChat();
   const dispatch = useAppDispatch();
   const { user, customerRole } = useAppSelector((state) => state.auth);
   const { tickets, loading: ticketsLoading } = useAppSelector((s) => s.tickets);
@@ -397,7 +397,7 @@ export default function CustomerDashboard() {
             <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
             {today}
           </div>
-          <Button size="sm" className="gap-1.5" onClick={() => navigate('/tickets/new')}>
+          <Button size="sm" className="gap-1.5" onClick={openTicketChat}>
             <Plus className="h-3.5 w-3.5" /> New Ticket
           </Button>
         </div>
