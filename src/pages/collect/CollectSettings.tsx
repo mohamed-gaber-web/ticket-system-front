@@ -22,7 +22,7 @@ const SECTIONS = [
 
 type SectionKey = (typeof SECTIONS)[number]['key'];
 
-/** Settings (§9.9): `/hr/collect/settings/:section`. */
+/** Settings (§9.9): `/finance/collect/settings/:section`. */
 export default function CollectSettings() {
   const { section } = useParams<{ section: string }>();
   const navigate = useNavigate();

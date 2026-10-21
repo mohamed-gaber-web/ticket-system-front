@@ -54,6 +54,7 @@ import {
   BellRing,
   FileStack,
   Landmark,
+  Banknote,
 } from "lucide-react";
 import type { Access } from "@/redux/hooks/useAccess";
 import type { ModuleKey } from "@/types/auth.types";
@@ -360,13 +361,7 @@ const VAULT_GROUP: NavLink = {
   ],
 };
 
-// HR menu — the employee directory (with the confidential HR file for HR and
-// admins), teams, leave approvals and balances, plus ticketing Performance.
-// Every link says who sees it; the group shows when any link survives, so a
-// consultant without the HR module still finds Performance here. The directory
-// and everyone's balances are for admins and HR only; others use My Balance and
-// their profile.
-// Grow Path Collect — contracts, collections, cheques and reminders (Arabic UI).
+// Grow Path Collect — contracts, collections, cheques and reminders.
 // No role has the `collect` module by default; an admin ticks it per employee.
 const COLLECT_GROUP: NavLink = {
   name: "Grow Path Collect",
@@ -374,15 +369,30 @@ const COLLECT_GROUP: NavLink = {
   isSubGroup: true,
   module: "collect",
   children: [
-    { name: "Monthly Analysis", path: "/hr/collect/analytics", icon: BarChart2 },
-    { name: "Backlog (Contracts)", path: "/hr/collect/backlog", icon: FileStack },
-    { name: "Collection", path: "/hr/collect/collection", icon: HandCoins },
-    { name: "Signatures & Cheques", path: "/hr/collect/signatures", icon: FileSignature },
-    { name: "Reminders", path: "/hr/collect/reminders", icon: BellRing },
-    { name: "Settings", path: "/hr/collect/settings/general", icon: Settings2 },
+    { name: "Monthly Analysis", path: "/finance/collect/analytics", icon: BarChart2 },
+    { name: "Backlog (Contracts)", path: "/finance/collect/backlog", icon: FileStack },
+    { name: "Collection", path: "/finance/collect/collection", icon: HandCoins },
+    { name: "Signatures & Cheques", path: "/finance/collect/signatures", icon: FileSignature },
+    { name: "Reminders", path: "/finance/collect/reminders", icon: BellRing },
+    { name: "Settings", path: "/finance/collect/settings/general", icon: Settings2 },
   ],
 };
 
+// Finance — money matters, starting with Grow Path Collect. The group shows
+// for holders of the `collect` module.
+const FINANCE_GROUP: NavLink = {
+  name: "Finance",
+  icon: Banknote,
+  isGroup: true,
+  children: [COLLECT_GROUP],
+};
+
+// HR menu — the employee directory (with the confidential HR file for HR and
+// admins), teams, leave approvals and balances, plus ticketing Performance.
+// Every link says who sees it; the group shows when any link survives, so a
+// consultant without the HR module still finds Performance here. The directory
+// and everyone's balances are for admins and HR only; others use My Balance and
+// their profile.
 const HR_GROUP: NavLink = {
   name: "HR",
   icon: Contact,
@@ -393,7 +403,6 @@ const HR_GROUP: NavLink = {
     { name: "Approvals", path: "/employee-requests/approvals", icon: ClipboardCheck, minRole: "manager" },
     { name: "Balances", path: "/employee-requests/balances", icon: Wallet, module: "hr" },
     PERFORMANCE_GROUP,
-    COLLECT_GROUP,
   ],
 };
 
@@ -417,6 +426,7 @@ const EMPLOYEE_NAV: NavEntry[] = [
   { module: "development", link: DEVELOPMENT_GROUP },
   { module: "marketing", link: MARKETING_GROUP },
   { module: "vault", link: VAULT_GROUP },
+  { module: "collect", link: FINANCE_GROUP },
   { module: "any", link: HR_GROUP },
   { module: "any", link: MY_REQUESTS_GROUP },
 ];

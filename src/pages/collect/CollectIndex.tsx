@@ -3,7 +3,7 @@ import { COLLECT_BASE, LAST_TAB_KEY } from '@/components/collect/CollectLayout';
 
 const TABS = /^(analytics|backlog|collection|signatures|reminders|settings\/[a-z]+)$/;
 
-/** `/hr/collect` opens the last tab used (localStorage), else the analysis. */
+/** `/finance/collect` opens the last tab used (localStorage), else the analysis. */
 export default function CollectIndex() {
   let last = 'analytics';
   try {

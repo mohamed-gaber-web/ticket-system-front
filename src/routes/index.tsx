@@ -30,6 +30,14 @@ function Lazy({ children }: { children: ReactNode }) {
   return <Suspense fallback={<PageLoader />}>{children}</Suspense>;
 }
 
+/** `/hr/collect/...` → `/finance/collect/...`, keeping the query string. */
+function LegacyCollectRedirect() {
+  const rest = useParams()["*"];
+  const [search] = useSearchParams();
+  const qs = search.toString();
+  return <Navigate to={`/finance/collect${rest ? `/${rest}` : ""}${qs ? `?${qs}` : ""}`} replace />;
+}
+
 // The employee directory moved from /consultants to /hr/employees; old links
 // and bookmarks keep working.
 function LegacyEmployeeRedirect({ to }: { to: (id?: string) => string }) {
@@ -328,16 +336,18 @@ export const routes: RouteObject[] = [
       // Tele-sales teams are managed by HR (admins always hold the hr module)
       { path: "/hr/teams", element: <ModuleRoute module="hr"><Lazy><TeleSalesTeams /></Lazy></ModuleRoute> },
 
-      // Grow Path Collect (HR menu) — contracts, collections, cheques, reminders.
+      // Grow Path Collect (Finance menu) — contracts, collections, cheques, reminders.
       // Needs the `collect` module; admin-only settings are read-only for others (the API enforces it).
-      { path: "/hr/collect", element: <ModuleRoute module="collect"><Lazy><CollectIndex /></Lazy></ModuleRoute> },
-      { path: "/hr/collect/analytics", element: <ModuleRoute module="collect"><Lazy><CollectAnalytics /></Lazy></ModuleRoute> },
-      { path: "/hr/collect/backlog", element: <ModuleRoute module="collect"><Lazy><CollectBacklog /></Lazy></ModuleRoute> },
-      { path: "/hr/collect/collection", element: <ModuleRoute module="collect"><Lazy><CollectCollection /></Lazy></ModuleRoute> },
-      { path: "/hr/collect/signatures", element: <ModuleRoute module="collect"><Lazy><CollectSignatures /></Lazy></ModuleRoute> },
-      { path: "/hr/collect/reminders", element: <ModuleRoute module="collect"><Lazy><CollectReminders /></Lazy></ModuleRoute> },
-      { path: "/hr/collect/settings", element: <Navigate to="/hr/collect/settings/general" replace /> },
-      { path: "/hr/collect/settings/:section", element: <ModuleRoute module="collect"><Lazy><CollectSettings /></Lazy></ModuleRoute> },
+      { path: "/finance/collect", element: <ModuleRoute module="collect"><Lazy><CollectIndex /></Lazy></ModuleRoute> },
+      { path: "/finance/collect/analytics", element: <ModuleRoute module="collect"><Lazy><CollectAnalytics /></Lazy></ModuleRoute> },
+      { path: "/finance/collect/backlog", element: <ModuleRoute module="collect"><Lazy><CollectBacklog /></Lazy></ModuleRoute> },
+      { path: "/finance/collect/collection", element: <ModuleRoute module="collect"><Lazy><CollectCollection /></Lazy></ModuleRoute> },
+      { path: "/finance/collect/signatures", element: <ModuleRoute module="collect"><Lazy><CollectSignatures /></Lazy></ModuleRoute> },
+      { path: "/finance/collect/reminders", element: <ModuleRoute module="collect"><Lazy><CollectReminders /></Lazy></ModuleRoute> },
+      { path: "/finance/collect/settings", element: <Navigate to="/finance/collect/settings/general" replace /> },
+      { path: "/finance/collect/settings/:section", element: <ModuleRoute module="collect"><Lazy><CollectSettings /></Lazy></ModuleRoute> },
+      // Collect lived under the HR menu before Finance existed; keep old links working.
+      { path: "/hr/collect/*", element: <LegacyCollectRedirect /> },
       { path: "/consultants", element: <Navigate to="/hr/employees" replace /> },
       { path: "/consultants/create", element: <Navigate to="/hr/employees/create" replace /> },
       { path: "/consultants/edit/:id", element: <LegacyEmployeeRedirect to={(id) => `/hr/employees/edit/${id}`} /> },
