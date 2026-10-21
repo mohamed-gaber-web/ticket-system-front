@@ -51,7 +51,7 @@ export const MODULE_LABELS: Record<ModuleKey, string> = {
   marketing: 'Marketing',
   proposals: 'Proposals',
   vault: 'Credentials Vault',
-  collect: 'Collections (Grow Path Collect)',
+  collect: 'Finance (Grow Path Collect)',
 };
 
 export const isEmployeeRole = (role: unknown): role is EmployeeRole =>

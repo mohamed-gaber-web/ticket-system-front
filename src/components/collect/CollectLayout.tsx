@@ -10,7 +10,7 @@ import { ContractEditor } from '@/components/collect/ContractEditor';
 import { ErrorState } from '@/components/collect/CollectUi';
 import '@/pages/collect/collect.css';
 
-export const COLLECT_BASE = '/hr/collect';
+export const COLLECT_BASE = '/finance/collect';
 export const LAST_TAB_KEY = 'collect.lastTab';
 
 const TABS = [

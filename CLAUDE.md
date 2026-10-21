@@ -141,13 +141,13 @@ Sidebar group "Credentials Vault" (`VAULT_GROUP`): `/vault` (dashboard), `/vault
 - **State:** `vaultLookupsSlice` (lookups by type + clients + employees + departments, loaded by `useVaultSetup`), `vaultEntriesSlice` (Accounts page; filters live in the URL query), `vaultSendSlice` (send draft — `setSendDraftEntries` from a card's Send button — and the masked preview), `vaultReportsSlice` (send log + dashboard). API: `src/api/vaultApi.ts`; types `src/types/vault.types.ts`; helpers (password generator, due/age chips) `src/lib/vault.ts`.
 - **UI:** shared pieces in `components/vault/VaultUi.tsx` (`Chip`, `MonoText` — technical values LTR monospace, `FieldWithHelp`, `VaultSelect`, two-step `ConfirmButton`, `MissingBox`). Every vault screen is wrapped in `VaultLayout` (title + sub-tabs).
 
-## Grow Path Collect (module `collect`, HR menu)
+## Grow Path Collect (module `collect`, Finance menu)
 
 Contracts, installments, collections, cheques, signature tracking and payment reminders for Grow Path's own customer contracts (spec: `GROW_PATH_COLLECT_SPEC.md`; API `/api/collect`). The UI is English and left-to-right, in the app's design system (Manrope, MD3 tokens). Every screen is wrapped in `components/collect/CollectLayout` (the `.gpc` scope in `pages/collect/collect.css` only adds tabular numbers and a `.pre` helper).
 
-- **Access:** no role has `collect` by default; an admin ticks it per employee, and holding it makes the account privileged (`holdsPrivilegedModule`). The sidebar shows the "Grow Path Collect" sub-group under HR (`COLLECT_GROUP`). Settings, types, clauses, rules, templates and data are editable by admins only (`meta.canAdmin`); customers are editable by every module user.
+- **Access:** no role has `collect` by default; an admin ticks it per employee, and holding it makes the account privileged (`holdsPrivilegedModule`). The sidebar shows the "Grow Path Collect" sub-group under the top-level "Finance" group (`FINANCE_GROUP` → `COLLECT_GROUP`); the module is labelled "Finance (Grow Path Collect)" in the employee form. Settings, types, clauses, rules, templates and data are editable by admins only (`meta.canAdmin`); customers are editable by every module user.
 - **Routes:**
-  - `/hr/collect` reopens the last tab (`CollectIndex`, localStorage).
+  - `/finance/collect` reopens the last tab (`CollectIndex`, localStorage). Old `/hr/collect/*` links redirect (`LegacyCollectRedirect`).
   - Tabs: `/analytics`, `/backlog`, `/collection` (`?customer=`), `/signatures`, `/reminders`, `/settings/:section` (general, document, types, customers, rules, templates, data; components in `components/collect/settings/`).
 - **State:** `redux/slices/collectSlice.ts` holds `meta` (today, simulated flag, rates, types, tab badges, canAdmin), the shared filters (year, type, customer, segments), the open drawer `drawerId` and the editor `editorId` (`'new'` or an id). After every write dispatch `collectChanged()`: it refetches meta (badges) and bumps `dataVersion`, which every page and the drawer include in their load effects. Pages keep their own data in component state.
 - **Shared pieces:**
