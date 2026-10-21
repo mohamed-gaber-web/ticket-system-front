@@ -97,8 +97,14 @@ api.interceptors.response.use(
             }
           );
 
-          // Update token in localStorage
+          // Update token in localStorage. The backend ROTATES the refresh token
+          // on every refresh, so the new one must be stored too — otherwise the
+          // next refresh sends a stale token and the session is forced to log
+          // out. The refreshed user/userType are stored when returned.
           localStorage.setItem('token', data.token);
+          if (data.refreshToken) localStorage.setItem('refreshToken', data.refreshToken);
+          if (data.userType) localStorage.setItem('userType', data.userType);
+          if (data.data) localStorage.setItem('user', JSON.stringify(data.data));
 
           // Update Authorization header
           if (!originalRequest.headers) {
