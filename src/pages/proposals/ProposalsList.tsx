@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { FileSignature, FilterX, Plus, Search, Settings2 } from 'lucide-react';
+import Swal from 'sweetalert2';
+import { FileSignature, FilterX, Loader2, Plus, Search, Settings2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { MultiSelect, type MultiSelectItem } from '@/components/ui/multi-select';
-import { getProposalFilterOptions, getProposals, type ProposalFilterOptions } from '@/api/proposalApi';
+import { deleteProposal, getProposalFilterOptions, getProposals, type ProposalFilterOptions } from '@/api/proposalApi';
 import { formatUsd } from '@/lib/proposalMath';
 import { useAccess } from '@/redux/hooks/useAccess';
 import { personName, type ProposalStatus, type ProposalSummary } from '@/types/proposal.types';
@@ -43,6 +44,7 @@ export default function ProposalsList() {
   const [q, setQ] = useState(() => searchParams.get('q') ?? '');
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [options, setOptions] = useState<ProposalFilterOptions | null>(null);
 
   // Filters live in the URL so a filtered list can be bookmarked or shared.
@@ -117,6 +119,31 @@ export default function ProposalsList() {
     const t = window.setTimeout(load, 250);
     return () => window.clearTimeout(t);
   }, [load]);
+
+  // Delete is offered only on rows the API says the caller may delete (Draft, by
+  // the author or a sales manager). The confirm guards an irreversible action.
+  const remove = async (p: ProposalSummary) => {
+    const confirmed = await Swal.fire({
+      title: `Delete proposal ${p.number}?`,
+      text: 'This permanently deletes this draft proposal. This cannot be undone.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Delete',
+      confirmButtonColor: '#ef4444',
+    });
+    if (!confirmed.isConfirmed) return;
+    setDeletingId(p._id);
+    try {
+      await deleteProposal(p._id);
+      toast.success(`Deleted ${p.number}`);
+      setRows((cur) => cur.filter((r) => r._id !== p._id));
+      setTotal((n) => Math.max(0, n - 1));
+    } catch (e) {
+      toast.error(apiError(e, 'Could not delete the proposal'));
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -208,6 +235,7 @@ export default function ProposalsList() {
                   <th className="px-4 py-3">Prepared by</th>
                   <th className="px-4 py-3 text-right">Grand total</th>
                   <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/20">
@@ -228,6 +256,21 @@ export default function ProposalsList() {
                         <ProposalStatusBadge status={p.status} />
                         {isAdmin && p.status === 'Pending approval' && <NeedsYourApproval overLimit={p.discountOverLimit} />}
                       </div>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      {p.permissions?.delete && (
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          className="text-on-surface-variant hover:text-error"
+                          aria-label={`Delete proposal ${p.number}`}
+                          title="Delete this draft proposal"
+                          disabled={deletingId === p._id}
+                          onClick={() => remove(p)}
+                        >
+                          {deletingId === p._id ? <Loader2 className="animate-spin" /> : <Trash2 />}
+                        </Button>
+                      )}
                     </td>
                   </tr>
                 ))}

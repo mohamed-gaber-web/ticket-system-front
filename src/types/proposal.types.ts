@@ -214,6 +214,8 @@ export interface ProposalSummary {
   needsApproval?: boolean;
   /** A discount is above the price list's limit (information for the approving admin). */
   discountOverLimit?: boolean;
+  /** What the caller may do with this row — computed by the API (delete = Draft + author/manager). */
+  permissions?: { edit: boolean; approve: boolean; delete: boolean };
   updatedAt?: string;
 }
 
