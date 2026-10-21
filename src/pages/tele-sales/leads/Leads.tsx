@@ -7,6 +7,7 @@ import { fetchTeams } from '@/redux/slices/teleSalesTeamsSlice';
 import { fetchIndustrySectors } from '@/redux/slices/industrySectorSlice';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { MultiSelect, type MultiSelectItem } from '@/components/ui/multi-select';
 import { PhoneLink } from '@/components/PhoneLink';
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
@@ -22,8 +23,7 @@ import { StatusRulesModal } from '@/components/tele-sales/StatusRulesModal';
 import { LeadFormModal } from '@/components/tele-sales/LeadFormModal';
 import { LEAD_STATUSES, STATUS_COLORS, type LeadStatus } from '@/config/leadStatusWorkflow';
 import type {
-  Lead, LeadPriority, LeadSource, ImportLeadsResponse,
-  EntityType, IndustrySector, SalesType, NeedProductRef,
+  Lead, LeadPriority, LeadSource, ImportLeadsResponse, SalesType, NeedProductRef,
 } from '@/types/teleSales.types';
 import { ENTITY_TYPES, INDUSTRY_SECTORS, teamName, formatMoney } from '@/types/teleSales.types';
 import { STAGE_META, STAGE_ORDER, NEXT_STAGE, recordName, stageOf } from '@/lib/leadStages';
@@ -33,6 +33,11 @@ import { isSuperAdmin, isCrossTeamReader, isReadOnly, canManageTeam, ownTeamId, 
 const LEAD_SOURCES: LeadSource[] = ['LinkedIn', 'Website', 'Referral', 'Cold Call', 'Exhibition', 'Partner', 'Other'];
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 200];
+const PRIORITIES: LeadPriority[] = ['High', 'Medium', 'Low'];
+
+const named = (values: readonly string[]): MultiSelectItem[] => values.map((v) => ({ _id: v, name: v }));
+/** A multi-select filter as the API's comma list; nothing picked = no filter. */
+const csv = (values: string[]) => (values.length ? values.join(',') : undefined);
 
 interface LeadsProps {
   /** When set, the page is locked to this status: the status filter is fixed and
@@ -86,14 +91,15 @@ export default function Leads({ lockedStatus, stage = 'Lead' }: LeadsProps = {})
   const [statusRulesOpen, setStatusRulesOpen] = useState(false);
 
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState(lockedStatus ?? '');
-  const [priorityFilter, setPriorityFilter] = useState('');
-  const [entityTypeFilter, setEntityTypeFilter] = useState('');
-  const [sectorFilter, setSectorFilter] = useState('');
-  // Cross-team readers pick any team, a multi-team employee one of theirs.
-  const [teamFilter, setTeamFilter] = useState('');
+  // Every filter is a multi-select; several values match any of them.
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [priorityFilter, setPriorityFilter] = useState<string[]>([]);
+  const [entityTypeFilter, setEntityTypeFilter] = useState<string[]>([]);
+  const [sectorFilter, setSectorFilter] = useState<string[]>([]);
+  // Cross-team readers pick any teams, a multi-team employee some of theirs.
+  const [teamFilter, setTeamFilter] = useState<string[]>([]);
   // Narrows the shared team pipeline by owner; 'unassigned' shows the unclaimed pool.
-  const [ownerFilter, setOwnerFilter] = useState('');
+  const [ownerFilter, setOwnerFilter] = useState<string[]>([]);
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(PAGE_SIZE_OPTIONS[0]);
   const [showFilters, setShowFilters] = useState(false);
@@ -119,24 +125,25 @@ export default function Leads({ lockedStatus, stage = 'Lead' }: LeadsProps = {})
   const [skipDuplicates, setSkipDuplicates] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Team → Agent lookups. The owner filter follows the team filter (with no team
-  // picked it lists everyone the caller can see); the import's "Assign All To"
-  // follows the team the batch lands in.
-  const { agents: filterTeamAgents } = useTeamAgents(teamFilter || null);
-  const ownerOptions = teamFilter ? filterTeamAgents : agents.filter((a) => a.status === 'active');
+  // Team → Agent lookups. With exactly one team picked the owner filter lists that
+  // team's agents, otherwise everyone the caller can see; the import's "Assign All
+  // To" follows the team the batch lands in.
+  const oneTeam = teamFilter.length === 1 ? teamFilter[0] : null;
+  const { agents: filterTeamAgents } = useTeamAgents(oneTeam);
+  const ownerOptions = oneTeam ? filterTeamAgents : agents.filter((a) => a.status === 'active');
   const importTargetTeam = multiTeam ? importTeam : ownTeamId(user);
   const { agents: importAgents, loading: importAgentsLoading } = useTeamAgents(isImportOpen && canManage ? importTargetTeam : null);
 
   const load = useCallback(() => {
     dispatch(fetchLeads({
       search: search || undefined,
-      status: (lockedStatus ?? (statusFilter as LeadStatus)) || undefined,
-      priority: priorityFilter as LeadPriority || undefined,
+      status: lockedStatus ?? csv(statusFilter),
+      priority: csv(priorityFilter),
       salesType: stage,
-      entityType: entityTypeFilter as EntityType || undefined,
-      industrySector: sectorFilter as IndustrySector || undefined,
-      team: multiTeam && teamFilter ? teamFilter : undefined,
-      assignedTo: ownerFilter || undefined,
+      entityType: csv(entityTypeFilter),
+      industrySector: csv(sectorFilter),
+      team: multiTeam ? csv(teamFilter) : undefined,
+      assignedTo: csv(ownerFilter),
       page,
       limit: itemsPerPage,
     }));
@@ -161,6 +168,12 @@ export default function Leads({ lockedStatus, stage = 'Lead' }: LeadsProps = {})
   useEffect(() => { setPage(1); }, [search, statusFilter, priorityFilter, stage, entityTypeFilter, sectorFilter, teamFilter, ownerFilter, itemsPerPage]);
   // A selection only means something for the rows on screen.
   useEffect(() => { setSelected([]); }, [search, statusFilter, priorityFilter, stage, entityTypeFilter, sectorFilter, teamFilter, ownerFilter, itemsPerPage, page]);
+
+  const activeFilters = [statusFilter, priorityFilter, entityTypeFilter, sectorFilter, ownerFilter, teamFilter]
+    .filter((f) => f.length).length;
+  const clearFilters = () => {
+    setStatusFilter([]); setPriorityFilter([]); setEntityTypeFilter([]); setSectorFilter([]); setOwnerFilter([]); setTeamFilter([]);
+  };
 
   const pageIds = leads.map((l) => l._id);
   const allOnPage = pageIds.length > 0 && pageIds.every((id) => selected.includes(id));
@@ -382,72 +395,59 @@ export default function Leads({ lockedStatus, stage = 'Lead' }: LeadsProps = {})
         </div>
 
         {showFilters && (
-          <div className="flex gap-3 flex-wrap">
-            {!lockedStatus && (
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
-              >
-                <option value="">All Statuses</option>
-                {LEAD_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-              </select>
-            )}
-            <select
-              value={priorityFilter}
-              onChange={(e) => setPriorityFilter(e.target.value)}
-              className="px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
-            >
-              <option value="">All Priorities</option>
-              {(['High', 'Medium', 'Low'] as LeadPriority[]).map((p) => <option key={p} value={p}>{p}</option>)}
-            </select>
-            <select
-              value={entityTypeFilter}
-              onChange={(e) => setEntityTypeFilter(e.target.value)}
-              className="px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
-            >
-              <option value="">All Entity Types</option>
-              {ENTITY_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-            </select>
-            <select
-              value={sectorFilter}
-              onChange={(e) => setSectorFilter(e.target.value)}
-              className="px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
-            >
-              <option value="">All Sectors</option>
-              {sectorOptions.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
-            {/* Narrow the team pipeline by owner, including the unassigned records
-                still waiting to be handed out. An agent only has their own. */}
-            {!seesOnlyOwn && (
-              <select
-                value={ownerFilter}
-                onChange={(e) => setOwnerFilter(e.target.value)}
-                className="px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
-              >
-                <option value="">Anyone</option>
-                <option value="unassigned">Unassigned</option>
-                {ownerOptions.map((a) => (
-                  <option key={a._id} value={a._id}>{a.firstName} {a.lastName}</option>
-                ))}
-              </select>
-            )}
-            {/* Only someone who sees more than one team has one to pick. */}
-            {multiTeam && (
-              <select
-                value={teamFilter}
-                // An owner picked for the old team means nothing in the new one.
-                onChange={(e) => { setTeamFilter(e.target.value); if (ownerFilter !== 'unassigned') setOwnerFilter(''); }}
-                className="px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30"
-              >
-                <option value="">{crossTeam ? 'All Teams' : 'All My Teams'}</option>
-                {teamOptions.map((t) => <option key={t._id} value={t._id}>{t.name}</option>)}
-              </select>
-            )}
-            {((!lockedStatus && statusFilter) || priorityFilter || entityTypeFilter || sectorFilter || ownerFilter || teamFilter) && (
-              <button onClick={() => { if (!lockedStatus) setStatusFilter(''); setPriorityFilter(''); setEntityTypeFilter(''); setSectorFilter(''); setOwnerFilter(''); setTeamFilter(''); }}
-                className="flex items-center gap-1 text-sm text-error hover:text-error/80">
-                <X className="w-3.5 h-3.5" /> Clear
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
+              {!lockedStatus && (
+                <FilterField label="Status">
+                  <MultiSelect items={named(LEAD_STATUSES)} value={statusFilter} onChange={setStatusFilter}
+                    placeholder="All Statuses" searchPlaceholder="Search statuses…" />
+                </FilterField>
+              )}
+              <FilterField label="Priority">
+                <MultiSelect items={named(PRIORITIES)} value={priorityFilter} onChange={setPriorityFilter}
+                  placeholder="All Priorities" searchPlaceholder="Search priorities…" />
+              </FilterField>
+              <FilterField label="Entity Type">
+                <MultiSelect items={named(ENTITY_TYPES)} value={entityTypeFilter} onChange={setEntityTypeFilter}
+                  placeholder="All Entity Types" searchPlaceholder="Search entity types…" />
+              </FilterField>
+              <FilterField label="Sector">
+                <MultiSelect items={named(sectorOptions)} value={sectorFilter} onChange={setSectorFilter}
+                  placeholder="All Sectors" searchPlaceholder="Search sectors…" />
+              </FilterField>
+              {/* Narrow the team pipeline by owner, including the unassigned records
+                  still waiting to be handed out. An agent only has their own. */}
+              {!seesOnlyOwn && (
+                <FilterField label="Owner">
+                  <MultiSelect
+                    items={[
+                      { _id: 'unassigned', name: 'Unassigned' },
+                      ...ownerOptions.map((a) => ({ _id: a._id, name: `${a.firstName} ${a.lastName}` })),
+                    ]}
+                    value={ownerFilter}
+                    onChange={setOwnerFilter}
+                    placeholder="Anyone"
+                    searchPlaceholder="Search owners…"
+                  />
+                </FilterField>
+              )}
+              {/* Only someone who sees more than one team has one to pick. */}
+              {multiTeam && (
+                <FilterField label="Team">
+                  <MultiSelect
+                    items={teamOptions.map((t) => ({ _id: t._id, name: t.name }))}
+                    value={teamFilter}
+                    // Owners picked for the old teams mean nothing in the new ones.
+                    onChange={(v) => { setTeamFilter(v); setOwnerFilter((o) => o.filter((x) => x === 'unassigned')); }}
+                    placeholder={crossTeam ? 'All Teams' : 'All My Teams'}
+                    searchPlaceholder="Search teams…"
+                  />
+                </FilterField>
+              )}
+            </div>
+            {activeFilters > 0 && (
+              <button onClick={clearFilters} className="flex items-center gap-1 text-sm text-error hover:text-error/80">
+                <X className="w-3.5 h-3.5" /> Clear {activeFilters} filter{activeFilters === 1 ? '' : 's'}
               </button>
             )}
           </div>
@@ -996,6 +996,15 @@ export default function Leads({ lockedStatus, stage = 'Lead' }: LeadsProps = {})
       )}
 
       <StatusRulesModal open={statusRulesOpen} onClose={() => setStatusRulesOpen(false)} />
+    </div>
+  );
+}
+
+function FilterField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="min-w-0 space-y-1">
+      <span className="text-xs font-medium text-on-surface-variant">{label}</span>
+      {children}
     </div>
   );
 }
