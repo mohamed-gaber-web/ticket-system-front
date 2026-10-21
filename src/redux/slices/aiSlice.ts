@@ -9,6 +9,8 @@ import type {
   DraftReplyResponse,
   TicketInsightsResponse,
   ParseSearchResponse,
+  TicketChatRequest,
+  TicketChatResponse,
 } from '@/api/aiApi';
 
 interface AIState {
@@ -35,6 +37,11 @@ interface AIState {
     error: string | null;
     rawQuery: string;
   };
+  ticketChat: {
+    loading: boolean;
+    data: TicketChatResponse | null;
+    error: string | null;
+  };
 }
 
 const initialState: AIState = {
@@ -42,6 +49,7 @@ const initialState: AIState = {
   replyDraft: { loading: false, draft: null, error: null },
   insights: { loading: false, data: null, error: null, lastTicketId: null },
   nlSearch: { loading: false, parsedParams: null, error: null, rawQuery: '' },
+  ticketChat: { loading: false, data: null, error: null },
 };
 
 export const fetchAutoFillSuggestions = createAsyncThunk(
@@ -95,6 +103,19 @@ export const fetchNlSearch = createAsyncThunk(
   }
 );
 
+export const fetchTicketChat = createAsyncThunk(
+  'ai/fetchTicketChat',
+  async (payload: TicketChatRequest, { rejectWithValue }) => {
+    try {
+      return await aiApi.ticketChat(payload);
+    } catch (error: any) {
+      const message =
+        error.response?.data?.message || 'AI could not read your message. Please try again or fill the details manually.';
+      return rejectWithValue(message);
+    }
+  }
+);
+
 const aiSlice = createSlice({
   name: 'ai',
   initialState,
@@ -115,6 +136,9 @@ const aiSlice = createSlice({
     },
     clearNlSearch(state) {
       state.nlSearch = { loading: false, parsedParams: null, error: null, rawQuery: '' };
+    },
+    clearTicketChat(state) {
+      state.ticketChat = { loading: false, data: null, error: null };
     },
   },
   extraReducers: (builder) => {
@@ -174,6 +198,19 @@ const aiSlice = createSlice({
       .addCase(fetchNlSearch.rejected, (state, action) => {
         state.nlSearch.loading = false;
         state.nlSearch.error = action.payload as string;
+      })
+      // Ticket chat
+      .addCase(fetchTicketChat.pending, (state) => {
+        state.ticketChat.loading = true;
+        state.ticketChat.error = null;
+      })
+      .addCase(fetchTicketChat.fulfilled, (state, action) => {
+        state.ticketChat.loading = false;
+        state.ticketChat.data = action.payload as TicketChatResponse;
+      })
+      .addCase(fetchTicketChat.rejected, (state, action) => {
+        state.ticketChat.loading = false;
+        state.ticketChat.error = action.payload as string;
       });
   },
 });
@@ -184,6 +221,7 @@ export const {
   clearReplyDraft,
   clearInsights,
   clearNlSearch,
+  clearTicketChat,
 } = aiSlice.actions;
 
 export default aiSlice.reducer;

@@ -48,6 +48,24 @@ export interface ParseSearchResponse extends Partial<TicketQueryParams> {
   interpretedQuery: string;
 }
 
+export interface TicketChatRequest {
+  message: string;
+}
+
+export interface TicketChatResponse {
+  subject: string;
+  description: string;
+  category: string;
+  categoryId?: string;
+  priority: 'low' | 'medium' | 'high' | 'critical';
+  serviceType: string;
+  serviceTypeId?: string;
+  department: string;
+  departmentId?: string;
+  confidence: number;
+  followUpQuestion: string;
+}
+
 const AI_TIMEOUT = 45000;
 
 export const analyzeTicket = async (payload: AnalyzeTicketRequest): Promise<AnalyzeTicketResponse> => {
@@ -90,6 +108,15 @@ export const parseSearch = async (query: string): Promise<ParseSearchResponse> =
   const response = await api.post<{ success: boolean; data: ParseSearchResponse }>(
     '/ai/parse-search',
     { query },
+    { timeout: AI_TIMEOUT }
+  );
+  return response.data.data;
+};
+
+export const ticketChat = async (payload: TicketChatRequest): Promise<TicketChatResponse> => {
+  const response = await api.post<{ success: boolean; data: TicketChatResponse }>(
+    '/ai/ticket-chat',
+    payload,
     { timeout: AI_TIMEOUT }
   );
   return response.data.data;
