@@ -258,7 +258,7 @@ const licTable = (p: Proposal, t: ProposalTotals) => {
     })
     .join('')}
   ${sumRow(5, 'TOTAL', money(t.licSum))}
-  ${disc ? sumRow(5, `Discount (${esc(disc)}%)`, money(t.licDisc), 'disc') + sumRow(5, 'TOTAL After Discount', money(t.licNet)) : ''}
+  ${(p.licenses.eligibilityDiscount && t.licEligDisc > 0 ? sumRow(5, `Eligibility Discount (${esc(p.licenses.eligibilityDiscountPct)}%)`, money(t.licEligDisc), 'disc') + sumRow(5, 'Base After Eligibility', money(t.licBase)) : '') + (disc ? sumRow(5, `Discount (${esc(disc)}%)`, money(t.licDisc), 'disc') + sumRow(5, 'TOTAL After Discount', money(t.licNet)) : '')}
   ${sumRow(5, `VAT ${esc(p.vat)}%`, money(t.licVat))}
   ${sumRow(5, 'Total After VAT', money(t.licenses))}</tbody></table></div>`;
 };
