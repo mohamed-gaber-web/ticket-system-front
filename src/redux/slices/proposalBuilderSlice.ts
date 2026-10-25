@@ -485,7 +485,10 @@ const slice = createSlice({
     },
     setLicenseField: (
       s,
-      a: PayloadAction<{ key: 'discountPct' | 'termMonths'; value: number } | { key: 'payInAdvance'; value: boolean }>,
+      a: PayloadAction<
+        | { key: 'discountPct' | 'termMonths' | 'eligibilityDiscountPct'; value: number }
+        | { key: 'payInAdvance' | 'eligibilityDiscount'; value: boolean }
+      >,
     ) => {
       if (!s.proposal) return;
       (s.proposal.licenses as Record<string, unknown>)[a.payload.key] = a.payload.value;

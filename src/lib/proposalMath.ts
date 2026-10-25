@@ -38,6 +38,8 @@ export interface ProposalTotals {
   implementation: number;
   implementationNet: number;
   licSum: number;
+  licEligDisc: number;
+  licBase: number;
   licDisc: number;
   licNet: number;
   licVat: number;
@@ -54,17 +56,21 @@ export const proposalTotals = (p: Partial<MoneyShape> | null | undefined): Propo
 
   const term = num(p?.licenses?.termMonths) || 12;
   const licSum = (p?.licenses?.lines ?? []).reduce((a, l) => a + num(l.qty) * licenseUnitPrice(l, term), 0);
-  const licDisc = (licSum * num(p?.licenses?.discountPct)) / 100;
-  const licNet = licSum - licDisc;
+  const eligPct = p?.licenses?.eligibilityDiscount ? num(p?.licenses?.eligibilityDiscountPct) : 0;
+  const licEligDisc = (licSum * eligPct) / 100;
+  const licBase = licSum - licEligDisc;
+  const licDisc = (licBase * num(p?.licenses?.discountPct)) / 100;
+  const licNet = licBase - licDisc;
   const licVat = (licNet * vat) / 100;
   const licenses = licNet + licVat;
 
-  return { groups, implementation, implementationNet, licSum, licDisc, licNet, licVat, licenses, grand: implementation + licenses };
+  return { groups, implementation, implementationNet, licSum, licEligDisc, licBase, licDisc, licNet, licVat, licenses, grand: implementation + licenses };
 };
 
 export const discountOverLimit = (p: Partial<MoneyShape> | null | undefined, maxDiscount: number) => {
   const max = num(maxDiscount);
-  return num(p?.implementation?.discountPct) > max || num(p?.licenses?.discountPct) > max;
+  const eligOver = Boolean(p?.licenses?.eligibilityDiscount) && num(p?.licenses?.eligibilityDiscountPct) > max;
+  return num(p?.implementation?.discountPct) > max || num(p?.licenses?.discountPct) > max || eligOver;
 };
 
 /**

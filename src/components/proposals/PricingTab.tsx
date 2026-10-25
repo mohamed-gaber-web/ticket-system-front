@@ -156,6 +156,32 @@ export default function PricingTab({ proposal, catalog, canEdit }: { proposal: P
             ))}
           </NativeSelect>
         )}
+        <div className="space-y-2.5">
+          <label className="flex items-center gap-2 text-sm text-on-surface">
+            <input
+              type="checkbox"
+              checked={proposal.licenses.eligibilityDiscount}
+              disabled={!canEdit}
+              onChange={(e) => {
+                const value = e.target.checked;
+                dispatch(setLicenseField({ key: 'eligibilityDiscount', value }));
+                if (!value) dispatch(setLicenseField({ key: 'eligibilityDiscountPct', value: 0 }));
+              }}
+              className="h-4 w-4 shrink-0 rounded accent-primary focus-visible:ring-[2px] focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
+            />
+            <span>Eligible for License Discount</span>
+          </label>
+          <Field label="Eligibility discount %" className="max-w-[12rem]">
+            <NumberInput
+              value={proposal.licenses.eligibilityDiscountPct}
+              max={100}
+              step={0.5}
+              ariaLabel="Eligibility discount percent"
+              disabled={!canEdit || !proposal.licenses.eligibilityDiscount}
+              onChange={(v) => dispatch(setLicenseField({ key: 'eligibilityDiscountPct', value: v }))}
+            />
+          </Field>
+        </div>
         <div className="grid grid-cols-2 gap-3">
           <Field label="License discount %">
             <NumberInput value={proposal.licenses.discountPct} max={100} step={0.5} ariaLabel="License discount percent" disabled={!canEdit} onChange={(v) => dispatch(setLicenseField({ key: 'discountPct', value: v }))} />
@@ -196,6 +222,18 @@ export default function PricingTab({ proposal, catalog, canEdit }: { proposal: P
           <span className="text-on-surface-variant">Implementation (incl. VAT)</span>
           <span>{formatUsd(t.implementation)}</span>
         </div>
+        {t.licEligDisc > 0 && (
+          <>
+            <div className="flex justify-between gap-2 text-xs text-on-surface-variant">
+              <span>Eligibility discount ({proposal.licenses.eligibilityDiscountPct}%)</span>
+              <span>−{formatUsd(t.licEligDisc)}</span>
+            </div>
+            <div className="flex justify-between gap-2 text-xs text-on-surface-variant">
+              <span>Base after eligibility</span>
+              <span>{formatUsd(t.licBase)}</span>
+            </div>
+          </>
+        )}
         <div className="flex justify-between gap-2">
           <span className="text-on-surface-variant">Licenses (incl. VAT)</span>
           <span>{formatUsd(t.licenses)}</span>

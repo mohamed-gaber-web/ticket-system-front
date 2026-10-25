@@ -134,7 +134,7 @@ export interface Proposal {
   modules: ProposalModule[];
   sow: { templateKey: string; duration: string; sections: SowSection[] };
   implementation: { groups: ImplGroup[]; discountPct: number };
-  licenses: { lines: LicenseLine[]; discountPct: number; termMonths: number; payInAdvance: boolean };
+  licenses: { lines: LicenseLine[]; discountPct: number; eligibilityDiscount: boolean; eligibilityDiscountPct: number; termMonths: number; payInAdvance: boolean };
   notes: string[];
   payment: { preset: string; milestones: Milestone[] };
   terms: string[];
