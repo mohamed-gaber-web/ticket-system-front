@@ -472,10 +472,42 @@ export interface LeadQueryParams {
   entityType?: EntityType | string;
   industrySector?: IndustrySector | string;
   country?: string;
+  leadSource?: string;
+  businessClassification?: string;
+  dataSource?: string;
+  /** Product ids. */
+  customerNeedProducts?: string;
+  /** 'yes', 'no', or both (= no filter). */
+  isExistingCustomer?: string;
+  /** Narrows inside the tab: the Leads tab lists Leads and Opportunities. */
+  recordType?: string;
+  /** Created date range, 'YYYY-MM-DD' (the end day is included). */
   from?: string;
   to?: string;
+  followUpFrom?: string;
+  followUpTo?: string;
+  proposalMin?: number;
+  proposalMax?: number;
   page?: number;
   limit?: number;
+}
+
+/** Values the list's free-text filters can offer, from the caller's own records. */
+export interface LeadFilterOptions {
+  country: string[];
+  businessClassification: string[];
+  dataSource: string[];
+  tags: string[];
+  customerNeedProducts: { _id: string; name: string }[];
+}
+
+export interface BulkDeleteLeadsResponse {
+  success: boolean;
+  message: string;
+  total: number;
+  deleted: number;
+  /** Records left in place, each with the reason. */
+  skipped: { _id: string; name: string; reason: string }[];
 }
 
 export interface LeadsListResponse {

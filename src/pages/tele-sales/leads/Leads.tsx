@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useNavigate, NavLink } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchLeads, deleteLead, importLeads, convertLead, fetchLeadStats } from '@/redux/slices/teleSalesLeadsSlice';
 import { fetchAgents } from '@/redux/slices/teleSalesAgentsSlice';
 import { fetchTeams } from '@/redux/slices/teleSalesTeamsSlice';
 import { fetchIndustrySectors } from '@/redux/slices/industrySectorSlice';
+import { bulkDeleteLeads, getLeadFilterOptions } from '@/api/teleSalesApi';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { MultiSelect, type MultiSelectItem } from '@/components/ui/multi-select';
@@ -23,7 +24,7 @@ import { StatusRulesModal } from '@/components/tele-sales/StatusRulesModal';
 import { LeadFormModal } from '@/components/tele-sales/LeadFormModal';
 import { LEAD_STATUSES, STATUS_COLORS, type LeadStatus } from '@/config/leadStatusWorkflow';
 import type {
-  Lead, LeadPriority, LeadSource, ImportLeadsResponse, SalesType, NeedProductRef,
+  Lead, LeadPriority, LeadSource, ImportLeadsResponse, SalesType, NeedProductRef, LeadFilterOptions, LeadQueryParams,
 } from '@/types/teleSales.types';
 import { ENTITY_TYPES, INDUSTRY_SECTORS, teamName, formatMoney } from '@/types/teleSales.types';
 import { STAGE_META, STAGE_ORDER, NEXT_STAGE, recordName, stageOf } from '@/lib/leadStages';
@@ -32,8 +33,16 @@ import { isSuperAdmin, isCrossTeamReader, isReadOnly, canManageTeam, ownTeamId, 
 
 const LEAD_SOURCES: LeadSource[] = ['LinkedIn', 'Website', 'Referral', 'Cold Call', 'Exhibition', 'Partner', 'Other'];
 
-const PAGE_SIZE_OPTIONS = [25, 50, 100, 200];
+const PAGE_SIZE_OPTIONS = [25, 50, 100, 200, 500, 1000];
+/** Bulk edit's per-request cap (BULK_MAX in the API); bulk delete takes a whole page. */
+const BULK_EDIT_MAX = 200;
+/** A local calendar day's start / end as an ISO instant, so ranges follow the user's timezone. */
+const dayStart = (d: string) => (d ? new Date(`${d}T00:00:00`).toISOString() : undefined);
+const dayEnd = (d: string) => (d ? new Date(`${d}T23:59:59.999`).toISOString() : undefined);
 const PRIORITIES: LeadPriority[] = ['High', 'Medium', 'Low'];
+const EXISTING_OPTIONS: MultiSelectItem[] = [{ _id: 'yes', name: 'Existing customer' }, { _id: 'no', name: 'New customer' }];
+const RECORD_TYPE_OPTIONS: MultiSelectItem[] = [{ _id: 'Lead', name: 'Lead' }, { _id: 'Opportunity', name: 'Opportunity' }];
+const NO_FILTER_OPTIONS: LeadFilterOptions = { country: [], businessClassification: [], dataSource: [], tags: [], customerNeedProducts: [] };
 
 const named = (values: readonly string[]): MultiSelectItem[] => values.map((v) => ({ _id: v, name: v }));
 /** A multi-select filter as the API's comma list; nothing picked = no filter. */
@@ -100,6 +109,25 @@ export default function Leads({ lockedStatus, stage = 'Lead' }: LeadsProps = {})
   const [teamFilter, setTeamFilter] = useState<string[]>([]);
   // Narrows the shared team pipeline by owner; 'unassigned' shows the unclaimed pool.
   const [ownerFilter, setOwnerFilter] = useState<string[]>([]);
+  const [sourceFilter, setSourceFilter] = useState<string[]>([]);
+  const [countryFilter, setCountryFilter] = useState<string[]>([]);
+  const [classificationFilter, setClassificationFilter] = useState<string[]>([]);
+  const [dataSourceFilter, setDataSourceFilter] = useState<string[]>([]);
+  const [needFilter, setNeedFilter] = useState<string[]>([]);
+  const [tagFilter, setTagFilter] = useState<string[]>([]);
+  const [existingFilter, setExistingFilter] = useState<string[]>([]);
+  // Leads tab only: it lists Leads and their converted Opportunities.
+  const [recordTypeFilter, setRecordTypeFilter] = useState<string[]>([]);
+  // Ranges: 'YYYY-MM-DD' dates and proposal price bounds, '' = open.
+  const [createdFrom, setCreatedFrom] = useState('');
+  const [createdTo, setCreatedTo] = useState('');
+  const [followUpFrom, setFollowUpFrom] = useState('');
+  const [followUpTo, setFollowUpTo] = useState('');
+  const [priceMin, setPriceMin] = useState('');
+  const [priceMax, setPriceMax] = useState('');
+  // Values the free-text filters offer, from the records of this tab.
+  const [filterOptions, setFilterOptions] = useState<LeadFilterOptions>(NO_FILTER_OPTIONS);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(PAGE_SIZE_OPTIONS[0]);
   const [showFilters, setShowFilters] = useState(false);
@@ -134,24 +162,67 @@ export default function Leads({ lockedStatus, stage = 'Lead' }: LeadsProps = {})
   const importTargetTeam = multiTeam ? importTeam : ownTeamId(user);
   const { agents: importAgents, loading: importAgentsLoading } = useTeamAgents(isImportOpen && canManage ? importTargetTeam : null);
 
-  const load = useCallback(() => {
-    dispatch(fetchLeads({
+  // Everything that narrows the list (not the page); a change sends you back to page 1.
+  const query = useMemo((): LeadQueryParams => {
+    const price = (v: string) => (v.trim() !== '' && Number.isFinite(Number(v)) ? Number(v) : undefined);
+    return {
       search: search || undefined,
       status: lockedStatus ?? csv(statusFilter),
       priority: csv(priorityFilter),
       salesType: stage,
+      recordType: stage === 'Lead' ? csv(recordTypeFilter) : undefined,
       entityType: csv(entityTypeFilter),
       industrySector: csv(sectorFilter),
       team: multiTeam ? csv(teamFilter) : undefined,
       assignedTo: csv(ownerFilter),
-      page,
-      limit: itemsPerPage,
-    }));
-  }, [dispatch, lockedStatus, stage, search, statusFilter, priorityFilter, entityTypeFilter, sectorFilter, teamFilter, ownerFilter, multiTeam, page, itemsPerPage]);
+      leadSource: csv(sourceFilter),
+      country: csv(countryFilter),
+      businessClassification: csv(classificationFilter),
+      dataSource: csv(dataSourceFilter),
+      customerNeedProducts: csv(needFilter),
+      tags: csv(tagFilter),
+      isExistingCustomer: csv(existingFilter),
+      from: dayStart(createdFrom),
+      to: dayEnd(createdTo),
+      followUpFrom: dayStart(followUpFrom),
+      followUpTo: dayEnd(followUpTo),
+      proposalMin: price(priceMin),
+      proposalMax: price(priceMax),
+    };
+  }, [lockedStatus, stage, search, statusFilter, priorityFilter, recordTypeFilter, entityTypeFilter, sectorFilter, teamFilter, ownerFilter, multiTeam,
+    sourceFilter, countryFilter, classificationFilter, dataSourceFilter, needFilter, tagFilter, existingFilter,
+    createdFrom, createdTo, followUpFrom, followUpTo, priceMin, priceMax]);
+  // A new filter set or page size starts again at page 1.
+  const listKey = `${JSON.stringify(query)}|${itemsPerPage}`;
+  const lastListKey = useRef(listKey);
 
-  useEffect(() => { load(); }, [load]);
-  // Stage counts for the tab bar; refreshed whenever the list reloads.
-  const reload = useCallback(() => { load(); dispatch(fetchLeadStats()); }, [load, dispatch]);
+  const load = useCallback(() => {
+    dispatch(fetchLeads({ ...query, page, limit: itemsPerPage }));
+  }, [dispatch, query, page, itemsPerPage]);
+
+  useEffect(() => {
+    // Reset the page first and fetch once, rather than fetching the old page
+    // and then page 1 — the stale response could land last.
+    if (lastListKey.current !== listKey) {
+      lastListKey.current = listKey;
+      if (page !== 1) { setPage(1); return; }
+    }
+    load();
+  }, [load, listKey, page]);
+  // Deleting the last page's rows leaves the page past the end — step back.
+  useEffect(() => {
+    if (!loading && pages >= 1 && page > pages) setPage(pages);
+  }, [loading, page, pages]);
+
+  const loadFilterOptions = useCallback(() => {
+    getLeadFilterOptions(stage)
+      .then((r) => setFilterOptions(r.data))
+      .catch(() => setFilterOptions(NO_FILTER_OPTIONS));
+  }, [stage]);
+  useEffect(() => { loadFilterOptions(); }, [loadFilterOptions]);
+  // Stage counts for the tab bar and the filter values; refreshed whenever the
+  // list reloads after a change (import, edit, delete).
+  const reload = useCallback(() => { load(); dispatch(fetchLeadStats()); loadFilterOptions(); }, [load, dispatch, loadFilterOptions]);
   useEffect(() => { dispatch(fetchLeadStats()); }, [dispatch, stage]);
   // Every member of a team now needs the roster: the table shows assignee names
   // and the owner filter lists colleagues. The API returns only this team's agents.
@@ -164,15 +235,19 @@ export default function Leads({ lockedStatus, stage = 'Lead' }: LeadsProps = {})
   useEffect(() => { dispatch(fetchIndustrySectors({ limit: 1000 })); }, [dispatch]);
   useEffect(() => { dispatch(fetchTeams(undefined)); }, [dispatch]);
 
-  // Reset page on filter / page-size change
-  useEffect(() => { setPage(1); }, [search, statusFilter, priorityFilter, stage, entityTypeFilter, sectorFilter, teamFilter, ownerFilter, itemsPerPage]);
   // A selection only means something for the rows on screen.
-  useEffect(() => { setSelected([]); }, [search, statusFilter, priorityFilter, stage, entityTypeFilter, sectorFilter, teamFilter, ownerFilter, itemsPerPage, page]);
+  useEffect(() => { setSelected([]); }, [listKey, page]);
 
-  const activeFilters = [statusFilter, priorityFilter, entityTypeFilter, sectorFilter, ownerFilter, teamFilter]
-    .filter((f) => f.length).length;
+  const activeFilters = [
+    statusFilter, priorityFilter, recordTypeFilter, entityTypeFilter, sectorFilter, ownerFilter, teamFilter,
+    sourceFilter, countryFilter, classificationFilter, dataSourceFilter, needFilter, tagFilter, existingFilter,
+  ].filter((f) => f.length).length
+    + [createdFrom || createdTo, followUpFrom || followUpTo, priceMin || priceMax].filter(Boolean).length;
   const clearFilters = () => {
-    setStatusFilter([]); setPriorityFilter([]); setEntityTypeFilter([]); setSectorFilter([]); setOwnerFilter([]); setTeamFilter([]);
+    [setStatusFilter, setPriorityFilter, setRecordTypeFilter, setEntityTypeFilter, setSectorFilter, setOwnerFilter, setTeamFilter,
+      setSourceFilter, setCountryFilter, setClassificationFilter, setDataSourceFilter, setNeedFilter, setTagFilter, setExistingFilter,
+    ].forEach((set) => set([]));
+    [setCreatedFrom, setCreatedTo, setFollowUpFrom, setFollowUpTo, setPriceMin, setPriceMax].forEach((set) => set(''));
   };
 
   const pageIds = leads.map((l) => l._id);
@@ -243,6 +318,44 @@ export default function Leads({ lockedStatus, stage = 'Lead' }: LeadsProps = {})
     });
     if (result.isConfirmed) {
       await dispatch(deleteLead(lead._id));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    const ids = selected;
+    const label = `${ids.length} record${ids.length === 1 ? '' : 's'}`;
+    const result = await Swal.fire({
+      title: `Delete ${label}?`,
+      text: 'The selected records and their calls, follow-ups, files and emails will be permanently deleted. This cannot be undone.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: `Delete ${label}`,
+    });
+    if (!result.isConfirmed) return;
+
+    setBulkDeleting(true);
+    try {
+      const res = await bulkDeleteLeads(ids);
+      if (res.deleted > 0) {
+        toast.success(`${res.deleted} record${res.deleted === 1 ? '' : 's'} deleted successfully`);
+      }
+      if (res.skipped.length > 0) {
+        // Grouped by reason, e.g. "48 — You cannot delete this record. · 2 — Not found".
+        const byReason = new Map<string, number>();
+        res.skipped.forEach((s) => byReason.set(s.reason, (byReason.get(s.reason) ?? 0) + 1));
+        toast.warning(`${res.skipped.length} record${res.skipped.length === 1 ? ' was' : 's were'} not deleted`, {
+          description: [...byReason].map(([reason, n]) => `${n} — ${reason}`).join(' · '),
+        });
+      }
+      setSelected([]);
+      reload();
+    } catch (error) {
+      const message = (error as { response?: { data?: { message?: string } } }).response?.data?.message;
+      toast.error(message || 'Failed to delete the selected records');
+    } finally {
+      setBulkDeleting(false);
     }
   };
 
@@ -382,7 +495,7 @@ export default function Leads({ lockedStatus, stage = 'Lead' }: LeadsProps = {})
           <div className="relative flex-1 min-w-48">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
             <Input
-              placeholder="Search company, contact, customer ID..."
+              placeholder="Search company, contact, phone, email, customer ID..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9"
@@ -444,6 +557,49 @@ export default function Leads({ lockedStatus, stage = 'Lead' }: LeadsProps = {})
                   />
                 </FilterField>
               )}
+              {stage === 'Lead' && (
+                <FilterField label="Sales Type">
+                  <MultiSelect items={RECORD_TYPE_OPTIONS} value={recordTypeFilter} onChange={setRecordTypeFilter}
+                    placeholder="Leads & Opportunities" searchPlaceholder="Search sales types…" />
+                </FilterField>
+              )}
+              <FilterField label="Lead Source">
+                <MultiSelect items={named(LEAD_SOURCES)} value={sourceFilter} onChange={setSourceFilter}
+                  placeholder="All Sources" searchPlaceholder="Search sources…" />
+              </FilterField>
+              <FilterField label="Country">
+                <MultiSelect items={named(filterOptions.country)} value={countryFilter} onChange={setCountryFilter}
+                  placeholder="All Countries" searchPlaceholder="Search countries…" />
+              </FilterField>
+              <FilterField label="Business Classification">
+                <MultiSelect items={named(filterOptions.businessClassification)} value={classificationFilter} onChange={setClassificationFilter}
+                  placeholder="All Classifications" searchPlaceholder="Search classifications…" />
+              </FilterField>
+              <FilterField label="Data Source">
+                <MultiSelect items={named(filterOptions.dataSource)} value={dataSourceFilter} onChange={setDataSourceFilter}
+                  placeholder="All Data Sources" searchPlaceholder="Search data sources…" />
+              </FilterField>
+              <FilterField label="Customer Need">
+                <MultiSelect items={filterOptions.customerNeedProducts} value={needFilter} onChange={setNeedFilter}
+                  placeholder="All Products" searchPlaceholder="Search products…" />
+              </FilterField>
+              <FilterField label="Tags">
+                <MultiSelect items={named(filterOptions.tags)} value={tagFilter} onChange={setTagFilter}
+                  placeholder="All Tags" searchPlaceholder="Search tags…" />
+              </FilterField>
+              <FilterField label="Customer">
+                <MultiSelect items={EXISTING_OPTIONS} value={existingFilter} onChange={setExistingFilter}
+                  placeholder="New & Existing" searchPlaceholder="Search…" />
+              </FilterField>
+              <FilterField label="Created Date">
+                <RangeInputs type="date" from={createdFrom} to={createdTo} onFrom={setCreatedFrom} onTo={setCreatedTo} />
+              </FilterField>
+              <FilterField label="Next Follow-up">
+                <RangeInputs type="date" from={followUpFrom} to={followUpTo} onFrom={setFollowUpFrom} onTo={setFollowUpTo} />
+              </FilterField>
+              <FilterField label="Proposal Price">
+                <RangeInputs type="number" from={priceMin} to={priceMax} onFrom={setPriceMin} onTo={setPriceMax} />
+              </FilterField>
             </div>
             {activeFilters > 0 && (
               <button onClick={clearFilters} className="flex items-center gap-1 text-sm text-error hover:text-error/80">
@@ -458,12 +614,20 @@ export default function Leads({ lockedStatus, stage = 'Lead' }: LeadsProps = {})
       {!readOnly && selected.length > 0 && (
         <div className="flex items-center gap-3 flex-wrap rounded-2xl border border-primary/30 bg-primary/5 px-4 py-3" role="region" aria-label="Bulk actions">
           <span className="text-sm font-semibold text-on-surface">{selected.length} selected</span>
-          <Button size="sm" onClick={() => setBulkIds(selected)} className="gap-2">
+          <Button size="sm" onClick={() => setBulkIds(selected)} className="gap-2"
+            disabled={selected.length > BULK_EDIT_MAX} title={selected.length > BULK_EDIT_MAX ? `Bulk edit works on up to ${BULK_EDIT_MAX} records at once` : undefined}>
             <Layers className="w-4 h-4" /> Bulk Edit
           </Button>
           {canManage && (
-            <Button size="sm" variant="outline" onClick={() => setBulkIds(selected)} className="gap-2">
+            <Button size="sm" variant="outline" onClick={() => setBulkIds(selected)} className="gap-2"
+              disabled={selected.length > BULK_EDIT_MAX} title={selected.length > BULK_EDIT_MAX ? `Reassign works on up to ${BULK_EDIT_MAX} records at once` : undefined}>
               <UserCheck className="w-4 h-4" /> Reassign
+            </Button>
+          )}
+          {/* Deleting is for admins and the sales manager, as on a single row. */}
+          {canManage && stage === 'Data' && (
+            <Button size="sm" variant="destructive" onClick={handleBulkDelete} disabled={bulkDeleting} className="gap-2">
+              <Trash2 className="w-4 h-4" /> {bulkDeleting ? 'Deleting…' : allOnPage ? 'Delete All Selected' : 'Delete Selected'}
             </Button>
           )}
           <button onClick={() => setSelected([])} className="ml-auto text-sm text-on-surface-variant hover:text-on-surface flex items-center gap-1">
@@ -1005,6 +1169,24 @@ function FilterField({ label, children }: { label: string; children: React.React
     <div className="min-w-0 space-y-1">
       <span className="text-xs font-medium text-on-surface-variant">{label}</span>
       {children}
+    </div>
+  );
+}
+
+/** A from–to pair (dates or numbers); an empty side leaves that end open. */
+function RangeInputs({ type, from, to, onFrom, onTo }: {
+  type: 'date' | 'number';
+  from: string;
+  to: string;
+  onFrom: (v: string) => void;
+  onTo: (v: string) => void;
+}) {
+  const extra = type === 'number' ? { min: 0, inputMode: 'decimal' as const } : {};
+  return (
+    <div className="flex items-center gap-1.5">
+      <Input type={type} value={from} onChange={(e) => onFrom(e.target.value)} placeholder="From" aria-label="From" className="h-9 min-w-0 px-2 text-xs" {...extra} />
+      <span className="text-xs text-on-surface-variant">–</span>
+      <Input type={type} value={to} onChange={(e) => onTo(e.target.value)} placeholder="To" aria-label="To" className="h-9 min-w-0 px-2 text-xs" {...extra} />
     </div>
   );
 }

@@ -17,6 +17,8 @@ import type {
   ImportLeadsResponse,
   BulkUpdateLeadsRequest,
   BulkUpdateLeadsResponse,
+  BulkDeleteLeadsResponse,
+  LeadFilterOptions,
   AccountRef,
   AccountContact,
   CallLogsResponse,
@@ -114,6 +116,14 @@ export const getLeadAccountContacts = (accountId: string): Promise<{ success: bo
 /** Apply shared field values, tags, owner and/or status to many records at once. */
 export const bulkUpdateLeads = (data: BulkUpdateLeadsRequest): Promise<BulkUpdateLeadsResponse> =>
   api.post('/leads/bulk', data).then((r) => r.data);
+
+/** Permanently delete many records; ones the caller may not delete are skipped. */
+export const bulkDeleteLeads = (ids: string[]): Promise<BulkDeleteLeadsResponse> =>
+  api.post('/leads/bulk-delete', { ids }).then((r) => r.data);
+
+/** The values the list filters can offer (country, data source, tags…) for one tab. */
+export const getLeadFilterOptions = (salesType?: string): Promise<{ success: boolean; data: LeadFilterOptions }> =>
+  api.get('/leads/filter-options', { params: salesType ? { salesType } : undefined }).then((r) => r.data);
 
 /** Move a record one stage forward (Data → Lead, Lead → Opportunity). */
 export const convertLead = (id: string, to: 'Lead' | 'Opportunity'): Promise<LeadResponse> =>
