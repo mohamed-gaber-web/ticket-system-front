@@ -501,6 +501,16 @@ export interface LeadFilterOptions {
   customerNeedProducts: { _id: string; name: string }[];
 }
 
+/** "Delete all" on the Data tab: every record matching the filters. */
+export interface DeleteAllDataResponse {
+  success: boolean;
+  message: string;
+  total: number;
+  deleted: number;
+  /** Records the caller may not delete (another team's), left in place. */
+  skippedCount: number;
+}
+
 export interface BulkDeleteLeadsResponse {
   success: boolean;
   message: string;
@@ -726,6 +736,8 @@ export interface LeadEmail {
   cc: string[];
   bcc: string[];
   subject: string;
+  /** The conversation within the record (subject without Re:/Fwd:/tag); absent on old messages. */
+  subjectKey?: string;
   /** Sanitised HTML exactly as it was sent / received. */
   body: string;
   bodyPreview?: string;
@@ -780,6 +792,8 @@ export interface EmailInboxRow {
   lastInboundAt: string | null;
   lastOutboundAt: string | null;
   agents: string[];
+  /** The conversation within the record: one row per record AND subject (see lib/emailSubject.ts). */
+  subjectKey: string;
   last: Pick<LeadEmail, '_id' | 'direction' | 'status' | 'subject' | 'bodyPreview' | 'from' | 'fromName' | 'sentByName'>;
 }
 

@@ -155,9 +155,9 @@ export default function CollectCollection() {
                 <tfoot>
                   <tr className="border-t-2 border-outline-variant/60 font-bold">
                     <td className={TD} colSpan={5}>
-                      Total remaining ({res.data.length} installments) — in EGP
+                      Total remaining ({res.data.length} installments) — in USD
                     </td>
-                    <td className={TDN}>{n0(res.totalRemainingEGP)}</td>
+                    <td className={TDN}>{n0(res.totalRemaining)}</td>
                     <td className={TD} colSpan={2} />
                   </tr>
                 </tfoot>

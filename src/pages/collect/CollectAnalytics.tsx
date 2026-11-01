@@ -10,7 +10,7 @@ import { COLLECT_BASE, CollectLayout } from '@/components/collect/CollectLayout'
 import { ErrorState, Field, KPI_GRID, Kpi, Loading, Panel, Seg, Select, TableBox, TD, TDN, TH, TypeDot } from '@/components/collect/CollectUi';
 import type { Analytics, Customer } from '@/types/collect.types';
 
-// Grow Path Collect — monthly analysis (§4, §9.2). Every amount is in EGP.
+// Grow Path Collect — monthly analysis (§4, §9.2). Every amount is in USD.
 
 const AXIS = { fill: 'var(--muted-foreground)', fontSize: 11 };
 type View = 'vs' | 'collectedByType' | 'plannedByType';
@@ -92,7 +92,6 @@ export default function CollectAnalytics() {
   );
 
   const k = data?.kpis;
-  const rates = meta?.rates;
 
   return (
     <CollectLayout>
@@ -125,9 +124,9 @@ export default function CollectAnalytics() {
               ))}
             </Select>
           </Field>
-          {rates && (
+          {meta && (
             <p className="col-span-2 text-xs text-on-surface-variant sm:col-span-1 sm:pb-2.5 sm:text-end">
-              All amounts in EGP · 1 SAR = {rates.SAR} · 1 USD = {rates.USD}
+              All amounts in USD
             </p>
           )}
         </div>

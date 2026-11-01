@@ -163,7 +163,7 @@ export default function CollectBacklog() {
                 <tfoot>
                   <tr className="border-t-2 border-outline-variant/60 font-bold">
                     <td className={TD} colSpan={4}>
-                      Total ({rows.length} contracts) — in EGP
+                      Total ({rows.length} contracts) — in USD
                     </td>
                     <td className={TDN}>{n0(totals.value)}</td>
                     <td className={TDN}>{n0(totals.collected)}</td>

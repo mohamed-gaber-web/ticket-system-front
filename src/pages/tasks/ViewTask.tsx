@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useState } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { fetchTaskById, deleteTask, clearCurrentTask, fetchSubTasks, createSubTask, clearSubTasks } from '@/redux/slices/tasksSlice';
 import { fetchTaskAttachments } from '@/redux/slices/taskAttachmentSlice';
@@ -14,12 +14,14 @@ import TaskFileUpload from '@/components/tasks/TaskFileUpload';
 import TaskAttachmentList from '@/components/tasks/TaskAttachmentList';
 import TaskComments from '@/components/tasks/TaskComments';
 import TaskPostponements from '@/components/tasks/TaskPostponements';
+import { TaskEmailsTab } from '@/components/tasks/TaskEmailsTab';
+import { getTaskEmails } from '@/api/taskEmailApi';
 import { getWeekDateRange, getWeekNumber, weekRangeLabel } from '@/utils/weekUtils';
 import {
   Edit, Trash2, CheckSquare, User, Calendar,
   Clock, Building2, CalendarDays, Timer, UserCheck,
   CircleCheck, Circle, Loader2 as SpinnerIcon, Shield,
-  Paperclip, MessageSquare, LayoutList, Plus, GitBranch,
+  Paperclip, MessageSquare, LayoutList, Plus, GitBranch, Mail,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { TaskStatus, CreateTaskData, TaskParentRef } from '@/types/task.types';
@@ -29,7 +31,7 @@ import withReactContent from 'sweetalert2-react-content';
 
 const MySwal = withReactContent(Swal);
 
-type Tab = 'details' | 'attachments' | 'comments' | 'subtasks';
+type Tab = 'details' | 'attachments' | 'comments' | 'subtasks' | 'emails';
 
 const STATUS_CONFIG: Record<string, { label: string; classes: string; icon: React.ReactNode; bar: string; dot: string }> = {
   pending: {
@@ -82,16 +84,26 @@ export default function ViewTask() {
   const { total: attachmentCount } = useAppSelector((s) => s.taskAttachments);
   const { total: commentCount } = useAppSelector((s) => s.taskComments);
 
-  const [activeTab, setActiveTab] = useState<Tab>('details');
+  const [searchParams] = useSearchParams();
+  // ?tab=emails opens straight on the conversation (a reply notification links there).
+  const openOnEmails = searchParams.get('tab') === 'emails';
+  const [activeTab, setActiveTab] = useState<Tab>(openOnEmails ? 'emails' : 'details');
+  const [emailCount, setEmailCount] = useState({ total: 0, unread: 0 });
+  const onEmailCount = useCallback((total: number, unread: number) => setEmailCount({ total, unread }), []);
   const [showSubDialog, setShowSubDialog] = useState(false);
   const [subForm, setSubForm] = useState(EMPTY_SUB_FORM);
   const [subSubmitting, setSubSubmitting] = useState(false);
 
   useEffect(() => {
     // Navigating main task -> subtask reuses this component; the subtask has no Subtasks tab.
-    setActiveTab('details');
+    setActiveTab(openOnEmails ? 'emails' : 'details');
+    setEmailCount({ total: 0, unread: 0 });
     if (id) {
       dispatch(fetchTaskById(id));
+      // Just the count for the tab badge; the thread loads when the tab opens.
+      getTaskEmails(id)
+        .then((r) => setEmailCount({ total: r.data.length, unread: r.summary?.unread ?? 0 }))
+        .catch(() => { /* the badge is optional */ });
       dispatch(fetchTaskAttachments(id));
       dispatch(fetchTaskComments(id));
       dispatch(fetchSubTasks(id));
@@ -102,7 +114,7 @@ export default function ViewTask() {
       dispatch(clearCurrentTask());
       dispatch(clearSubTasks());
     };
-  }, [id, dispatch]);
+  }, [id, dispatch, openOnEmails]);
 
   const getDeptName = (dept?: any): string => {
     if (!dept) return '—';
@@ -271,6 +283,8 @@ export default function ViewTask() {
       : []),
     { key: 'attachments', label: 'Attachments', icon: <Paperclip className="w-4 h-4" />, count: attachmentCount },
     { key: 'comments', label: 'Comments', icon: <MessageSquare className="w-4 h-4" />, count: commentCount },
+    // Unread replies when there are any, else the size of the conversation.
+    { key: 'emails', label: 'Emails', icon: <Mail className="w-4 h-4" />, count: emailCount.unread || emailCount.total },
   ];
 
   return (
@@ -646,6 +660,18 @@ export default function ViewTask() {
       {activeTab === 'comments' && (
         <div className="bg-surface-container-lowest rounded-[1.25rem] p-6 shadow-sm ring-1 ring-outline-variant/20">
           <TaskComments taskId={currentTask._id} />
+        </div>
+      )}
+
+      {/* Mounted only while open; the count comes from the thread itself. */}
+      {activeTab === 'emails' && (
+        <div className="bg-surface-container-lowest rounded-[1.25rem] p-6 shadow-sm ring-1 ring-outline-variant/20">
+          <TaskEmailsTab
+            taskId={currentTask._id}
+            taskNumber={currentTask.taskNumber}
+            taskName={currentTask.name}
+            onCountChange={onEmailCount}
+          />
         </div>
       )}
 

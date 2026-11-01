@@ -305,6 +305,7 @@ const TASKS_GROUP: NavLink = {
     { name: "Dashboard", path: "/tasks/dashboard", icon: LayoutDashboard },
     { name: "My Tasks", path: "/tasks/my", icon: UserCheck },
     { name: "All Tasks", path: "/tasks", icon: ListChecks },
+    { name: "Task Emails", path: "/tasks/emails", icon: Mail },
     { name: "Create Task", path: "/tasks/create", icon: CheckSquare },
     { name: "Task Categories", path: "/task-categories", icon: FolderKanban, minRole: "manager" },
     { name: "Reports", path: "/tasks/reports", icon: BarChart2 },

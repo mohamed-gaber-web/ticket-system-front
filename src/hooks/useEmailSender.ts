@@ -2,14 +2,16 @@ import { useEffect, useState } from 'react';
 import { useAppSelector } from '@/redux/hooks/hooks';
 import { getLeadEmailSender } from '@/api/teleSalesApi';
 import { getTicketEmailSender } from '@/api/ticketEmailApi';
+import { getTaskEmailSender } from '@/api/taskEmailApi';
 import type { EmailSenderInfo } from '@/types/teleSales.types';
 
-/** Which shared mailbox the composer sends from: sales (leads) or support (tickets). */
-export type EmailSenderKind = 'sales' | 'support';
+/** Which shared mailbox the composer sends from: sales (leads), support (tickets) or support via the tasks API (tasks). */
+export type EmailSenderKind = 'sales' | 'support' | 'tasks';
 
 const fetchers: Record<EmailSenderKind, () => Promise<{ data: EmailSenderInfo }>> = {
   sales: getLeadEmailSender,
   support: getTicketEmailSender,
+  tasks: getTaskEmailSender,
 };
 
 // Fetched once per signed-in user and kind, and shared by every composer (the

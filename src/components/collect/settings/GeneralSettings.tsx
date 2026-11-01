@@ -15,8 +15,6 @@ interface Form {
   senderEmail: string;
   internalEmail: string;
   contractPrefix: string;
-  sar: string;
-  usd: string;
   simulatedToday: string;
   reminderMode: 'manual' | 'auto';
 }
@@ -26,8 +24,6 @@ const formOf = (s: CollectSettings): Form => ({
   senderEmail: s.senderEmail ?? '',
   internalEmail: s.internalEmail ?? '',
   contractPrefix: s.contractPrefix ?? '',
-  sar: String(s.rates?.SAR ?? ''),
-  usd: String(s.rates?.USD ?? ''),
   simulatedToday: s.simulatedToday ?? '',
   reminderMode: s.reminderMode ?? 'manual',
 });
@@ -71,7 +67,6 @@ export function GeneralSettings() {
         senderEmail: form.senderEmail,
         internalEmail: form.internalEmail,
         contractPrefix: form.contractPrefix,
-        rates: { SAR: Number(form.sar) || 0, USD: Number(form.usd) || 0 },
         simulatedToday: form.simulatedToday || null,
         reminderMode: form.reminderMode,
       });
@@ -110,12 +105,6 @@ export function GeneralSettings() {
         </Field>
         <Field label="Contract number prefix" htmlFor="gs-prefix" hint={`Next contract: ${form.contractPrefix}${String(settings.nextContractNo).padStart(4, '0')}`}>
           <input id="gs-prefix" className={INPUT} value={form.contractPrefix} onChange={(e) => set('contractPrefix', e.target.value)} />
-        </Field>
-        <Field label="Saudi riyal rate (EGP)" htmlFor="gs-sar">
-          <input id="gs-sar" type="number" min={0} step="any" className={INPUT} value={form.sar} onChange={(e) => set('sar', e.target.value)} />
-        </Field>
-        <Field label="US dollar rate (EGP)" htmlFor="gs-usd">
-          <input id="gs-usd" type="number" min={0} step="any" className={INPUT} value={form.usd} onChange={(e) => set('usd', e.target.value)} />
         </Field>
         <Field
           label="System date"

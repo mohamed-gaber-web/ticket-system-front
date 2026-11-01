@@ -195,6 +195,7 @@ const TeleSalesCompanyProfile = lazy(() => import("@/pages/tele-sales/company-pr
 const Tasks = lazy(() => import("@/pages/tasks/Tasks"));
 const TaskForm = lazy(() => import("@/pages/tasks/components/TaskForm"));
 const ViewTask = lazy(() => import("@/pages/tasks/ViewTask"));
+const TaskEmails = lazy(() => import("@/pages/tasks/TaskEmails"));
 const TasksDashboard = lazy(() => import("@/pages/tasks/TasksDashboard"));
 const TaskReports = lazy(() => import("@/pages/tasks/TaskReports"));
 
@@ -426,6 +427,10 @@ export const routes: RouteObject[] = [
         // `key` so switching between My Tasks and All Tasks starts with fresh filters
         path: "/tasks/my",
         element: <ModuleRoute module="tasks"><Lazy><Tasks key="mine" mine /></Lazy></ModuleRoute>,
+      },
+      {
+        path: "/tasks/emails",
+        element: <ModuleRoute module="tasks"><Lazy><TaskEmails /></Lazy></ModuleRoute>,
       },
       {
         path: "/tasks/create",

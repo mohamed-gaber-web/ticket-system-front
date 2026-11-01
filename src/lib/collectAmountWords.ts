@@ -6,7 +6,7 @@ const ONES = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight'
 const TENS = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
 const SCALES = ['', 'thousand', 'million', 'billion'];
 
-const CURRENCY_NAMES: Record<string, string> = { EGP: 'Egyptian Pounds', SAR: 'Saudi Riyals', USD: 'US Dollars' };
+const CURRENCY_NAMES: Record<string, string> = { USD: 'US Dollars' };
 
 /** 0–999 in words ("one hundred fifteen", "twenty-one"). */
 const under1000 = (n: number) => {
@@ -33,6 +33,6 @@ export const toWords = (value: number): string => {
 
 const titleCase = (s: string) => s.replace(/(^|[\s-])([a-z])/g, (_, sep: string, ch: string) => sep + ch.toUpperCase());
 
-/** "Four Million Two Hundred Thousand Egyptian Pounds only" */
+/** "Four Million Two Hundred Thousand US Dollars only" */
 export const amountInWords = (value: number, currency: string) =>
   `${titleCase(toWords(value))} ${CURRENCY_NAMES[currency] ?? currency} only`;

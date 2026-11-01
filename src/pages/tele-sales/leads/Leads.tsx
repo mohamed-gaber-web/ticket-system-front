@@ -5,7 +5,7 @@ import { fetchLeads, deleteLead, importLeads, convertLead, fetchLeadStats } from
 import { fetchAgents } from '@/redux/slices/teleSalesAgentsSlice';
 import { fetchTeams } from '@/redux/slices/teleSalesTeamsSlice';
 import { fetchIndustrySectors } from '@/redux/slices/industrySectorSlice';
-import { bulkDeleteLeads, getLeadFilterOptions } from '@/api/teleSalesApi';
+import { bulkDeleteLeads, deleteAllDataLeads, getLeadFilterOptions } from '@/api/teleSalesApi';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { MultiSelect, type MultiSelectItem } from '@/components/ui/multi-select';
@@ -359,6 +359,48 @@ export default function Leads({ lockedStatus, stage = 'Lead' }: LeadsProps = {})
     }
   };
 
+  // "Delete All" on the Data tab: every record matching the current filters (the
+  // whole tab with none), not only this page. Typed confirmation, since it can
+  // be thousands of records.
+  const handleDeleteAll = async () => {
+    const count = total;
+    const label = `${count.toLocaleString()} Data record${count === 1 ? '' : 's'}`;
+    const scope = activeFilters > 0 || search ? 'matching the current filters' : 'in the Data tab';
+    const result = await Swal.fire({
+      title: `Delete all ${label}?`,
+      html: `Every record ${scope} — on all pages, not only this one — and its calls, follow-ups, files and emails will be permanently deleted. This cannot be undone.<br/><br/>Type <b>DELETE</b> to confirm.`,
+      icon: 'warning',
+      input: 'text',
+      inputPlaceholder: 'DELETE',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: `Delete ${label}`,
+      inputValidator: (v) => (v.trim() === 'DELETE' ? null : 'Type DELETE to confirm'),
+    });
+    if (!result.isConfirmed) return;
+
+    setBulkDeleting(true);
+    try {
+      const res = await deleteAllDataLeads(query, count);
+      toast.success(`${res.deleted.toLocaleString()} record${res.deleted === 1 ? '' : 's'} deleted successfully`);
+      if (res.skippedCount > 0) {
+        toast.warning(`${res.skippedCount.toLocaleString()} record${res.skippedCount === 1 ? ' was' : 's were'} not deleted`, {
+          description: 'You cannot delete records of another team.',
+        });
+      }
+      setSelected([]);
+      setPage(1);
+      reload();
+    } catch (error) {
+      const message = (error as { response?: { data?: { message?: string } } }).response?.data?.message;
+      toast.error(message || 'Failed to delete the records');
+      reload();
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
+
   // ── Import handlers ──────────────────────────────────────────────────────────
   const openImport = () => {
     setParsed(null);
@@ -476,6 +518,12 @@ export default function Leads({ lockedStatus, stage = 'Lead' }: LeadsProps = {})
               {stage === 'Data' && (
                 <Button variant="outline" onClick={openImport} className="gap-2">
                   <Upload className="w-4 h-4" /> Import
+                </Button>
+              )}
+              {/* Deleting is for admins and the sales manager, as on a single row. */}
+              {canManage && stage === 'Data' && total > 0 && (
+                <Button variant="destructive" onClick={handleDeleteAll} disabled={bulkDeleting} className="gap-2">
+                  <Trash2 className="w-4 h-4" /> {bulkDeleting ? 'Deleting…' : activeFilters > 0 || search ? 'Delete All Filtered' : 'Delete All Data'}
                 </Button>
               )}
               {/* Opportunities only come from converting a Lead. */}

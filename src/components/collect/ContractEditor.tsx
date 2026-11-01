@@ -36,7 +36,7 @@ interface Form {
   notes: string;
 }
 
-const EMPTY: Form = { no: '', customer: '', type: '', name: '', value: '', currency: 'EGP', startDate: '', endDate: '', deliveryDate: '', scope: '', notes: '' };
+const EMPTY: Form = { no: '', customer: '', type: '', name: '', value: '', currency: 'USD', startDate: '', endDate: '', deliveryDate: '', scope: '', notes: '' };
 
 let rowSeq = 0;
 const toRows = (list: DraftInstallment[]): Row[] => list.map((i) => ({ ...i, key: `r${++rowSeq}`, amount: String(i.amount), paid: 0 }));

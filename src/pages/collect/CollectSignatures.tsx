@@ -99,9 +99,9 @@ export default function CollectSignatures() {
       ) : (
         <>
           <div className={KPI_GRID}>
-            <Kpi label="Contracts not fully signed" value={k.unsignedCount} sub={`Worth ${compact(k.unsignedValue)} EGP`} />
+            <Kpi label="Contracts not fully signed" value={k.unsignedCount} sub={`Worth ${compact(k.unsignedValue)} USD`} />
             <Kpi label="Follow-ups due today or late" value={k.followUpsDue} tone={k.followUpsDue ? 'crit' : undefined} />
-            <Kpi label="Guarantee cheques in safe" value={compact(k.guaranteeValue)} sub={`${k.guaranteeCount} cheques · EGP`} />
+            <Kpi label="Guarantee cheques in safe" value={compact(k.guaranteeValue)} sub={`${k.guaranteeCount} cheques · USD`} />
             <Kpi label="Payment cheques due in 30 days" value={k.paymentDue30} tone={k.paymentDue30 ? 'warn' : undefined} />
             <Kpi label="Returned cheques" value={k.returned} tone={k.returned ? 'crit' : undefined} />
           </div>

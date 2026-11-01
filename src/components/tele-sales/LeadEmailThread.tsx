@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { displaySubject, subjectKey } from '@/lib/emailSubject';
 import { Button } from '@/components/ui/button';
 import type { ThreadEmail, LeadEmailThreadSummary, EmailAttachment } from '@/types/teleSales.types';
 import {
   Mail, Send, Reply, RefreshCw, Trash2, Paperclip, Download, File as FileIcon, Image as ImageIcon,
-  AlertCircle, Check, CheckCheck, Inbox, Clock, ArrowDownLeft, ArrowUpRight, Hourglass, MailOpen,
+  AlertCircle, Check, CheckCheck, Inbox, Clock, ArrowDownLeft, ArrowUpRight, Hourglass, MailOpen, ChevronDown,
 } from 'lucide-react';
 
 const formatDateTime = (d?: string | null) =>
@@ -64,15 +66,87 @@ interface LeadEmailThreadProps<E extends ThreadEmail> {
   contactNoun?: string;
 }
 
+/** One subject's messages within a record, oldest first, with where it stands. */
+interface Conversation<E extends ThreadEmail> {
+  key: string;
+  subject: string;
+  emails: E[];
+  lastAt: string;
+  unread: number;
+  failed: number;
+  /** They wrote last and nobody answered yet. */
+  awaitingAgent: boolean;
+  /** We wrote last and it went out. */
+  awaitingContact: boolean;
+}
+
+const atOf = (e: ThreadEmail) => (e.direction === 'inbound' ? e.receivedAt ?? e.createdAt : e.sentAt ?? e.createdAt) ?? '';
+
+/** Group a record's messages by subject (lib/emailSubject.ts), newest conversation first. */
+function groupBySubject<E extends ThreadEmail>(emails: E[]): Conversation<E>[] {
+  const byKey = new Map<string, E[]>();
+  for (const e of emails) {
+    const key = e.subjectKey || subjectKey(e.subject);
+    if (!byKey.has(key)) byKey.set(key, []);
+    byKey.get(key)!.push(e);
+  }
+  return [...byKey]
+    .map(([key, list]) => {
+      const sorted = [...list].sort((a, b) => atOf(a).localeCompare(atOf(b)));
+      const last = sorted[sorted.length - 1];
+      return {
+        key,
+        subject: displaySubject(sorted[0].subject),
+        emails: sorted,
+        lastAt: atOf(last),
+        unread: sorted.filter((e) => e.direction === 'inbound' && e.status === 'received').length,
+        failed: sorted.filter((e) => e.direction !== 'inbound' && e.status === 'failed').length,
+        awaitingAgent: last.direction === 'inbound' && last.status !== 'replied',
+        awaitingContact: last.direction !== 'inbound' && last.status !== 'failed',
+      };
+    })
+    .sort((a, b) => b.lastAt.localeCompare(a.lastAt));
+}
+
 /**
- * An email conversation (a lead's or a ticket's), oldest first, with the exchange status at
- * the top: what we sent, what came back, and who owes the next reply.
+ * A record's email (a lead's, a ticket's or a task's), split into one
+ * conversation per subject — each subject keeps its own replies — with the
+ * overall exchange status at the top. `?conv=<subjectKey>` in the URL opens
+ * that conversation (Email Management links there).
  */
 export function LeadEmailThread<E extends ThreadEmail>({
   emails, summary, syncing, onCompose, onReply, onRefresh, onDelete, onMarkRead, onDownload, canWrite, contactNoun = 'lead',
 }: LeadEmailThreadProps<E>) {
   const Contact = contactNoun.charAt(0).toUpperCase() + contactNoun.slice(1);
-  const [expanded, setExpanded] = useState<Set<string>>(() => new Set(emails.length ? [emails[emails.length - 1]._id] : []));
+  const [searchParams] = useSearchParams();
+  const wanted = searchParams.get('conv');
+  const conversations = useMemo(() => groupBySubject(emails), [emails]);
+  const [openConvs, setOpenConvs] = useState<Set<string>>(new Set());
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const seen = useRef<Set<string>>(new Set());
+
+  // The first time a conversation shows up its newest message starts expanded;
+  // the first load opens the linked conversation (?conv=), else the newest one.
+  useEffect(() => {
+    if (!conversations.length) return;
+    const fresh = conversations.filter((c) => !seen.current.has(c.key));
+    if (!fresh.length) return;
+    const firstLoad = seen.current.size === 0;
+    fresh.forEach((c) => seen.current.add(c.key));
+    setExpanded((prev) => new Set([...prev, ...fresh.map((c) => c.emails[c.emails.length - 1]._id)]));
+    if (firstLoad) {
+      const target = conversations.find((c) => c.key === wanted) ?? conversations[0];
+      setOpenConvs(new Set([target.key]));
+    }
+  }, [conversations, wanted]);
+
+  const toggleConv = (key: string) =>
+    setOpenConvs((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
 
   const toggle = (email: E) => {
     setExpanded((prev) => {
@@ -82,6 +156,91 @@ export function LeadEmailThread<E extends ThreadEmail>({
       return next;
     });
     if (email.direction === 'inbound' && email.status === 'received') onMarkRead(email);
+  };
+
+  const renderMessage = (email: E) => {
+    const inbound = email.direction === 'inbound';
+    const isOpen = expanded.has(email._id);
+    const unread = inbound && email.status === 'received';
+    const who = inbound ? (email.fromName || email.from || Contact) : (email.sentByName || 'Agent');
+    const when = atOf(email);
+    return (
+      <div key={email._id} className={`flex ${inbound ? 'justify-start' : 'justify-end'}`}>
+        <div className={`w-full md:w-[85%] rounded-2xl border overflow-hidden ${
+          inbound
+            ? `bg-surface-container-lowest border-outline-variant/30 ${unread ? 'ring-2 ring-orange-300/60' : ''}`
+            : 'bg-primary/5 border-primary/20'
+        }`}>
+          <button type="button" onClick={() => toggle(email)} className="w-full text-left p-4">
+            <div className="flex items-start gap-3">
+              <span className={`w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 ${
+                inbound ? 'bg-orange-100 text-orange-800' : 'bg-primary text-on-primary'
+              }`}>
+                {who.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()}
+              </span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className={`text-sm text-on-surface truncate ${unread ? 'font-bold' : 'font-semibold'}`}>{who}</span>
+                  <EmailStatusBadge email={email} contactNoun={contactNoun} />
+                  {email.attachments.length > 0 && (
+                    <span className="inline-flex items-center gap-1 text-xs text-on-surface-variant"><Paperclip className="w-3 h-3" /> {email.attachments.length}</span>
+                  )}
+                </div>
+                <p className="text-xs text-on-surface-variant mt-1 truncate">
+                  {inbound ? <>{email.from && `<${email.from}> `}→ you</> : <>→ {email.to.join(', ')}</>}
+                  {email.cc.length > 0 && ` · Cc ${email.cc.join(', ')}`}
+                  {' · '}<span className="text-on-surface-variant/80">{email.subject}</span>
+                </p>
+                {!isOpen && email.bodyPreview && <p className="text-xs text-on-surface-variant/80 mt-1 truncate">{email.bodyPreview}</p>}
+                <p className="text-[11px] text-on-surface-variant/70 mt-1">
+                  {formatDateTime(when)} · {relative(when)}
+                  {email.readAt && inbound && <> · read {relative(email.readAt)}</>}
+                  {email.repliedAt && <> · {inbound ? 'answered' : 'reply received'} {relative(email.repliedAt)}</>}
+                </p>
+              </div>
+            </div>
+          </button>
+
+          {isOpen && (
+            <div className="border-t border-outline-variant/20 px-4 py-4 space-y-3">
+              {email.status === 'failed' && email.errorMessage && (
+                <p className="text-xs text-error bg-error/5 rounded-xl px-3 py-2">{email.errorMessage}</p>
+              )}
+              {/* Body is sanitised server-side before it is stored. */}
+              <div className="email-body-content text-sm text-on-surface" dangerouslySetInnerHTML={{ __html: email.body || '<p><em>(no message body)</em></p>' }} />
+              {email.attachments.length > 0 && (
+                <div className="flex flex-wrap gap-2 pt-2 border-t border-outline-variant/20">
+                  {email.attachments.map((att) => (
+                    <button
+                      key={att.fileId}
+                      onClick={() => onDownload(att)}
+                      className="inline-flex items-center gap-2 rounded-xl border border-outline-variant/40 px-3 py-2 text-xs text-on-surface hover:bg-surface-container transition-colors"
+                    >
+                      {att.fileType?.startsWith('image/') ? <ImageIcon className="w-3.5 h-3.5 text-brand-500" /> : <FileIcon className="w-3.5 h-3.5 text-on-surface-variant" />}
+                      <span className="truncate max-w-[200px]">{att.fileName}</span>
+                      <span className="text-on-surface-variant">{formatFileSize(att.fileSize)}</span>
+                      <Download className="w-3.5 h-3.5 text-on-surface-variant" />
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div className="flex items-center justify-between pt-2 border-t border-outline-variant/20">
+                <div className="flex gap-2">
+                  {canWrite && (
+                    <Button size="sm" variant={inbound && email.status !== 'replied' ? 'default' : 'outline'} onClick={() => onReply(email)} className="gap-1.5">
+                      <Reply className="w-3.5 h-3.5" /> Reply
+                    </Button>
+                  )}
+                </div>
+                <button onClick={() => onDelete(email._id)} className="p-1.5 rounded-lg hover:bg-error/10 text-on-surface-variant hover:text-error" title="Remove from history">
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -94,7 +253,7 @@ export function LeadEmailThread<E extends ThreadEmail>({
             <div>
               <p className="text-sm font-bold text-on-surface">Email management</p>
               <p className="text-xs text-on-surface-variant">
-                Replies from the {contactNoun} land here automatically (mailbox is checked every 2 minutes).
+                One conversation per subject · replies from the {contactNoun} land in theirs automatically (mailbox is checked every 2 minutes).
               </p>
             </div>
           </div>
@@ -103,8 +262,8 @@ export function LeadEmailThread<E extends ThreadEmail>({
               <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`} /> {syncing ? 'Checking…' : 'Check for replies'}
             </Button>
             {canWrite && (
-              <Button size="sm" onClick={onCompose} className="gap-1.5">
-                <Send className="w-3.5 h-3.5" /> Compose
+              <Button size="sm" onClick={onCompose} className="gap-1.5" title="A new subject starts a new conversation">
+                <Send className="w-3.5 h-3.5" /> New email
               </Button>
             )}
           </div>
@@ -112,19 +271,11 @@ export function LeadEmailThread<E extends ThreadEmail>({
 
         {summary && (
           <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-outline-variant/15">
+            <Stat icon={<Mail className="w-3.5 h-3.5" />} label="Conversations" value={conversations.length} />
             <Stat icon={<ArrowUpRight className="w-3.5 h-3.5" />} label="Sent" value={summary.sent} />
             <Stat icon={<ArrowDownLeft className="w-3.5 h-3.5" />} label="Received" value={summary.received} />
             {summary.unread > 0 && <Stat icon={<Inbox className="w-3.5 h-3.5" />} label="Unread" value={summary.unread} tone="orange" />}
             {summary.failed > 0 && <Stat icon={<AlertCircle className="w-3.5 h-3.5" />} label="Failed" value={summary.failed} tone="error" />}
-            <span className="ml-auto inline-flex items-center gap-1.5 text-xs font-semibold">
-              {summary.awaitingAgent ? (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-orange-100 text-orange-800"><Hourglass className="w-3.5 h-3.5" /> {Contact} is waiting for your reply · {relative(summary.lastInboundAt)}</span>
-              ) : summary.awaitingLead ? (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-100 text-blue-800"><Clock className="w-3.5 h-3.5" /> Waiting for the {contactNoun} · sent {relative(summary.lastOutboundAt)}</span>
-              ) : summary.sent + summary.received > 0 ? (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-100 text-green-800"><CheckCheck className="w-3.5 h-3.5" /> Up to date</span>
-              ) : null}
-            </span>
           </div>
         )}
       </div>
@@ -133,91 +284,61 @@ export function LeadEmailThread<E extends ThreadEmail>({
         <div className="flex flex-col items-center py-16 text-on-surface-variant bg-surface-container-lowest rounded-2xl border border-outline-variant/20">
           <Mail className="w-8 h-8 mb-2 opacity-30" />
           <p className="text-sm font-medium">No emails yet</p>
-          <p className="text-xs mt-1">Click "Compose" to write the first message — the {contactNoun}'s replies will show up here.</p>
+          <p className="text-xs mt-1">Click "New email" to write the first message — replies will show up here, grouped by subject.</p>
         </div>
       ) : (
         <div className="space-y-3">
-          {emails.map((email) => {
-            const inbound = email.direction === 'inbound';
-            const isOpen = expanded.has(email._id);
-            const unread = inbound && email.status === 'received';
-            const who = inbound ? (email.fromName || email.from || Contact) : (email.sentByName || 'Agent');
-            const when = inbound ? email.receivedAt ?? email.createdAt : email.sentAt ?? email.createdAt;
+          {conversations.map((conv) => {
+            const open = openConvs.has(conv.key);
+            const last = conv.emails[conv.emails.length - 1];
+            // Reply to the newest message from them, else the newest one.
+            const replyTarget = [...conv.emails].reverse().find((e) => e.direction === 'inbound') ?? last;
             return (
-              <div key={email._id} className={`flex ${inbound ? 'justify-start' : 'justify-end'}`}>
-                <div className={`w-full md:w-[85%] rounded-2xl border overflow-hidden ${
-                  inbound
-                    ? `bg-surface-container-lowest border-outline-variant/30 ${unread ? 'ring-2 ring-orange-300/60' : ''}`
-                    : 'bg-primary/5 border-primary/20'
-                }`}>
-                  <button type="button" onClick={() => toggle(email)} className="w-full text-left p-4">
-                    <div className="flex items-start gap-3">
-                      <span className={`w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 ${
-                        inbound ? 'bg-orange-100 text-orange-800' : 'bg-primary text-on-primary'
-                      }`}>
-                        {who.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()}
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className={`text-sm text-on-surface truncate ${unread ? 'font-bold' : 'font-semibold'}`}>{email.subject}</span>
-                          <EmailStatusBadge email={email} contactNoun={contactNoun} />
-                          {email.attachments.length > 0 && (
-                            <span className="inline-flex items-center gap-1 text-xs text-on-surface-variant"><Paperclip className="w-3 h-3" /> {email.attachments.length}</span>
-                          )}
-                        </div>
-                        <p className="text-xs text-on-surface-variant mt-1 truncate">
-                          {inbound ? <><span className="font-medium text-on-surface">{who}</span>{email.from && ` <${email.from}>`} → you</> : <>{who} → {email.to.join(', ')}</>}
-                          {email.cc.length > 0 && ` · Cc ${email.cc.join(', ')}`}
-                        </p>
-                        {!isOpen && email.bodyPreview && <p className="text-xs text-on-surface-variant/80 mt-1 truncate">{email.bodyPreview}</p>}
-                        <p className="text-[11px] text-on-surface-variant/70 mt-1">
-                          {formatDateTime(when)} · {relative(when)}
-                          {email.readAt && inbound && <> · read {relative(email.readAt)}</>}
-                          {email.repliedAt && <> · {inbound ? 'answered' : 'reply received'} {relative(email.repliedAt)}</>}
-                        </p>
-                      </div>
+              <section
+                key={conv.key}
+                className={`rounded-2xl border bg-surface-container-lowest overflow-hidden ${conv.unread > 0 ? 'border-orange-300/70' : 'border-outline-variant/25'}`}
+              >
+                <button
+                  type="button"
+                  onClick={() => toggleConv(conv.key)}
+                  aria-expanded={open}
+                  className="w-full text-left px-4 py-3 flex items-start gap-3 hover:bg-surface-container-low transition-colors"
+                >
+                  <ChevronDown className={`w-4 h-4 mt-0.5 shrink-0 text-on-surface-variant transition-transform ${open ? '' : '-rotate-90'}`} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={`text-sm text-on-surface truncate ${conv.unread > 0 ? 'font-bold' : 'font-semibold'}`}>{conv.subject}</span>
+                      <span className="text-[11px] text-on-surface-variant">{conv.emails.length} message{conv.emails.length === 1 ? '' : 's'}</span>
+                      {conv.unread > 0 && <span className="px-1.5 py-0.5 rounded-full bg-orange-500 text-white text-[10px] font-bold">{conv.unread} new</span>}
+                      {conv.failed > 0 && <span className="px-1.5 py-0.5 rounded-full bg-error/10 text-error text-[10px] font-bold">{conv.failed} failed</span>}
+                      <span className="ml-auto text-[11px] text-on-surface-variant whitespace-nowrap" title={formatDateTime(conv.lastAt)}>{relative(conv.lastAt)}</span>
                     </div>
-                  </button>
+                    <div className="mt-1 flex items-center gap-2 flex-wrap text-xs">
+                      {conv.awaitingAgent ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-100 text-orange-800 font-semibold"><Hourglass className="w-3 h-3" /> {Contact} is waiting for your reply</span>
+                      ) : conv.awaitingContact ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 font-semibold"><Clock className="w-3 h-3" /> Waiting for the {contactNoun}</span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 text-green-800 font-semibold"><CheckCheck className="w-3 h-3" /> Up to date</span>
+                      )}
+                      {!open && last.bodyPreview && <span className="text-on-surface-variant truncate">{last.bodyPreview}</span>}
+                    </div>
+                  </div>
+                </button>
 
-                  {isOpen && (
-                    <div className="border-t border-outline-variant/20 px-4 py-4 space-y-3">
-                      {email.status === 'failed' && email.errorMessage && (
-                        <p className="text-xs text-error bg-error/5 rounded-xl px-3 py-2">{email.errorMessage}</p>
-                      )}
-                      {/* Body is sanitised server-side before it is stored. */}
-                      <div className="email-body-content text-sm text-on-surface" dangerouslySetInnerHTML={{ __html: email.body || '<p><em>(no message body)</em></p>' }} />
-                      {email.attachments.length > 0 && (
-                        <div className="flex flex-wrap gap-2 pt-2 border-t border-outline-variant/20">
-                          {email.attachments.map((att) => (
-                            <button
-                              key={att.fileId}
-                              onClick={() => onDownload(att)}
-                              className="inline-flex items-center gap-2 rounded-xl border border-outline-variant/40 px-3 py-2 text-xs text-on-surface hover:bg-surface-container transition-colors"
-                            >
-                              {att.fileType?.startsWith('image/') ? <ImageIcon className="w-3.5 h-3.5 text-brand-500" /> : <FileIcon className="w-3.5 h-3.5 text-on-surface-variant" />}
-                              <span className="truncate max-w-[200px]">{att.fileName}</span>
-                              <span className="text-on-surface-variant">{formatFileSize(att.fileSize)}</span>
-                              <Download className="w-3.5 h-3.5 text-on-surface-variant" />
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                      <div className="flex items-center justify-between pt-2 border-t border-outline-variant/20">
-                        <div className="flex gap-2">
-                          {canWrite && (
-                            <Button size="sm" variant={inbound && email.status !== 'replied' ? 'default' : 'outline'} onClick={() => onReply(email)} className="gap-1.5">
-                              <Reply className="w-3.5 h-3.5" /> Reply
-                            </Button>
-                          )}
-                        </div>
-                        <button onClick={() => onDelete(email._id)} className="p-1.5 rounded-lg hover:bg-error/10 text-on-surface-variant hover:text-error" title="Remove from history">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                {open && (
+                  <div className="border-t border-outline-variant/20 p-3 space-y-3 bg-surface-container-low/40">
+                    {conv.emails.map(renderMessage)}
+                    {canWrite && (
+                      <div className="flex justify-end">
+                        <Button size="sm" variant={conv.awaitingAgent ? 'default' : 'outline'} onClick={() => onReply(replyTarget)} className="gap-1.5">
+                          <Reply className="w-3.5 h-3.5" /> Reply in this conversation
+                        </Button>
                       </div>
-                    </div>
-                  )}
-                </div>
-              </div>
+                    )}
+                  </div>
+                )}
+              </section>
             );
           })}
         </div>

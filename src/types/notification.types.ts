@@ -20,6 +20,7 @@ export type NotificationType =
   | 'meeting_reminder'
   | 'lead_email_reply'
   | 'ticket_email_reply'
+  | 'task_email_reply'
   | 'proposal_approval_request'
   | 'proposal_approved'
   | 'proposal_rejected';
@@ -33,6 +34,7 @@ export interface Notification {
     status?: string;
   } | null;
   lead?: { _id: string; companyName?: string; contactPersonName?: string } | null;
+  task?: { _id: string; taskNumber?: string; name?: string } | null;
   proposal?: { _id: string; number?: string; client?: string } | null;
   ticket?: {
     _id: string;

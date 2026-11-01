@@ -66,6 +66,7 @@ const TYPE_STYLES: Record<NotificationType, { icon: LucideIcon; className: strin
   meeting_reminder: { icon: BellRing, className: 'text-amber-600 bg-amber-500/10' },
   lead_email_reply: { icon: MailOpen, className: 'text-orange-600 bg-orange-500/10' },
   ticket_email_reply: { icon: MailOpen, className: 'text-orange-600 bg-orange-500/10' },
+  task_email_reply: { icon: MailOpen, className: 'text-orange-600 bg-orange-500/10' },
   proposal_approval_request: { icon: FileSignature, className: 'text-amber-600 bg-amber-500/10' },
   proposal_approved: { icon: BadgeCheck, className: 'text-green-600 bg-green-500/10' },
   proposal_rejected: { icon: FileX2, className: 'text-red-600 bg-red-500/10' },
@@ -158,6 +159,7 @@ export function NotificationDropdown({ isOpen, onClose, excludeTypes = [] }: Not
     }
     if (item.meeting?._id) return `/calendar?meeting=${item.meeting._id}`;
     if (item.proposal?._id) return `/proposals/${item.proposal._id}`;
+    if (item.task?._id) return `/tasks/${item.task._id}?tab=emails`;
     if (item.lead?._id) return `/tele-sales/leads/${item.lead._id}?tab=emails`;
     return null;
   };
