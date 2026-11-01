@@ -109,6 +109,7 @@ export function PerformancePanel({ data }: { data: MyHomeData }) {
 const ACTIVITY_COLOR: Record<string, string> = {
   ticket_email_reply: '#2a6fdb',
   lead_email_reply: '#2a6fdb',
+  task_email_reply: '#2a6fdb',
   sla_alert: 'var(--over)',
   sla_breach: 'var(--over)',
   vacation_request: 'var(--primary)',

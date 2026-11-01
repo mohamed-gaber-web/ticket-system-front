@@ -328,7 +328,7 @@ export function FollowUpDialog({ contract, open, today, onClose, onDone }: { con
 
 // ── Cheques ──────────────────────────────────────────────────────────────────
 
-const emptyCheque = (contractId = '', kind: ChequeInput['kind'] = 'payment', currency: ChequeInput['currency'] = 'EGP', today = ''): ChequeInput => ({
+const emptyCheque = (contractId = '', kind: ChequeInput['kind'] = 'payment', currency: ChequeInput['currency'] = 'USD', today = ''): ChequeInput => ({
   contract: contractId,
   kind,
   number: '',
@@ -385,7 +385,7 @@ export function ChequeDialog({
         notes: cheque.notes,
       });
     } else {
-      setForm(emptyCheque(contractId ?? '', kind ?? 'payment', 'EGP', today));
+      setForm(emptyCheque(contractId ?? '', kind ?? 'payment', 'USD', today));
     }
     if (!contractId && !cheque) {
       getContracts({ status: 'all' })

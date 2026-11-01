@@ -1,6 +1,6 @@
 // Grow Path Collect (/api/collect) — mirrors the backend controllers' payloads.
 
-export type Currency = 'EGP' | 'SAR' | 'USD';
+export type Currency = 'USD';
 export type ContractStatus = 'active' | 'closed' | 'renewed' | 'cancelled';
 export type BillingMode = 'phases' | 'recurring' | 'renewal';
 export type PhaseAnchor = 'start' | 'delivery' | 'end';
@@ -47,7 +47,6 @@ export interface CollectMeta {
   today: string;
   simulated: boolean;
   company: string;
-  rates: { SAR: number; USD: number };
   contractPrefix: string;
   reminderMode: 'manual' | 'auto';
   internalEmailSet: boolean;
@@ -105,7 +104,6 @@ export interface CollectSettings {
   nextContractNo: number;
   simulatedToday: string | null;
   reminderMode: 'manual' | 'auto';
-  rates: { SAR: number; USD: number };
   document: DocumentSettings;
   clauses: Clause[];
   smtpConfigured: boolean;
@@ -297,7 +295,6 @@ export interface MonthlyRow {
 export interface Analytics {
   year: number;
   today: string;
-  rates: { SAR: number; USD: number };
   kpis: {
     activeValue: number;
     activeCount: number;
@@ -337,7 +334,7 @@ export interface CollectionRow {
 export interface CollectionResult {
   data: CollectionRow[];
   counts: Record<CollectionFilter, number>;
-  totalRemainingEGP: number;
+  totalRemaining: number;
   today: string;
 }
 

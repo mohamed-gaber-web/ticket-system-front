@@ -16,9 +16,10 @@ import type {
 // Dates are "YYYY-MM-DD" strings, maths in whole UTC days (like the backend's
 // utils/collect/dates.js).
 
-export const CURRENCIES: Currency[] = ['EGP', 'SAR', 'USD'];
-export const CURRENCY_LABELS: Record<Currency, string> = { EGP: 'EGP', SAR: 'SAR', USD: 'USD' };
-export const CURRENCY_NAMES: Record<Currency, string> = { EGP: 'Egyptian Pounds', SAR: 'Saudi Riyals', USD: 'US Dollars' };
+// USD only, like every price in the app.
+export const CURRENCIES: Currency[] = ['USD'];
+export const CURRENCY_LABELS: Record<Currency, string> = { USD: 'USD' };
+export const CURRENCY_NAMES: Record<Currency, string> = { USD: 'US Dollars' };
 
 export const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 export const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -27,8 +28,8 @@ export const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Fr
 const n0f = new Intl.NumberFormat('en', { maximumFractionDigits: 0 });
 export const n0 = (v: number | null | undefined) => n0f.format(Math.round(Number(v) || 0));
 
-/** "1,250,000 EGP" */
-export const money = (v: number | null | undefined, cur: Currency | string = 'EGP') =>
+/** "1,250,000 USD" */
+export const money = (v: number | null | undefined, cur: Currency | string = 'USD') =>
   `${n0(v)} ${CURRENCY_LABELS[cur as Currency] ?? cur}`;
 
 /** "1.25M", "350K", "900" — chart axes and tight tiles. */

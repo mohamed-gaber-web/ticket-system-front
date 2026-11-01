@@ -210,7 +210,7 @@ export function DocumentSettings() {
             {txt('bank', 'Bank account details', { area: true, rows: 4, hint: 'Printed as a sub-item of the payment clause when set' })}
             {txt('preamble', 'Preamble', { area: true, rows: 4, hint: 'One paragraph per line' })}
             {txt('payTerms', 'General payment terms', { area: true, rows: 5, hint: 'One term per line' })}
-            {txt('usdTerm', 'USD contracts term', { area: true, rows: 3, hint: 'Added automatically to USD contracts' })}
+            {txt('usdTerm', 'Currency term (USD)', { area: true, rows: 3, hint: 'Added to every contract — all contracts are in US dollars' })}
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">

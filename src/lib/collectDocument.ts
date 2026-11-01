@@ -47,7 +47,7 @@ const fill = (text: string, vars: Record<string, string | number | undefined>) =
 /** A string safe inside a CSS `content: "…"` (and inside <style>). */
 const cssStr = (s: string) => s.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/</g, '\\3c ').replace(/[\r\n]+/g, ' ');
 
-export const isSaudi = (c: ContractDetail) => c.currency === 'SAR' || /saudi|ksa|سعود/i.test(c.customerDetail?.country ?? '');
+export const isSaudi = (c: ContractDetail) => /saudi|ksa|سعود/i.test(c.customerDetail?.country ?? '');
 
 export const contractPdfFileName = (c: Pick<ContractDetail, 'no' | 'customer'>) => `${c.no} - ${c.customer.name}`;
 

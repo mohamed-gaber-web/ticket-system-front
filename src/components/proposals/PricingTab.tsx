@@ -156,7 +156,9 @@ export default function PricingTab({ proposal, catalog, canEdit }: { proposal: P
             ))}
           </NativeSelect>
         )}
-        <div className="space-y-2.5">
+        {/* Step 1 — Microsoft's eligibility discount: ticked = eligible, which
+            reveals its %; unticked = not eligible (0%). */}
+        <div className="space-y-2.5 rounded-xl border border-outline-variant/30 p-3">
           <label className="flex items-center gap-2 text-sm text-on-surface">
             <input
               type="checkbox"
@@ -169,21 +171,43 @@ export default function PricingTab({ proposal, catalog, canEdit }: { proposal: P
               }}
               className="h-4 w-4 shrink-0 rounded accent-primary focus-visible:ring-[2px] focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
             />
-            <span>Eligible for License Discount</span>
+            <span className="font-medium">Eligible for Microsoft discount</span>
+            <Pill tone={proposal.licenses.eligibilityDiscount ? 'ok' : 'info'}>
+              {proposal.licenses.eligibilityDiscount ? 'Eligible' : 'Not eligible'}
+            </Pill>
           </label>
-          <Field label="Eligibility discount %" className="max-w-[12rem]">
-            <NumberInput
-              value={proposal.licenses.eligibilityDiscountPct}
-              max={100}
-              step={0.5}
-              ariaLabel="Eligibility discount percent"
-              disabled={!canEdit || !proposal.licenses.eligibilityDiscount}
-              onChange={(v) => dispatch(setLicenseField({ key: 'eligibilityDiscountPct', value: v }))}
-            />
-          </Field>
+          {proposal.licenses.eligibilityDiscount && (
+            <>
+              <Field label="Microsoft discount %" className="max-w-[12rem]">
+                <NumberInput
+                  value={proposal.licenses.eligibilityDiscountPct}
+                  max={100}
+                  step={0.5}
+                  ariaLabel="Microsoft discount percent"
+                  disabled={!canEdit}
+                  onChange={(v) => dispatch(setLicenseField({ key: 'eligibilityDiscountPct', value: v }))}
+                />
+              </Field>
+              <div className="space-y-0.5 text-xs tabular-nums text-on-surface-variant">
+                <div className="flex justify-between gap-2">
+                  <span>License total</span>
+                  <span>{formatUsd(t.licSum)}</span>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span>Microsoft discount ({proposal.licenses.eligibilityDiscountPct}%)</span>
+                  <span>−{formatUsd(t.licEligDisc)}</span>
+                </div>
+                <div className="flex justify-between gap-2 font-semibold text-on-surface">
+                  <span>Total after Microsoft discount</span>
+                  <span>{formatUsd(t.licBase)}</span>
+                </div>
+              </div>
+            </>
+          )}
         </div>
+        {/* Step 2 — the last discount, applied to the total after Microsoft's. */}
         <div className="grid grid-cols-2 gap-3">
-          <Field label="License discount %">
+          <Field label={proposal.licenses.eligibilityDiscount ? 'Final discount % (after Microsoft)' : 'License discount %'}>
             <NumberInput value={proposal.licenses.discountPct} max={100} step={0.5} ariaLabel="License discount percent" disabled={!canEdit} onChange={(v) => dispatch(setLicenseField({ key: 'discountPct', value: v }))} />
           </Field>
           <Field label="Billing term (months)">
@@ -225,12 +249,26 @@ export default function PricingTab({ proposal, catalog, canEdit }: { proposal: P
         {t.licEligDisc > 0 && (
           <>
             <div className="flex justify-between gap-2 text-xs text-on-surface-variant">
-              <span>Eligibility discount ({proposal.licenses.eligibilityDiscountPct}%)</span>
+              <span>Microsoft discount ({proposal.licenses.eligibilityDiscountPct}%)</span>
               <span>−{formatUsd(t.licEligDisc)}</span>
             </div>
             <div className="flex justify-between gap-2 text-xs text-on-surface-variant">
-              <span>Base after eligibility</span>
+              <span>Total after Microsoft discount</span>
               <span>{formatUsd(t.licBase)}</span>
+            </div>
+          </>
+        )}
+        {t.licDisc > 0 && (
+          <>
+            <div className="flex justify-between gap-2 text-xs text-on-surface-variant">
+              <span>
+                {t.licEligDisc > 0 ? 'Final discount' : 'License discount'} ({proposal.licenses.discountPct}%)
+              </span>
+              <span>−{formatUsd(t.licDisc)}</span>
+            </div>
+            <div className="flex justify-between gap-2 text-xs text-on-surface-variant">
+              <span>Licenses after discount</span>
+              <span>{formatUsd(t.licNet)}</span>
             </div>
           </>
         )}

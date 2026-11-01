@@ -21,15 +21,14 @@ describe('toWords', () => {
   });
 
   it('wraps the amount with the currency name', () => {
-    assert.equal(amountInWords(90_000, 'SAR'), 'Ninety Thousand Saudi Riyals only');
-    assert.equal(amountInWords(4_200_000, 'EGP'), 'Four Million Two Hundred Thousand Egyptian Pounds only');
+    assert.equal(amountInWords(4_200_000, 'USD'), 'Four Million Two Hundred Thousand US Dollars only');
     assert.equal(amountInWords(21, 'USD'), 'Twenty-One US Dollars only');
   });
 });
 
 describe('formatting', () => {
   it('money, compact and dates', () => {
-    assert.equal(money(1_250_000, 'EGP'), '1,250,000 EGP');
+    assert.equal(money(1_250_000, 'USD'), '1,250,000 USD');
     assert.equal(compact(1_250_000), '1.25M');
     assert.equal(compact(350_000), '350K');
     assert.equal(fmtDate('2026-10-11'), '11 October 2026');

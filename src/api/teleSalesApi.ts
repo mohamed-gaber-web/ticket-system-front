@@ -18,6 +18,7 @@ import type {
   BulkUpdateLeadsRequest,
   BulkUpdateLeadsResponse,
   BulkDeleteLeadsResponse,
+  DeleteAllDataResponse,
   LeadFilterOptions,
   AccountRef,
   AccountContact,
@@ -122,6 +123,14 @@ export const bulkDeleteLeads = (ids: string[]): Promise<BulkDeleteLeadsResponse>
   api.post('/leads/bulk-delete', { ids }).then((r) => r.data);
 
 /** The values the list filters can offer (country, data source, tags…) for one tab. */
+/**
+ * Delete every Data record matching the list filters (the whole Data tab with no
+ * filter). `confirmCount` is the total the user saw; the server refuses (409)
+ * when the list has changed since.
+ */
+export const deleteAllDataLeads = (filters: LeadQueryParams, confirmCount: number): Promise<DeleteAllDataResponse> =>
+  api.post('/leads/delete-all', { filters, confirmCount }).then((r) => r.data);
+
 export const getLeadFilterOptions = (salesType?: string): Promise<{ success: boolean; data: LeadFilterOptions }> =>
   api.get('/leads/filter-options', { params: salesType ? { salesType } : undefined }).then((r) => r.data);
 

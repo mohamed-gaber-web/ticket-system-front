@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { EmailStatusBadge } from '@/components/tele-sales/LeadEmailThread';
 import { toast } from 'sonner';
 import { apiErrorMessage } from '@/lib/emailInbox';
+import { displaySubject } from '@/lib/emailSubject';
 import {
   Mail, RefreshCw, Search, Inbox, Hourglass, Clock, ArrowDownLeft, ArrowUpRight, ChevronLeft, ChevronRight, Loader2,
 } from 'lucide-react';
@@ -65,7 +66,8 @@ const relative = (d?: string | null) => {
 const fmt = (d?: string | null) => (d ? new Date(d).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—');
 
 /**
- * Email management: every conversation in one place — who is waiting on whom,
+ * Email management: every conversation in one place — one row per record AND
+ * subject, so each subject's replies stay apart — — who is waiting on whom,
  * unread replies, and a jump into the record's thread to answer. Shared by the
  * tele-sales (leads) and ticketing (tickets) inboxes; each page only says how
  * to load its rows and what a row shows.
@@ -183,11 +185,13 @@ export function EmailInboxView<Row extends InboxRowBase, F extends string>({
               if (!view) return null;
               const last = row.last;
               const lastInbound = last.direction === 'inbound';
+              // Open the record on this conversation.
+              const href = `${view.href}${view.href.includes('?') ? '&' : '?'}conv=${encodeURIComponent(row.subjectKey ?? '')}`;
               return (
                 <button
-                  key={view.key}
+                  key={`${view.key}:${row.subjectKey ?? ''}`}
                   type="button"
-                  onClick={() => navigate(view.href)}
+                  onClick={() => navigate(href)}
                   className={`w-full text-left px-4 py-3 flex items-start gap-4 hover:bg-surface-container-low transition-colors ${row.unread > 0 ? 'bg-orange-50/40 dark:bg-orange-950/10' : ''}`}
                 >
                   <span className={`mt-0.5 w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${row.unread > 0 ? 'bg-orange-100 text-orange-800' : 'bg-surface-container text-on-surface-variant'}`}>
@@ -201,13 +205,18 @@ export function EmailInboxView<Row extends InboxRowBase, F extends string>({
                       {row.unread > 0 && <span className="px-1.5 py-0.5 rounded-full bg-orange-500 text-white text-[10px] font-bold">{row.unread} new</span>}
                       <span className="ml-auto text-[11px] text-on-surface-variant whitespace-nowrap" title={fmt(row.lastAt)}>{relative(row.lastAt)}</span>
                     </div>
-                    <p className="text-sm text-on-surface mt-0.5 truncate">
+                    {/* The conversation's subject, then its latest message. */}
+                    <p className={`text-sm text-on-surface mt-0.5 truncate ${row.unread > 0 ? 'font-bold' : 'font-semibold'}`}>
+                      <Mail className="inline w-3.5 h-3.5 mr-1 -mt-0.5 text-on-surface-variant" />
+                      {displaySubject(last.subject)}
+                      <span className="ml-1.5 text-[11px] font-normal text-on-surface-variant">{row.messages} message{row.messages === 1 ? '' : 's'}</span>
+                    </p>
+                    <p className="text-xs text-on-surface-variant mt-0.5 truncate">
                       <span className={`inline-flex items-center gap-1 mr-1.5 text-[11px] font-semibold ${lastInbound ? 'text-orange-700' : 'text-primary'}`}>
                         {lastInbound ? <ArrowDownLeft className="w-3 h-3" /> : <ArrowUpRight className="w-3 h-3" />}
                         {lastInbound ? (last.fromName || last.from || Contact) : (last.sentByName || 'You')}
                       </span>
-                      {last.subject}
-                      {last.bodyPreview && <span className="text-on-surface-variant"> — {last.bodyPreview}</span>}
+                      {last.bodyPreview}
                     </p>
                     <div className="flex items-center gap-2 mt-1.5 flex-wrap text-[11px] text-on-surface-variant">
                       <EmailStatusBadge email={last} contactNoun={contactNoun} />
