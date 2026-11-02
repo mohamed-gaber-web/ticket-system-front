@@ -30,6 +30,32 @@ export const groupTotals = (
   return { sum, disc, net, vat, total: net + vat };
 };
 
+type TermShape = { termMonths?: number | null; termDays?: number | null } | null | undefined;
+
+/**
+ * The billing term in months: months + days / 30 (a day is 1/30 of the monthly
+ * price). A missing month count reads as 12 (older proposals); a term of
+ * nothing falls back to 12 months. Mirrors the backend's proposalMath.js.
+ */
+export const licenseTermMonths = (lic: TermShape) => {
+  const months = lic?.termMonths == null ? 12 : num(lic.termMonths);
+  const total = months + num(lic?.termDays) / 30;
+  return total > 0 ? total : 12;
+};
+
+/** "12 months", "2 months 15 days", "20 days". */
+export const termLabel = (lic: TermShape) => {
+  const months = lic?.termMonths == null ? 12 : num(lic.termMonths);
+  const days = num(lic?.termDays);
+  if (months + days <= 0) return '12 months';
+  const parts = [
+    months > 0 ? `${months} month${months === 1 ? '' : 's'}` : '',
+    days > 0 ? `${days} day${days === 1 ? '' : 's'}` : '',
+  ];
+  return parts.filter(Boolean).join(' ');
+};
+
+/** Per-term unit price of a license line (term in months, may be fractional). */
 export const licenseUnitPrice = (line: { pricePerUserMonth: number } | undefined, termMonths: number) =>
   num(line?.pricePerUserMonth) * (num(termMonths) || 12);
 
@@ -54,7 +80,7 @@ export const proposalTotals = (p: Partial<MoneyShape> | null | undefined): Propo
   const implementation = groups.reduce((a, g) => a + g.total, 0);
   const implementationNet = groups.reduce((a, g) => a + g.net, 0);
 
-  const term = num(p?.licenses?.termMonths) || 12;
+  const term = licenseTermMonths(p?.licenses);
   const licSum = (p?.licenses?.lines ?? []).reduce((a, l) => a + num(l.qty) * licenseUnitPrice(l, term), 0);
   const eligPct = p?.licenses?.eligibilityDiscount ? num(p?.licenses?.eligibilityDiscountPct) : 0;
   const licEligDisc = (licSum * eligPct) / 100;

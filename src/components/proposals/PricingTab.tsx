@@ -17,7 +17,7 @@ import {
   updateImplLine,
   updateLicense,
 } from '@/redux/slices/proposalBuilderSlice';
-import { discountOverLimit, formatUsd, needsApproval, proposalTotals } from '@/lib/proposalMath';
+import { discountOverLimit, formatUsd, needsApproval, proposalTotals, termLabel } from '@/lib/proposalMath';
 import { personName, type Proposal, type ProposalCatalog, type ProposalOpportunity } from '@/types/proposal.types';
 import LinesTextarea from './LinesTextarea';
 import { Box, Field, NativeSelect, NumberInput, Pill, RailSection, RemoveButton, fieldCls } from './builderUi';
@@ -32,6 +32,7 @@ export default function PricingTab({ proposal, catalog, canEdit }: { proposal: P
   const dispatch = useAppDispatch();
   const max = catalog.settings.maxDiscount;
   const t = useMemo(() => proposalTotals(proposal), [proposal]);
+  const termEmpty = !(Number(proposal.licenses.termMonths) > 0) && !(Number(proposal.licenses.termDays) > 0);
   const services = groupBy(catalog.services.filter((s) => s.active), (s) => s.category);
   const skus = groupBy(catalog.skus.filter((s) => s.active), (s) => s.family || 'Other');
   const opp = typeof proposal.opportunity === 'object' ? (proposal.opportunity as ProposalOpportunity) : null;
@@ -210,10 +211,37 @@ export default function PricingTab({ proposal, catalog, canEdit }: { proposal: P
           <Field label={proposal.licenses.eligibilityDiscount ? 'Final discount % (after Microsoft)' : 'License discount %'}>
             <NumberInput value={proposal.licenses.discountPct} max={100} step={0.5} ariaLabel="License discount percent" disabled={!canEdit} onChange={(v) => dispatch(setLicenseField({ key: 'discountPct', value: v }))} />
           </Field>
+        </div>
+        {/* Billing term = months + days; each day is 1/30 of the monthly price. */}
+        <div className="grid grid-cols-2 gap-3">
           <Field label="Billing term (months)">
-            <NumberInput value={proposal.licenses.termMonths} min={1} max={120} step={1} ariaLabel="Billing term in months" disabled={!canEdit} onChange={(v) => dispatch(setLicenseField({ key: 'termMonths', value: Math.round(v) || 1 }))} />
+            <NumberInput
+              value={proposal.licenses.termMonths}
+              min={0}
+              max={120}
+              step={1}
+              ariaLabel="Billing term in months"
+              disabled={!canEdit}
+              onChange={(v) => dispatch(setLicenseField({ key: 'termMonths', value: Math.max(0, Math.round(v) || 0) }))}
+            />
+          </Field>
+          <Field label="Days">
+            <NumberInput
+              value={proposal.licenses.termDays ?? 0}
+              min={0}
+              max={30}
+              step={1}
+              ariaLabel="Billing term extra days"
+              disabled={!canEdit}
+              onChange={(v) => dispatch(setLicenseField({ key: 'termDays', value: Math.min(30, Math.max(0, Math.round(v) || 0)) }))}
+            />
           </Field>
         </div>
+        <p className={`text-xs ${termEmpty ? 'text-error' : 'text-on-surface-variant'}`}>
+          {termEmpty
+            ? 'Enter months or days — with neither, the price uses 12 months.'
+            : `Term: ${termLabel(proposal.licenses)} · each day = monthly price ÷ 30`}
+        </p>
       </RailSection>
 
       <RailSection title="Notes under the budget">

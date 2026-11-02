@@ -486,7 +486,7 @@ const slice = createSlice({
     setLicenseField: (
       s,
       a: PayloadAction<
-        | { key: 'discountPct' | 'termMonths' | 'eligibilityDiscountPct'; value: number }
+        | { key: 'discountPct' | 'termMonths' | 'termDays' | 'eligibilityDiscountPct'; value: number }
         | { key: 'payInAdvance' | 'eligibilityDiscount'; value: boolean }
       >,
     ) => {

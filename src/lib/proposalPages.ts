@@ -4,7 +4,7 @@
 // scoped to `.pp-doc`.
 import type { LayoutItem, LayoutKey, Proposal, ProposalCatalog, SowAttachment, SowSection } from '@/types/proposal.types';
 import { effectiveLayout } from './proposalLayout';
-import { discountOverLimit, needsApproval, proposalTotals, licenseUnitPrice, type GroupTotals, type ProposalTotals } from './proposalMath';
+import { discountOverLimit, needsApproval, proposalTotals, licenseUnitPrice, licenseTermMonths, termLabel, type GroupTotals, type ProposalTotals } from './proposalMath';
 
 export const PAGE_W = 816;
 export const PAGE_H = 1056;
@@ -247,10 +247,12 @@ const implTable = (p: Proposal, g: Proposal['implementation']['groups'][number],
 };
 
 const licTable = (p: Proposal, t: ProposalTotals) => {
-  const term = Number(p.licenses.termMonths) || 12;
+  const term = licenseTermMonths(p.licenses);
+  // "Year" for a plain 12-month term, else the term as written ("2 months 15 days").
+  const termHead = term === 12 && !Number(p.licenses.termDays) ? 'Year' : termLabel(p.licenses);
   const disc = Number(p.licenses.discountPct) || 0;
   return `<div><span class="badge">License</span>
-  <table class="pt" style="font-size:11.5px"><thead><tr><th class="o" style="width:34px">#</th><th class="l">Product</th><th style="width:140px">SKU</th><th style="width:44px">QTY</th><th style="width:86px">Unit Price / ${term === 12 ? 'Year' : `${term} mo`}</th><th style="width:96px">Total Selling</th></tr></thead><tbody>
+  <table class="pt" style="font-size:11.5px"><thead><tr><th class="o" style="width:34px">#</th><th class="l">Product</th><th style="width:140px">SKU</th><th style="width:44px">QTY</th><th style="width:86px">Unit Price / ${esc(termHead)}</th><th style="width:96px">Total Selling</th></tr></thead><tbody>
   ${p.licenses.lines
     .map((l, i) => {
       const u = licenseUnitPrice(l, term);
