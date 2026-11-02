@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import type { ThreadEmail, LeadEmailThreadSummary, EmailAttachment } from '@/types/teleSales.types';
 import {
   Mail, Send, Reply, RefreshCw, Trash2, Paperclip, Download, File as FileIcon, Image as ImageIcon,
-  AlertCircle, Check, CheckCheck, Inbox, Clock, ArrowDownLeft, ArrowUpRight, Hourglass, MailOpen, ChevronDown,
+  AlertCircle, Check, CheckCheck, Inbox, Clock, ArrowDownLeft, ArrowUpRight, Hourglass, MailOpen, ChevronDown, ReplyAll,
 } from 'lucide-react';
 
 const formatDateTime = (d?: string | null) =>
@@ -56,7 +56,8 @@ interface LeadEmailThreadProps<E extends ThreadEmail> {
   summary: LeadEmailThreadSummary | null;
   syncing: boolean;
   onCompose: () => void;
-  onReply: (email: E) => void;
+  /** `all` = reply all (Cc everyone else on the message). */
+  onReply: (email: E, all?: boolean) => void;
   onRefresh: () => void;
   onDelete: (emailId: string) => void;
   onMarkRead: (email: E) => void;
@@ -79,6 +80,9 @@ interface Conversation<E extends ThreadEmail> {
   /** We wrote last and it went out. */
   awaitingContact: boolean;
 }
+
+/** More than one other party on the message — the only time Reply all differs from Reply. */
+const hasOthers = (e: ThreadEmail) => (e.to?.length ?? 0) + (e.cc?.length ?? 0) > 1;
 
 const atOf = (e: ThreadEmail) => (e.direction === 'inbound' ? e.receivedAt ?? e.createdAt : e.sentAt ?? e.createdAt) ?? '';
 
@@ -231,6 +235,11 @@ export function LeadEmailThread<E extends ThreadEmail>({
                       <Reply className="w-3.5 h-3.5" /> Reply
                     </Button>
                   )}
+                  {canWrite && hasOthers(email) && (
+                    <Button size="sm" variant="outline" onClick={() => onReply(email, true)} className="gap-1.5">
+                      <ReplyAll className="w-3.5 h-3.5" /> Reply all
+                    </Button>
+                  )}
                 </div>
                 <button onClick={() => onDelete(email._id)} className="p-1.5 rounded-lg hover:bg-error/10 text-on-surface-variant hover:text-error" title="Remove from history">
                   <Trash2 className="w-4 h-4" />
@@ -330,7 +339,12 @@ export function LeadEmailThread<E extends ThreadEmail>({
                   <div className="border-t border-outline-variant/20 p-3 space-y-3 bg-surface-container-low/40">
                     {conv.emails.map(renderMessage)}
                     {canWrite && (
-                      <div className="flex justify-end">
+                      <div className="flex justify-end gap-2">
+                        {hasOthers(replyTarget) && (
+                          <Button size="sm" variant="outline" onClick={() => onReply(replyTarget, true)} className="gap-1.5">
+                            <ReplyAll className="w-3.5 h-3.5" /> Reply all
+                          </Button>
+                        )}
                         <Button size="sm" variant={conv.awaitingAgent ? 'default' : 'outline'} onClick={() => onReply(replyTarget)} className="gap-1.5">
                           <Reply className="w-3.5 h-3.5" /> Reply in this conversation
                         </Button>

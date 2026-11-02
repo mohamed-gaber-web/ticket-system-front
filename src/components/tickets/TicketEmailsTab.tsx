@@ -37,6 +37,7 @@ export function TicketEmailsTab({
   const [syncing, setSyncing] = useState(false);
   const [composeOpen, setComposeOpen] = useState(false);
   const [replyTo, setReplyTo] = useState<TicketEmail | null>(null);
+  const [replyAll, setReplyAll] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -118,8 +119,8 @@ export function TicketEmailsTab({
       ? ticketEmailApi.replyTicketEmail(ticketId, replyTo._id, payload)
       : ticketEmailApi.sendTicketEmail(ticketId, payload);
 
-  const openCompose = () => { setReplyTo(null); setComposeOpen(true); };
-  const openReply = (email: TicketEmail) => { setReplyTo(email); setComposeOpen(true); };
+  const openCompose = () => { setReplyTo(null); setReplyAll(false); setComposeOpen(true); };
+  const openReply = (email: TicketEmail, all = false) => { setReplyTo(email); setReplyAll(all); setComposeOpen(true); };
 
   if (loading) {
     return (
@@ -153,6 +154,7 @@ export function TicketEmailsTab({
         senderKind="support"
         contextLabel={[ticketNumber, customerName].filter(Boolean).join(' · ')}
         replyTo={replyTo}
+        replyAll={replyAll}
         onSent={() => load()}
       />
       {notifyEmails.length > 0 && (

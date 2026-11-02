@@ -55,6 +55,8 @@ export interface GmailComposeProps {
   /** Message being answered — sends through the reply endpoint so the lead
    *  sees a normal threaded conversation. Recipients / subject are prefilled. */
   replyTo?: ThreadEmail | null;
+  /** With replyTo: also Cc everyone else on that message (To + Cc), never our own mailboxes. */
+  replyAll?: boolean;
   onSent?: (email: LeadEmail) => void;
 }
 
@@ -187,7 +189,7 @@ function ToolbarButton({
 
 export default function GmailCompose({
   leadId, open, onClose, defaultTo = [], defaultSubject = '', defaultBody = '', defaultAttachments = [],
-  contextLabel, senderKind = 'sales', replyTo = null, onSent, submit,
+  contextLabel, senderKind = 'sales', replyTo = null, replyAll = false, onSent, submit,
 }: GmailComposeProps) {
   const sender = useEmailSender(senderKind);
   const [sendAs, setSendAs] = useState<EmailSendAs>('shared');
@@ -229,10 +231,21 @@ export default function GmailCompose({
     const replySubject = replyTo
       ? (/^re:/i.test(replyTo.subject) ? replyTo.subject : `Re: ${replyTo.subject}`)
       : null;
-    setTo((replyRecipients ?? defaultTo).filter(Boolean).map((t) => t.toLowerCase()));
-    setCc([]);
+    const toList = [...new Set((replyRecipients ?? defaultTo).filter(Boolean).map((t) => t.toLowerCase()))];
+    setTo(toList);
+    // Reply all: everyone else on the message goes in Cc — minus whoever is
+    // already in To and minus our own mailboxes (the one the message reached,
+    // the shared sender, the employee's own), so we never mail ourselves.
+    const ours = new Set(
+      [replyTo?.mailbox, sender?.mailbox, sender?.personal?.mailbox].filter(Boolean).map((m) => String(m).toLowerCase()),
+    );
+    const replyAllCc = replyTo && replyAll
+      ? [...new Set([...(replyTo.to ?? []), ...(replyTo.cc ?? [])].map((a) => a.toLowerCase()))]
+          .filter((a) => a && !toList.includes(a) && !ours.has(a))
+      : [];
+    setCc(replyAllCc);
     setBcc([]);
-    setShowCc(false);
+    setShowCc(replyAllCc.length > 0);
     setShowBcc(false);
     setSubject(replySubject ?? defaultSubject);
     // Pre-attached files are already in GridFS — they arrive ready to send.
@@ -455,7 +468,7 @@ export default function GmailCompose({
 
   if (!open) return null;
 
-  const headerTitle = windowState === 'minimized' && subject.trim() ? subject.trim() : replyTo ? 'Reply' : 'New Message';
+  const headerTitle = windowState === 'minimized' && subject.trim() ? subject.trim() : replyTo ? (replyAll ? 'Reply all' : 'Reply') : 'New Message';
 
   // ── Window chrome ──────────────────────────────────────────────────────────
 

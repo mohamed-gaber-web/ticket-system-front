@@ -29,6 +29,7 @@ export function TaskEmailsTab({ taskId, taskNumber, taskName, onCountChange }: T
   const [syncing, setSyncing] = useState(false);
   const [composeOpen, setComposeOpen] = useState(false);
   const [replyTo, setReplyTo] = useState<TaskEmail | null>(null);
+  const [replyAll, setReplyAll] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -110,8 +111,8 @@ export function TaskEmailsTab({ taskId, taskNumber, taskName, onCountChange }: T
       ? taskEmailApi.replyTaskEmail(taskId, replyTo._id, payload)
       : taskEmailApi.sendTaskEmail(taskId, payload);
 
-  const openCompose = () => { setReplyTo(null); setComposeOpen(true); };
-  const openReply = (email: TaskEmail) => { setReplyTo(email); setComposeOpen(true); };
+  const openCompose = () => { setReplyTo(null); setReplyAll(false); setComposeOpen(true); };
+  const openReply = (email: TaskEmail, all = false) => { setReplyTo(email); setReplyAll(all); setComposeOpen(true); };
 
   if (loading) {
     return (
@@ -145,6 +146,7 @@ export function TaskEmailsTab({ taskId, taskNumber, taskName, onCountChange }: T
         senderKind="tasks"
         contextLabel={[taskNumber, taskName].filter(Boolean).join(' · ')}
         replyTo={replyTo}
+        replyAll={replyAll}
         onSent={() => load()}
       />
     </>

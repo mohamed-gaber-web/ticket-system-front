@@ -75,6 +75,7 @@ export default function LeadDetail() {
   const [emailSummary, setEmailSummary] = useState<LeadEmailThreadSummary | null>(null);
   const [composeOpen, setComposeOpen] = useState(false);
   const [replyTo, setReplyTo] = useState<LeadEmail | null>(null);
+  const [replyAll, setReplyAll] = useState(false);
   const [syncing, setSyncing] = useState(false);
 
   // Attachments
@@ -784,8 +785,8 @@ export default function LeadDetail() {
           syncing={syncing}
           // Marketing reads tele-sales but never writes it (the API refuses too)
           canWrite={!readOnly}
-          onCompose={() => { setReplyTo(null); setComposeOpen(true); }}
-          onReply={(email) => { setReplyTo(email); setComposeOpen(true); }}
+          onCompose={() => { setReplyTo(null); setReplyAll(false); setComposeOpen(true); }}
+          onReply={(email, all) => { setReplyTo(email); setReplyAll(Boolean(all)); setComposeOpen(true); }}
           onRefresh={handleSyncInbox}
           onDelete={handleDeleteEmail}
           onMarkRead={handleMarkEmailRead}
@@ -911,6 +912,7 @@ export default function LeadDetail() {
         defaultTo={lead.email ? [lead.email] : []}
         contextLabel={lead.contactPersonName || recordName(lead)}
         replyTo={replyTo}
+        replyAll={replyAll}
         onSent={() => { setReplyTo(null); loadEmails(); setTab('emails'); }}
       />
     </div>
