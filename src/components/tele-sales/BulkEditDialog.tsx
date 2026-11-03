@@ -12,7 +12,7 @@ import * as teleSalesApi from '@/api/teleSalesApi';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { StatusUpdateForm } from '@/components/tele-sales/StatusUpdateForm';
-import { LEAD_STATUSES, type LeadStatus } from '@/config/leadStatusWorkflow';
+import { DATA_STATUSES, LEAD_STATUSES, LEAD_STATUS_WORKFLOW, type LeadStatus } from '@/config/leadStatusWorkflow';
 import {
   ENTITY_TYPES, LEAD_SOURCE_DETAILS,
   type Lead, type LeadSource, type BulkUpdateLeadsRequest, type BulkUpdateLeadsResponse,
@@ -26,6 +26,9 @@ const LEAD_SOURCES: LeadSource[] = ['LinkedIn', 'Website', 'Referral', 'Cold Cal
  * / Closed Won, whose quote, file and deal value belong to one deal each.
  */
 const BULK_STATUSES = LEAD_STATUSES.filter((s) => !['No Action', 'Proposal Sent', 'Closed Won'].includes(s)) as LeadStatus[];
+/** Per tab: the Data tab offers only its own statuses, the others never those. */
+const bulkStatusesFor = (stage?: string): LeadStatus[] =>
+  stage === 'Data' ? DATA_STATUSES : BULK_STATUSES.filter((s) => !LEAD_STATUS_WORKFLOW[s].dataOnly);
 
 /** The status form needs a lead; in bulk mode it only reads these blanks. */
 const STAND_IN = { _id: 'bulk', status: 'No Action', meetingsCount: 0, assignedTo: null, tags: [] } as unknown as Lead;
@@ -58,6 +61,8 @@ interface BulkEditDialogProps {
   ids: string[];
   /** Managers and admins may reassign; the owner section is hidden for others. */
   canReassign: boolean;
+  /** The tab's pipeline stage (Data / Lead / Opportunity) — decides the statuses offered. */
+  stage?: string;
   onClose: () => void;
   /** After anything was saved — reload the list and clear the selection. */
   onDone: () => void;
@@ -66,7 +71,7 @@ interface BulkEditDialogProps {
 type Tab = 'fields' | 'status';
 
 /** Bulk Edit / Mass Reassignment for the records selected in a pipeline tab. */
-export function BulkEditDialog({ open, ids, canReassign, onClose, onDone }: BulkEditDialogProps) {
+export function BulkEditDialog({ open, ids, canReassign, stage, onClose, onDone }: BulkEditDialogProps) {
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((s) => s.auth);
   const { teams } = useAppSelector((s) => s.teleSalesTeams);
@@ -293,7 +298,7 @@ export function BulkEditDialog({ open, ids, canReassign, onClose, onDone }: Bulk
                   <StatusUpdateForm
                     lead={STAND_IN}
                     variant="dialog"
-                    bulk={{ targets: BULK_STATUSES, count, onSubmit: (newStatus, values) => run({ status: { newStatus, values } }) }}
+                    bulk={{ targets: bulkStatusesFor(stage), stage, count, onSubmit: (newStatus, values) => run({ status: { newStatus, values } }) }}
                   />
                 </div>
               )}

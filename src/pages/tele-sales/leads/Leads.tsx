@@ -951,6 +951,7 @@ export default function Leads({ lockedStatus, stage = 'Lead' }: LeadsProps = {})
         open={!!bulkIds}
         ids={bulkIds ?? []}
         canReassign={canManage}
+        stage={stage}
         onClose={() => setBulkIds(null)}
         onDone={() => { setSelected([]); reload(); }}
       />

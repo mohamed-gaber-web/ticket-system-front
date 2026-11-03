@@ -8,8 +8,10 @@ export type LeadStatus =
   | 'No Action'
   | 'New Lead'
   | 'No Answer'
+  | 'Not Available'
   | 'Call Back Later'
   | 'Wrong Number'
+  | 'Not Interested'
   | 'Interested'
   | 'Follow-up'
   | 'Meeting Scheduled'
@@ -63,13 +65,15 @@ export interface StatusWorkflowEntry {
    */
   quickEmail?: boolean;
   att?: boolean;
+  /** Offered on the Data tab only (Not Available, Not Interested). */
+  dataOnly?: boolean;
 }
 
 const isoLocal = (d: Date) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 const hoursFromNow = (h: number) => isoLocal(new Date(Date.now() + h * 3600e3));
 
 export const LEAD_STATUSES: LeadStatus[] = [
-  'No Action', 'New Lead', 'No Answer', 'Call Back Later', 'Wrong Number', 'Interested',
+  'No Action', 'New Lead', 'No Answer', 'Not Available', 'Call Back Later', 'Wrong Number', 'Not Interested', 'Interested',
   'Follow-up', 'Meeting Scheduled', 'Under Preparation', 'Proposal Sent', 'Negotiation', 'Closed Won', 'Closed Lost',
 ];
 
@@ -86,8 +90,18 @@ export const IMPORTED_LEAD_STATUS: LeadStatus = 'No Action';
  * those leads stay findable.
  */
 export const PICKABLE_LEAD_STATUSES: LeadStatus[] = LEAD_STATUSES.filter(
-  (s) => s !== INITIAL_LEAD_STATUS && s !== IMPORTED_LEAD_STATUS,
+  (s) => s !== INITIAL_LEAD_STATUS && s !== IMPORTED_LEAD_STATUS && s !== 'Not Available' && s !== 'Not Interested',
 );
+
+/**
+ * Data stage (raw imported data): only these statuses, in any order, each with
+ * an optional note and nothing else. Imports start in "No Action", which can't be
+ * picked again. Mirrors DATA_STATUSES in the backend's leadStatusWorkflow.js.
+ */
+export const DATA_STATUSES: LeadStatus[] = ['No Answer', 'Not Available', 'Wrong Number', 'Interested', 'Not Interested'];
+const DATA_STATUS_FIELDS: StatusFieldDef[] = [
+  { k: 'notes', label: 'Notes', ar: 'ملاحظات', type: 'textarea' },
+];
 
 export const STEPS = ['New Lead', 'Contact Attempts', 'Qualified', 'Meeting', 'Proposal', 'Negotiation', 'Closed'];
 
@@ -97,6 +111,8 @@ export const STATUS_COLORS: Record<LeadStatus, string> = {
   'No Answer': 'bg-gray-100 text-gray-600',
   'Call Back Later': 'bg-yellow-50 text-yellow-600',
   'Wrong Number': 'bg-gray-50 text-gray-400',
+  'Not Available': 'bg-teal-100 text-teal-700',
+  'Not Interested': 'bg-rose-100 text-rose-700',
   'Interested': 'bg-green-100 text-green-700',
   'Follow-up': 'bg-yellow-100 text-yellow-700',
   'Meeting Scheduled': 'bg-purple-100 text-purple-700',
@@ -148,6 +164,16 @@ export const LEAD_STATUS_WORKFLOW: Record<LeadStatus, StatusWorkflowEntry> = {
     call: true,
   },
 
+  'Not Available': {
+    ar: 'غير متاح', color: '#0f766e', bg: '#ccfbf1', step: 1,
+    desc: 'The contact answered but is not available — Data tab status.',
+    fields: DATA_STATUS_FIELDS, dataOnly: true,
+  },
+  'Not Interested': {
+    ar: 'غير مهتم', color: '#9f1239', bg: '#ffe4e6', step: 6,
+    desc: 'The contact is not interested — Data tab status.',
+    fields: DATA_STATUS_FIELDS, dataOnly: true,
+  },
   'Call Back Later': {
     ar: 'طلب الاتصال لاحقاً', color: '#7c3aed', bg: '#f3e8ff', step: 1,
     desc: 'Customer answered and asked to be called at a specific time.',
@@ -326,6 +352,9 @@ export const NEXT: Record<LeadStatus, LeadStatus[]> = {
   'No Answer': ['No Answer', 'Call Back Later', 'Wrong Number', 'Interested', 'Follow-up', 'Meeting Scheduled', 'Closed Lost'],
   'Call Back Later': ['Call Back Later', 'No Answer', 'Interested', 'Follow-up', 'Meeting Scheduled', 'Closed Lost'],
   'Wrong Number': ['Wrong Number', 'New Lead', 'Follow-up', 'Closed Lost'],
+  // Data-only statuses: a record converted to a Lead moves on from them.
+  'Not Available': ['No Answer', 'Call Back Later', 'Wrong Number', 'Interested', 'Follow-up', 'Meeting Scheduled', 'Closed Lost'],
+  'Not Interested': ['New Lead', 'Follow-up', 'Closed Lost'],
   'Interested': ['Interested', 'Follow-up', 'Meeting Scheduled', 'Under Preparation', 'Proposal Sent', 'No Answer', 'Call Back Later', 'Closed Lost'],
   'Follow-up': ['Follow-up', 'Meeting Scheduled', 'Under Preparation', 'Proposal Sent', 'No Answer', 'Call Back Later', 'Closed Lost'],
   'Meeting Scheduled': ['Meeting Scheduled', 'Follow-up', 'Under Preparation', 'Proposal Sent', 'No Answer', 'Closed Lost'],
@@ -336,7 +365,18 @@ export const NEXT: Record<LeadStatus, LeadStatus[]> = {
   'Closed Lost': ['Closed Lost', 'New Lead'],
 };
 
-export const isTransitionAllowed = (from: LeadStatus, to: LeadStatus) => (NEXT[from] || []).includes(to);
+/** The statuses a record in `stage` may move to. Data records: DATA_STATUSES, from anything. */
+export const allowedNext = (from: LeadStatus, stage?: string | null): LeadStatus[] =>
+  stage === 'Data' ? DATA_STATUSES : NEXT[from] || [];
+
+export const isTransitionAllowed = (from: LeadStatus, to: LeadStatus, stage?: string | null) => allowedNext(from, stage).includes(to);
+
+/** The workflow entry for a status in a stage: on a Data record every status is notes only. */
+export const statusConfigFor = (statusKey: LeadStatus, stage?: string | null): StatusWorkflowEntry => {
+  const config = LEAD_STATUS_WORKFLOW[statusKey];
+  if (!config || stage !== 'Data') return config;
+  return { ...config, fields: DATA_STATUS_FIELDS, task: undefined, quickEmail: false };
+};
 
 const isFieldVisible = (field: StatusFieldDef, values: Record<string, any>, lead?: Lead | null) =>
   !field.showIf || field.showIf(values, lead);
@@ -374,9 +414,10 @@ export interface StatusFieldError {
 export const validateStatusFields = (
   statusKey: LeadStatus,
   values: Record<string, any>,
-  lead?: Lead | null
+  lead?: Lead | null,
+  stage?: string | null,
 ): { valid: boolean; errors: StatusFieldError[] } => {
-  const config = LEAD_STATUS_WORKFLOW[statusKey];
+  const config = statusConfigFor(statusKey, stage);
   if (!config) return { valid: false, errors: [{ field: '', label: '', message: `Unknown status "${statusKey}"` }] };
 
   const errors: StatusFieldError[] = [];

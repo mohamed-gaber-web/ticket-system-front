@@ -11,7 +11,9 @@ import {
   MessageCircle,
   PhoneCall,
   PhoneOff,
+  ThumbsDown,
   TrendingUp,
+  UserX,
   Workflow,
   XCircle,
 } from 'lucide-react';
@@ -26,6 +28,8 @@ const STATUS_ICONS: Record<LeadStatus, ReactNode> = {
   'No Answer': <PhoneOff className={ICON} />,
   'Call Back Later': <Clock3 className={ICON} />,
   'Wrong Number': <AlertTriangle className={ICON} />,
+  'Not Available': <UserX className={ICON} />,
+  'Not Interested': <ThumbsDown className={ICON} />,
   'Interested': <TrendingUp className={ICON} />,
   'Follow-up': <MessageCircle className={ICON} />,
   'Meeting Scheduled': <CalendarClock className={ICON} />,

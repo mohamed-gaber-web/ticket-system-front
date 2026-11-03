@@ -10,7 +10,7 @@ import { teamId } from '@/types/teleSales.types';
 import { StatusEntryDetails } from '@/components/tele-sales/StatusHistoryTab';
 import { Button } from '@/components/ui/button';
 import {
-  LEAD_STATUS_WORKFLOW, NEXT, validateStatusFields,
+  LEAD_STATUS_WORKFLOW, allowedNext, statusConfigFor, validateStatusFields,
   type LeadStatus, type StatusFieldDef,
 } from '@/config/leadStatusWorkflow';
 import type { Lead, ChangeLeadStatusError, LeadStatusHistoryEntry } from '@/types/teleSales.types';
@@ -39,6 +39,8 @@ interface StatusUpdateFormProps {
   bulk?: {
     targets: LeadStatus[];
     count: number;
+    /** The tab's stage — on the Data tab every status is notes only. */
+    stage?: string;
     onSubmit: (newStatus: LeadStatus, values: Record<string, unknown>) => Promise<void>;
   };
 }
@@ -93,9 +95,9 @@ const isFieldNeeded = (field: StatusFieldDef, values: Record<string, any>, lead:
  * Fresh values for a status: defaults, empty chips, unchecked toggles, USD money,
  * and the lead's current owner (only a manager may hand it to someone else).
  */
-const initialValues = (status: LeadStatus, lead: Lead) => {
+const initialValues = (status: LeadStatus, lead: Lead, stage?: string | null) => {
   const initial: Record<string, any> = {};
-  LEAD_STATUS_WORKFLOW[status].fields.forEach((f) => {
+  statusConfigFor(status, stage).fields.forEach((f) => {
     if (f.type === 'toggle') initial[f.k] = false;
     else if (f.type === 'chips') initial[f.k] = [];
     else if (f.type === 'money') initial[`${f.k}__c`] = 'USD';
@@ -110,10 +112,10 @@ const initialValues = (status: LeadStatus, lead: Lead) => {
  * (see buildFieldValueMap on the backend): chips as "a, b", money as
  * "$50,000", a pasted link as { link }. This turns them back into inputs.
  */
-const valuesFromHistory = (status: LeadStatus, lead: Lead, entry: LeadStatusHistoryEntry) => {
-  const out = initialValues(status, lead);
+const valuesFromHistory = (status: LeadStatus, lead: Lead, entry: LeadStatusHistoryEntry, stage?: string | null) => {
+  const out = initialValues(status, lead, stage);
   const saved = entry.fieldValues || {};
-  LEAD_STATUS_WORKFLOW[status].fields.forEach((f) => {
+  statusConfigFor(status, stage).fields.forEach((f) => {
     const raw = saved[f.k];
     if (raw === undefined || raw === null || f.type === 'auto') return;
     if (f.type === 'chips') {
@@ -148,7 +150,9 @@ export function StatusUpdateForm({ lead, variant, onChanged, onCancel, bulk, his
   const { agents: leadTeamAgents } = useTeamAgents(bulk ? null : teamId(lead.team) || null);
   const agents = bulk ? allAgents : leadTeamAgents;
 
-  const allowed = bulk ? bulk.targets : NEXT[lead.status] || [];
+  // A Data record takes only the Data statuses, each with a note only.
+  const stage = bulk ? bulk.stage : lead.salesType;
+  const allowed = bulk ? bulk.targets : allowedNext(lead.status, stage);
   // The inline card starts on the current status — a quick update of it.
   const defaultTarget = !bulk && variant === 'inline' && allowed.includes(lead.status) ? lead.status : null;
   // The picker leads with the current status, tagged "Current", so the agent can
@@ -164,7 +168,7 @@ export function StatusUpdateForm({ lead, variant, onChanged, onCancel, bulk, his
     (status && !bulk && variant === 'inline' && history?.find((h) => h.newStatus === status)) || null;
   const startValues = (status: LeadStatus) => {
     const last = lastUpdateOf(status);
-    return last ? valuesFromHistory(status, lead, last) : initialValues(status, lead);
+    return last ? valuesFromHistory(status, lead, last, stage) : initialValues(status, lead, stage);
   };
 
   const [target, setTarget] = useState<LeadStatus | null>(defaultTarget);
@@ -199,10 +203,10 @@ export function StatusUpdateForm({ lead, variant, onChanged, onCancel, bulk, his
     if (bulk && allAgents.length === 0) dispatch(fetchAgents({ limit: 200 }));
   }, [lead._id, lead.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const config = target ? LEAD_STATUS_WORKFLOW[target] : null;
+  const config = target ? statusConfigFor(target, stage) : null;
   // An edit of the current status's last update describes that same attempt /
   // meeting round, so its numbering is read from the counters before it was logged.
-  const counter = target === lead.status && lastUpdate ? COUNTED_STATUSES[target] : undefined;
+  const counter = target === lead.status && lastUpdate && stage !== 'Data' ? COUNTED_STATUSES[target] : undefined;
   const fieldLead: Lead = counter ? { ...lead, [counter]: Math.max(0, (lead[counter] || 0) - 1) } : lead;
   const extraMeeting = target === 'Meeting Scheduled' && fieldLead.meetingsCount > 0;
 
@@ -256,7 +260,7 @@ export function StatusUpdateForm({ lead, variant, onChanged, onCancel, bulk, his
 
   const handleSubmit = async () => {
     if (!target) return;
-    const { errors } = validateStatusFields(target, values, fieldLead);
+    const { errors } = validateStatusFields(target, values, fieldLead, stage);
     const map: Record<string, string> = {};
     errors.forEach((e) => { map[e.field] = e.message; });
     // The email is checked BEFORE the status saves, so a typo never leaves a
