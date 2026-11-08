@@ -26,6 +26,7 @@ import autoTable from 'jspdf-autotable';
 import { TicketIntelligencePanel } from '@/components/ai/TicketIntelligencePanel';
 import { PendingOnDialog, PendingOnLine } from '@/components/tickets/PendingOnDialog';
 import { TicketEmailsTab } from '@/components/tickets/TicketEmailsTab';
+import { WhatsAppPanel } from '@/components/whatsapp/WhatsAppPanel';
 import { useAccess } from '@/redux/hooks/useAccess';
 import { TICKET_LIST_PATH, TICKET_LIST_TITLE, requesterName, ticketTypeOf } from '@/lib/ticketTypes';
 import { TicketTypeBadge } from '@/components/tickets/TicketTypeBadge';
@@ -94,7 +95,7 @@ const ALL_STATUSES: { value: 'new' | 'assigned' | 'in_progress' | 'customer_pend
   { value: 'cancelled', label: 'Cancelled' },
 ];
 
-type TicketTab = 'details' | 'comments' | 'attachments' | 'emails';
+type TicketTab = 'details' | 'comments' | 'attachments' | 'emails' | 'whatsapp';
 
 export default function ViewTicket() {
   const { id } = useParams<{ id: string }>();
@@ -109,8 +110,14 @@ export default function ViewTicket() {
 
   const isCustomer = userType === 'customer';
   // The customer email conversation is for ticketing staff only.
-  const canEmail = useAccess().hasModule('tickets') && !isCustomer;
-  const tabs: TicketTab[] = canEmail ? ['details', 'comments', 'attachments', 'emails'] : ['details', 'comments', 'attachments'];
+  const access = useAccess();
+  const canEmail = access.hasModule('tickets') && !isCustomer;
+  const canWhatsApp = access.hasModule('whatsapp') && !isCustomer;
+  const tabs: TicketTab[] = [
+    'details', 'comments', 'attachments',
+    ...(canEmail ? (['emails'] as TicketTab[]) : []),
+    ...(canWhatsApp ? (['whatsapp'] as TicketTab[]) : []),
+  ];
   // Deep link: /tickets/view/:id?tab=emails (used by customer-reply notifications).
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<TicketTab>(() => (searchParams.get('tab') === 'emails' ? 'emails' : 'details'));
@@ -718,6 +725,8 @@ export default function ViewTicket() {
                   </span>
                 )}
               </span>
+            ) : tab === 'whatsapp' ? (
+              'WhatsApp'
             ) : tab}
           </button>
         ))}
@@ -1037,6 +1046,15 @@ export default function ViewTicket() {
             customerName={customer?.contactPerson ?? customer?.companyName}
             notifyEmails={currentTicket.notifyEmails}
             onCountChange={setEmailCountFromTab}
+          />
+        </div>
+      )}
+
+      {activeTab === 'whatsapp' && canWhatsApp && (
+        <div id="tabpanel-whatsapp" role="tabpanel" aria-labelledby="tab-whatsapp" className="max-w-4xl">
+          <WhatsAppPanel
+            ticketId={currentTicket._id}
+            numbers={[{ label: customer?.contactPerson || customer?.companyName || 'Customer', phone: customer?.phone }]}
           />
         </div>
       )}

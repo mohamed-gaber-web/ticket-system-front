@@ -21,6 +21,7 @@ export type NotificationType =
   | 'lead_email_reply'
   | 'ticket_email_reply'
   | 'task_email_reply'
+  | 'whatsapp_message'
   | 'proposal_approval_request'
   | 'proposal_approved'
   | 'proposal_rejected';
@@ -36,6 +37,8 @@ export interface Notification {
   lead?: { _id: string; companyName?: string; contactPersonName?: string } | null;
   task?: { _id: string; taskNumber?: string; name?: string } | null;
   proposal?: { _id: string; number?: string; client?: string } | null;
+  // Live WhatsApp notifications only (not persisted on the notification row).
+  whatsapp?: { phone: string } | null;
   ticket?: {
     _id: string;
     ticketNumber?: string;

@@ -17,15 +17,15 @@ export const ROLES: EmployeeRole[] = [
   'developer_manager',
 ];
 
-export const MODULES: ModuleKey[] = ['tickets', 'telesales', 'tasks', 'admin', 'development', 'hr', 'marketing', 'proposals', 'vault', 'collect'];
+export const MODULES: ModuleKey[] = ['tickets', 'telesales', 'tasks', 'admin', 'development', 'hr', 'marketing', 'proposals', 'vault', 'collect', 'whatsapp'];
 
 export const ROLE_DEFAULT_MODULES: Record<EmployeeRole, ModuleKey[]> = {
   admin: MODULES,
-  consultant: ['tickets'],
-  sales: ['telesales', 'proposals'],
-  sales_manager: ['telesales', 'proposals'],
-  marketing: ['telesales', 'tasks', 'marketing'],
-  marketing_manager: ['telesales', 'tasks', 'marketing'],
+  consultant: ['tickets', 'whatsapp'],
+  sales: ['telesales', 'proposals', 'whatsapp'],
+  sales_manager: ['telesales', 'proposals', 'whatsapp'],
+  marketing: ['telesales', 'tasks', 'marketing', 'whatsapp'],
+  marketing_manager: ['telesales', 'tasks', 'marketing', 'whatsapp'],
   developer: ['development'],
   developer_manager: ['development'],
 };
@@ -52,6 +52,7 @@ export const MODULE_LABELS: Record<ModuleKey, string> = {
   proposals: 'Proposals',
   vault: 'Credentials Vault',
   collect: 'Finance (Grow Path Collect)',
+  whatsapp: 'WhatsApp',
 };
 
 export const isEmployeeRole = (role: unknown): role is EmployeeRole =>
