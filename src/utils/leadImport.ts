@@ -17,6 +17,7 @@ export type ImportFieldKey =
   // Spec fields
   | 'salesType'
   | 'entityType'
+  | 'accountType'
   | 'businessClassification'
   | 'industrySector'
   | 'country'
@@ -38,6 +39,7 @@ export const FIELD_LABELS: Record<ImportFieldKey, string> = {
   // Spec fields
   salesType: 'Sales Type',
   entityType: 'Entity Type',
+  accountType: 'Customer / Competitor',
   businessClassification: 'Business Classification',
   industrySector: 'Industry Sector',
   country: 'Country',
@@ -70,6 +72,7 @@ export function classifyHeader(raw: string): ImportFieldKey | null {
   if (h.includes('data source') || h.includes('source file') || h.includes('originating') || h === 'source')
     return 'dataSource';
   if (h.includes('sales type') || h.includes('opportunity') || h === 'salestype') return 'salesType';
+  if (h.includes('competitor') || h.includes('account type')) return 'accountType';
   if (h.includes('entity') || h.includes('venue type') || h.includes('establishment')) return 'entityType';
   if (h.includes('classif') || h.includes('activity') || h.includes('activit')) return 'businessClassification';
   if (h.includes('sector')) return 'industrySector';
@@ -203,6 +206,7 @@ export async function parseLeadsFile(file: File): Promise<ParsedImport> {
       // Spec fields
       salesType: cell(row, firstCol('salesType')) || undefined,
       entityType: cell(row, firstCol('entityType')) || undefined,
+      accountType: cell(row, firstCol('accountType')) || undefined,
       businessClassification: cell(row, firstCol('businessClassification')) || undefined,
       industrySector: cell(row, firstCol('industrySector')) || undefined,
       country: cell(row, firstCol('country')) || undefined,
