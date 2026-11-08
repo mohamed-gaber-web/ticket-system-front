@@ -24,6 +24,8 @@ export interface Customer {
   companyName: string;
   email: string;
   contactPerson?: string;
+  /** Populated on the single-ticket view. */
+  phone?: string;
 }
 
 export interface Category {

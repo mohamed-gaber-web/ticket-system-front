@@ -218,6 +218,9 @@ const VaultSend = lazy(() => import("@/pages/vault/VaultSend"));
 const VaultLog = lazy(() => import("@/pages/vault/VaultLog"));
 const VaultSettings = lazy(() => import("@/pages/vault/VaultSettings"));
 
+// WhatsApp — each employee's own linked number
+const WhatsAppInbox = lazy(() => import("@/pages/whatsapp/WhatsAppInbox"));
+
 // Marketing Module
 const CustomerSurveys = lazy(() => import("@/pages/marketing/CustomerSurveys"));
 const EmailCampaign = lazy(() => import("@/pages/marketing/EmailCampaign"));
@@ -464,6 +467,7 @@ export const routes: RouteObject[] = [
       { path: "/vault/send", element: <ModuleRoute module="vault"><Lazy><VaultSend /></Lazy></ModuleRoute> },
       { path: "/vault/log", element: <ModuleRoute module="vault"><Lazy><VaultLog /></Lazy></ModuleRoute> },
       { path: "/vault/settings", element: <ModuleRoute module="vault"><AdminRoute><Lazy><VaultSettings /></Lazy></AdminRoute></ModuleRoute> },
+      { path: "/whatsapp", element: <ModuleRoute module="whatsapp"><Lazy><WhatsAppInbox /></Lazy></ModuleRoute> },
       { path: "/marketing", element: <Navigate to="/marketing/csp" replace /> },
       { path: "/marketing/csp", element: <ModuleRoute module="marketing"><Lazy><CustomerSurveys /></Lazy></ModuleRoute> },
       { path: "/marketing/email-campaign", element: <ModuleRoute module="marketing"><Lazy><EmailCampaign /></Lazy></ModuleRoute> },

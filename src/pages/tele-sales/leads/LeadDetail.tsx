@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import GmailCompose from '@/components/tele-sales/GmailCompose';
 import { LeadEmailThread } from '@/components/tele-sales/LeadEmailThread';
+import { WhatsAppPanel } from '@/components/whatsapp/WhatsAppPanel';
 import { StatusChangeModal } from '@/components/tele-sales/StatusChangeModal';
 import { StatusUpdateForm } from '@/components/tele-sales/StatusUpdateForm';
 import { LeadFormModal } from '@/components/tele-sales/LeadFormModal';
@@ -48,8 +49,8 @@ const PRIORITY_COLORS: Record<string, string> = {
   Low: 'bg-gray-100 text-gray-600',
 };
 
-type Tab = 'info' | 'assistant' | 'calls' | 'followups' | 'emails' | 'attachments' | 'proposals' | 'update' | 'hist';
-const TABS: Tab[] = ['info', 'assistant', 'calls', 'followups', 'emails', 'attachments', 'proposals', 'update', 'hist'];
+type Tab = 'info' | 'assistant' | 'calls' | 'followups' | 'emails' | 'whatsapp' | 'attachments' | 'proposals' | 'update' | 'hist';
+const TABS: Tab[] = ['info', 'assistant', 'calls', 'followups', 'emails', 'whatsapp', 'attachments', 'proposals', 'update', 'hist'];
 
 export default function LeadDetail() {
   const { id } = useParams<{ id: string }>();
@@ -60,7 +61,9 @@ export default function LeadDetail() {
   // Marketing may look at everything here but change nothing.
   const readOnly = isReadOnly(user);
   // The Proposals tab needs the proposals module (sales roles have it by default).
-  const showProposals = useAccess().hasModule('proposals');
+  const access = useAccess();
+  const showProposals = access.hasModule('proposals');
+  const showWhatsApp = access.hasModule('whatsapp');
   // Lead mail goes out from the sales mailbox, not the agent's own address.
 
   // Deep link: /tele-sales/leads/:id?tab=emails (used by reply notifications).
@@ -485,7 +488,7 @@ export default function LeadDetail() {
       {/* Tabs */}
       <div className="border-b border-outline-variant/20">
         <div className="flex gap-1 overflow-x-auto">
-          {TABS.filter((t) => (t !== 'update' || canQuickUpdate) && (t !== 'proposals' || showProposals)).map((t) => (
+          {TABS.filter((t) => (t !== 'update' || canQuickUpdate) && (t !== 'proposals' || showProposals) && (t !== 'whatsapp' || showWhatsApp)).map((t) => (
             <button key={t} onClick={() => setTab(t)}
               className={`shrink-0 whitespace-nowrap px-5 py-3 text-sm font-medium transition-colors border-b-2 -mb-px ${tab === t ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant hover:text-on-surface'}`}>
               {t === 'info' ? 'Info'
@@ -493,6 +496,7 @@ export default function LeadDetail() {
                 : t === 'calls' ? `Calls (${mergeCallEntries(callLogs, statusHistory).length})`
                 : t === 'followups' ? `Follow-ups (${mergeFollowUpEntries(followUps).length})`
                 : t === 'emails' ? `Emails (${emails.length})`
+                : t === 'whatsapp' ? 'WhatsApp'
                 : t === 'attachments' ? `Attachments (${attachments.length})`
                 : t === 'proposals' ? 'Proposals'
                 : t === 'update' ? 'Quick Update'
@@ -791,6 +795,20 @@ export default function LeadDetail() {
           onDelete={handleDeleteEmail}
           onMarkRead={handleMarkEmailRead}
           onDownload={handleDownloadEmailAttachment}
+        />
+      )}
+
+      {/* Tab: WhatsApp — from the agent's own linked number */}
+      {tab === 'whatsapp' && showWhatsApp && id && (
+        <WhatsAppPanel
+          leadId={id}
+          country={currentLead?.country}
+          readOnly={readOnly}
+          numbers={[
+            { label: 'Primary', phone: currentLead?.phonePrimary },
+            { label: 'Secondary', phone: currentLead?.phoneSecondary },
+            { label: 'Other', phone: currentLead?.phoneOther },
+          ]}
         />
       )}
 

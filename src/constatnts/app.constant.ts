@@ -38,6 +38,7 @@ import {
   Wallet,
   FileText,
   MessageSquareText,
+  MessageCircle,
   Contact,
   Home,
   Megaphone,
@@ -160,6 +161,8 @@ const SERVICES_GROUP_CUSTOMER = {
 const MEETING_BOOK_LINK = { name: "Meeting Book", path: "/calendar", icon: CalendarDays };
 // The employee's landing page (replaces the old profile page).
 const MY_HOME_LINK = { name: "My Home", path: "/home", icon: Home };
+// WhatsApp — each employee links their own number and chats by mobile number.
+const WHATSAPP_LINK = { name: "WhatsApp", path: "/whatsapp", icon: MessageCircle };
 
 // Customer links — built dynamically based on role
 const buildCustomerLinks = (customerRole?: string | null) => {
@@ -420,6 +423,7 @@ const MY_REQUESTS_GROUP: NavLink = {
 const EMPLOYEE_NAV: NavEntry[] = [
   { module: "any", link: MY_HOME_LINK },
   { module: "any", link: MEETING_BOOK_LINK },
+  { module: "whatsapp", link: WHATSAPP_LINK },
   { module: "tickets", link: TICKETING_GROUP },
   { module: "telesales", link: TELE_SALES_GROUP },
   { module: "proposals", link: PROPOSALS_GROUP },

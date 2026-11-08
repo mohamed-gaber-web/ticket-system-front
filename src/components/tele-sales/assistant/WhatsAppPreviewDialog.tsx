@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
-import { Copy, ExternalLink, MessageCircle, AlertTriangle, Loader2, Check, FileText } from 'lucide-react';
+import { Copy, ExternalLink, MessageCircle, AlertTriangle, Loader2, Check, FileText, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import * as salesAssistantApi from '@/api/salesAssistantApi';
+import { getWhatsAppSession } from '@/api/whatsappApi';
+import { useAccess } from '@/redux/hooks/useAccess';
 import { apiErrorMessage } from '@/lib/salesAssistant';
 import type { CommunicationMeta, PreparedMessage } from '@/types/salesAssistant.types';
 
@@ -20,15 +22,25 @@ interface WhatsAppPreviewDialogProps {
 }
 
 /**
- * WhatsApp has no provider integration, so the flow is: review the generated
- * message → Copy or Open WhatsApp (wa.me deep link, which WhatsApp Web /
- * desktop / mobile all handle). Either action records the message on the lead.
+ * Review the generated message, then Send now (from the agent's linked
+ * WhatsApp, when connected), or Copy / Open WhatsApp (wa.me deep link, which
+ * WhatsApp Web / desktop / mobile all handle). Every action records the message
+ * on the lead.
  */
 export function WhatsAppPreviewDialog({ open, onClose, leadId, prepared, meta, onLogged }: WhatsAppPreviewDialogProps) {
   const [message, setMessage] = useState('');
   const [phone, setPhone] = useState('');
-  const [busy, setBusy] = useState<'copy' | 'open' | null>(null);
+  const [busy, setBusy] = useState<'copy' | 'open' | 'send' | null>(null);
   const [copied, setCopied] = useState(false);
+  const hasWhatsApp = useAccess().hasModule('whatsapp');
+  const [linked, setLinked] = useState(false);
+
+  useEffect(() => {
+    if (!open || !hasWhatsApp) return;
+    getWhatsAppSession()
+      .then((r) => setLinked(r.data.status === 'connected'))
+      .catch(() => setLinked(false));
+  }, [open, hasWhatsApp]);
 
   useEffect(() => {
     if (!open || !prepared) return;
@@ -63,6 +75,21 @@ export function WhatsAppPreviewDialog({ open, onClose, leadId, prepared, meta, o
     }
   };
 
+  const handleSendNow = async () => {
+    if (!canSend) return;
+    setBusy('send');
+    try {
+      await salesAssistantApi.prepareWhatsApp(leadId, message.trim(), meta, phone.trim(), true);
+      onLogged?.();
+      toast.success('WhatsApp message sent');
+      onClose();
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'WhatsApp message was not sent'));
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const handleOpen = async () => {
     if (!canSend) return;
     setBusy('open');
@@ -70,8 +97,9 @@ export function WhatsAppPreviewDialog({ open, onClose, leadId, prepared, meta, o
     const win = window.open('', '_blank', 'noopener');
     try {
       const data = await log();
-      if (win) win.location.href = data.whatsappUrl;
-      else window.open(data.whatsappUrl, '_blank', 'noopener');
+      const url = data.whatsappUrl ?? '';
+      if (win) win.location.href = url;
+      else window.open(url, '_blank', 'noopener');
       toast.success('Opening WhatsApp…');
       onClose();
     } catch (err) {
@@ -142,10 +170,16 @@ export function WhatsAppPreviewDialog({ open, onClose, leadId, prepared, meta, o
             {busy === 'copy' ? <Loader2 className="w-4 h-4 animate-spin" /> : copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
             Copy Message
           </Button>
-          <Button onClick={handleOpen} disabled={!canSend || busy !== null} className="gap-2">
+          <Button variant={linked ? 'outline' : 'default'} onClick={handleOpen} disabled={!canSend || busy !== null} className="gap-2">
             {busy === 'open' ? <Loader2 className="w-4 h-4 animate-spin" /> : <ExternalLink className="w-4 h-4" />}
             Open WhatsApp
           </Button>
+          {linked && (
+            <Button onClick={handleSendNow} disabled={!canSend || busy !== null} className="gap-2">
+              {busy === 'send' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              Send now
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

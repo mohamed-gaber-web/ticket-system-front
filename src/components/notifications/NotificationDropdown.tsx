@@ -22,6 +22,7 @@ import {
   Repeat,
   RefreshCw,
   MessageSquare,
+  MessageCircle,
   AlertTriangle,
   ShieldAlert,
   CheckCircle2,
@@ -67,6 +68,7 @@ const TYPE_STYLES: Record<NotificationType, { icon: LucideIcon; className: strin
   lead_email_reply: { icon: MailOpen, className: 'text-orange-600 bg-orange-500/10' },
   ticket_email_reply: { icon: MailOpen, className: 'text-orange-600 bg-orange-500/10' },
   task_email_reply: { icon: MailOpen, className: 'text-orange-600 bg-orange-500/10' },
+  whatsapp_message: { icon: MessageCircle, className: 'text-green-600 bg-green-500/10' },
   proposal_approval_request: { icon: FileSignature, className: 'text-amber-600 bg-amber-500/10' },
   proposal_approved: { icon: BadgeCheck, className: 'text-green-600 bg-green-500/10' },
   proposal_rejected: { icon: FileX2, className: 'text-red-600 bg-red-500/10' },
@@ -151,6 +153,11 @@ export function NotificationDropdown({ isOpen, onClose, excludeTypes = [] }: Not
   const destinationFor = (item: Notification): string | null => {
     if (item.notificationType === 'vacation_request' || item.notificationType === 'excuse_request') {
       return '/employee-requests/approvals';
+    }
+    if (item.notificationType === 'whatsapp_message') {
+      // The message text carries the number ("WhatsApp from Name (+2010…)").
+      const phone = item.whatsapp?.phone ?? item.message.match(/\+(\d{8,15})/)?.[1];
+      return phone ? `/whatsapp?phone=${phone}` : '/whatsapp';
     }
     if (item.ticket?._id) {
       // A customer's email reply opens straight on the ticket's Emails tab.
