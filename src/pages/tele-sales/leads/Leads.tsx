@@ -26,7 +26,7 @@ import { LEAD_STATUSES, STATUS_COLORS, type LeadStatus } from '@/config/leadStat
 import type {
   Lead, LeadPriority, LeadSource, ImportLeadsResponse, SalesType, NeedProductRef, LeadFilterOptions, LeadQueryParams,
 } from '@/types/teleSales.types';
-import { ENTITY_TYPES, INDUSTRY_SECTORS, teamName, formatMoney } from '@/types/teleSales.types';
+import { ENTITY_TYPES, ACCOUNT_TYPES, INDUSTRY_SECTORS, teamName, formatMoney } from '@/types/teleSales.types';
 import { STAGE_META, STAGE_ORDER, NEXT_STAGE, recordName, stageOf } from '@/lib/leadStages';
 import { parseLeadsFile, FIELD_LABELS, type ParsedImport } from '@/utils/leadImport';
 import { isSuperAdmin, isCrossTeamReader, isReadOnly, canManageTeam, ownTeamId, ownTeamNames, ownTeams } from '@/lib/teleSalesRole';
@@ -104,6 +104,7 @@ export default function Leads({ lockedStatus, stage = 'Lead' }: LeadsProps = {})
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [priorityFilter, setPriorityFilter] = useState<string[]>([]);
   const [entityTypeFilter, setEntityTypeFilter] = useState<string[]>([]);
+  const [accountTypeFilter, setAccountTypeFilter] = useState<string[]>([]);
   const [sectorFilter, setSectorFilter] = useState<string[]>([]);
   // Cross-team readers pick any teams, a multi-team employee some of theirs.
   const [teamFilter, setTeamFilter] = useState<string[]>([]);
@@ -172,6 +173,7 @@ export default function Leads({ lockedStatus, stage = 'Lead' }: LeadsProps = {})
       salesType: stage,
       recordType: stage === 'Lead' ? csv(recordTypeFilter) : undefined,
       entityType: csv(entityTypeFilter),
+      accountType: csv(accountTypeFilter),
       industrySector: csv(sectorFilter),
       team: multiTeam ? csv(teamFilter) : undefined,
       assignedTo: csv(ownerFilter),
@@ -189,7 +191,7 @@ export default function Leads({ lockedStatus, stage = 'Lead' }: LeadsProps = {})
       proposalMin: price(priceMin),
       proposalMax: price(priceMax),
     };
-  }, [lockedStatus, stage, search, statusFilter, priorityFilter, recordTypeFilter, entityTypeFilter, sectorFilter, teamFilter, ownerFilter, multiTeam,
+  }, [lockedStatus, stage, search, statusFilter, priorityFilter, recordTypeFilter, entityTypeFilter, accountTypeFilter, sectorFilter, teamFilter, ownerFilter, multiTeam,
     sourceFilter, countryFilter, classificationFilter, dataSourceFilter, needFilter, tagFilter, existingFilter,
     createdFrom, createdTo, followUpFrom, followUpTo, priceMin, priceMax]);
   // A new filter set or page size starts again at page 1.
@@ -239,12 +241,12 @@ export default function Leads({ lockedStatus, stage = 'Lead' }: LeadsProps = {})
   useEffect(() => { setSelected([]); }, [listKey, page]);
 
   const activeFilters = [
-    statusFilter, priorityFilter, recordTypeFilter, entityTypeFilter, sectorFilter, ownerFilter, teamFilter,
+    statusFilter, priorityFilter, recordTypeFilter, entityTypeFilter, accountTypeFilter, sectorFilter, ownerFilter, teamFilter,
     sourceFilter, countryFilter, classificationFilter, dataSourceFilter, needFilter, tagFilter, existingFilter,
   ].filter((f) => f.length).length
     + [createdFrom || createdTo, followUpFrom || followUpTo, priceMin || priceMax].filter(Boolean).length;
   const clearFilters = () => {
-    [setStatusFilter, setPriorityFilter, setRecordTypeFilter, setEntityTypeFilter, setSectorFilter, setOwnerFilter, setTeamFilter,
+    [setStatusFilter, setPriorityFilter, setRecordTypeFilter, setEntityTypeFilter, setAccountTypeFilter, setSectorFilter, setOwnerFilter, setTeamFilter,
       setSourceFilter, setCountryFilter, setClassificationFilter, setDataSourceFilter, setNeedFilter, setTagFilter, setExistingFilter,
     ].forEach((set) => set([]));
     [setCreatedFrom, setCreatedTo, setFollowUpFrom, setFollowUpTo, setPriceMin, setPriceMax].forEach((set) => set(''));
@@ -572,6 +574,10 @@ export default function Leads({ lockedStatus, stage = 'Lead' }: LeadsProps = {})
                 <MultiSelect items={named(ENTITY_TYPES)} value={entityTypeFilter} onChange={setEntityTypeFilter}
                   placeholder="All Entity Types" searchPlaceholder="Search entity types…" />
               </FilterField>
+              <FilterField label="Customer / Competitor">
+                <MultiSelect items={named(ACCOUNT_TYPES)} value={accountTypeFilter} onChange={setAccountTypeFilter}
+                  placeholder="Customers & Competitors" searchPlaceholder="Search…" />
+              </FilterField>
               <FilterField label="Sector">
                 <MultiSelect items={named(sectorOptions)} value={sectorFilter} onChange={setSectorFilter}
                   placeholder="All Sectors" searchPlaceholder="Search sectors…" />
@@ -717,7 +723,7 @@ export default function Leads({ lockedStatus, stage = 'Lead' }: LeadsProps = {})
                       />
                     </th>
                   )}
-                  {['Customer ID', 'Company Name', 'Contact Person', 'Phone', 'Entity Type', 'Sector', 'Customer Need', 'Status', 'Proposal Price',
+                  {['Customer ID', 'Company Name', 'Contact Person', 'Phone', 'Customer / Competitor', 'Entity Type', 'Sector', 'Customer Need', 'Status', 'Proposal Price',
                     // The Leads tab mixes Leads and their converted Opportunities,
                     // so it gets a Sales Type column; Data/Opportunities are single-value.
                     ...(stage === 'Lead' ? ['Sales Type'] : []),
@@ -779,6 +785,11 @@ export default function Leads({ lockedStatus, stage = 'Lead' }: LeadsProps = {})
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <PhoneLink number={lead.phonePrimary || lead.phoneSecondary} leadId={lead._id} />
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {lead.accountType
+                        ? <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${lead.accountType === 'Competitor' ? 'bg-error/10 text-error' : 'bg-green-500/10 text-green-700'}`}>{lead.accountType}</span>
+                        : <span className="text-on-surface-variant">—</span>}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       {lead.entityType

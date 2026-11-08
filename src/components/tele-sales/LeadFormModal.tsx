@@ -14,10 +14,10 @@ import { Field, SelectField } from '@/components/tele-sales/LeadFieldControls';
 import { useLeadPickerOptions } from '@/hooks/useLeadPickerOptions';
 import { IMPORTED_LEAD_STATUS, PICKABLE_LEAD_STATUSES, type LeadStatus } from '@/config/leadStatusWorkflow';
 import type {
-  Lead, LeadPriority, LeadSource, CreateLeadData, EntityType, IndustrySector, SalesType,
+  Lead, LeadPriority, LeadSource, CreateLeadData, EntityType, AccountType, IndustrySector, SalesType,
 } from '@/types/teleSales.types';
 import {
-  ENTITY_TYPES, LEAD_SOURCES, LEAD_SOURCE_DETAILS, isValidUrl, teamId,
+  ENTITY_TYPES, ACCOUNT_TYPES, LEAD_SOURCES, LEAD_SOURCE_DETAILS, isValidUrl, teamId,
   DEFAULT_VALUE_CURRENCY,
 } from '@/types/teleSales.types';
 import { REQUIRED_LEAD_FIELDS, STAGE_META, stageOf, hasIdentity } from '@/lib/leadStages';
@@ -59,6 +59,7 @@ const emptyForm: CreateLeadData = {
   industry: '',
   salesType: 'Lead',
   entityType: undefined,
+  accountType: null,
   businessClassification: '',
   industrySector: undefined,
   country: 'Egypt',
@@ -95,6 +96,7 @@ const buildFormFromLead = (lead: Lead): CreateLeadData => ({
   industry: lead.industry || '',
   salesType: lead.salesType || 'Lead',
   entityType: lead.entityType,
+  accountType: lead.accountType ?? null,
   businessClassification: lead.businessClassification || '',
   industrySector: lead.industrySector,
   country: lead.country || 'Egypt',
@@ -389,6 +391,12 @@ export function LeadFormModal({ open, lead, stage, convert = false, onClose, onS
               </Field>
               <Field label="Job Title">
                 <Input value={form.jobTitle} onChange={(e) => setForm(p => ({ ...p, jobTitle: e.target.value }))} placeholder="CEO" />
+              </Field>
+              <Field label="Customer / Competitor" hint="Is this company a potential customer or a competitor?">
+                <SelectField value={form.accountType || ''} onChange={(e) => setForm(p => ({ ...p, accountType: (e.target.value as AccountType) || null }))}>
+                  <option value="">Not set</option>
+                  {ACCOUNT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                </SelectField>
               </Field>
             </div>
           </SectionCard>

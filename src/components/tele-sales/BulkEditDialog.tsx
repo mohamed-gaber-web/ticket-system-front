@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { StatusUpdateForm } from '@/components/tele-sales/StatusUpdateForm';
 import { DATA_STATUSES, LEAD_STATUSES, LEAD_STATUS_WORKFLOW, type LeadStatus } from '@/config/leadStatusWorkflow';
 import {
-  ENTITY_TYPES, LEAD_SOURCE_DETAILS,
+  ENTITY_TYPES, ACCOUNT_TYPES, LEAD_SOURCE_DETAILS,
   type Lead, type LeadSource, type BulkUpdateLeadsRequest, type BulkUpdateLeadsResponse,
 } from '@/types/teleSales.types';
 
@@ -257,6 +257,7 @@ export function BulkEditDialog({ open, ids, canReassign, stage, onClose, onDone 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <Select label="Priority" value={set.priority ?? ''} onChange={(v) => setField('priority', v)} options={['High', 'Medium', 'Low']} />
                       <Select label="Entity Type" value={set.entityType ?? ''} onChange={(v) => setField('entityType', v)} options={[...ENTITY_TYPES]} />
+                      <Select label="Customer / Competitor" value={set.accountType ?? ''} onChange={(v) => setField('accountType', v)} options={[...ACCOUNT_TYPES]} />
                       <Select label="Industry Sector" value={set.industrySector ?? ''} onChange={(v) => setField('industrySector', v)} options={active(industrySectors)} />
                       <Select label="Business Classification" value={set.businessClassification ?? ''} onChange={(v) => setField('businessClassification', v)} options={active(businessClassifications)} />
                       <Select label="Country" value={set.country ?? ''} onChange={(v) => setField('country', v)} options={active(countries)} />

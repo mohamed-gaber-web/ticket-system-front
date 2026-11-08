@@ -194,6 +194,10 @@ export type SalesType = (typeof SALES_TYPES)[number];
 export const ENTITY_TYPES = ['Hotel', 'Restaurant', 'Cafe', 'Factory', 'Company'] as const;
 export type EntityType = (typeof ENTITY_TYPES)[number];
 
+// Customer or Competitor — optional on every stage.
+export const ACCOUNT_TYPES = ['Customer', 'Competitor'] as const;
+export type AccountType = (typeof ACCOUNT_TYPES)[number];
+
 // Field 3: Industry_Sector — 26 normalised sectors.
 export const INDUSTRY_SECTORS = [
   'Hospitality',
@@ -286,6 +290,7 @@ export interface Lead {
   // ── Spec fields ─────────────────────────────────────────────────────────────
   salesType?: SalesType;
   entityType?: EntityType;
+  accountType?: AccountType | null;
   businessClassification?: string;
   industrySector?: IndustrySector;
   country?: string;
@@ -361,6 +366,7 @@ export interface CreateLeadData {
   // ── Spec fields ─────────────────────────────────────────────────────────────
   salesType?: SalesType;
   entityType?: EntityType;
+  accountType?: AccountType | null;
   businessClassification?: string;
   industrySector?: IndustrySector;
   country?: string;
@@ -404,7 +410,7 @@ export interface BulkUpdateLeadsRequest {
   ids: string[];
   /** Only non-empty values are applied; a bulk edit never blanks a field. */
   set?: Partial<Pick<CreateLeadData,
-    'priority' | 'entityType' | 'industrySector' | 'businessClassification' | 'country' | 'leadSource' | 'leadSourceDetail' | 'dataSource'>>;
+    'priority' | 'entityType' | 'accountType' | 'industrySector' | 'businessClassification' | 'country' | 'leadSource' | 'leadSourceDetail' | 'dataSource'>>;
   tags?: { add?: string[]; remove?: string[] };
   /** Managers and admins only. */
   assignedTo?: string;
@@ -470,6 +476,7 @@ export interface LeadQueryParams {
   tags?: string;
   salesType?: SalesType;
   entityType?: EntityType | string;
+  accountType?: AccountType | string;
   industrySector?: IndustrySector | string;
   country?: string;
   leadSource?: string;
@@ -856,6 +863,7 @@ export interface ImportLeadRow {
   // ── Spec fields ─────────────────────────────────────────────────────────────
   salesType?: string;
   entityType?: string;
+  accountType?: string;
   businessClassification?: string;
   industrySector?: string;
   country?: string;

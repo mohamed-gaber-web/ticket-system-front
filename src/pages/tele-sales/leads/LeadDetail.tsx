@@ -11,7 +11,7 @@ import { PhoneLink } from '@/components/PhoneLink';
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import {
-  ArrowLeft, Phone, Mail, Building2, User, Briefcase, Tag, Edit2, Pencil,
+  ArrowLeft, Phone, Mail, Building2, User, Users, Briefcase, Tag, Edit2, Pencil,
   PhoneCall, Calendar, Paperclip, Plus, CheckCircle2, Trash2, MapPin,
   Globe, FileText, Upload, Download, File as FileIcon, Image as ImageIcon,
   Send, Sparkles, Wallet, CircleDot, Zap, FileSignature, ArrowRightCircle, AlertTriangle,
@@ -600,10 +600,11 @@ export default function LeadDetail() {
                 </p>
               </div>
             )}
-            {(lead.entityType || lead.industrySector || lead.businessClassification ||
+            {(lead.accountType || lead.entityType || lead.industrySector || lead.businessClassification ||
               lead.country || lead.fullAddress) && (
               <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/20 p-5 space-y-4">
                 <h3 className="font-semibold text-on-surface text-sm uppercase tracking-wide text-on-surface-variant">Classification &amp; Location</h3>
+                {lead.accountType && <InfoRow icon={<Users className="w-4 h-4" />} label="Customer / Competitor" value={lead.accountType} />}
                 {lead.entityType && <InfoRow icon={<Building2 className="w-4 h-4" />} label="Entity Type" value={lead.entityType} />}
                 {lead.industrySector && <InfoRow icon={<Briefcase className="w-4 h-4" />} label="Industry Sector" value={lead.industrySector} />}
                 {lead.businessClassification && <InfoRow icon={<Tag className="w-4 h-4" />} label="Business Classification" value={lead.businessClassification} />}
