@@ -125,7 +125,7 @@ export const prepareWhatsApp = (
   phone?: string,
   /** Send straight from the agent's linked WhatsApp instead of returning a wa.me link. */
   send = false,
-): Promise<ItemResponse<{ log: CommunicationLog; whatsappNumber: string; whatsappUrl?: string }>> =>
+): Promise<ItemResponse<{ log: CommunicationLog; whatsappNumber: string; whatsappUrl?: string; fileError?: string | null }>> =>
   api.post('/sales-assistant/whatsapp', { leadId, message, meta, phone, send }).then((r) => r.data);
 
 export const getLeadCommunications = (leadId: string, limit = 50): Promise<ListResponse<CommunicationLog>> =>

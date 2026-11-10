@@ -13,8 +13,14 @@ export const connectWhatsApp = (): Promise<{ success: boolean; data: WhatsAppSes
 export const logoutWhatsApp = (): Promise<{ success: boolean }> =>
   api.post('/whatsapp/session/logout').then((r) => r.data);
 
-export const getWhatsAppChats = (params: { search?: string; employee?: string } = {}): Promise<{ success: boolean; data: WhatsAppChat[] }> =>
-  api.get('/whatsapp/chats', { params }).then((r) => r.data);
+/** `scope: 'team'` (admins): every employee's chats, so a number shows who talked to it. */
+export const getWhatsAppChats = (
+  params: { search?: string; employee?: string; scope?: 'mine' | 'team' } = {},
+): Promise<{ success: boolean; data: WhatsAppChat[] }> => api.get('/whatsapp/chats', { params }).then((r) => r.data);
+
+/** Delete a chat from the system (not from the phones). Admins pass `employee` for someone else's. */
+export const deleteWhatsAppChat = (phone: string, employee?: string): Promise<{ success: boolean; data: { deleted: number } }> =>
+  api.delete(`/whatsapp/chats/${phone}`, { params: { employee } }).then((r) => r.data);
 
 export const getWhatsAppMessages = (
   phone: string,
