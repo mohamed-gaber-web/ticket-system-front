@@ -79,9 +79,11 @@ export function WhatsAppPreviewDialog({ open, onClose, leadId, prepared, meta, o
     if (!canSend) return;
     setBusy('send');
     try {
-      await salesAssistantApi.prepareWhatsApp(leadId, message.trim(), meta, phone.trim(), true);
+      const r = await salesAssistantApi.prepareWhatsApp(leadId, message.trim(), meta, phone.trim(), true);
       onLogged?.();
-      toast.success('WhatsApp message sent');
+      // The text went out; the document may still have failed to attach.
+      if (r.data.fileError) toast.warning(r.message ?? 'Message sent, but the document was not attached');
+      else toast.success(r.message ?? 'WhatsApp message sent');
       onClose();
     } catch (err) {
       toast.error(apiErrorMessage(err, 'WhatsApp message was not sent'));
@@ -137,7 +139,10 @@ export function WhatsAppPreviewDialog({ open, onClose, leadId, prepared, meta, o
 
             {prepared.document && (
               <p className="text-xs text-on-surface-variant inline-flex items-center gap-1.5">
-                <FileText className="w-3.5 h-3.5" /> Includes a download link for <span className="font-medium text-on-surface">{prepared.document.name}</span>
+                <FileText className="w-3.5 h-3.5" />
+                {linked
+                  ? <>Send now also attaches <span className="font-medium text-on-surface">{prepared.document.name}</span> as a file</>
+                  : <>Includes a download link for <span className="font-medium text-on-surface">{prepared.document.name}</span></>}
               </p>
             )}
 
@@ -164,21 +169,27 @@ export function WhatsAppPreviewDialog({ open, onClose, leadId, prepared, meta, o
           </div>
         )}
 
-        <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={onClose}>Close</Button>
-          <Button variant="outline" onClick={handleCopy} disabled={!canSend || busy !== null} className="gap-2">
-            {busy === 'copy' ? <Loader2 className="w-4 h-4 animate-spin" /> : copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-            Copy Message
-          </Button>
-          <Button variant={linked ? 'outline' : 'default'} onClick={handleOpen} disabled={!canSend || busy !== null} className="gap-2">
-            {busy === 'open' ? <Loader2 className="w-4 h-4 animate-spin" /> : <ExternalLink className="w-4 h-4" />}
-            Open WhatsApp
-          </Button>
-          {linked && (
-            <Button onClick={handleSendNow} disabled={!canSend || busy !== null} className="gap-2">
-              {busy === 'send' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              Send now
+        {/* Close / Copy / Open on one row; Send now, the main action when the
+            agent's WhatsApp is linked, centred on its own row below. */}
+        <DialogFooter className="flex-col gap-3 sm:flex-col sm:space-x-0">
+          <div className="flex flex-col-reverse sm:flex-row sm:flex-wrap sm:justify-end gap-2">
+            <Button variant="outline" onClick={onClose} className="sm:mr-auto">Close</Button>
+            <Button variant="outline" onClick={handleCopy} disabled={!canSend || busy !== null} className="gap-2">
+              {busy === 'copy' ? <Loader2 className="w-4 h-4 animate-spin" /> : copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              Copy Message
             </Button>
+            <Button variant={linked ? 'outline' : 'default'} onClick={handleOpen} disabled={!canSend || busy !== null} className="gap-2">
+              {busy === 'open' ? <Loader2 className="w-4 h-4 animate-spin" /> : <ExternalLink className="w-4 h-4" />}
+              Open WhatsApp
+            </Button>
+          </div>
+          {linked && (
+            <div className="flex justify-center">
+              <Button onClick={handleSendNow} disabled={!canSend || busy !== null} className="gap-2 w-full sm:w-auto sm:min-w-56">
+                {busy === 'send' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                Send now
+              </Button>
+            </div>
           )}
         </DialogFooter>
       </DialogContent>

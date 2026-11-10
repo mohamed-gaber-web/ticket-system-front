@@ -39,6 +39,8 @@ export interface WhatsAppMessage {
 
 export interface WhatsAppChat {
   phone: string;
+  /** Whose chat it is (one chat per employee and number). */
+  employee?: { _id: string; firstName?: string; lastName?: string } | null;
   unread: number;
   pushName: string | null;
   lead?: { _id: string; companyName?: string; contactPersonName?: string; customerId?: string } | null;
