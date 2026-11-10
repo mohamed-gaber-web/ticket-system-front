@@ -178,7 +178,9 @@ export default function WhatsAppInbox() {
   }
 
   const team = scope === 'team';
-  const showInbox = team || connected || chats.length > 0;
+  // Own chats only once the number is linked — until then the page is just the
+  // QR card. An admin's team view needs no link of their own.
+  const showInbox = team || connected;
 
   return (
     <div className="p-6 space-y-5">
