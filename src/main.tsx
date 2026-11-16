@@ -1,3 +1,6 @@
+// Must stay first: clears the stored session if the browser was closed,
+// before the auth slice reads it.
+import './lib/browserSession';
 import { createRoot } from 'react-dom/client'
 import { Provider } from 'react-redux';
 import { store } from './redux/store';

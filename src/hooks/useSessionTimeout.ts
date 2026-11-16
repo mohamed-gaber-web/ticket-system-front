@@ -4,8 +4,8 @@ import { toast } from 'sonner';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks/hooks';
 import { logout } from '@/redux/slices/authSlice';
 
-const TIMEOUT_MS = 30 * 60 * 1000;      // 30 minutes
-const WARNING_MS = 28 * 60 * 1000;      // warn at 28 minutes
+const TIMEOUT_MS = 2 * 60 * 60 * 1000;  // 2 hours of inactivity
+const WARNING_MS = TIMEOUT_MS - 2 * 60 * 1000; // warn 2 minutes before
 const CHECK_INTERVAL_MS = 30 * 1000;    // check every 30 seconds
 const STORAGE_KEY = 'lastActivity';
 
